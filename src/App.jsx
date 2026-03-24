@@ -5,7 +5,15 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Add page imports here
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import ExtratoBancario from './pages/ExtratoBancario';
+import Faturamento from './pages/Faturamento';
+import Cobrancas from './pages/Cobrancas';
+import Compras from './pages/Compras';
+import Obras from './pages/Obras';
+import Cartoes from './pages/Cartoes';
+import MapaGeral from './pages/MapaGeral';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -33,7 +41,16 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/extrato" element={<ExtratoBancario />} />
+        <Route path="/faturamento" element={<Faturamento />} />
+        <Route path="/cobrancas" element={<Cobrancas />} />
+        <Route path="/compras" element={<Compras />} />
+        <Route path="/obras" element={<Obras />} />
+        <Route path="/cartoes" element={<Cartoes />} />
+        <Route path="/mapa" element={<MapaGeral />} />
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
