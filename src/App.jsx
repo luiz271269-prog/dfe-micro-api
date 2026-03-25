@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster"
+import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
@@ -6,6 +7,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from './components/Layout';
+import { runSeedIfNeeded } from './lib/seedData';
 import Dashboard from './pages/Dashboard';
 import ExtratoBancario from './pages/ExtratoBancario';
 import Faturamento from './pages/Faturamento';
@@ -17,6 +19,10 @@ import MapaGeral from './pages/MapaGeral';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+
+  useEffect(() => {
+    runSeedIfNeeded();
+  }, []);
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
