@@ -28,6 +28,7 @@ const SEED_OBRAS = [
   { data: '2026-02-26', descricao: 'Materiais construção fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2865328', valor: 33.82 },
   { data: '2026-02-26', descricao: 'Materiais construção fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2865828', valor: 294.90 },
   { data: '2026-02-27', descricao: 'Materiais construção fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2868958', valor: 201.40 },
+  { data: '2026-03-30', descricao: 'Materiais construção mar', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DDA-202603', valor: 606.29, forma_pagamento: 'DDA' },
 ];
 
 const SEED_NOTAS = [
@@ -190,7 +191,13 @@ const SEED_LANCAMENTOS = [
   { data: '2026-03-24', descricao: 'Cobranças lote — Sigma+Tex+Sical', valor: 46014, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
   { data: '2026-03-24', descricao: 'Jackson Zanette — NF-87 parc.3', valor: 1437, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'Cobrança Sicredi liquidada antecipado — vencia 25/03' },
   { data: '2026-03-24', descricao: 'Ease Ind. e Com. de Confecções — NF-146', valor: 2589, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'Cobrança Sicredi liquidada — vencia 24/03' },
-  ];
+  { data: '2026-03-30', descricao: 'PJBank Pagamentos S.A.', valor: -99.90, categoria: 'despesa_operacional', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'DDA doc 528414539 — taxa/serviço financeiro' },
+  { data: '2026-03-30', descricao: 'Aceville Transportes Ltda', valor: -156.75, categoria: 'fornecedor', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'DDA doc 0014213660 — frete' },
+  { data: '2026-03-30', descricao: 'Everaldo Fabris', valor: -600.00, categoria: 'pessoal', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'DDA doc 6418 — CPF 14.227.711' },
+  { data: '2026-04-01', descricao: 'Alfa Transportes', valor: -68.50, categoria: 'fornecedor', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-04', detalhe: 'DDA doc 0006622213 — frete' },
+  { data: '2026-03-30', descricao: 'Baggio Materiais de Construção Ltda', valor: -606.29, categoria: 'obras_reforma', conta_bancaria: 'Liesch 37101-4', mes_referencia: '2026-03', detalhe: 'DDA — Liesch Comércio e Informática Ltda-ME — materiais obra' },
+  { data: '2026-04-01', descricao: 'Gazin Atacado Centro-Oeste Ltda', valor: -1143.31, categoria: 'fornecedor', conta_bancaria: 'KLI Tecnologia', mes_referencia: '2026-04', detalhe: 'DDA — KLI Tecnologia da Informação Ltda — mercadoria' },
+];
 
 export async function seedSicoobFatura() {
   // Check if fatura already exists for this card/month
@@ -271,7 +278,10 @@ async function seedComprasIfNeeded() {
 async function seedLancamentosIfNeeded() {
   const existing = await base44.entities.LancamentoBancario.list();
   if (existing.length > 0) return;
-  await base44.entities.LancamentoBancario.bulkCreate(SEED_LANCAMENTOS);
+  // Verificar deduplicação por data+descricao+valor
+  const dedupSet = new Set(existing.map(l => `${l.data}|${l.descricao}|${l.valor}`));
+  const toInsert = SEED_LANCAMENTOS.filter(l => !dedupSet.has(`${l.data}|${l.descricao}|${l.valor}`));
+  if (toInsert.length > 0) await base44.entities.LancamentoBancario.bulkCreate(toInsert);
 }
 
 async function seedNotasFiscalMarco() {

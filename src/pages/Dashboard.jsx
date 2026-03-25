@@ -126,6 +126,7 @@ export default function Dashboard() {
         <div>
           <p className="text-sm font-semibold text-amber-800">Itens que precisam de atenção</p>
           <div className="mt-1 flex flex-wrap gap-3">
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">📤 DDA semana 30/03—01/04: NeuralTec R$ 925,15 · Liesch R$ 606,29 · KLI R$ 1.143,31 — Total R$ 2.674,75</span>
             <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">⚠ DAS Mar/2026: R$ 36.377 — verificar</span>
             <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">📅 Sicredi NeuralTec vence 25/03: R$ 672,85</span>
             <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">💰 A receber: {formatCurrency(data.aReceber)}</span>
