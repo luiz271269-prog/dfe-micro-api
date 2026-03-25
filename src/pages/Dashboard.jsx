@@ -1,156 +1,194 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Landmark, FileText, Receipt, ShoppingCart, Hammer, CreditCard, AlertTriangle, TrendingUp } from 'lucide-react';
-import StatCard from '../components/dashboard/StatCard';
-import SectionHeader from '../components/dashboard/SectionHeader';
+import { Link } from 'react-router-dom';
+import { 
+  Landmark, FileText, Receipt, ShoppingCart, Hammer, CreditCard, 
+  AlertTriangle, TrendingUp, TrendingDown, Bell
+} from 'lucide-react';
 import { formatCurrency } from '../lib/formatters';
 
+function SectionTitle({ icon: Icon, label }) {
+  return (
+    <div className="flex items-center gap-2 mt-8 mb-3 first:mt-0">
+      <Icon className="w-4 h-4 text-muted-foreground" />
+      <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</h2>
+    </div>
+  );
+}
+
+function DashCard({ title, value, sub, icon: Icon, color, href }) {
+  const colors = {
+    green: 'bg-emerald-50 border-emerald-100 hover:border-emerald-300',
+    red: 'bg-red-50 border-red-100 hover:border-red-300',
+    blue: 'bg-blue-50 border-blue-100 hover:border-blue-300',
+    yellow: 'bg-amber-50 border-amber-100 hover:border-amber-300',
+    purple: 'bg-purple-50 border-purple-100 hover:border-purple-300',
+    orange: 'bg-orange-50 border-orange-100 hover:border-orange-300',
+    emerald: 'bg-emerald-50 border-emerald-100 hover:border-emerald-300',
+    slate: 'bg-slate-50 border-slate-100 hover:border-slate-300',
+  };
+  const iconColors = {
+    green: 'text-emerald-600', red: 'text-red-600', blue: 'text-blue-600',
+    yellow: 'text-amber-600', purple: 'text-purple-600', orange: 'text-orange-600',
+    emerald: 'text-emerald-600', slate: 'text-slate-600',
+  };
+  const valColors = {
+    green: 'text-emerald-700', red: 'text-red-700', blue: 'text-blue-700',
+    yellow: 'text-amber-700', purple: 'text-purple-700', orange: 'text-orange-700',
+    emerald: 'text-emerald-700', slate: 'text-slate-700',
+  };
+  const cls = colors[color] || colors.blue;
+  const icCls = iconColors[color] || iconColors.blue;
+  const valCls = valColors[color] || valColors.blue;
+
+  const inner = (
+    <div className={`rounded-xl border p-4 transition-all duration-200 hover:shadow-md cursor-pointer group ${cls}`}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-muted-foreground">{title}</p>
+        {Icon && <Icon className={`w-4 h-4 ${icCls}`} />}
+      </div>
+      <p className={`text-xl font-bold tracking-tight ${valCls}`}>{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    </div>
+  );
+  if (href) return <Link to={href}>{inner}</Link>;
+  return inner;
+}
+
 export default function Dashboard() {
-  const [stats, setStats] = useState({
+  const [data, setData] = useState({
     bankBalance: 47415, liesch: 41, fundos: 100000,
-    recebimentosYTD: 421769, pagamentosYTD: -390000,
-    totalFaturado: 570423, aReceber: 143000,
-    tiago: 235000, thais: 315000,
-    totalEmitido: 745734, recebido: 466030, emAberto: 279704,
-    totalCompras: -400283,
-    totalObras: -11557,
-    totalCartoes: -26553, proxVenc: 672.85,
-    totalTributos: -57738, dasMarco: 36377,
+    recYTD: 421769, pagYTD: -390000,
+    totalFat: 570423, aReceber: 143000, tiago: 235000, thais: 315000,
+    emitido: 745734, recebido: 466030, emAberto: 279704,
+    totalCompras: 400283, totalObras: 11557,
+    totalCartoes: 26553, proxVenc: 672.85,
+    totalTrib: 57738, dasMarco: 36377,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [lancamentos, nfs, titulos, compras, obras, faturas] = await Promise.all([
+        const [lanc, nfs, tit, comp, obras] = await Promise.all([
           base44.entities.LancamentoBancario.list(),
           base44.entities.NotaFiscal.list(),
           base44.entities.TituloCobranca.list(),
           base44.entities.ItemCompra.list(),
           base44.entities.ObraReforma.list(),
-          base44.entities.FaturaCartao.list(),
         ]);
-
-        if (lancamentos.length > 0) {
-          const rec = lancamentos.filter(l => l.categoria === 'recebimento').reduce((s, l) => s + (l.valor || 0), 0);
-          const pag = lancamentos.filter(l => l.categoria !== 'recebimento').reduce((s, l) => s + (l.valor || 0), 0);
-          const last = lancamentos.sort((a, b) => new Date(b.data) - new Date(a.data))[0];
-          setStats(prev => ({
-            ...prev,
-            bankBalance: last?.saldo_apos ?? prev.bankBalance,
-            recebimentosYTD: rec || prev.recebimentosYTD,
-            pagamentosYTD: pag ? -Math.abs(pag) : prev.pagamentosYTD,
-          }));
-        }
-        if (nfs.length > 0) {
-          setStats(prev => ({
-            ...prev,
-            totalFaturado: nfs.reduce((s, n) => s + (n.valor_total || 0), 0),
-            aReceber: nfs.reduce((s, n) => s + (n.valor_aberto || 0), 0),
-          }));
-        }
-        if (titulos.length > 0) {
-          setStats(prev => ({
-            ...prev,
-            totalEmitido: titulos.reduce((s, t) => s + (t.valor_titulo || 0), 0),
-            recebido: titulos.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0),
-            emAberto: titulos.filter(t => t.status !== 'pago').reduce((s, t) => s + (t.valor_titulo || 0), 0),
-          }));
-        }
-        if (compras.length > 0) {
-          setStats(prev => ({
-            ...prev,
-            totalCompras: -Math.abs(compras.reduce((s, c) => s + (c.valor_total || 0), 0)),
-          }));
-        }
-        if (obras.length > 0) {
-          setStats(prev => ({
-            ...prev,
-            totalObras: -Math.abs(obras.reduce((s, o) => s + (o.valor || 0), 0)),
-          }));
-        }
-      } catch (e) {
-        // keep defaults
-      }
+        setData(prev => {
+          const d = { ...prev };
+          if (lanc.length) {
+            d.recYTD = lanc.filter(l => l.categoria === 'recebimento').reduce((s, l) => s + (l.valor || 0), 0) || prev.recYTD;
+            d.pagYTD = lanc.filter(l => l.categoria !== 'recebimento').reduce((s, l) => s + Math.abs(l.valor || 0), 0) || prev.pagYTD;
+          }
+          if (nfs.length) {
+            d.totalFat = nfs.reduce((s, n) => s + (n.valor_total || 0), 0);
+            d.aReceber = nfs.reduce((s, n) => s + (n.valor_aberto || 0), 0);
+            d.tiago = nfs.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_total || 0), 0) || prev.tiago;
+            d.thais = nfs.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_total || 0), 0) || prev.thais;
+          }
+          if (tit.length) {
+            d.emitido = tit.reduce((s, t) => s + (t.valor_titulo || 0), 0);
+            d.recebido = tit.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
+            d.emAberto = tit.filter(t => t.status !== 'pago').reduce((s, t) => s + (t.valor_titulo || 0), 0);
+          }
+          if (comp.length) d.totalCompras = comp.reduce((s, c) => s + (c.valor_total || 0), 0);
+          if (obras.length) d.totalObras = obras.reduce((s, o) => s + (o.valor || 0), 0);
+          return d;
+        });
+      } catch (_) {}
       setLoading(false);
     }
     load();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-full">
+      <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+    </div>
+  );
 
-  const percRecebido = stats.totalEmitido > 0 ? ((stats.recebido / stats.totalEmitido) * 100) : 62.6;
+  const percCob = data.emitido > 0 ? ((data.recebido / data.emitido) * 100).toFixed(1) : '62.6';
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">Dashboard Financeiro</h1>
-        <p className="text-muted-foreground mt-1">NeuralTec Distribuição e Tecnologia Ltda · Sicredi 36092-2</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-foreground">Dashboard Financeiro</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">NeuralTec Distribuição e Tecnologia Ltda · Março 2026</p>
+      </div>
+
+      {/* Alert card */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <Bell className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Itens que precisam de atenção</p>
+          <div className="mt-1 flex flex-wrap gap-3">
+            <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">⚠ DAS Mar/2026: R$ 36.377 — verificar</span>
+            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">📅 Sicredi NeuralTec vence 25/03: R$ 672,85</span>
+            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">💰 A receber: {formatCurrency(data.aReceber)}</span>
+          </div>
+        </div>
       </div>
 
       {/* Banco */}
-      <SectionHeader title="Banco" icon={Landmark} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Saldo NeuralTec" value={formatCurrency(stats.bankBalance)} subtitle="Conta 36092-2" icon={Landmark} color="blue" href="/extrato" />
-        <StatCard title="Saldo Liesch + Fundos" value={formatCurrency(stats.liesch + stats.fundos)} subtitle={`Liesch R$41 + Fundos R$100k`} icon={Landmark} color="blue" href="/extrato" />
-        <StatCard title="Recebimentos YTD" value={formatCurrency(stats.recebimentosYTD)} icon={TrendingUp} color="green" href="/extrato" />
-        <StatCard title="Pagamentos YTD" value={formatCurrency(stats.pagamentosYTD)} icon={TrendingUp} color="red" href="/extrato" />
+      <SectionTitle icon={Landmark} label="Banco" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <DashCard title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Conta 36092-2" icon={Landmark} color="blue" href="/extrato" />
+        <DashCard title="Liesch + Fundos" value={formatCurrency(data.liesch + data.fundos)} sub="R$41 + R$100k fundos" icon={Landmark} color="slate" href="/extrato" />
+        <DashCard title="Recebimentos YTD" value={formatCurrency(data.recYTD)} icon={TrendingUp} color="green" href="/extrato" />
+        <DashCard title="Pagamentos YTD" value={formatCurrency(-data.pagYTD)} icon={TrendingDown} color="red" href="/extrato" />
       </div>
 
       {/* Faturamento */}
-      <SectionHeader title="Faturamento" icon={FileText} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Faturado" value={formatCurrency(stats.totalFaturado)} icon={FileText} color="green" href="/faturamento" />
-        <StatCard title="A Receber" value={formatCurrency(stats.aReceber)} icon={FileText} color="yellow" href="/faturamento" />
-        <StatCard title="Tiago V-01" value={formatCurrency(stats.tiago)} subtitle="Vendedor" icon={FileText} color="blue" href="/faturamento" />
-        <StatCard title="Thais V-05" value={formatCurrency(stats.thais)} subtitle="Vendedora" icon={FileText} color="purple" href="/faturamento" />
+      <SectionTitle icon={FileText} label="Faturamento" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <DashCard title="Total Faturado" value={formatCurrency(data.totalFat)} icon={FileText} color="green" href="/faturamento" />
+        <DashCard title="A Receber" value={formatCurrency(data.aReceber)} icon={FileText} color="orange" href="/faturamento" />
+        <DashCard title="Tiago (V-01)" value={formatCurrency(data.tiago)} icon={FileText} color="blue" href="/faturamento" />
+        <DashCard title="Thais (V-05)" value={formatCurrency(data.thais)} icon={FileText} color="purple" href="/faturamento" />
       </div>
 
       {/* Cobranças */}
-      <SectionHeader title="Cobranças Sicredi" icon={Receipt} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard title="Total Emitido" value={formatCurrency(stats.totalEmitido)} icon={Receipt} color="blue" href="/cobrancas" />
-        <StatCard title="Recebido" value={formatCurrency(stats.recebido)} subtitle={`${percRecebido.toFixed(1)}% do total`} icon={Receipt} color="green" href="/cobrancas" />
-        <StatCard title="Em Aberto" value={formatCurrency(stats.emAberto)} icon={Receipt} color="orange" href="/cobrancas" />
+      <SectionTitle icon={Receipt} label="Cobranças Sicredi" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <DashCard title="Total Emitido" value={formatCurrency(data.emitido)} icon={Receipt} color="blue" href="/cobrancas" />
+        <DashCard title="Recebido" value={formatCurrency(data.recebido)} sub={`${percCob}% do emitido`} icon={Receipt} color="green" href="/cobrancas" />
+        <DashCard title="Em Aberto" value={formatCurrency(data.emAberto)} icon={Receipt} color="orange" href="/cobrancas" />
       </div>
 
       {/* Compras + Obras */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <SectionHeader title="Compras" icon={ShoppingCart} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <StatCard title="Total Compras" value={formatCurrency(stats.totalCompras)} subtitle="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} color="red" href="/compras" />
+          <SectionTitle icon={ShoppingCart} label="Compras" />
+          <div className="grid grid-cols-1 gap-3">
+            <DashCard title="Total Compras YTD" value={formatCurrency(-data.totalCompras)} sub="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} color="red" href="/compras" />
           </div>
         </div>
         <div>
-          <SectionHeader title="Obras e Reformas" icon={Hammer} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <StatCard title="Total YTD" value={formatCurrency(stats.totalObras)} subtitle="Mão de obra R$9.500 · Mat. R$2.057" icon={Hammer} color="emerald" href="/obras" />
+          <SectionTitle icon={Hammer} label="Obras e Reformas" />
+          <div className="grid grid-cols-1 gap-3">
+            <DashCard title="Total Obras YTD" value={formatCurrency(-data.totalObras)} sub="Mão de obra R$9.500 · Mat. R$2.057" icon={Hammer} color="emerald" href="/obras" />
           </div>
         </div>
       </div>
 
       {/* Cartões + Tributos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <SectionHeader title="Cartões de Crédito" icon={CreditCard} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <StatCard title="Pago no Banco" value={formatCurrency(stats.totalCartoes)} subtitle="7 cartões cadastrados" icon={CreditCard} color="purple" href="/cartoes" />
-            <StatCard title="Próx. Vencimento" value={formatCurrency(stats.proxVenc)} subtitle="25/03/2025" icon={CreditCard} color="yellow" href="/cartoes" />
+          <SectionTitle icon={CreditCard} label="Cartões de Crédito" />
+          <div className="grid grid-cols-2 gap-3">
+            <DashCard title="Pago no Banco" value={formatCurrency(-data.totalCartoes)} sub="7 cartões" icon={CreditCard} color="purple" href="/cartoes" />
+            <DashCard title="Próx. Vencimento" value={formatCurrency(data.proxVenc)} sub="25/03 Sicredi NT" icon={CreditCard} color="yellow" href="/cartoes" />
           </div>
         </div>
         <div>
-          <SectionHeader title="Tributos" icon={AlertTriangle} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <StatCard title="Tributos YTD" value={formatCurrency(stats.totalTributos)} icon={AlertTriangle} color="red" />
-            <StatCard title="DAS Março" value={formatCurrency(stats.dasMarco)} subtitle="⚠️ Verificar valor alto" icon={AlertTriangle} color="yellow" />
+          <SectionTitle icon={AlertTriangle} label="Tributos" />
+          <div className="grid grid-cols-2 gap-3">
+            <DashCard title="Tributos YTD" value={formatCurrency(-data.totalTrib)} icon={AlertTriangle} color="red" />
+            <DashCard title="DAS Março" value={formatCurrency(data.dasMarco)} sub="⚠ Verificar" icon={AlertTriangle} color="yellow" />
           </div>
         </div>
       </div>

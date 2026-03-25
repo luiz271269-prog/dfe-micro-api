@@ -11,6 +11,13 @@ import { formatCurrency, formatDate } from '../lib/formatters';
 
 const fornecedorOptions = ['COMPRAS A VISTA', 'MERCADO LIVRE', 'PAUTA DISTRIBUIÇÃO'];
 const categoriaOptions = ['notebook', 'tablet', 'smartphone', 'componente', 'memoria', 'armazenamento', 'periferico', 'software', 'rede', 'outro'];
+const categoriaColors = {
+  notebook: 'bg-blue-100 text-blue-700', tablet: 'bg-purple-100 text-purple-700',
+  smartphone: 'bg-green-100 text-green-700', componente: 'bg-orange-100 text-orange-700',
+  memoria: 'bg-yellow-100 text-yellow-700', armazenamento: 'bg-cyan-100 text-cyan-700',
+  periferico: 'bg-pink-100 text-pink-700', software: 'bg-indigo-100 text-indigo-700',
+  rede: 'bg-teal-100 text-teal-700', outro: 'bg-slate-100 text-slate-700',
+};
 
 export default function Compras() {
   const [compras, setCompras] = useState([]);
@@ -46,9 +53,10 @@ export default function Compras() {
   const totalGeral = filtered.reduce((s, c) => s + (c.valor_total || 0), 0);
   const totaisFornecedor = useMemo(() => {
     const t = {};
-    filtered.forEach(c => { t[c.fornecedor] = (t[c.fornecedor] || 0) + (c.valor_total || 0); });
+    compras.forEach(c => { t[c.fornecedor] = (t[c.fornecedor] || 0) + (c.valor_total || 0); });
     return t;
-  }, [filtered]);
+  }, [compras]);
+  const grandTotal = compras.reduce((s, c) => s + (c.valor_total || 0), 0);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -69,18 +77,28 @@ export default function Compras() {
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Compra</Button>
       </PageHeader>
 
-      {/* Totais */}
+      {/* Cards por fornecedor */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {Object.entries(totaisFornecedor).map(([f, v]) => (
-          <div key={f} className="bg-card rounded-xl border p-4">
-            <p className="text-xs text-muted-foreground truncate">{f}</p>
-            <p className="text-lg font-bold text-red-600">{formatCurrency(-Math.abs(v))}</p>
-            <p className="text-xs text-muted-foreground">{totalGeral > 0 ? ((v / totalGeral) * 100).toFixed(0) : 0}%</p>
-          </div>
-        ))}
-        <div className="bg-card rounded-xl border p-4 border-primary/30">
-          <p className="text-xs text-muted-foreground font-semibold">Total Compras</p>
-          <p className="text-lg font-bold text-red-600">{formatCurrency(-Math.abs(totalGeral))}</p>
+        {fornecedorOptions.map(f => {
+          const val = totaisFornecedor[f] || 0;
+          const perc = grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(0) : 0;
+          const isActive = filterFornecedor === f;
+          return (
+            <button key={f} onClick={() => setFilterFornecedor(isActive ? 'all' : f)}
+              className={`rounded-xl border p-4 text-left transition-all hover:shadow-md ${isActive ? 'border-primary bg-primary/5' : 'bg-card'}`}>
+              <p className="text-[11px] font-semibold text-muted-foreground leading-tight">{f}</p>
+              <p className="text-lg font-bold text-red-600 mt-1">{formatCurrency(val)}</p>
+              <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-red-400 rounded-full" style={{ width: `${perc}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{perc}% do total</p>
+            </button>
+          );
+        })}
+        <div className="rounded-xl border p-4 bg-card border-dashed">
+          <p className="text-[11px] font-semibold text-muted-foreground">Total Compras</p>
+          <p className="text-lg font-bold text-red-700 mt-1">{formatCurrency(grandTotal)}</p>
+          <p className="text-xs text-muted-foreground mt-1">{compras.length} itens</p>
         </div>
       </div>
 
@@ -135,7 +153,11 @@ export default function Compras() {
                       {c.numero_nota && <p className="text-xs text-muted-foreground">NF {c.numero_nota}</p>}
                     </td>
                     <td className="px-4 py-3 text-xs">{c.fornecedor}</td>
-                    <td className="px-4 py-3 capitalize">{c.categoria_produto}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${categoriaColors[c.categoria_produto] || 'bg-slate-100 text-slate-700'}`}>
+                        {c.categoria_produto}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums">{c.quantidade}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{c.valor_unitario ? formatCurrency(c.valor_unitario) : '—'}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(c.valor_total)}</td>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -14,6 +14,7 @@ export default function Faturamento() {
   const [notas, setNotas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [detalhes, setDetalhes] = useState(null);
   const [filterVendedor, setFilterVendedor] = useState('all');
   const [filterTipo, setFilterTipo] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -47,6 +48,12 @@ export default function Faturamento() {
   const totalRecebido = filtered.reduce((s, n) => s + (n.valor_recebido || 0), 0);
   const totalAberto = filtered.reduce((s, n) => s + (n.valor_aberto || 0), 0);
 
+  // Por vendedor
+  const tiagototal = notas.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_total || 0), 0);
+  const tiagoAberto = notas.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_aberto || 0), 0);
+  const thaisTotal = notas.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_total || 0), 0);
+  const thaisAberto = notas.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_aberto || 0), 0);
+
   async function handleSubmit(e) {
     e.preventDefault();
     const valorTotal = parseFloat(form.valor_total);
@@ -62,25 +69,45 @@ export default function Faturamento() {
     loadData();
   }
 
+  async function darBaixa(nf) {
+    const novoRecebido = nf.valor_total;
+    await base44.entities.NotaFiscal.update(nf.id, {
+      valor_recebido: novoRecebido,
+      valor_aberto: 0,
+      status: 'pago',
+    });
+    setDetalhes(null);
+    loadData();
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Faturamento" subtitle="Notas Fiscais e Contratos de Intermediação">
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova NF</Button>
       </PageHeader>
 
-      {/* Summary cards */}
+      {/* Cards por vendedor */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs text-muted-foreground">Total Faturado</p>
-          <p className="text-xl font-bold text-green-600">{formatCurrency(totalFaturado)}</p>
-        </div>
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs text-muted-foreground">Total Recebido</p>
-          <p className="text-xl font-bold text-blue-600">{formatCurrency(totalRecebido)}</p>
-        </div>
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs text-muted-foreground">Em Aberto</p>
-          <p className="text-xl font-bold text-orange-600">{formatCurrency(totalAberto)}</p>
+        <button
+          onClick={() => setFilterVendedor(filterVendedor === 'Tiago' ? 'all' : 'Tiago')}
+          className={`rounded-xl border p-4 text-left transition-all hover:shadow-md ${filterVendedor === 'Tiago' ? 'border-blue-400 bg-blue-50' : 'bg-card'}`}
+        >
+          <p className="text-xs font-semibold text-muted-foreground">Tiago (V-01)</p>
+          <p className="text-xl font-bold text-blue-700">{formatCurrency(tiagototal)}</p>
+          <p className="text-xs text-orange-600 mt-0.5">Em aberto: {formatCurrency(tiagoAberto)}</p>
+        </button>
+        <button
+          onClick={() => setFilterVendedor(filterVendedor === 'Thais' ? 'all' : 'Thais')}
+          className={`rounded-xl border p-4 text-left transition-all hover:shadow-md ${filterVendedor === 'Thais' ? 'border-purple-400 bg-purple-50' : 'bg-card'}`}
+        >
+          <p className="text-xs font-semibold text-muted-foreground">Thais (V-05)</p>
+          <p className="text-xl font-bold text-purple-700">{formatCurrency(thaisTotal)}</p>
+          <p className="text-xs text-orange-600 mt-0.5">Em aberto: {formatCurrency(thaisAberto)}</p>
+        </button>
+        <div className="rounded-xl border p-4 bg-card">
+          <p className="text-xs font-semibold text-muted-foreground">Total Geral</p>
+          <p className="text-xl font-bold text-foreground">{formatCurrency(totalFaturado)}</p>
+          <p className="text-xs text-green-600 mt-0.5">Recebido: {formatCurrency(totalRecebido)}</p>
         </div>
       </div>
 
@@ -100,7 +127,7 @@ export default function Faturamento() {
           </SelectContent>
         </Select>
         <Select value={filterTipo} onValueChange={setFilterTipo}>
-          <SelectTrigger className="w-[120px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+          <SelectTrigger className="w-[110px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="NF">NF</SelectItem>
@@ -125,31 +152,37 @@ export default function Faturamento() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">NF</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">NF/CI</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Vendedor</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Emissão</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Total</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Recebido</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Aberto</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Próx. Venc.</th>
                 <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhuma nota encontrada</td></tr>
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Nenhuma nota encontrada</td></tr>
               ) : (
                 filtered.map(n => (
-                  <tr key={n.id} className="border-b hover:bg-muted/30 transition-colors">
+                  <tr key={n.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setDetalhes(n)}>
                     <td className="px-4 py-3 font-medium">{n.numero} <span className="text-xs text-muted-foreground">({n.tipo})</span></td>
                     <td className="px-4 py-3">{n.cliente}</td>
-                    <td className="px-4 py-3">{n.vendedor}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${n.vendedor === 'Tiago' ? 'bg-blue-100 text-blue-700' : n.vendedor === 'Thais' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'}`}>
+                        {n.vendedor}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(n.data_emissao)}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatCurrency(n.valor_total)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-green-600">{formatCurrency(n.valor_recebido)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-orange-600">{formatCurrency(n.valor_aberto)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm">{formatDate(n.data_vencimento_proxima)}</td>
                     <td className="px-4 py-3 text-center"><StatusBadge status={n.status} /></td>
                   </tr>
                 ))
@@ -162,13 +195,48 @@ export default function Faturamento() {
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(totalFaturado)}</td>
                   <td className="px-4 py-3 text-right font-bold text-green-600">{formatCurrency(totalRecebido)}</td>
                   <td className="px-4 py-3 text-right font-bold text-orange-600">{formatCurrency(totalAberto)}</td>
-                  <td></td>
+                  <td colSpan={2}></td>
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
       </div>
+
+      {/* Detalhes/Baixa modal */}
+      {detalhes && (
+        <Dialog open={!!detalhes} onOpenChange={open => { if (!open) setDetalhes(null); }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>NF {detalhes.numero} — {detalhes.cliente}</DialogTitle></DialogHeader>
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div><p className="text-xs text-muted-foreground">Tipo</p><p className="font-medium">{detalhes.tipo}</p></div>
+                <div><p className="text-xs text-muted-foreground">Vendedor</p><p className="font-medium">{detalhes.vendedor}</p></div>
+                <div><p className="text-xs text-muted-foreground">Emissão</p><p className="font-medium">{formatDate(detalhes.data_emissao)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Próx. Vencimento</p><p className="font-medium">{formatDate(detalhes.data_vencimento_proxima)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Valor Total</p><p className="font-bold text-lg">{formatCurrency(detalhes.valor_total)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Canal Cobrança</p><p className="font-medium">{detalhes.canal_cobranca}</p></div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <div className="flex-1 bg-green-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Recebido</p>
+                  <p className="font-bold text-green-700">{formatCurrency(detalhes.valor_recebido)}</p>
+                </div>
+                <div className="flex-1 bg-orange-50 rounded-lg p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Em Aberto</p>
+                  <p className="font-bold text-orange-700">{formatCurrency(detalhes.valor_aberto)}</p>
+                </div>
+              </div>
+              <StatusBadge status={detalhes.status} />
+              {detalhes.status !== 'pago' && (
+                <Button className="w-full" onClick={() => darBaixa(detalhes)}>
+                  Dar Baixa — Marcar como Pago
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
