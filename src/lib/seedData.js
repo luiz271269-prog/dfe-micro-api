@@ -105,6 +105,89 @@ const SICOOB_LANCAMENTOS = [
   { data_lancamento: '2026-03-23', estabelecimento: 'POSTO LOBO GAROPABA', categoria: 'combustivel', valor: 150.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
 ];
 
+const SEED_TITULOS = [
+  { nosso_numero: '26/100125-0', seu_numero: 'NF-125', cliente: 'UNIVALI', data_vencimento: '2026-03-20', data_pagamento: '2026-03-23', valor_titulo: 45000, valor_pago: 45000, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100132-0', seu_numero: 'NF-132', cliente: 'Sigma ABC', data_vencimento: '2026-03-25', data_pagamento: '2026-03-23', valor_titulo: 39999, valor_pago: 39999, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100087-3', seu_numero: 'NF-87-p3', cliente: 'Jackson Zanette', data_vencimento: '2026-03-25', data_pagamento: '2026-03-24', valor_titulo: 1437, valor_pago: 1437, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 3, parcela_total: 5 },
+  { nosso_numero: '26/100093-3', seu_numero: 'NF-93-p3', cliente: 'Tex Cotton', data_vencimento: '2026-03-23', data_pagamento: '2026-03-23', valor_titulo: 1596, valor_pago: 1596, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 3, parcela_total: 5 },
+  { nosso_numero: '26/100094-3', seu_numero: 'NF-94-p3', cliente: 'Tex Cotton', data_vencimento: '2026-03-23', data_pagamento: '2026-03-23', valor_titulo: 2394, valor_pago: 2394, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 3, parcela_total: 5 },
+  { nosso_numero: '26/100143-1', seu_numero: 'NF-143-p1', cliente: 'Sical Siderúrgica', data_vencimento: '2026-03-23', data_pagamento: '2026-03-23', valor_titulo: 500, valor_pago: 500, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 3 },
+  { nosso_numero: '26/100143-2', seu_numero: 'NF-143-p2', cliente: 'Sical Siderúrgica', data_vencimento: '2026-03-23', data_pagamento: '2026-03-23', valor_titulo: 1525, valor_pago: 1525, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 2, parcela_total: 3 },
+  { nosso_numero: '26/100133-0', seu_numero: 'NF-133', cliente: 'Frigorífico Pamplona', data_vencimento: '2026-03-23', data_pagamento: '2026-03-23', valor_titulo: 1057, valor_pago: 1057, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100131-0', seu_numero: 'NF-131', cliente: 'SESC', data_vencimento: '2026-03-20', data_pagamento: '2026-03-20', valor_titulo: 20850, valor_pago: 20850, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100126-0', seu_numero: 'NF-126', cliente: 'Portonave', data_vencimento: '2026-03-20', data_pagamento: '2026-03-20', valor_titulo: 5640, valor_pago: 5640, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100152-0', seu_numero: 'NF-152', cliente: 'Sicoob Litorânea', data_vencimento: '2026-03-17', data_pagamento: '2026-03-17', valor_titulo: 13840, valor_pago: 13840, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100139-0', seu_numero: 'NF-139', cliente: 'Cooperja UN.21', data_vencimento: '2026-03-19', data_pagamento: '2026-03-19', valor_titulo: 6850, valor_pago: 6850, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100117-0', seu_numero: 'NF-117', cliente: 'Setep Construções', data_vencimento: '2026-03-27', valor_titulo: 3550, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100141-0', seu_numero: 'NF-141', cliente: 'Diamante Energia', data_vencimento: '2026-03-27', valor_titulo: 1371, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100142-0', seu_numero: 'NF-142', cliente: 'Setep Construções', data_vencimento: '2026-03-29', valor_titulo: 2899, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100155-0', seu_numero: 'NF-155', cliente: 'Orsegups Vigilância', data_vencimento: '2026-03-25', valor_titulo: 1575, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100162-0', seu_numero: 'NF-162', cliente: 'Gilvan Advogados', data_vencimento: '2026-03-31', valor_titulo: 7752, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100160-0', seu_numero: 'NF-160', cliente: 'Cooperja UN.21', data_vencimento: '2026-03-30', valor_titulo: 860, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  { nosso_numero: '26/100114-3', seu_numero: 'NF-114-p3', cliente: 'Betha Sistemas', data_vencimento: '2026-04-07', valor_titulo: 7240, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 3, parcela_total: 3 },
+  { nosso_numero: '26/100130-2', seu_numero: 'NF-130-p2', cliente: 'Betha Sistemas', data_vencimento: '2026-04-06', valor_titulo: 7690, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 2, parcela_total: 3 },
+  { nosso_numero: '26/100119-3', seu_numero: 'NF-119-p3', cliente: 'UNESC', data_vencimento: '2026-04-14', valor_titulo: 5222.50, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 3, parcela_total: 4 },
+  { nosso_numero: '26/100109-3', seu_numero: 'NF-109-p3', cliente: 'MC3 Higienização', data_vencimento: '2026-04-01', valor_titulo: 1910.75, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 3, parcela_total: 4 },
+  { nosso_numero: '26/100150-1', seu_numero: 'NF-150-p1', cliente: 'Anjo Química', data_vencimento: '2026-04-26', valor_titulo: 2200, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 2 },
+  { nosso_numero: '26/100157-0', seu_numero: 'NF-157', cliente: 'Casefer Abrasivos', data_vencimento: '2026-04-11', valor_titulo: 4050, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+];
+
+const SEED_COMPRAS = [
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '44522', data_emissao: '2026-02-02', descricao_produto: 'HEADSET LOGITECH H390 USB', categoria_produto: 'periferico', quantidade: 130, valor_unitario: 125, valor_total: 16250 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '154545', data_emissao: '2026-01-26', descricao_produto: 'HEADSET LOGITECH H390 USB', categoria_produto: 'periferico', quantidade: 142, valor_unitario: 126.88, valor_total: 18016.96 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '74651', data_emissao: '2026-02-23', descricao_produto: 'NOTEBOOK ALTO VALOR', categoria_produto: 'notebook', quantidade: 3, valor_unitario: 9735, valor_total: 29205 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '74651', data_emissao: '2026-02-23', descricao_produto: 'NOTEBOOK', categoria_produto: 'notebook', quantidade: 3, valor_unitario: 6335, valor_total: 19005 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '44522', data_emissao: '2026-02-02', descricao_produto: 'NOTEBOOK', categoria_produto: 'notebook', quantidade: 3, valor_unitario: 5510, valor_total: 16530 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '465732', data_emissao: '2026-02-20', descricao_produto: 'MEMORIA KINGSTON 16GB DDR4', categoria_produto: 'memoria', quantidade: 18, valor_unitario: 888.85, valor_total: 15999.30 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '61543', data_emissao: '2026-01-19', descricao_produto: 'TABLET SAMSUNG A9 64GB', categoria_produto: 'tablet', quantidade: 25, valor_unitario: 615, valor_total: 15375 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '74651', data_emissao: '2026-02-23', descricao_produto: 'TABLET SAMSUNG S6 LITE', categoria_produto: 'tablet', quantidade: 10, valor_unitario: 1360, valor_total: 13600 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '465732', data_emissao: '2026-02-20', descricao_produto: 'MEMORIA KINGSTON 32GB DDR5', categoria_produto: 'memoria', quantidade: 4, valor_unitario: 3117.23, valor_total: 12468.92 },
+  { fornecedor: 'COMPRAS A VISTA', numero_nota: '89653', data_emissao: '2026-03-09', descricao_produto: 'WEB CAM', categoria_produto: 'periferico', quantidade: 80, valor_unitario: 110, valor_total: 8800 },
+  { fornecedor: 'MERCADO LIVRE', numero_nota: '165998', data_emissao: '2026-02-16', descricao_produto: 'PROCESSADOR INTEL CORE', categoria_produto: 'componente', quantidade: 9, valor_unitario: 1448.77, valor_total: 13038.96 },
+  { fornecedor: 'MERCADO LIVRE', numero_nota: '16546', data_emissao: '2026-01-27', descricao_produto: 'TABLET', categoria_produto: 'tablet', quantidade: 4, valor_unitario: 3699, valor_total: 14796 },
+  { fornecedor: 'MERCADO LIVRE', numero_nota: '14360505', data_emissao: '2026-02-11', descricao_produto: 'NOTEBOOK', categoria_produto: 'notebook', quantidade: 3, valor_unitario: 3260.34, valor_total: 9781.02 },
+  { fornecedor: 'MERCADO LIVRE', numero_nota: '1843978', data_emissao: '2026-02-09', descricao_produto: 'MONITOR LG 24 24MS500', categoria_produto: 'outro', quantidade: 10, valor_unitario: 489.90, valor_total: 4899 },
+  { fornecedor: 'MERCADO LIVRE', numero_nota: '98866', data_emissao: '2026-03-16', descricao_produto: 'ANTI-VIRUS KASPERSKY ENDPOINT', categoria_produto: 'software', quantidade: 24, valor_unitario: 250.18, valor_total: 6004.32 },
+  { fornecedor: 'MERCADO LIVRE', numero_nota: '89756', data_emissao: '2026-02-18', descricao_produto: 'HD SSD 1TB', categoria_produto: 'armazenamento', quantidade: 9, valor_unitario: 749, valor_total: 6741 },
+  { fornecedor: 'PAUTA DISTRIBUIÇÃO', numero_nota: '16543', data_emissao: '2026-02-04', descricao_produto: 'PLACA DE VIDEO RTX', categoria_produto: 'componente', quantidade: 1, valor_unitario: 6936.25, valor_total: 6936.25 },
+  { fornecedor: 'PAUTA DISTRIBUIÇÃO', numero_nota: '1543257', data_emissao: '2026-02-18', descricao_produto: 'PLACA DE VIDEO RTX', categoria_produto: 'componente', quantidade: 1, valor_unitario: 6936.25, valor_total: 6936.25 },
+  { fornecedor: 'PAUTA DISTRIBUIÇÃO', numero_nota: '140443', data_emissao: '2026-01-28', descricao_produto: 'PROCESSADOR', categoria_produto: 'componente', quantidade: 1, valor_unitario: 2061.45, valor_total: 2061.45 },
+  { fornecedor: 'PAUTA DISTRIBUIÇÃO', numero_nota: '16543', data_emissao: '2026-01-19', descricao_produto: 'TABLET', categoria_produto: 'tablet', quantidade: 1, valor_unitario: 3699, valor_total: 3699 },
+];
+
+const SEED_LANCAMENTOS = [
+  { data: '2026-01-05', descricao: 'CIA Latino Americana', valor: 29634.72, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-05', descricao: 'Banco Cooperati — parcela', valor: -16940, categoria: 'financeiro', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-06', descricao: 'Cobranças lote clientes', valor: 8181, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-06', descricao: 'Thais Moreira', valor: -3000, categoria: 'pessoal', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-06', descricao: 'Tiago Alves Melechenko', valor: -3000, categoria: 'pessoal', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-06', descricao: 'Ricardo Rodolfo', valor: -3590.47, categoria: 'pessoal', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-07', descricao: 'Pamplona Alimentos TED', valor: 7000, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-12', descricao: 'CIA Latino Americana TED', valor: 10365.20, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-20', descricao: 'DAS Simples Nacional jan', valor: -13976.51, categoria: 'tributo', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-21', descricao: 'Portonave S.A.', valor: 13990, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01' },
+  { data: '2026-01-27', descricao: 'LuizaCred — Fatura Magalu jan', valor: -7637.97, categoria: 'financeiro', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-01', detalhe: 'Cartão Magalu vence dia 27' },
+  { data: '2026-02-03', descricao: 'KLI Tecnologia transferência', valor: -10000, categoria: 'transferencia', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-02' },
+  { data: '2026-02-09', descricao: 'Portonave S.A. PIX', valor: 3910, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-02' },
+  { data: '2026-02-13', descricao: 'CRÉDITO C63220168 Empréstimo', valor: 102275.20, categoria: 'financeiro', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-02', detalhe: 'Empréstimo liberado Banco Cooperati' },
+  { data: '2026-02-18', descricao: 'Cobranças lote clientes', valor: 36773.25, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-02' },
+  { data: '2026-02-20', descricao: 'DAS Simples Nacional fev', valor: -14835.77, categoria: 'tributo', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-02' },
+  { data: '2026-02-25', descricao: 'LuizaCred — Fatura Magalu fev', valor: -17984.47, categoria: 'financeiro', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-02', detalhe: 'Cartão Magalu vence dia 27' },
+  { data: '2026-02-25', descricao: 'DEB.CTA.FATURA — Sicredi NeuralTec', valor: -257.68, categoria: 'financeiro', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-02', detalhe: 'Cartão Sicredi NeuralTec vence dia 25' },
+  { data: '2026-03-04', descricao: 'Portonave S.A. PIX', valor: 24140, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
+  { data: '2026-03-12', descricao: 'Cobranças lote — Unimed+FEESC+Betha', valor: 54060.75, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
+  { data: '2026-03-13', descricao: 'Cobranças lote — FEESC+Betha+Setep', valor: 58130.50, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
+  { data: '2026-03-19', descricao: 'Cobranças lote — Cooperja', valor: 6850, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
+  { data: '2026-03-19', descricao: 'Aplicação Fundos Captação', valor: -50000, categoria: 'interno', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: '1ª aplicação março' },
+  { data: '2026-03-19', descricao: 'Jhonatan da Rocha Vitu — Reforma loja', valor: -9500, categoria: 'obras_reforma', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'Mão de obra reforma' },
+  { data: '2026-03-20', descricao: 'SESC cobrança simples', valor: 20850, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
+  { data: '2026-03-20', descricao: 'Portonave S.A. PIX — NF-126', valor: 5640, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
+  { data: '2026-03-20', descricao: 'DAS Simples Nacional mar — competência fev', valor: -36377.72, categoria: 'tributo', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'VERIFICAR: valor 2.5x acima do padrão' },
+  { data: '2026-03-23', descricao: 'UNIVALI — NF-125', valor: 45000, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
+  { data: '2026-03-23', descricao: 'Banco Cooperati — parcela mar', valor: -12962.57, categoria: 'financeiro', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'VERIFICAR: acima do padrão ~R$9.282' },
+  { data: '2026-03-24', descricao: 'Cobranças lote — Sigma+Tex+Sical', valor: 46014, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
+];
+
 export async function seedSicoobFatura() {
   // Check if fatura already exists for this card/month
   const existing = await base44.entities.FaturaCartao.filter({ conta_cartao_id: SICOOB_LC_ID });
@@ -128,8 +211,13 @@ export async function runSeedIfNeeded() {
   // Use ContaCartao as the seed flag — if it has data, seed already ran
   const existing = await base44.entities.ContaCartao.list();
   if (existing.length > 0) {
-    // Still run Sicoob fatura seed separately (new data added after initial seed)
-    await seedSicoobFatura();
+    // Run incremental seeds separately
+    await Promise.all([
+      seedSicoobFatura(),
+      seedTitulosIfNeeded(),
+      seedComprasIfNeeded(),
+      seedLancamentosIfNeeded(),
+    ]);
     return;
   }
 
@@ -154,6 +242,29 @@ export async function runSeedIfNeeded() {
   // 4. Seed NotaFiscal
   await base44.entities.NotaFiscal.bulkCreate(SEED_NOTAS);
 
-  // 5. Seed Sicoob fatura with known card ID
-  await seedSicoobFatura();
+  // 5. Seed remaining entities in parallel
+  await Promise.all([
+    seedSicoobFatura(),
+    base44.entities.TituloCobranca.bulkCreate(SEED_TITULOS),
+    base44.entities.ItemCompra.bulkCreate(SEED_COMPRAS),
+    base44.entities.LancamentoBancario.bulkCreate(SEED_LANCAMENTOS),
+  ]);
+}
+
+async function seedTitulosIfNeeded() {
+  const existing = await base44.entities.TituloCobranca.list();
+  if (existing.length > 0) return;
+  await base44.entities.TituloCobranca.bulkCreate(SEED_TITULOS);
+}
+
+async function seedComprasIfNeeded() {
+  const existing = await base44.entities.ItemCompra.list();
+  if (existing.length > 0) return;
+  await base44.entities.ItemCompra.bulkCreate(SEED_COMPRAS);
+}
+
+async function seedLancamentosIfNeeded() {
+  const existing = await base44.entities.LancamentoBancario.list();
+  if (existing.length > 0) return;
+  await base44.entities.LancamentoBancario.bulkCreate(SEED_LANCAMENTOS);
 }
