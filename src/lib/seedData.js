@@ -217,6 +217,7 @@ export async function runSeedIfNeeded() {
       seedTitulosIfNeeded(),
       seedComprasIfNeeded(),
       seedLancamentosIfNeeded(),
+      seedNotasFiscalMarco(),
     ]);
     return;
   }
@@ -267,4 +268,39 @@ async function seedLancamentosIfNeeded() {
   const existing = await base44.entities.LancamentoBancario.list();
   if (existing.length > 0) return;
   await base44.entities.LancamentoBancario.bulkCreate(SEED_LANCAMENTOS);
+}
+
+async function seedNotasFiscalMarco() {
+  const NOTAS_MARCO = [
+    { numero: '143', tipo: 'NF', data_emissao: '2026-03-02', cliente: 'SICAL SIDERURGICA CATARINENSE LTDA', vendedor: 'Thais', valor_total: 6100, valor_recebido: 0, valor_aberto: 6100, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '144', tipo: 'NF', data_emissao: '2026-03-02', cliente: 'TECMESTEEL INDUSTRIA METALURGICA LTDA', vendedor: 'Tiago', valor_total: 2995, valor_recebido: 2995, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
+    { numero: '145', tipo: 'NF', data_emissao: '2026-03-03', cliente: 'GRAVATAL SANEAMENTO SPE S/A', vendedor: 'Thais', valor_total: 2985, valor_recebido: 0, valor_aberto: 2985, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '146', tipo: 'NF', data_emissao: '2026-03-03', cliente: 'EASE IND. E COM. DE CONFECCOES LTDA', vendedor: 'Tiago', valor_total: 2589, valor_recebido: 0, valor_aberto: 2589, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '147', tipo: 'NF', data_emissao: '2026-03-03', cliente: 'SENIOR SISTEMAS S/A', vendedor: 'Tiago', valor_total: 0, valor_recebido: 0, valor_aberto: 0, status: 'pago', canal_cobranca: 'fat_direto', descricao_obs: 'NF valor zero — bonificação ou remessa' },
+    { numero: '148', tipo: 'NF', data_emissao: '2026-03-04', cliente: 'PAUTA DISTRIBUICAO E LOGISTICA SA', vendedor: 'Thais', valor_total: 1466.92, valor_recebido: 0, valor_aberto: 1466.92, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '149', tipo: 'NF', data_emissao: '2026-03-04', cliente: 'SOMBRIO SANEAMENTO', vendedor: 'Thais', valor_total: 1599, valor_recebido: 0, valor_aberto: 1599, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '150', tipo: 'NF', data_emissao: '2026-03-05', cliente: 'ANJO QUIMICA DO BRASIL LTDA', vendedor: 'Thais', valor_total: 4400, valor_recebido: 2200, valor_aberto: 2200, status: 'parcial', canal_cobranca: 'sicredi', data_vencimento_proxima: '2026-04-26' },
+    { numero: '151', tipo: 'NF', data_emissao: '2026-03-05', cliente: 'RIOMED DISTRIBUICAO LTDA', vendedor: 'Tiago', valor_total: 1960, valor_recebido: 0, valor_aberto: 1960, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '152', tipo: 'NF', data_emissao: '2026-03-09', cliente: 'SICOOB-COOPERATIVA DE CREDITO LITORANEA', vendedor: 'Thais', valor_total: 13840, valor_recebido: 13840, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
+    { numero: '153', tipo: 'NF', data_emissao: '2026-03-10', cliente: 'PORTONAVE TERMINAIS PORTUARIOS DE NAVEGANTES SA', vendedor: 'Thais', valor_total: 2530, valor_recebido: 0, valor_aberto: 2530, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '154', tipo: 'NF', data_emissao: '2026-03-10', cliente: 'SATC ASSOC BENEFICENTE DA IND CARB SC', vendedor: 'Thais', valor_total: 650, valor_recebido: 650, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
+    { numero: '155', tipo: 'NF', data_emissao: '2026-03-10', cliente: 'ORSEGUPS SEGURANCA E VIGILANCIA LTDA', vendedor: 'Thais', valor_total: 1575, valor_recebido: 0, valor_aberto: 1575, status: 'a_vencer', canal_cobranca: 'sicredi', data_vencimento_proxima: '2026-03-25' },
+    { numero: '156', tipo: 'NF', data_emissao: '2026-03-12', cliente: 'SICAL SIDERURGICA CATARINENSE LTDA', vendedor: 'Thais', valor_total: 4799, valor_recebido: 0, valor_aberto: 4799, status: 'a_vencer', canal_cobranca: 'sicredi', data_vencimento_proxima: '2026-04-02' },
+    { numero: '157', tipo: 'NF', data_emissao: '2026-03-12', cliente: 'CASEFER ABRASIVOS EPIs E FERRAMENTAS', vendedor: 'Tiago', valor_total: 4050, valor_recebido: 0, valor_aberto: 4050, status: 'a_vencer', canal_cobranca: 'sicredi', data_vencimento_proxima: '2026-04-11' },
+    { numero: '158', tipo: 'NF', data_emissao: '2026-03-16', cliente: 'PORTONAVE TERMINAIS PORTUARIOS DE NAVEGANTES SA', vendedor: 'Thais', valor_total: 1926, valor_recebido: 0, valor_aberto: 1926, status: 'a_vencer', canal_cobranca: 'sicredi', data_vencimento_proxima: '2026-04-15' },
+    { numero: '159', tipo: 'NF', data_emissao: '2026-03-16', cliente: 'ICEPORT TERMINAL FRIGORIFICO DE NAVEGANTES', vendedor: 'Tiago', valor_total: 148, valor_recebido: 0, valor_aberto: 148, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '160', tipo: 'NF', data_emissao: '2026-03-16', cliente: 'COOP.AGROINDUSTRIAL COOPERJA - UN.21', vendedor: 'Thais', valor_total: 860, valor_recebido: 0, valor_aberto: 860, status: 'a_vencer', canal_cobranca: 'sicredi', data_vencimento_proxima: '2026-03-30' },
+    { numero: '161', tipo: 'NF', data_emissao: '2026-03-17', cliente: 'CLAMED FARMACIAS', vendedor: 'Tiago', valor_total: 1680, valor_recebido: 0, valor_aberto: 1680, status: 'a_vencer', canal_cobranca: 'sicredi', data_vencimento_proxima: '2026-04-06' },
+    { numero: '162', tipo: 'NF', data_emissao: '2026-03-17', cliente: 'GILVAN FRANCISCO ADVOGADOS', vendedor: 'Thais', valor_total: 7752, valor_recebido: 0, valor_aberto: 7752, status: 'a_vencer', canal_cobranca: 'sicredi', data_vencimento_proxima: '2026-03-31' },
+    { numero: '163', tipo: 'NF', data_emissao: '2026-03-18', cliente: 'ANJO QUIMICA DO BRASIL LTDA', vendedor: 'Thais', valor_total: 638, valor_recebido: 0, valor_aberto: 638, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '164', tipo: 'NF', data_emissao: '2026-03-19', cliente: 'SOMBRIO SANEAMENTO', vendedor: 'Thais', valor_total: 550, valor_recebido: 0, valor_aberto: 550, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '165', tipo: 'NF', data_emissao: '2026-03-19', cliente: 'SBM - SUL BRASILEIRA DE MINERACAO LTDA', vendedor: 'Tiago', valor_total: 2299, valor_recebido: 0, valor_aberto: 2299, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '166', tipo: 'NF', data_emissao: '2026-03-19', cliente: 'SINDICATO TRAB.IND.METALURGICA MEC.ELETRICA', vendedor: 'Tiago', valor_total: 2635, valor_recebido: 0, valor_aberto: 2635, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '167', tipo: 'NF', data_emissao: '2026-03-20', cliente: 'FRIGORIFICO SILVA INDUSTRIA E COMERCIO LTDA', vendedor: 'Tiago', valor_total: 5195, valor_recebido: 0, valor_aberto: 5195, status: 'a_vencer', canal_cobranca: 'sicredi' },
+    { numero: '168', tipo: 'NF', data_emissao: '2026-03-20', cliente: 'MARIA INES DA ROSA', vendedor: 'Thais', valor_total: 9000, valor_recebido: 9000, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
+  ];
+  const existing = await base44.entities.NotaFiscal.list();
+  const existingNumeros = new Set(existing.map(n => n.numero));
+  const toInsert = NOTAS_MARCO.filter(n => !existingNumeros.has(n.numero));
+  if (toInsert.length > 0) await base44.entities.NotaFiscal.bulkCreate(toInsert);
 }
