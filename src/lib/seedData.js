@@ -31,8 +31,9 @@ const SEED_OBRAS = [
 ];
 
 const SEED_NOTAS = [
-  { numero: '125', tipo: 'NF', data_emissao: '2026-02-20', cliente: 'UNIVALI', vendedor: 'Tiago', valor_total: 45000, valor_recebido: 45000, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
-  { numero: '127', tipo: 'NF', data_emissao: '2026-02-28', cliente: 'FEESC', vendedor: 'Thais', valor_total: 57799, valor_recebido: 57799, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
+   { numero: '125', tipo: 'NF', data_emissao: '2026-02-20', cliente: 'UNIVALI', vendedor: 'Tiago', valor_total: 45000, valor_recebido: 45000, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
+   { numero: '127', tipo: 'NF', data_emissao: '2026-02-28', cliente: 'FEESC', vendedor: 'Thais', valor_total: 57799, valor_recebido: 57799, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
+   { numero: '146', tipo: 'NF', data_emissao: '2026-03-19', cliente: 'EASE IND. E COM. DE CONFECCOES LTDA', vendedor: 'Thais', valor_total: 2589, valor_recebido: 2589, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
   { numero: '131', tipo: 'NF', data_emissao: '2026-02-28', cliente: 'SESC', vendedor: 'Thais', valor_total: 20850, valor_recebido: 20850, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
   { numero: '132', tipo: 'NF', data_emissao: '2026-03-01', cliente: 'Sigma ABC', vendedor: 'Thais', valor_total: 39999, valor_recebido: 39999, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
   { numero: '133', tipo: 'NF', data_emissao: '2026-03-05', cliente: 'Frigorífico Pamplona', vendedor: 'Thais', valor_total: 1057, valor_recebido: 1057, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
@@ -130,7 +131,8 @@ const SEED_TITULOS = [
   { nosso_numero: '26/100109-3', seu_numero: 'NF-109-p3', cliente: 'MC3 Higienização', data_vencimento: '2026-04-01', valor_titulo: 1910.75, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 3, parcela_total: 4 },
   { nosso_numero: '26/100150-1', seu_numero: 'NF-150-p1', cliente: 'Anjo Química', data_vencimento: '2026-04-26', valor_titulo: 2200, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 2 },
   { nosso_numero: '26/100157-0', seu_numero: 'NF-157', cliente: 'Casefer Abrasivos', data_vencimento: '2026-04-11', valor_titulo: 4050, valor_pago: 0, status: 'em_aberto', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
-];
+  { nosso_numero: '26/100146-0', seu_numero: 'NF-146', cliente: 'EASE IND. E COM. DE CONFECCOES LTDA', data_vencimento: '2026-03-24', data_pagamento: '2026-03-24', valor_titulo: 2589, valor_pago: 2589, status: 'pago', canal_cobranca: 'sicredi', parcela_numero: 1, parcela_total: 1 },
+  ];
 
 const SEED_COMPRAS = [
   { fornecedor: 'COMPRAS A VISTA', numero_nota: '44522', data_emissao: '2026-02-02', descricao_produto: 'HEADSET LOGITECH H390 USB', categoria_produto: 'periferico', quantidade: 130, valor_unitario: 125, valor_total: 16250 },
@@ -186,7 +188,9 @@ const SEED_LANCAMENTOS = [
   { data: '2026-03-23', descricao: 'UNIVALI — NF-125', valor: 45000, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
   { data: '2026-03-23', descricao: 'Banco Cooperati — parcela mar', valor: -12962.57, categoria: 'financeiro', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'VERIFICAR: acima do padrão ~R$9.282' },
   { data: '2026-03-24', descricao: 'Cobranças lote — Sigma+Tex+Sical', valor: 46014, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03' },
-];
+  { data: '2026-03-24', descricao: 'Jackson Zanette — NF-87 parc.3', valor: 1437, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'Cobrança Sicredi liquidada antecipado — vencia 25/03' },
+  { data: '2026-03-24', descricao: 'Ease Ind. e Com. de Confecções — NF-146', valor: 2589, categoria: 'recebimento', conta_bancaria: 'NeuralTec 36092-2', mes_referencia: '2026-03', detalhe: 'Cobrança Sicredi liquidada — vencia 24/03' },
+  ];
 
 export async function seedSicoobFatura() {
   // Check if fatura already exists for this card/month
