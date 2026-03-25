@@ -51,10 +51,87 @@ const SEED_NOTAS = [
   { numero: '100043', tipo: 'CI', data_emissao: '2026-02-15', cliente: 'Portonave', vendedor: 'Thais', valor_total: 24140, valor_recebido: 24140, valor_aberto: 0, status: 'pago', canal_cobranca: 'sicredi' },
 ];
 
+const SICOOB_LC_ID = '69c357735465daaae827921e';
+
+const SICOOB_LANCAMENTOS = [
+  { data_lancamento: '2025-04-25', estabelecimento: 'SHOP BIKE', categoria: 'lazer', valor: 250.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2025-09-06', estabelecimento: 'MERCADOLIVRE SAMSUNG EV', categoria: 'tecnologia', valor: 333.33, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2025-08-25', estabelecimento: 'LISTO KLI TECNOLOGIA', categoria: 'tecnologia', valor: 333.33, natureza: 'empresarial', empresa_beneficiada: 'KLI' },
+  { data_lancamento: '2025-10-31', estabelecimento: 'MLP KaBuM SAMSUNG V', categoria: 'tecnologia', valor: 1079.80, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-01-07', estabelecimento: 'HYPEFUL ACADEMIA LTDA', categoria: 'saude_bem_estar', valor: 339.80, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-16', estabelecimento: 'CarlaMendonca', categoria: 'servico_pessoal', valor: 315.78, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-21', estabelecimento: 'EMPORIO DA BELEZA GAROPABA', categoria: 'beleza', valor: 27.40, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-21', estabelecimento: 'Jeancarlosde GAROPABA', categoria: 'outro', valor: 60.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-21', estabelecimento: 'RESTAURANTE GOEN IMBITUBA', categoria: 'alimentacao', valor: 275.99, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-22', estabelecimento: 'BarDoZado GAROPABA', categoria: 'alimentacao', valor: 12.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-22', estabelecimento: 'Ticketmais TUBARAO', categoria: 'lazer', valor: 33.80, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-22', estabelecimento: 'LanchoneteMaria GAROPABA', categoria: 'alimentacao', valor: 12.90, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-22', estabelecimento: 'SUPERMERCADO SILVEIRA GAROPABA', categoria: 'alimentacao', valor: 386.31, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-22', estabelecimento: 'POSTO NESTOR GAROPABA', categoria: 'combustivel', valor: 150.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-24', estabelecimento: 'LANCHONETE SRM MORRO DA FUMA', categoria: 'alimentacao', valor: 37.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-24', estabelecimento: 'SOC REC MAMPITUBA CRICIUMA', categoria: 'lazer', valor: 797.50, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-25', estabelecimento: 'MERCEARIA E LANCHONETE CRICIUMA', categoria: 'alimentacao', valor: 18.85, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-25', estabelecimento: 'SAIKOO CRICIUMA', categoria: 'alimentacao', valor: 315.15, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-26', estabelecimento: 'PROTECAO PERDA OU ROUBO', categoria: 'seguro', valor: 0.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-26', estabelecimento: 'CARLESSI CRICIUMA', categoria: 'servico_pessoal', valor: 48.28, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-26', estabelecimento: 'MAGA NEWS RESTAURANTE CRICIUMA', categoria: 'alimentacao', valor: 91.70, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-27', estabelecimento: 'SUPERMERCADO SILVEIRA GAROPABA', categoria: 'alimentacao', valor: 284.86, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-27', estabelecimento: 'PADARIA E CONFEITARIA GAROPABA', categoria: 'alimentacao', valor: 20.45, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-27', estabelecimento: 'SKI DUNAS BAR Garopaba', categoria: 'lazer', valor: 15.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-27', estabelecimento: 'Jeancarlosde GAROPABA', categoria: 'outro', valor: 265.33, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-27', estabelecimento: '50191862 Andre Luiz GAROPABA', categoria: 'outro', valor: 40.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-27', estabelecimento: 'POSTO NESTOR GAROPABA', categoria: 'combustivel', valor: 200.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-28', estabelecimento: 'POSTO HANGAR 275 IMBITUBA', categoria: 'combustivel', valor: 9.99, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-02-28', estabelecimento: 'CONVENIENCIA NESTOR GAROPABA', categoria: 'alimentacao', valor: 6.99, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-01', estabelecimento: 'RESTAURANTE DUNAS PARK Garopaba', categoria: 'alimentacao', valor: 26.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-01', estabelecimento: '41740764 Wamandiry IMBITUBA', categoria: 'outro', valor: 38.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-01', estabelecimento: 'BRILHODOSOL GAROPABA', categoria: 'servico_pessoal', valor: 23.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-01', estabelecimento: 'SUPERMERCADO SILVEIRA GAROPABA', categoria: 'alimentacao', valor: 79.82, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-01', estabelecimento: 'SUPERMERCADO SILVEIRA GAROPABA', categoria: 'alimentacao', valor: 96.25, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-02', estabelecimento: 'LANCHES DO ALEMAO GAROPABA', categoria: 'alimentacao', valor: 99.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-02', estabelecimento: 'MARLISE LIMAS IMBITUBA', categoria: 'servico_pessoal', valor: 6.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-02', estabelecimento: 'SUPERMERCADO SILVEIRA GAROPABA', categoria: 'alimentacao', valor: 113.95, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-03', estabelecimento: 'PAGAMENTO BOLETO BANCARIO', categoria: 'financeiro', valor: -4951.57, natureza: 'pessoal', empresa_beneficiada: 'pessoal', observacao: 'Não faz parte do total da fatura' },
+  { data_lancamento: '2026-03-04', estabelecimento: 'HORTIFRUTI CRICIUMA', categoria: 'alimentacao', valor: 85.77, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-05', estabelecimento: 'SecurityParking CRICIUMA', categoria: 'transporte', valor: 6.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-05', estabelecimento: 'POSTO 101 JAGUARUNA', categoria: 'combustivel', valor: 62.43, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-09', estabelecimento: 'PST AMIZADE IPIRANG GAROPABA', categoria: 'combustivel', valor: 150.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-10', estabelecimento: 'AUTO POSTO CIRIMBELLI FORQUILHINHA', categoria: 'combustivel', valor: 300.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-11', estabelecimento: 'MP ALIANDAPISOSE OSASCO', categoria: 'tecnologia', valor: 647.58, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-12', estabelecimento: '50191862 Andre Luiz GAROPABA', categoria: 'outro', valor: 40.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-16', estabelecimento: 'POSTO LOBO GAROPABA', categoria: 'combustivel', valor: 99.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-19', estabelecimento: 'AS MARIAS FORQUILHINHA', categoria: 'servico_pessoal', valor: 315.80, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-21', estabelecimento: 'AGAFARMA GAROPABA', categoria: 'farmacia', valor: 187.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+  { data_lancamento: '2026-03-23', estabelecimento: 'POSTO LOBO GAROPABA', categoria: 'combustivel', valor: 150.00, natureza: 'pessoal', empresa_beneficiada: 'pessoal' },
+];
+
+export async function seedSicoobFatura() {
+  // Check if fatura already exists for this card/month
+  const existing = await base44.entities.FaturaCartao.filter({ conta_cartao_id: SICOOB_LC_ID });
+  const alreadyExists = existing.some(f => f.mes_referencia === '2026-03');
+  if (alreadyExists) return;
+
+  const fatura = await base44.entities.FaturaCartao.create({
+    conta_cartao_id: SICOOB_LC_ID,
+    mes_referencia: '2026-03',
+    data_vencimento: '2026-04-03',
+    valor_total: 8287.14,
+    status: 'aberta',
+    valor_pago: 0,
+  });
+
+  const lancamentos = SICOOB_LANCAMENTOS.map(l => ({ ...l, fatura_id: fatura.id }));
+  await base44.entities.LancamentoCartao.bulkCreate(lancamentos);
+}
+
 export async function runSeedIfNeeded() {
   // Use ContaCartao as the seed flag — if it has data, seed already ran
   const existing = await base44.entities.ContaCartao.list();
-  if (existing.length > 0) return;
+  if (existing.length > 0) {
+    // Still run Sicoob fatura seed separately (new data added after initial seed)
+    await seedSicoobFatura();
+    return;
+  }
 
   // 1. Seed ContaCartao
   await base44.entities.ContaCartao.bulkCreate(SEED_CARTOES);
@@ -76,4 +153,7 @@ export async function runSeedIfNeeded() {
 
   // 4. Seed NotaFiscal
   await base44.entities.NotaFiscal.bulkCreate(SEED_NOTAS);
+
+  // 5. Seed Sicoob fatura with known card ID
+  await seedSicoobFatura();
 }
