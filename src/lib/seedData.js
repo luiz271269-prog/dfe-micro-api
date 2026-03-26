@@ -229,6 +229,7 @@ export async function runSeedIfNeeded() {
       seedComprasIfNeeded(),
       seedLancamentosIfNeeded(),
       seedNotasFiscalMarco(),
+      patchFaturasSicrediNT(),
     ]);
     return;
   }
@@ -275,10 +276,23 @@ async function seedComprasIfNeeded() {
   await base44.entities.ItemCompra.bulkCreate(SEED_COMPRAS);
 }
 
+async function patchFaturasSicrediNT() {
+  // Patch Sicredi NeuralTec mar/2026 fatura to paga_total if still aberta
+  const FATURA_ID = '69c357737f4d228e291fc1b1';
+  const faturas = await base44.entities.FaturaCartao.filter({ id: FATURA_ID });
+  const fat = faturas[0];
+  if (fat && fat.status === 'aberta') {
+    await base44.entities.FaturaCartao.update(FATURA_ID, {
+      status: 'paga_total',
+      data_pagamento: '2026-03-25',
+      valor_pago: 672.85,
+    });
+  }
+}
+
 async function seedLancamentosIfNeeded() {
   const existing = await base44.entities.LancamentoBancario.list();
   if (existing.length > 0) return;
-  // Verificar deduplicação por data+descricao+valor
   const dedupSet = new Set(existing.map(l => `${l.data}|${l.descricao}|${l.valor}`));
   const toInsert = SEED_LANCAMENTOS.filter(l => !dedupSet.has(`${l.data}|${l.descricao}|${l.valor}`));
   if (toInsert.length > 0) await base44.entities.LancamentoBancario.bulkCreate(toInsert);
