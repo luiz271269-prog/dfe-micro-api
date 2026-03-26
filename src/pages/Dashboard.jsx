@@ -57,7 +57,7 @@ function DashCard({ title, value, sub, icon: Icon, color, href }) {
 
 export default function Dashboard() {
   const [data, setData] = useState({
-    bankBalance: 47415, liesch: 41, fundos: 100000,
+    bankBalance: 54187.06, liesch: 41, fundos: 100000,
     recYTD: 421769, pagYTD: -390000,
     totalFat: 570423, aReceber: 143000, tiago: 235000, thais: 315000,
     emitido: 745734, recebido: 466030, emAberto: 279704,
@@ -128,7 +128,7 @@ export default function Dashboard() {
           <div className="mt-1 flex flex-wrap gap-3">
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">📤 DDA semana 30/03—01/04: NeuralTec R$ 925,15 · Liesch R$ 606,29 · KLI R$ 1.143,31 — Total R$ 2.674,75</span>
             <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">⚠ DAS Mar/2026: R$ 36.377 — verificar</span>
-            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">📅 Sicredi NeuralTec vence 25/03: R$ 672,85</span>
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">✅ Sicredi NeuralTec mar/2026 pago em 25/03</span>
             <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">💰 A receber: {formatCurrency(data.aReceber)}</span>
           </div>
         </div>
