@@ -15,6 +15,9 @@ import Cobrancas from './pages/Cobrancas';
 import Compras from './pages/Compras';
 import Obras from './pages/Obras';
 import Cartoes from './pages/Cartoes';
+import Tributos from './pages/Tributos';
+import Funcionarios from './pages/Funcionarios';
+import FluxoCaixa from './pages/FluxoCaixa';
 import MapaGeral from './pages/MapaGeral';
 
 const AuthenticatedApp = () => {
@@ -55,6 +58,9 @@ const AuthenticatedApp = () => {
         <Route path="/compras" element={<Compras />} />
         <Route path="/obras" element={<Obras />} />
         <Route path="/cartoes" element={<Cartoes />} />
+        <Route path="/tributos" element={<Tributos />} />
+        <Route path="/funcionarios" element={<Funcionarios />} />
+        <Route path="/fluxocaixa" element={<FluxoCaixa />} />
         <Route path="/mapa" element={<MapaGeral />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />

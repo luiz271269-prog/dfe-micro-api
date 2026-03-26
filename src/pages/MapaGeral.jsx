@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { 
   Landmark, FileText, Receipt, ShoppingCart, Hammer, CreditCard, 
-  CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronUp
+  CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronUp,
+  DollarSign, Users, BarChart3
 } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
@@ -59,7 +60,7 @@ export default function MapaGeral() {
 
   useEffect(() => {
     async function load() {
-      const [lanc, nfs, tit, comp, obras, cartoes, faturas] = await Promise.all([
+      const [lanc, nfs, tit, comp, obras, cartoes, faturas, trib, func, folhas, fluxo] = await Promise.all([
         base44.entities.LancamentoBancario.list(),
         base44.entities.NotaFiscal.list(),
         base44.entities.TituloCobranca.list(),
@@ -67,7 +68,21 @@ export default function MapaGeral() {
         base44.entities.ObraReforma.list(),
         base44.entities.ContaCartao.list(),
         base44.entities.FaturaCartao.list(),
+        base44.entities.Tributo.list(),
+        base44.entities.Funcionario.list(),
+        base44.entities.FolhaPagamento.list(),
+        base44.entities.FluxoCaixa.list(),
       ]);
+      const today = new Date();
+      const next30 = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const fluxoProx = fluxo.filter(f => {
+        const d = new Date(f.data_prevista);
+        return d >= today && d <= next30 && f.status !== 'cancelado';
+      });
+      const entradasProx = fluxoProx.filter(f => f.tipo === 'entrada').reduce((s, f) => s + f.valor_previsto, 0);
+      const saidasProx = fluxoProx.filter(f => f.tipo === 'saida').reduce((s, f) => s + f.valor_previsto, 0);
+      const saldoProj = 54187.06 + entradasProx - saidasProx;
+
       setCounts({
         lancamentos: lanc.length,
         lancTotal: lanc.reduce((s, l) => s + (l.valor || 0), 0),
@@ -84,6 +99,13 @@ export default function MapaGeral() {
         cartoes: cartoes.length,
         faturas: faturas.length,
         fatAberta: faturas.filter(f => f.status === 'aberta').length,
+        tributos: trib.length,
+        tribVencer: trib.filter(t => t.status === 'a_vencer').length,
+        tribVencidos: trib.filter(t => t.status === 'vencido').length,
+        funcAtivos: func.filter(f => f.status === 'ativo').length,
+        folhaAtual: folhas.filter(f => f.competencia === today.toISOString().slice(0, 7) && f.status === 'pago').reduce((s, f) => s + (f.salario_liquido || 0), 0),
+        fluxoTotal: fluxo.length,
+        saldoProjetado: saldoProj,
       });
       setLoading(false);
     }
@@ -157,6 +179,37 @@ export default function MapaGeral() {
         { label: 'Faturas abertas', value: counts.fatAberta },
       ],
       pendencias: counts.fatAberta > 0 ? [`${counts.fatAberta} fatura(s) em aberto`] : [],
+    },
+    {
+      icon: DollarSign, title: 'Tributos',
+      status: counts.tribVencidos > 0 ? 'red' : counts.tribVencer > 0 ? 'yellow' : 'green',
+      summary: `${counts.tributos} tributos · ${counts.tribVencidos} vencidos`,
+      details: [
+        { label: 'Total tributos', value: counts.tributos },
+        { label: 'A vencer', value: counts.tribVencer },
+        { label: 'Vencidos', value: counts.tribVencidos },
+      ],
+      pendencias: counts.tribVencidos > 0 ? [`${counts.tribVencidos} tributo(s) vencido(s) - URGENTE`] : counts.tribVencer > 0 ? ['Verificar tributos a vencer'] : [],
+    },
+    {
+      icon: Users, title: 'Gestão de Pessoal',
+      status: counts.funcAtivos > 0 ? 'green' : 'yellow',
+      summary: `${counts.funcAtivos} ativos · Folha: ${formatCurrency(counts.folhaAtual)}`,
+      details: [
+        { label: 'Funcionários ativos', value: counts.funcAtivos },
+        { label: 'Folha do mês', value: formatCurrency(counts.folhaAtual) },
+      ],
+      pendencias: counts.funcAtivos === 0 ? ['Cadastrar funcionários'] : [],
+    },
+    {
+      icon: BarChart3, title: 'Fluxo de Caixa',
+      status: counts.saldoProjetado < 0 ? 'red' : counts.fluxoTotal > 0 ? 'green' : 'yellow',
+      summary: `Saldo projetado: ${formatCurrency(counts.saldoProjetado)}`,
+      details: [
+        { label: 'Movimentações registradas', value: counts.fluxoTotal },
+        { label: 'Saldo em 30 dias', value: formatCurrency(counts.saldoProjetado) },
+      ],
+      pendencias: counts.saldoProjetado < 0 ? ['Saldo projetado negativo - revisar entradas/saídas'] : [],
     },
   ];
 

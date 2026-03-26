@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { 
   Landmark, FileText, Receipt, ShoppingCart, Hammer, CreditCard, 
-  AlertTriangle, TrendingUp, TrendingDown, Bell
+  AlertTriangle, TrendingUp, TrendingDown, Bell, Users, BarChart3
 } from 'lucide-react';
 import { formatCurrency } from '../lib/formatters';
 
@@ -64,18 +64,24 @@ export default function Dashboard() {
     totalCompras: 400283, totalObras: 11557,
     totalCartoes: 26553, proxVenc: 672.85,
     totalTrib: 57738, dasMarco: 36377,
+    tribVencer: 0, tribVencidos: 0,
+    funcAtivos: 0, folhaAtual: 0,
+    saldoProjetado: 54187.06,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const [lanc, nfs, tit, comp, obras] = await Promise.all([
+        const [lanc, nfs, tit, comp, obras, trib, func, folhas] = await Promise.all([
           base44.entities.LancamentoBancario.list(),
           base44.entities.NotaFiscal.list(),
           base44.entities.TituloCobranca.list(),
           base44.entities.ItemCompra.list(),
           base44.entities.ObraReforma.list(),
+          base44.entities.Tributo.list(),
+          base44.entities.Funcionario.list(),
+          base44.entities.FolhaPagamento.list(),
         ]);
         setData(prev => {
           const d = { ...prev };
@@ -96,6 +102,19 @@ export default function Dashboard() {
           }
           if (comp.length) d.totalCompras = comp.reduce((s, c) => s + (c.valor_total || 0), 0);
           if (obras.length) d.totalObras = obras.reduce((s, o) => s + (o.valor || 0), 0);
+          if (trib.length) {
+            d.totalTrib = trib.reduce((s, t) => s + (t.valor_original || 0), 0);
+            d.tribVencer = trib.filter(t => t.status === 'a_vencer').length;
+            d.tribVencidos = trib.filter(t => t.status === 'vencido').length;
+            const dasMarco = trib.find(t => t.tipo === 'DAS' && t.competencia === '2026-03');
+            if (dasMarco) d.dasMarco = dasMarco.valor_original;
+          }
+          if (func.length) d.funcAtivos = func.filter(f => f.status === 'ativo').length;
+          if (folhas.length) {
+            const currentMes = new Date().toISOString().slice(0, 7);
+            d.folhaAtual = folhas.filter(f => f.competencia === currentMes && f.status === 'pago')
+              .reduce((s, f) => s + (f.salario_liquido || 0), 0);
+          }
           return d;
         });
       } catch (_) {}
@@ -188,8 +207,26 @@ export default function Dashboard() {
         <div>
           <SectionTitle icon={AlertTriangle} label="Tributos" />
           <div className="grid grid-cols-2 gap-3">
-            <DashCard title="Tributos YTD" value={formatCurrency(-data.totalTrib)} icon={AlertTriangle} color="red" />
-            <DashCard title="DAS Março" value={formatCurrency(data.dasMarco)} sub="⚠ Verificar" icon={AlertTriangle} color="yellow" />
+            <DashCard title="Total a Pagar" value={formatCurrency(data.totalTrib)} sub={`${data.tribVencer} a vencer`} icon={AlertTriangle} color="blue" href="/tributos" />
+            <DashCard title="Vencidos" value={data.tribVencidos} sub="⚠ Ação imediata" icon={AlertTriangle} color={data.tribVencidos > 0 ? 'red' : 'green'} href="/tributos" />
+          </div>
+        </div>
+      </div>
+
+      {/* Pessoal + Fluxo de Caixa */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <SectionTitle icon={Users} label="Gestão de Pessoal" />
+          <div className="grid grid-cols-2 gap-3">
+            <DashCard title="Funcionários Ativos" value={data.funcAtivos} sub="colaboradores" icon={Users} color="blue" href="/funcionarios" />
+            <DashCard title="Folha do Mês" value={formatCurrency(data.folhaAtual)} sub="mês atual" icon={Users} color="purple" href="/funcionarios" />
+          </div>
+        </div>
+        <div>
+          <SectionTitle icon={BarChart3} label="Fluxo de Caixa" />
+          <div className="grid grid-cols-2 gap-3">
+            <DashCard title="Saldo Projetado" value={formatCurrency(data.saldoProjetado)} sub="próx. 30 dias" icon={BarChart3} color={data.saldoProjetado < 0 ? 'red' : 'green'} href="/fluxocaixa" />
+            <DashCard title="Status Caixa" value={data.saldoProjetado < 0 ? '⚠ Crítico' : '✓ OK'} sub="monitorar fluxo" icon={BarChart3} color={data.saldoProjetado < 0 ? 'red' : 'green'} href="/fluxocaixa" />
           </div>
         </div>
       </div>

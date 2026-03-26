@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart, 
   Hammer, CreditCard, Map, ChevronLeft, ChevronRight, LogOut,
-  AlertTriangle, ChevronRight as BreadChevron
+  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -15,15 +15,16 @@ const navItems = [
   { path: '/compras', label: 'Compras', icon: ShoppingCart },
   { path: '/obras', label: 'Obras e Reformas', icon: Hammer },
   { path: '/cartoes', label: 'Cartões de Crédito', icon: CreditCard },
+  { path: '/tributos', label: 'Tributos', icon: DollarSign },
+  { path: '/funcionarios', label: 'Pessoal', icon: Users },
+  { path: '/fluxocaixa', label: 'Fluxo de Caixa', icon: BarChart3 },
   { path: '/mapa', label: 'Mapa Geral', icon: Map },
 ];
 
 function AlertBar() {
-  const today = new Date();
-  const day = today.getDate();
+  // Alerta será alimentado dinamicamente por Tributo quando implementado
   const alerts = [
     { msg: 'DAS Março 2026: R$ 36.377 — verificar valor elevado', color: 'red' },
-    day <= 25 && { msg: `Sicredi NeuralTec: fatura R$ 672,85 vence dia 25`, color: 'yellow' },
   ].filter(Boolean);
 
   if (alerts.length === 0) return null;
