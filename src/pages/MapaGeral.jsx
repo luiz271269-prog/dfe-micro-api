@@ -54,13 +54,17 @@ function ModuleCard({ icon: Icon, title, status, summary, details, pendencias })
   );
 }
 
+function asArray(r) { return Array.isArray(r) ? r : []; }
+
 export default function MapaGeral() {
   const [counts, setCounts] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function load() {
-      const [lanc, nfs, tit, comp, obras, cartoes, faturas, trib, func, folhas, fluxo] = await Promise.all([
+      try {
+      const [lancRaw, nfsRaw, titRaw, compRaw, obrasRaw, cartoesRaw, faturasRaw, tribRaw, funcRaw, folhasRaw, fluxoRaw] = await Promise.all([
         base44.entities.LancamentoBancario.list(),
         base44.entities.NotaFiscal.list(),
         base44.entities.TituloCobranca.list(),
@@ -73,6 +77,17 @@ export default function MapaGeral() {
         base44.entities.FolhaPagamento.list(),
         base44.entities.FluxoCaixa.list(),
       ]);
+      const lanc = asArray(lancRaw);
+      const nfs = asArray(nfsRaw);
+      const tit = asArray(titRaw);
+      const comp = asArray(compRaw);
+      const obras = asArray(obrasRaw);
+      const cartoes = asArray(cartoesRaw);
+      const faturas = asArray(faturasRaw);
+      const trib = asArray(tribRaw);
+      const func = asArray(funcRaw);
+      const folhas = asArray(folhasRaw);
+      const fluxo = asArray(fluxoRaw);
       const today = new Date();
       const next30 = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
       const fluxoProx = fluxo.filter(f => {
@@ -107,6 +122,9 @@ export default function MapaGeral() {
         fluxoTotal: fluxo.length,
         saldoProjetado: saldoProj,
       });
+      } catch (e) {
+        setError(e.message);
+      }
       setLoading(false);
     }
     load();
@@ -114,6 +132,10 @@ export default function MapaGeral() {
 
   if (loading) {
     return <div className="flex items-center justify-center h-full"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
+  }
+
+  if (error) {
+    return <div className="flex items-center justify-center h-full"><div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl p-6 max-w-sm text-center"><p className="font-semibold mb-1">Erro ao carregar dados</p><p className="text-xs text-red-500">{error}</p></div></div>;
   }
 
   const modules = [

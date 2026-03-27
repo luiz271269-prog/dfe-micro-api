@@ -55,25 +55,27 @@ function DashCard({ title, value, sub, icon: Icon, color, href }) {
   return inner;
 }
 
+function asArray(r) { return Array.isArray(r) ? r : []; }
+
 export default function Dashboard() {
-  const [data, setData] = useState({
+  const [data, setData] = useState({  
     bankBalance: 54187.06, liesch: 41, fundos: 100000,
-    recYTD: 421769, pagYTD: -390000,
-    totalFat: 570423, aReceber: 143000, tiago: 235000, thais: 315000,
-    emitido: 745734, recebido: 466030, emAberto: 279704,
-    totalCompras: 400283, totalObras: 11557,
+    recYTD: 0, pagYTD: 0,
+    totalFat: 0, aReceber: 0, tiago: 0, thais: 0,
+    emitido: 0, recebido: 0, emAberto: 0,
+    totalCompras: 0, totalObras: 0,
     totalCartoes: 26553, proxVenc: 672.85,
-    totalTrib: 57738, dasMarco: 36377,
-    tribVencer: 0, tribVencidos: 0,
+    totalTrib: 0, tribVencer: 0, tribVencidos: 0,
     funcAtivos: 0, folhaAtual: 0,
     saldoProjetado: 54187.06,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function load() {
       try {
-        const [lanc, nfs, tit, comp, obras, trib, func, folhas] = await Promise.all([
+        const [lancRaw, nfsRaw, titRaw, compRaw, obrasRaw, tribRaw, funcRaw, folhasRaw] = await Promise.all([
           base44.entities.LancamentoBancario.list(),
           base44.entities.NotaFiscal.list(),
           base44.entities.TituloCobranca.list(),
@@ -83,11 +85,20 @@ export default function Dashboard() {
           base44.entities.Funcionario.list(),
           base44.entities.FolhaPagamento.list(),
         ]);
+        const lanc = asArray(lancRaw);
+        const nfs = asArray(nfsRaw);
+        const tit = asArray(titRaw);
+        const comp = asArray(compRaw);
+        const obras = asArray(obrasRaw);
+        const trib = asArray(tribRaw);
+        const func = asArray(funcRaw);
+        const folhas = asArray(folhasRaw);
+
         setData(prev => {
           const d = { ...prev };
           if (lanc.length) {
-            d.recYTD = lanc.filter(l => l.categoria === 'recebimento').reduce((s, l) => s + (l.valor || 0), 0) || prev.recYTD;
-            d.pagYTD = lanc.filter(l => l.categoria !== 'recebimento').reduce((s, l) => s + Math.abs(l.valor || 0), 0) || prev.pagYTD;
+            d.recYTD = lanc.filter(l => l.categoria === 'recebimento').reduce((s, l) => s + (l.valor || 0), 0);
+            d.pagYTD = lanc.filter(l => l.categoria !== 'recebimento').reduce((s, l) => s + Math.abs(l.valor || 0), 0);
           }
           if (nfs.length) {
             d.totalFat = nfs.reduce((s, n) => s + (n.valor_total || 0), 0);
@@ -117,7 +128,9 @@ export default function Dashboard() {
           }
           return d;
         });
-      } catch (_) {}
+      } catch (e) {
+        setError(e.message);
+      }
       setLoading(false);
     }
     load();
@@ -126,6 +139,15 @@ export default function Dashboard() {
   if (loading) return (
     <div className="flex items-center justify-center h-full">
       <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+    </div>
+  );
+
+  if (error) return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl p-6 max-w-sm text-center">
+        <p className="font-semibold mb-1">Erro ao carregar dados</p>
+        <p className="text-xs text-red-500">{error}</p>
+      </div>
     </div>
   );
 
