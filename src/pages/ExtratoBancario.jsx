@@ -69,6 +69,15 @@ export default function ExtratoBancario() {
     loadData();
   }
 
+  const monthTotals = useMemo(() => {
+    const totals = {};
+    lancamentos.forEach(l => {
+      const m = l.mes_referencia || l.data?.slice(0,7);
+      if (m) totals[m] = (totals[m] || 0) + (l.valor || 0);
+    });
+    return totals;
+  }, [lancamentos]);
+
   const meses = [...new Set(lancamentos.map(l => l.mes_referencia).filter(Boolean))].sort();
 
   return (
