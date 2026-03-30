@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -23,6 +24,8 @@ export default function Compras() {
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [filterFornecedor, setFilterFornecedor] = useState('all');
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,14 +44,23 @@ export default function Compras() {
 
   useEffect(() => { loadData(); }, []);
 
+  const monthTotals = useMemo(() => {
+    const t = {};
+    ALL_MONTHS.forEach(m => {
+      t[m] = compras.filter(c => c.data_emissao?.startsWith(m)).reduce((s,c) => s+(c.valor_total||0), 0);
+    });
+    return t;
+  }, [compras]);
+
   const filtered = useMemo(() => {
     return compras.filter(c => {
+      if (!isAnnual && !c.data_emissao?.startsWith(selectedMonth)) return false;
       if (filterFornecedor !== 'all' && c.fornecedor !== filterFornecedor) return false;
       if (filterCategoria !== 'all' && c.categoria_produto !== filterCategoria) return false;
       if (searchTerm && !c.descricao_produto?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
-  }, [compras, filterFornecedor, filterCategoria, searchTerm]);
+  }, [compras, filterFornecedor, filterCategoria, searchTerm, selectedMonth, isAnnual]);
 
   const totalGeral = filtered.reduce((s, c) => s + (c.valor_total || 0), 0);
   const totaisFornecedor = useMemo(() => {
@@ -74,6 +86,13 @@ export default function Compras() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Compras" subtitle="Gestão de aquisições de produtos">
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Compra</Button>
       </PageHeader>
 

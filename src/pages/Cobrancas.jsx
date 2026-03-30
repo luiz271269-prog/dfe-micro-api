@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, AlertTriangle, Check } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,6 +22,8 @@ export default function Cobrancas() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [quickFilter, setQuickFilter] = useState('todos');
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [baixaId, setBaixaId] = useState(null);
   const [baixaValor, setBaixaValor] = useState('');
@@ -39,15 +42,24 @@ export default function Cobrancas() {
 
   useEffect(() => { loadData(); }, []);
 
+  const monthTotals = useMemo(() => {
+    const t = {};
+    ALL_MONTHS.forEach(m => {
+      t[m] = titulos.filter(n => n.data_vencimento?.startsWith(m)).reduce((s,n) => s+(n.valor_titulo||0), 0);
+    });
+    return t;
+  }, [titulos]);
+
   const filtered = useMemo(() => {
     return titulos.filter(t => {
+      if (!isAnnual && !t.data_vencimento?.startsWith(selectedMonth)) return false;
       if (quickFilter === 'pagos' && t.status !== 'pago') return false;
       if (quickFilter === 'abertos' && t.status !== 'em_aberto') return false;
       if (quickFilter === 'vencidos' && t.status !== 'vencido') return false;
       if (searchTerm && !t.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) && !t.nosso_numero?.includes(searchTerm)) return false;
       return true;
     });
-  }, [titulos, quickFilter, searchTerm]);
+  }, [titulos, quickFilter, searchTerm, selectedMonth, isAnnual]);
 
   const totalEmitido = filtered.reduce((s, t) => s + (t.valor_titulo || 0), 0);
   const totalPago = filtered.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
@@ -92,6 +104,13 @@ export default function Cobrancas() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Cobranças Sicredi" subtitle="Gestão de títulos e boletos">
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Título</Button>
       </PageHeader>
 

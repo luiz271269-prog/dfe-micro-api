@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Users } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,8 @@ export default function Funcionarios() {
   const [loading, setLoading] = useState(true);
   const [showFuncForm, setShowFuncForm] = useState(false);
   const [showFolhaForm, setShowFolhaForm] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [filterSetor, setFilterSetor] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterEmpresa, setFilterEmpresa] = useState('');
@@ -91,7 +94,16 @@ export default function Funcionarios() {
     return true;
   });
 
+  const monthTotals = useMemo(() => {
+    const t = {};
+    ALL_MONTHS.forEach(m => {
+      t[m] = folhas.filter(f => f.competencia === m).reduce((s,f) => s+(f.salario_liquido||0), 0);
+    });
+    return t;
+  }, [folhas]);
+
   const folhasFiltradas = folhas.filter(f => {
+    if (!isAnnual && f.competencia !== selectedMonth) return false;
     if (filterCompetencia && f.competencia !== filterCompetencia) return false;
     return true;
   });
@@ -110,6 +122,13 @@ export default function Funcionarios() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Gestão de Pessoal" subtitle={`${funcionarios.length} funcionários cadastrados`}>
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         {activeTab === 'cadastro' && <Button onClick={() => setShowFuncForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Funcionário</Button>}
         {activeTab === 'folha' && <Button onClick={() => setShowFolhaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Folha</Button>}
       </PageHeader>

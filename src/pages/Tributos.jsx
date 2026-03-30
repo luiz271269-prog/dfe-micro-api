@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, AlertTriangle, Calendar, AlertCircle } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,8 @@ export default function Tributos() {
   const [tributos, setTributos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [filterTipo, setFilterTipo] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterEmpresa, setFilterEmpresa] = useState('');
@@ -50,7 +53,16 @@ export default function Tributos() {
     loadData();
   }
 
+  const monthTotals = useMemo(() => {
+    const t = {};
+    ALL_MONTHS.forEach(m => {
+      t[m] = tributos.filter(tr => tr.data_vencimento?.startsWith(m)).reduce((s,tr) => s+(tr.valor_original||0), 0);
+    });
+    return t;
+  }, [tributos]);
+
   const filtrados = tributos.filter(t => {
+    if (!isAnnual && !t.data_vencimento?.startsWith(selectedMonth)) return false;
     if (filterTipo && t.tipo !== filterTipo) return false;
     if (filterStatus && t.status !== filterStatus) return false;
     if (filterEmpresa && t.empresa !== filterEmpresa) return false;
@@ -72,6 +84,13 @@ export default function Tributos() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Gestão de Tributos" subtitle={`${tributos.length} tributos cadastrados`}>
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Tributo</Button>
       </PageHeader>
 

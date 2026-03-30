@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, CreditCard, ChevronDown, ChevronUp, Calendar, PieChart } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -76,6 +77,8 @@ export default function Cartoes() {
   const [faturas, setFaturas] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
   const [expandedFatura, setExpandedFatura] = useState(null);
   const [showFaturaForm, setShowFaturaForm] = useState(false);
@@ -117,8 +120,21 @@ export default function Cartoes() {
     loadData();
   }
 
+  const monthTotals = useMemo(() => {
+    const t = {};
+    ALL_MONTHS.forEach(m => {
+      t[m] = faturas.filter(f => f.mes_referencia === m).reduce((s,f) => s+(f.valor_total||0), 0);
+    });
+    return t;
+  }, [faturas]);
+
+  const filteredFaturas = useMemo(() => {
+    if (isAnnual) return faturas;
+    return faturas.filter(f => f.mes_referencia === selectedMonth);
+  }, [faturas, selectedMonth, isAnnual]);
+
   function getCardFaturas(cardId) {
-    return faturas.filter(f => f.conta_cartao_id === cardId).sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento));
+    return filteredFaturas.filter(f => f.conta_cartao_id === cardId).sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento));
   }
 
   function getFaturaLancamentos(faturaId) {
@@ -138,6 +154,13 @@ export default function Cartoes() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Cartões de Crédito" subtitle={`${cartoes.length} cartões cadastrados`}>
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         <Button onClick={() => setShowFaturaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Fatura</Button>
       </PageHeader>
 

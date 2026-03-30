@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -106,6 +107,8 @@ export default function Obras() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [filterLocal, setFilterLocal] = useState('all');
   const [filterProf, setFilterProf] = useState('all');
   const [filterEtapa, setFilterEtapa] = useState('all');
@@ -128,6 +131,7 @@ export default function Obras() {
 
   const filtered = useMemo(() => {
     return obras.filter(o => {
+      if (!isAnnual && !o.data?.startsWith(selectedMonth)) return false;
       if (filterLocal !== 'all' && o.local_obra !== filterLocal) return false;
       if (filterProf !== 'all' && o.tipo_profissional !== filterProf) return false;
       if (filterEtapa !== 'all' && o.etapa_obra !== filterEtapa) return false;
@@ -138,7 +142,7 @@ export default function Obras() {
       }
       return true;
     });
-  }, [obras, filterLocal, filterProf, filterEtapa, filterMes, search]);
+  }, [obras, filterLocal, filterProf, filterEtapa, filterMes, search, selectedMonth, isAnnual]);
 
   const totalRealizado = filtered.reduce((s, o) => s + (o.valor || 0), 0);
   const totalOrcado = filtered.reduce((s, o) => s + (o.orcamento || 0), 0);
@@ -171,6 +175,13 @@ export default function Obras() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Obras e Reformas" subtitle="Controle de despesas por local e profissional">
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Despesa de Obra</Button>
       </PageHeader>
 

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, AlertTriangle, TrendingDown } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,8 @@ export default function FluxoCaixa() {
   const [fluxos, setFluxos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [filterTipo, setFilterTipo] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCategoria, setFilterCategoria] = useState('');
@@ -53,7 +56,16 @@ export default function FluxoCaixa() {
     loadData();
   }
 
+  const monthTotals = useMemo(() => {
+    const t = {};
+    ALL_MONTHS.forEach(m => {
+      t[m] = fluxos.filter(f => f.data_prevista?.startsWith(m) && f.tipo === 'entrada').reduce((s,f) => s+(f.valor_previsto||0), 0);
+    });
+    return t;
+  }, [fluxos]);
+
   const filtrados = fluxos.filter(f => {
+    if (!isAnnual && !f.data_prevista?.startsWith(selectedMonth)) return false;
     if (filterTipo && f.tipo !== filterTipo) return false;
     if (filterStatus && f.status !== filterStatus) return false;
     if (filterCategoria && f.categoria !== filterCategoria) return false;
@@ -96,6 +108,13 @@ export default function FluxoCaixa() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Fluxo de Caixa" subtitle="Projeção dos próximos 30 dias">
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Movimentação</Button>
       </PageHeader>
 

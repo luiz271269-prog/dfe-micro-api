@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -15,6 +16,8 @@ export default function Faturamento() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [detalhes, setDetalhes] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [filterVendedor, setFilterVendedor] = useState('all');
   const [filterTipo, setFilterTipo] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -34,15 +37,24 @@ export default function Faturamento() {
 
   useEffect(() => { loadData(); }, []);
 
+  const monthTotals = useMemo(() => {
+    const t = {};
+    ALL_MONTHS.forEach(m => {
+      t[m] = notas.filter(n => n.data_emissao?.startsWith(m)).reduce((s,n) => s+(n.valor_total||0), 0);
+    });
+    return t;
+  }, [notas]);
+
   const filtered = useMemo(() => {
     return notas.filter(n => {
+      if (!isAnnual && !n.data_emissao?.startsWith(selectedMonth)) return false;
       if (filterVendedor !== 'all' && n.vendedor !== filterVendedor) return false;
       if (filterTipo !== 'all' && n.tipo !== filterTipo) return false;
       if (filterStatus !== 'all' && n.status !== filterStatus) return false;
       if (searchTerm && !n.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) && !n.numero?.includes(searchTerm)) return false;
       return true;
     });
-  }, [notas, filterVendedor, filterTipo, filterStatus, searchTerm]);
+  }, [notas, filterVendedor, filterTipo, filterStatus, searchTerm, selectedMonth, isAnnual]);
 
   const totalFaturado = filtered.reduce((s, n) => s + (n.valor_total || 0), 0);
   const totalRecebido = filtered.reduce((s, n) => s + (n.valor_recebido || 0), 0);
@@ -83,6 +95,13 @@ export default function Faturamento() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Faturamento" subtitle="Notas Fiscais e Contratos de Intermediação">
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova NF</Button>
       </PageHeader>
 

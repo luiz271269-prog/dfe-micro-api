@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, Filter } from 'lucide-react';
+import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -17,6 +18,8 @@ export default function ExtratoBancario() {
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [filterMes, setFilterMes] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [isAnnual, setIsAnnual] = useState(false);
   const [form, setForm] = useState({
     data: '', descricao: '', valor: '', categoria: 'recebimento',
     saldo_apos: '', conta_bancaria: 'NeuralTec 36092-2', detalhe: '', mes_referencia: ''
@@ -33,12 +36,16 @@ export default function ExtratoBancario() {
 
   const filtered = useMemo(() => {
     return lancamentos.filter(l => {
+      if (!isAnnual) {
+        const mes = l.mes_referencia || l.data?.slice(0,7);
+        if (mes !== selectedMonth) return false;
+      }
       if (filterCategoria !== 'all' && l.categoria !== filterCategoria) return false;
       if (filterMes !== 'all' && l.mes_referencia !== filterMes) return false;
       if (searchTerm && !l.descricao?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
-  }, [lancamentos, filterCategoria, filterMes, searchTerm]);
+  }, [lancamentos, filterCategoria, filterMes, searchTerm, selectedMonth, isAnnual]);
 
   const totais = useMemo(() => {
     const cats = {};
@@ -67,6 +74,13 @@ export default function ExtratoBancario() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Extrato Bancário" subtitle="NeuralTec · Sicredi Conta 36092-2 · Cooperativa 2604">
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={m => { setSelectedMonth(m); }}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotals}
+        />
         <Button onClick={() => setShowForm(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Novo Lançamento
         </Button>
