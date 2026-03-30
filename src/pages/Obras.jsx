@@ -6,182 +6,294 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency, formatDate } from '../lib/formatters';
 
-const SEED_OBRAS = [
-  { data: '2026-03-19', descricao: 'Reforma da loja — mão de obra', responsavel: 'Jhonatan da Rocha Vitu', tipo: 'mao_obra', local_obra: 'loja', valor: 9500.00, forma_pagamento: 'PIX' },
-  { data: '2026-01-08', descricao: 'Materiais construção jan', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2798405', valor: 32.20 },
-  { data: '2026-01-19', descricao: 'Materiais construção jan', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2811855', valor: 19.89 },
-  { data: '2026-02-04', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2835558', valor: 498.24 },
-  { data: '2026-02-06', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2835518', valor: 250.00 },
-  { data: '2026-02-10', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2843008', valor: 40.15 },
-  { data: '2026-02-10', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2843708', valor: 23.00 },
-  { data: '2026-02-12', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2846648', valor: 31.74 },
-  { data: '2026-02-12', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2846738', valor: 66.79 },
-  { data: '2026-02-18', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2856608', valor: 54.00 },
-  { data: '2026-02-23', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2859658', valor: 75.23 },
-  { data: '2026-02-24', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2861658', valor: 27.90 },
-  { data: '2026-02-25', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2862158', valor: 39.51 },
-  { data: '2026-02-25', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2863728', valor: 368.39 },
-  { data: '2026-02-26', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2865328', valor: 33.82 },
-  { data: '2026-02-26', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2865828', valor: 294.90 },
-  { data: '2026-02-27', descricao: 'Materiais fev', responsavel: 'Baggio Materiais Construção', tipo: 'material', local_obra: 'loja', numero_nota: 'DI 2868958', valor: 201.40 },
+const LOCAIS = [
+  { value: 'pavilhao', label: 'Pavilhão', color: 'blue' },
+  { value: 'loja', label: 'Loja', color: 'green' },
+  { value: 'terraco', label: 'Terraço', color: 'purple' },
+  { value: 'escritorio', label: 'Escritório', color: 'slate' },
+  { value: 'deposito', label: 'Depósito', color: 'orange' },
+  { value: 'infra', label: 'Infra', color: 'yellow' },
+  { value: 'outro', label: 'Outro', color: 'slate' },
 ];
 
-const tipoLabels = { mao_obra: 'Mão de Obra', material: 'Material' };
-const localLabels = { loja: 'Loja', escritorio: 'Escritório', deposito: 'Depósito', infra: 'Infraestrutura' };
+const PROFISSIONAIS = [
+  { value: 'serralheiro', label: 'Serralheiro' },
+  { value: 'pedreiro', label: 'Pedreiro' },
+  { value: 'pintor', label: 'Pintor' },
+  { value: 'vidros', label: 'Vidros' },
+  { value: 'eletricista', label: 'Eletricista' },
+  { value: 'hidraulico', label: 'Hidráulico' },
+  { value: 'material', label: 'Material' },
+  { value: 'outros', label: 'Outros' },
+];
+
+const ETAPAS = [
+  { value: 'planejamento', label: 'Planejamento' },
+  { value: 'em_andamento', label: 'Em andamento' },
+  { value: 'concluida', label: 'Concluída' },
+  { value: 'pausada', label: 'Pausada' },
+];
+
+const EMPTY_FORM = {
+  data: '', local_obra: 'loja', tipo: 'mao_obra', tipo_profissional: 'pedreiro',
+  responsavel: '', descricao: '', orcamento: '', valor: '',
+  forma_pagamento: '', numero_nota: '', etapa_obra: 'concluida', fornecedor_cnpj_cpf: ''
+};
+
+function LocalCard({ local, obras }) {
+  const items = obras.filter(o => o.local_obra === local.value);
+  const total = items.reduce((s, o) => s + (o.valor || 0), 0);
+  const orcado = items.reduce((s, o) => s + (o.orcamento || 0), 0);
+  const max = Math.max(total, orcado, 1);
+  const colorMap = { blue: 'bg-blue-500', green: 'bg-green-500', purple: 'bg-purple-500', slate: 'bg-slate-400', orange: 'bg-orange-500', yellow: 'bg-yellow-500' };
+  const bar = colorMap[local.color] || 'bg-blue-500';
+  return (
+    <div className="bg-card rounded-xl border p-4">
+      <p className="text-xs font-semibold text-muted-foreground">{local.label}</p>
+      <p className="text-xl font-bold mt-1">{formatCurrency(total)}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{items.length} registro(s)</p>
+      <div className="mt-2 w-full bg-muted rounded-full h-2">
+        <div className={`${bar} rounded-full h-2 transition-all`} style={{ width: `${Math.min((total / max) * 100, 100)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function OrcadoRealizadoBar({ local, obras }) {
+  const items = obras.filter(o => o.local_obra === local.value);
+  const realizado = items.reduce((s, o) => s + (o.valor || 0), 0);
+  const orcado = items.reduce((s, o) => s + (o.orcamento || 0), 0);
+  if (orcado === 0 && realizado === 0) return null;
+  const max = Math.max(orcado, realizado, 1);
+  const estourou = realizado > orcado && orcado > 0;
+  return (
+    <div className="bg-card rounded-xl border p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="font-semibold text-sm">{local.label}</p>
+        {orcado > 0 && (
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${estourou ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+            {estourou ? '⚠ Estourou' : '✓ No orçado'}
+          </span>
+        )}
+      </div>
+      <div className="space-y-1.5">
+        <div>
+          <div className="flex justify-between text-xs text-muted-foreground mb-0.5">
+            <span>Orçado</span><span>{formatCurrency(orcado)}</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2">
+            <div className="bg-slate-400 rounded-full h-2" style={{ width: `${Math.min((orcado / max) * 100, 100)}%` }} />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-xs text-muted-foreground mb-0.5">
+            <span>Realizado</span><span>{formatCurrency(realizado)}</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2">
+            <div className={`rounded-full h-2 ${estourou ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${Math.min((realizado / max) * 100, 100)}%` }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Obras() {
   const [obras, setObras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [filterTipo, setFilterTipo] = useState('all');
+  const [form, setForm] = useState(EMPTY_FORM);
   const [filterLocal, setFilterLocal] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [form, setForm] = useState({
-    data: '', descricao: '', responsavel: '', tipo: 'mao_obra',
-    local_obra: 'loja', numero_nota: '', valor: '', forma_pagamento: ''
-  });
+  const [filterProf, setFilterProf] = useState('all');
+  const [filterEtapa, setFilterEtapa] = useState('all');
+  const [filterMes, setFilterMes] = useState('all');
+  const [search, setSearch] = useState('');
 
   async function loadData() {
     setLoading(true);
-    let data = await base44.entities.ObraReforma.list('-data', 500);
-    if (data.length === 0) {
-      await base44.entities.ObraReforma.bulkCreate(SEED_OBRAS);
-      data = await base44.entities.ObraReforma.list('-data', 500);
-    }
+    const data = await base44.entities.ObraReforma.list('-data', 500);
     setObras(data);
     setLoading(false);
   }
 
   useEffect(() => { loadData(); }, []);
 
+  const meses = useMemo(() => {
+    const set = new Set(obras.map(o => o.data?.slice(0, 7)).filter(Boolean));
+    return [...set].sort().reverse();
+  }, [obras]);
+
   const filtered = useMemo(() => {
     return obras.filter(o => {
-      if (filterTipo !== 'all' && o.tipo !== filterTipo) return false;
       if (filterLocal !== 'all' && o.local_obra !== filterLocal) return false;
-      if (searchTerm && !o.descricao?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (filterProf !== 'all' && o.tipo_profissional !== filterProf) return false;
+      if (filterEtapa !== 'all' && o.etapa_obra !== filterEtapa) return false;
+      if (filterMes !== 'all' && !o.data?.startsWith(filterMes)) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        if (!o.responsavel?.toLowerCase().includes(q) && !o.descricao?.toLowerCase().includes(q)) return false;
+      }
       return true;
     });
-  }, [obras, filterTipo, filterLocal, searchTerm]);
+  }, [obras, filterLocal, filterProf, filterEtapa, filterMes, search]);
 
-  const totalGeral = filtered.reduce((s, o) => s + (o.valor || 0), 0);
-  const totalMaoObra = obras.filter(o => o.tipo === 'mao_obra').reduce((s, o) => s + (o.valor || 0), 0);
-  const totalMaterial = obras.filter(o => o.tipo === 'material').reduce((s, o) => s + (o.valor || 0), 0);
-  const totalTudo = totalMaoObra + totalMaterial;
-  const percMaoObra = totalTudo > 0 ? (totalMaoObra / totalTudo) * 100 : 0;
-  const percMaterial = totalTudo > 0 ? (totalMaterial / totalTudo) * 100 : 0;
+  const totalRealizado = filtered.reduce((s, o) => s + (o.valor || 0), 0);
+  const totalOrcado = filtered.reduce((s, o) => s + (o.orcamento || 0), 0);
+
+  const mainLocais = LOCAIS.filter(l => ['pavilhao', 'loja', 'terraco'].includes(l.value));
 
   async function handleSubmit(e) {
     e.preventDefault();
-    await base44.entities.ObraReforma.create({ ...form, valor: parseFloat(form.valor) });
+    await base44.entities.ObraReforma.create({
+      ...form,
+      valor: parseFloat(form.valor) || 0,
+      orcamento: form.orcamento ? parseFloat(form.orcamento) : undefined,
+    });
     setShowForm(false);
-    setForm({ data: '', descricao: '', responsavel: '', tipo: 'mao_obra', local_obra: 'loja', numero_nota: '', valor: '', forma_pagamento: '' });
+    setForm(EMPTY_FORM);
     loadData();
   }
 
+  const localLabel = (v) => LOCAIS.find(l => l.value === v)?.label || v;
+  const profLabel = (v) => PROFISSIONAIS.find(p => p.value === v)?.label || v;
+  const etapaLabel = (v) => ETAPAS.find(e => e.value === v)?.label || v;
+
+  const etapaColor = (v) => ({
+    concluida: 'bg-green-100 text-green-700',
+    em_andamento: 'bg-blue-100 text-blue-700',
+    planejamento: 'bg-yellow-100 text-yellow-700',
+    pausada: 'bg-slate-100 text-slate-600',
+  }[v] || 'bg-slate-100 text-slate-600');
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      <PageHeader title="Obras e Reformas" subtitle="Controle de gastos com infraestrutura">
-        <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Obra</Button>
+      <PageHeader title="Obras e Reformas" subtitle="Controle de despesas por local e profissional">
+        <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Despesa de Obra</Button>
       </PageHeader>
 
-      {/* Progress bars */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-card rounded-xl border p-4">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <p className="text-xs text-muted-foreground">Mão de Obra</p>
-              <p className="text-lg font-bold text-orange-600">{formatCurrency(totalMaoObra)}</p>
-            </div>
-            <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">{percMaoObra.toFixed(0)}%</span>
-          </div>
-          <Progress value={percMaoObra} className="h-2 [&>div]:bg-orange-400" />
-        </div>
-        <div className="bg-card rounded-xl border p-4">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <p className="text-xs text-muted-foreground">Materiais</p>
-              <p className="text-lg font-bold text-blue-600">{formatCurrency(totalMaterial)}</p>
-            </div>
-            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{percMaterial.toFixed(0)}%</span>
-          </div>
-          <Progress value={percMaterial} className="h-2 [&>div]:bg-blue-400" />
-        </div>
-        <div className="bg-card rounded-xl border border-dashed p-4">
-          <p className="text-xs text-muted-foreground font-semibold">Total Investido</p>
-          <p className="text-xl font-bold text-foreground mt-1">{formatCurrency(totalTudo)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{obras.length} registros</p>
-        </div>
+      {/* Seção 1 — Resumo por local principal */}
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Resumo por Local</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        {mainLocais.map(l => <LocalCard key={l.value} local={l} obras={obras} />)}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      {/* Seção 2 — Resumo por tipo de profissional */}
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Resumo por Especialidade</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-6">
+        {PROFISSIONAIS.map(p => {
+          const items = obras.filter(o => o.tipo_profissional === p.value);
+          const total = items.reduce((s, o) => s + (o.valor || 0), 0);
+          return (
+            <div key={p.value} className="bg-card rounded-xl border p-3 text-center">
+              <p className="text-xs font-semibold text-muted-foreground">{p.label}</p>
+              <p className="text-sm font-bold mt-1">{formatCurrency(total)}</p>
+              <p className="text-xs text-muted-foreground">{items.length} reg.</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Seção 5 — Orçado vs Realizado */}
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Orçado × Realizado por Local</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        {mainLocais.map(l => <OrcadoRealizadoBar key={l.value} local={l} obras={obras} />)}
+      </div>
+
+      {/* Seção 3 — Filtros + Tabela */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar descrição..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
+          <Input placeholder="Buscar responsável/descrição..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Select value={filterTipo} onValueChange={setFilterTipo}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+        <Select value={filterLocal} onValueChange={setFilterLocal}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Local" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {Object.entries(tipoLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            <SelectItem value="all">Todos os locais</SelectItem>
+            {LOCAIS.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterLocal} onValueChange={setFilterLocal}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Local" /></SelectTrigger>
+        <Select value={filterProf} onValueChange={setFilterProf}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Profissional" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            {Object.entries(localLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            {PROFISSIONAIS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterEtapa} onValueChange={setFilterEtapa}>
+          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Etapa" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas etapas</SelectItem>
+            {ETAPAS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterMes} onValueChange={setFilterMes}>
+          <SelectTrigger className="w-[130px]"><SelectValue placeholder="Mês" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os meses</SelectItem>
+            {meses.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Table */}
       <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Tipo</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Local</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Responsável</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">NF</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Data</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Local</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Profissional</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Tipo</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Responsável</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Descrição</th>
+                <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Orçado</th>
+                <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Realizado</th>
+                <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Dif.</th>
+                <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Etapa</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Pgto</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Nenhuma obra encontrada</td></tr>
-              ) : (
-                filtered.map(o => (
-                  <tr key={o.id} className={`border-b hover:bg-muted/30 transition-colors ${o.tipo === 'mao_obra' ? 'bg-orange-50/30' : ''}`}>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(o.data)}</td>
-                    <td className="px-4 py-3 font-medium">{o.descricao}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${o.tipo === 'mao_obra' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {tipoLabels[o.tipo] || o.tipo}
-                      </span>
+                <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Nenhum registro encontrado</td></tr>
+              ) : filtered.map(o => {
+                const dif = (o.orcamento || 0) - (o.valor || 0);
+                return (
+                  <tr key={o.id} className="border-b hover:bg-muted/30 transition-colors">
+                    <td className="px-3 py-2.5 whitespace-nowrap">{formatDate(o.data)}</td>
+                    <td className="px-3 py-2.5"><span className="text-xs font-medium bg-muted px-1.5 py-0.5 rounded">{localLabel(o.local_obra)}</span></td>
+                    <td className="px-3 py-2.5 text-xs">{profLabel(o.tipo_profissional)}</td>
+                    <td className="px-3 py-2.5 text-xs">{o.tipo === 'mao_obra' ? 'Mão de Obra' : 'Material'}</td>
+                    <td className="px-3 py-2.5">{o.responsavel}</td>
+                    <td className="px-3 py-2.5 max-w-[200px] truncate" title={o.descricao}>{o.descricao}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{o.orcamento ? formatCurrency(o.orcamento) : '—'}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-medium">{formatCurrency(o.valor)}</td>
+                    <td className={`px-3 py-2.5 text-right tabular-nums text-xs font-semibold ${!o.orcamento ? 'text-muted-foreground' : dif >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {o.orcamento ? formatCurrency(dif) : '—'}
                     </td>
-                    <td className="px-4 py-3">{localLabels[o.local_obra] || o.local_obra}</td>
-                    <td className="px-4 py-3 text-sm">{o.responsavel || '—'}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{o.numero_nota || '—'}</td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(o.valor)}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${etapaColor(o.etapa_obra)}`}>{etapaLabel(o.etapa_obra)}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">{o.forma_pagamento}</td>
                   </tr>
-                ))
-              )}
+                );
+              })}
             </tbody>
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30">
-                  <td colSpan={6} className="px-4 py-3 font-semibold">Total ({filtered.length} registros)</td>
-                  <td className="px-4 py-3 text-right font-bold text-red-600">{formatCurrency(totalGeral)}</td>
+                  <td colSpan={6} className="px-3 py-3 font-semibold">{filtered.length} registro(s)</td>
+                  <td className="px-3 py-3 text-right font-bold text-muted-foreground">{formatCurrency(totalOrcado)}</td>
+                  <td className="px-3 py-3 text-right font-bold">{formatCurrency(totalRealizado)}</td>
+                  <td className={`px-3 py-3 text-right font-bold text-xs ${totalOrcado > 0 ? (totalOrcado - totalRealizado >= 0 ? 'text-green-600' : 'text-red-600') : 'text-muted-foreground'}`}>
+                    {totalOrcado > 0 ? formatCurrency(totalOrcado - totalRealizado) : '—'}
+                  </td>
+                  <td colSpan={2}></td>
                 </tr>
               </tfoot>
             )}
@@ -189,38 +301,61 @@ export default function Obras() {
         </div>
       </div>
 
-      {/* Form */}
+      {/* Modal Nova Despesa */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Nova Obra/Reforma</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Nova Despesa de Obra</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Data</Label><Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} required /></div>
-              <div><Label>Valor</Label><Input type="number" step="0.01" value={form.valor} onChange={e => setForm({...form, valor: e.target.value})} required /></div>
-            </div>
-            <div><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} required /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Tipo</Label>
-                <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(tipoLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
               <div>
                 <Label>Local</Label>
                 <Select value={form.local_obra} onValueChange={v => setForm({...form, local_obra: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(localLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                  <SelectContent>{LOCAIS.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Responsável</Label><Input value={form.responsavel} onChange={e => setForm({...form, responsavel: e.target.value})} /></div>
-              <div><Label>Forma Pgto</Label><Input value={form.forma_pagamento} onChange={e => setForm({...form, forma_pagamento: e.target.value})} /></div>
+              <div>
+                <Label>Especialidade / Profissional</Label>
+                <Select value={form.tipo_profissional} onValueChange={v => setForm({...form, tipo_profissional: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{PROFISSIONAIS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={form.tipo} onValueChange={v => setForm({...form, tipo: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mao_obra">Mão de Obra</SelectItem>
+                    <SelectItem value="material">Material</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div><Label>Número Nota</Label><Input value={form.numero_nota} onChange={e => setForm({...form, numero_nota: e.target.value})} /></div>
-            <Button type="submit" className="w-full">Salvar</Button>
+            <div><Label>Responsável / Fornecedor</Label><Input value={form.responsavel} onChange={e => setForm({...form, responsavel: e.target.value})} /></div>
+            <div><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} required /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Valor Orçado (R$)</Label><Input type="number" step="0.01" value={form.orcamento} onChange={e => setForm({...form, orcamento: e.target.value})} /></div>
+              <div><Label>Valor Realizado (R$)</Label><Input type="number" step="0.01" value={form.valor} onChange={e => setForm({...form, valor: e.target.value})} required /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Etapa</Label>
+                <Select value={form.etapa_obra} onValueChange={v => setForm({...form, etapa_obra: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{ETAPAS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div><Label>Forma de Pagamento</Label><Input value={form.forma_pagamento} onChange={e => setForm({...form, forma_pagamento: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Número Nota Fiscal</Label><Input value={form.numero_nota} onChange={e => setForm({...form, numero_nota: e.target.value})} /></div>
+              <div><Label>CPF / CNPJ Prestador</Label><Input value={form.fornecedor_cnpj_cpf} onChange={e => setForm({...form, fornecedor_cnpj_cpf: e.target.value})} /></div>
+            </div>
+            <Button type="submit" className="w-full">Salvar Despesa</Button>
           </form>
         </DialogContent>
       </Dialog>

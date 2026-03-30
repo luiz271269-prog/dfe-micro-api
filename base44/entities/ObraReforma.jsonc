@@ -1,0 +1,92 @@
+{
+  "name": "ObraReforma",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "string",
+      "format": "date",
+      "title": "Data"
+    },
+    "descricao": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o"
+    },
+    "responsavel": {
+      "type": "string",
+      "title": "Respons\u00e1vel"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "mao_obra",
+        "material"
+      ],
+      "title": "Tipo"
+    },
+    "tipo_profissional": {
+      "type": "string",
+      "enum": [
+        "serralheiro",
+        "pedreiro",
+        "pintor",
+        "vidros",
+        "eletricista",
+        "hidraulico",
+        "material",
+        "outros"
+      ],
+      "title": "Especialidade / Tipo de Servi\u00e7o"
+    },
+    "local_obra": {
+      "type": "string",
+      "enum": [
+        "pavilhao",
+        "loja",
+        "terraco",
+        "escritorio",
+        "deposito",
+        "infra",
+        "outro"
+      ],
+      "title": "Local"
+    },
+    "etapa_obra": {
+      "type": "string",
+      "enum": [
+        "planejamento",
+        "em_andamento",
+        "concluida",
+        "pausada"
+      ],
+      "title": "Etapa",
+      "default": "concluida"
+    },
+    "numero_nota": {
+      "type": "string",
+      "title": "N\u00famero Nota"
+    },
+    "orcamento": {
+      "type": "number",
+      "title": "Valor Or\u00e7ado (R$)"
+    },
+    "valor": {
+      "type": "number",
+      "title": "Valor Realizado (R$)"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "title": "Forma de Pagamento"
+    },
+    "fornecedor_cnpj_cpf": {
+      "type": "string",
+      "title": "CPF / CNPJ do Prestador"
+    }
+  },
+  "required": [
+    "data",
+    "descricao",
+    "tipo",
+    "local_obra",
+    "valor"
+  ]
+}
