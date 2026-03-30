@@ -16,6 +16,7 @@ export default function ExtratoBancario() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('all');
+  const [editingCategoria, setEditingCategoria] = useState(null);
   const [filterMes, setFilterMes] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('2026-03');
@@ -57,6 +58,12 @@ export default function ExtratoBancario() {
 
   const totalGeral = filtered.reduce((s, l) => s + (l.valor || 0), 0);
 
+  async function handleCategoriaChange(id, newCat) {
+    await base44.entities.LancamentoBancario.update(id, { categoria: newCat });
+    setEditingCategoria(null);
+    loadData();
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     await base44.entities.LancamentoBancario.create({
@@ -95,18 +102,32 @@ export default function ExtratoBancario() {
         </Button>
       </PageHeader>
 
-      {/* Totais por categoria */}
+      {/* Totais por categoria — clicável para filtrar */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-        {Object.entries(totais).map(([cat, val]) => (
-          <div key={cat} className="bg-card rounded-lg border p-3">
-            <p className="text-xs text-muted-foreground">{categoriaLabels[cat] || cat}</p>
-            <p className={`text-sm font-bold ${val >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(val)}</p>
-          </div>
-        ))}
-        <div className="bg-card rounded-lg border p-3 border-primary/30">
-          <p className="text-xs text-muted-foreground font-semibold">Total</p>
-          <p className={`text-sm font-bold ${totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totalGeral)}</p>
-        </div>
+        {Object.entries(totais).map(([cat, val]) => {
+          const isActive = filterCategoria === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setFilterCategoria(isActive ? 'all' : cat)}
+              className={`rounded-lg border p-3 text-left transition-all hover:shadow-md ${
+                isActive ? 'border-primary bg-primary/5 shadow ring-1 ring-primary/30' : 'bg-card hover:border-muted-foreground/30'
+              }`}
+            >
+              <p className={`text-xs font-semibold mb-0.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>{categoriaLabels[cat] || cat}</p>
+              <p className={`text-sm font-bold tabular-nums ${val >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(val)}</p>
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setFilterCategoria('all')}
+          className={`rounded-lg border p-3 text-left transition-all hover:shadow-md ${
+            filterCategoria === 'all' ? 'border-primary bg-primary/5 shadow ring-1 ring-primary/30' : 'bg-card hover:border-muted-foreground/30'
+          }`}
+        >
+          <p className={`text-xs font-semibold mb-0.5 ${filterCategoria === 'all' ? 'text-primary' : 'text-muted-foreground'}`}>Total</p>
+          <p className={`text-sm font-bold tabular-nums ${totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totalGeral)}</p>
+        </button>
       </div>
 
       {/* Filters */}
@@ -159,7 +180,29 @@ export default function ExtratoBancario() {
                       <p className="font-medium">{l.descricao}</p>
                       {l.detalhe && <p className="text-xs text-muted-foreground">{l.detalhe}</p>}
                     </td>
-                    <td className="px-4 py-3"><StatusBadge status={l.categoria} /></td>
+                    <td className="px-4 py-3">
+                       {editingCategoria === l.id ? (
+                         <select
+                           autoFocus
+                           defaultValue={l.categoria}
+                           onBlur={e => handleCategoriaChange(l.id, e.target.value)}
+                           onChange={e => handleCategoriaChange(l.id, e.target.value)}
+                           className="text-xs border rounded px-2 py-1 bg-background"
+                         >
+                           {Object.entries(categoriaLabels).map(([k, v]) => (
+                             <option key={k} value={k}>{v}</option>
+                           ))}
+                         </select>
+                       ) : (
+                         <button
+                           onClick={e => { e.stopPropagation(); setEditingCategoria(l.id); }}
+                           title="Clique para editar"
+                           className="hover:opacity-70 transition-opacity"
+                         >
+                           <StatusBadge status={l.categoria} />
+                         </button>
+                       )}
+                     </td>
                     <td className={`px-4 py-3 text-right font-semibold tabular-nums ${(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(l.valor)}
                     </td>
