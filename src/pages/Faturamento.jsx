@@ -60,11 +60,13 @@ export default function Faturamento() {
   const totalRecebido = filtered.reduce((s, n) => s + (n.valor_recebido || 0), 0);
   const totalAberto = filtered.reduce((s, n) => s + (n.valor_aberto || 0), 0);
 
-  // Por vendedor
-  const tiagototal = notas.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_total || 0), 0);
-  const tiagoAberto = notas.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_aberto || 0), 0);
-  const thaisTotal = notas.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_total || 0), 0);
-  const thaisAberto = notas.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_aberto || 0), 0);
+  // Por vendedor — respeita filtro de mês/anual
+  const tiagototal = filtered.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_total || 0), 0);
+  const tiagoAberto = filtered.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_aberto || 0), 0);
+  const tiagoRecebido = filtered.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_recebido || 0), 0);
+  const thaisTotal = filtered.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_total || 0), 0);
+  const thaisAberto = filtered.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_aberto || 0), 0);
+  const thaisRecebido = filtered.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_recebido || 0), 0);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -109,24 +111,42 @@ export default function Faturamento() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <button
           onClick={() => setFilterVendedor(filterVendedor === 'Tiago' ? 'all' : 'Tiago')}
-          className={`rounded-xl border p-4 text-left transition-all hover:shadow-md ${filterVendedor === 'Tiago' ? 'border-blue-400 bg-blue-50' : 'bg-card'}`}
+          className={`rounded-xl border p-5 text-left transition-all hover:shadow-lg group ${filterVendedor === 'Tiago' ? 'border-blue-400 bg-blue-50 shadow-md' : 'bg-card hover:border-blue-200'}`}
         >
-          <p className="text-xs font-semibold text-muted-foreground">Tiago (V-01)</p>
-          <p className="text-xl font-bold text-blue-700">{formatCurrency(tiagototal)}</p>
-          <p className="text-xs text-orange-600 mt-0.5">Em aberto: {formatCurrency(tiagoAberto)}</p>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tiago (V-01)</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${filterVendedor === 'Tiago' ? 'bg-blue-200 text-blue-800' : 'bg-blue-100 text-blue-600'}`}>{filtered.filter(n=>n.vendedor==='Tiago').length} NFs</span>
+          </div>
+          <p className="text-2xl font-bold text-blue-700 tabular-nums">{formatCurrency(tiagototal)}</p>
+          <div className="flex gap-3 mt-2">
+            <span className="text-xs text-green-600 font-medium">✓ {formatCurrency(tiagoRecebido)}</span>
+            <span className="text-xs text-orange-500 font-medium">⏳ {formatCurrency(tiagoAberto)}</span>
+          </div>
         </button>
         <button
           onClick={() => setFilterVendedor(filterVendedor === 'Thais' ? 'all' : 'Thais')}
-          className={`rounded-xl border p-4 text-left transition-all hover:shadow-md ${filterVendedor === 'Thais' ? 'border-purple-400 bg-purple-50' : 'bg-card'}`}
+          className={`rounded-xl border p-5 text-left transition-all hover:shadow-lg group ${filterVendedor === 'Thais' ? 'border-purple-400 bg-purple-50 shadow-md' : 'bg-card hover:border-purple-200'}`}
         >
-          <p className="text-xs font-semibold text-muted-foreground">Thais (V-05)</p>
-          <p className="text-xl font-bold text-purple-700">{formatCurrency(thaisTotal)}</p>
-          <p className="text-xs text-orange-600 mt-0.5">Em aberto: {formatCurrency(thaisAberto)}</p>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Thais (V-05)</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${filterVendedor === 'Thais' ? 'bg-purple-200 text-purple-800' : 'bg-purple-100 text-purple-600'}`}>{filtered.filter(n=>n.vendedor==='Thais').length} NFs</span>
+          </div>
+          <p className="text-2xl font-bold text-purple-700 tabular-nums">{formatCurrency(thaisTotal)}</p>
+          <div className="flex gap-3 mt-2">
+            <span className="text-xs text-green-600 font-medium">✓ {formatCurrency(thaisRecebido)}</span>
+            <span className="text-xs text-orange-500 font-medium">⏳ {formatCurrency(thaisAberto)}</span>
+          </div>
         </button>
-        <div className="rounded-xl border p-4 bg-card">
-          <p className="text-xs font-semibold text-muted-foreground">Total Geral</p>
-          <p className="text-xl font-bold text-foreground">{formatCurrency(totalFaturado)}</p>
-          <p className="text-xs text-green-600 mt-0.5">Recebido: {formatCurrency(totalRecebido)}</p>
+        <div className="rounded-xl border p-5 bg-gradient-to-br from-slate-50 to-slate-100">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Geral</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">{filtered.length} NFs</span>
+          </div>
+          <p className="text-2xl font-bold text-foreground tabular-nums">{formatCurrency(totalFaturado)}</p>
+          <div className="flex gap-3 mt-2">
+            <span className="text-xs text-green-600 font-medium">✓ {formatCurrency(totalRecebido)}</span>
+            <span className="text-xs text-orange-500 font-medium">⏳ {formatCurrency(totalAberto)}</span>
+          </div>
         </div>
       </div>
 
