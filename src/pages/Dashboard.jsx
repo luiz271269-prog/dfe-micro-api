@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { 
   Landmark, FileText, Receipt, ShoppingCart, Hammer, CreditCard, 
-  AlertTriangle, TrendingUp, TrendingDown, Bell, Users, BarChart3
+  AlertTriangle, TrendingUp, TrendingDown, Bell, Users, BarChart3,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { formatCurrency } from '../lib/formatters';
 
@@ -57,7 +58,22 @@ function DashCard({ title, value, sub, icon: Icon, color, href }) {
 
 function asArray(r) { return Array.isArray(r) ? r : []; }
 
+const ALL_MONTHS = [
+  '2025-09','2025-10','2025-11','2025-12',
+  '2026-01','2026-02','2026-03'
+];
+
+function fmtMes(m) {
+  const [y, mo] = m.split('-');
+  const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return `${nomes[parseInt(mo)-1]}/${y.slice(2)}`;
+}
+
 export default function Dashboard() {
+  const currentMonth = '2026-03';
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [isAnnual, setIsAnnual] = useState(false);
+  const [rawData, setRawData] = useState({ lanc:[], nfs:[], tit:[], comp:[], obras:[], trib:[], func:[], folhas:[] });
   const [data, setData] = useState({  
     bankBalance: 54187.06, liesch: 41, fundos: 100000,
     recYTD: 0, pagYTD: 0,
@@ -85,48 +101,15 @@ export default function Dashboard() {
           base44.entities.Funcionario.list(),
           base44.entities.FolhaPagamento.list(),
         ]);
-        const lanc = asArray(lancRaw);
-        const nfs = asArray(nfsRaw);
-        const tit = asArray(titRaw);
-        const comp = asArray(compRaw);
-        const obras = asArray(obrasRaw);
-        const trib = asArray(tribRaw);
-        const func = asArray(funcRaw);
-        const folhas = asArray(folhasRaw);
-
-        setData(prev => {
-          const d = { ...prev };
-          if (lanc.length) {
-            d.recYTD = lanc.filter(l => l.categoria === 'recebimento').reduce((s, l) => s + (l.valor || 0), 0);
-            d.pagYTD = lanc.filter(l => l.categoria !== 'recebimento').reduce((s, l) => s + Math.abs(l.valor || 0), 0);
-          }
-          if (nfs.length) {
-            d.totalFat = nfs.reduce((s, n) => s + (n.valor_total || 0), 0);
-            d.aReceber = nfs.reduce((s, n) => s + (n.valor_aberto || 0), 0);
-            d.tiago = nfs.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_total || 0), 0) || prev.tiago;
-            d.thais = nfs.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_total || 0), 0) || prev.thais;
-          }
-          if (tit.length) {
-            d.emitido = tit.reduce((s, t) => s + (t.valor_titulo || 0), 0);
-            d.recebido = tit.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
-            d.emAberto = tit.filter(t => t.status !== 'pago').reduce((s, t) => s + (t.valor_titulo || 0), 0);
-          }
-          if (comp.length) d.totalCompras = comp.reduce((s, c) => s + (c.valor_total || 0), 0);
-          if (obras.length) d.totalObras = obras.reduce((s, o) => s + (o.valor || 0), 0);
-          if (trib.length) {
-            d.totalTrib = trib.reduce((s, t) => s + (t.valor_original || 0), 0);
-            d.tribVencer = trib.filter(t => t.status === 'a_vencer').length;
-            d.tribVencidos = trib.filter(t => t.status === 'vencido').length;
-            const dasMarco = trib.find(t => t.tipo === 'DAS' && t.competencia === '2026-03');
-            if (dasMarco) d.dasMarco = dasMarco.valor_original;
-          }
-          if (func.length) d.funcAtivos = func.filter(f => f.status === 'ativo').length;
-          if (folhas.length) {
-            const currentMes = new Date().toISOString().slice(0, 7);
-            d.folhaAtual = folhas.filter(f => f.competencia === currentMes && f.status === 'pago')
-              .reduce((s, f) => s + (f.salario_liquido || 0), 0);
-          }
-          return d;
+        setRawData({
+          lanc: asArray(lancRaw),
+          nfs: asArray(nfsRaw),
+          tit: asArray(titRaw),
+          comp: asArray(compRaw),
+          obras: asArray(obrasRaw),
+          trib: asArray(tribRaw),
+          func: asArray(funcRaw),
+          folhas: asArray(folhasRaw),
         });
       } catch (e) {
         setError(e.message);
@@ -135,6 +118,50 @@ export default function Dashboard() {
     }
     load();
   }, []);
+
+  // Recompute data when month/annual changes
+  useMemo(() => {
+    const { lanc, nfs, tit, comp, obras, trib, func, folhas } = rawData;
+    const filter = (arr, dateField) => isAnnual ? arr : arr.filter(r => (r[dateField] || '').startsWith(selectedMonth));
+    const lancF = filter(lanc, 'data');
+    const nfsF = filter(nfs, 'data_emissao');
+    const titF = filter(tit, 'data_vencimento');
+    const compF = filter(comp, 'data_emissao');
+    const obrasF = filter(obras, 'data');
+    const mes = isAnnual ? selectedMonth.slice(0,4) : selectedMonth;
+
+    setData(prev => {
+      const d = { ...prev };
+      if (lanc.length) {
+        d.recYTD = lancF.filter(l => l.categoria === 'recebimento').reduce((s,l) => s+(l.valor||0),0);
+        d.pagYTD = lancF.filter(l => l.categoria !== 'recebimento').reduce((s,l) => s+Math.abs(l.valor||0),0);
+      }
+      if (nfs.length) {
+        d.totalFat = nfsF.reduce((s,n) => s+(n.valor_total||0),0);
+        d.aReceber = nfsF.reduce((s,n) => s+(n.valor_aberto||0),0);
+        d.tiago = nfsF.filter(n=>n.vendedor==='Tiago').reduce((s,n)=>s+(n.valor_total||0),0);
+        d.thais = nfsF.filter(n=>n.vendedor==='Thais').reduce((s,n)=>s+(n.valor_total||0),0);
+      }
+      if (tit.length) {
+        d.emitido = titF.reduce((s,t)=>s+(t.valor_titulo||0),0);
+        d.recebido = titF.filter(t=>t.status==='pago').reduce((s,t)=>s+(t.valor_pago||0),0);
+        d.emAberto = titF.filter(t=>t.status!=='pago').reduce((s,t)=>s+(t.valor_titulo||0),0);
+      }
+      if (comp.length) d.totalCompras = compF.reduce((s,c)=>s+(c.valor_total||0),0);
+      if (obras.length) d.totalObras = obrasF.reduce((s,o)=>s+(o.valor||0),0);
+      if (trib.length) {
+        d.totalTrib = trib.reduce((s,t)=>s+(t.valor_original||0),0);
+        d.tribVencer = trib.filter(t=>t.status==='a_vencer').length;
+        d.tribVencidos = trib.filter(t=>t.status==='vencido').length;
+      }
+      if (func.length) d.funcAtivos = func.filter(f=>f.status==='ativo').length;
+      if (folhas.length) {
+        d.folhaAtual = folhas.filter(f=>f.competencia===selectedMonth&&f.status==='pago').reduce((s,f)=>s+(f.salario_liquido||0),0);
+      }
+      return d;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawData, selectedMonth, isAnnual]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">
@@ -152,20 +179,56 @@ export default function Dashboard() {
   );
 
   const percCob = data.emitido > 0 ? ((data.recebido / data.emitido) * 100).toFixed(1) : '62.6';
+  const monthIdx = ALL_MONTHS.indexOf(selectedMonth);
+  const canPrev = monthIdx > 0;
+  const canNext = monthIdx < ALL_MONTHS.length - 1;
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Dashboard Financeiro</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">NeuralTec Distribuição e Tecnologia Ltda · Março 2026</p>
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Dashboard Financeiro</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">NeuralTec Distribuição e Tecnologia Ltda</p>
+        </div>
+        {/* Month navigator */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setIsAnnual(false); if (canPrev) setSelectedMonth(ALL_MONTHS[monthIdx-1]); }}
+            disabled={!canPrev || isAnnual}
+            className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors"
+          ><ChevronLeft className="w-4 h-4" /></button>
+          <div className="flex items-center gap-1">
+            {ALL_MONTHS.slice(-5).map(m => (
+              <button key={m} onClick={() => { setSelectedMonth(m); setIsAnnual(false); }}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  !isAnnual && selectedMonth === m
+                    ? 'bg-primary text-primary-foreground shadow'
+                    : 'border hover:bg-muted text-muted-foreground'
+                }`}>
+                {fmtMes(m)}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => { setIsAnnual(false); if (canNext) setSelectedMonth(ALL_MONTHS[monthIdx+1]); }}
+            disabled={!canNext || isAnnual}
+            className="w-8 h-8 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors"
+          ><ChevronRight className="w-4 h-4" /></button>
+          <button
+            onClick={() => setIsAnnual(!isAnnual)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ml-1 ${
+              isAnnual ? 'bg-primary text-primary-foreground shadow' : 'border hover:bg-muted text-muted-foreground'
+            }`}
+          >Anual</button>
+        </div>
       </div>
 
       {/* Alert card */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
         <Bell className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-amber-800">Itens que precisam de atenção</p>
+          <p className="text-sm font-semibold text-amber-800">Itens que precisam de atenção — {isAnnual ? '2026 (Anual)' : fmtMes(selectedMonth)}</p>
           <div className="mt-1 flex flex-wrap gap-3">
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">📤 DDA semana 30/03—01/04: NeuralTec R$ 925,15 · Liesch R$ 606,29 · KLI R$ 1.143,31 — Total R$ 2.674,75</span>
             <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">⚠ DAS Mar/2026: R$ 36.377 — verificar</span>
@@ -180,8 +243,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <DashCard title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Conta 36092-2" icon={Landmark} color="blue" href="/extrato" />
         <DashCard title="Liesch + Fundos" value={formatCurrency(data.liesch + data.fundos)} sub="R$41 + R$100k fundos" icon={Landmark} color="slate" href="/extrato" />
-        <DashCard title="Recebimentos YTD" value={formatCurrency(data.recYTD)} icon={TrendingUp} color="green" href="/extrato" />
-        <DashCard title="Pagamentos YTD" value={formatCurrency(-data.pagYTD)} icon={TrendingDown} color="red" href="/extrato" />
+        <DashCard title="Recebimentos" value={formatCurrency(data.recYTD)} icon={TrendingUp} color="green" href="/extrato" /> value={formatCurrency(data.recYTD)} icon={TrendingUp} color="green" href="/extrato" />
+        <DashCard title="Pagamentos" value={formatCurrency(-data.pagYTD)} icon={TrendingDown} color="red" href="/extrato" /> value={formatCurrency(-data.pagYTD)} icon={TrendingDown} color="red" href="/extrato" />
       </div>
 
       {/* Faturamento */}
@@ -206,13 +269,13 @@ export default function Dashboard() {
         <div>
           <SectionTitle icon={ShoppingCart} label="Compras" />
           <div className="grid grid-cols-1 gap-3">
-            <DashCard title="Total Compras YTD" value={formatCurrency(-data.totalCompras)} sub="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} color="red" href="/compras" />
+            <DashCard title="Total Compras" value={formatCurrency(-data.totalCompras)} sub="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} color="red" href="/compras" /> value={formatCurrency(-data.totalCompras)} sub="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} color="red" href="/compras" />
           </div>
         </div>
         <div>
           <SectionTitle icon={Hammer} label="Obras e Reformas" />
           <div className="grid grid-cols-1 gap-3">
-            <DashCard title="Total Obras YTD" value={formatCurrency(-data.totalObras)} sub="Mão de obra R$9.500 · Mat. R$2.057" icon={Hammer} color="emerald" href="/obras" />
+            <DashCard title="Total Obras" value={formatCurrency(-data.totalObras)} sub="Mão de obra + Material" icon={Hammer} color="emerald" href="/obras" /> value={formatCurrency(-data.totalObras)} sub="Mão de obra R$9.500 · Mat. R$2.057" icon={Hammer} color="emerald" href="/obras" />
           </div>
         </div>
       </div>
