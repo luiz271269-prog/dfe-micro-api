@@ -120,7 +120,7 @@ export default function Dashboard() {
   }, []);
 
   // Recompute data when month/annual changes
-  useMemo(() => {
+  useEffect(() => {
     const { lanc, nfs, tit, comp, obras, trib, func, folhas } = rawData;
     const filter = (arr, dateField) => isAnnual ? arr : arr.filter(r => (r[dateField] || '').startsWith(selectedMonth));
     const lancF = filter(lanc, 'data');
@@ -160,7 +160,6 @@ export default function Dashboard() {
       }
       return d;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rawData, selectedMonth, isAnnual]);
 
   if (loading) return (
@@ -243,8 +242,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <DashCard title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Conta 36092-2" icon={Landmark} color="blue" href="/extrato" />
         <DashCard title="Liesch + Fundos" value={formatCurrency(data.liesch + data.fundos)} sub="R$41 + R$100k fundos" icon={Landmark} color="slate" href="/extrato" />
-        <DashCard title="Recebimentos" value={formatCurrency(data.recYTD)} icon={TrendingUp} color="green" href="/extrato" /> value={formatCurrency(data.recYTD)} icon={TrendingUp} color="green" href="/extrato" />
-        <DashCard title="Pagamentos" value={formatCurrency(-data.pagYTD)} icon={TrendingDown} color="red" href="/extrato" /> value={formatCurrency(-data.pagYTD)} icon={TrendingDown} color="red" href="/extrato" />
+        <DashCard title="Recebimentos" value={formatCurrency(data.recYTD)} icon={TrendingUp} color="green" href="/extrato" />
+        <DashCard title="Pagamentos" value={formatCurrency(-data.pagYTD)} icon={TrendingDown} color="red" href="/extrato" />
       </div>
 
       {/* Faturamento */}
@@ -269,13 +268,13 @@ export default function Dashboard() {
         <div>
           <SectionTitle icon={ShoppingCart} label="Compras" />
           <div className="grid grid-cols-1 gap-3">
-            <DashCard title="Total Compras" value={formatCurrency(-data.totalCompras)} sub="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} color="red" href="/compras" /> value={formatCurrency(-data.totalCompras)} sub="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} color="red" href="/compras" />
+            <DashCard title="Total Compras" value={formatCurrency(-data.totalCompras)} sub="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} color="red" href="/compras" />
           </div>
         </div>
         <div>
           <SectionTitle icon={Hammer} label="Obras e Reformas" />
           <div className="grid grid-cols-1 gap-3">
-            <DashCard title="Total Obras" value={formatCurrency(-data.totalObras)} sub="Mão de obra + Material" icon={Hammer} color="emerald" href="/obras" /> value={formatCurrency(-data.totalObras)} sub="Mão de obra R$9.500 · Mat. R$2.057" icon={Hammer} color="emerald" href="/obras" />
+            <DashCard title="Total Obras" value={formatCurrency(-data.totalObras)} sub="Mão de obra + Material" icon={Hammer} color="emerald" href="/obras" />
           </div>
         </div>
       </div>
