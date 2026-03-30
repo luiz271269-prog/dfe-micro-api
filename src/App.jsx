@@ -19,6 +19,7 @@ import Tributos from './pages/Tributos';
 import Funcionarios from './pages/Funcionarios';
 import FluxoCaixa from './pages/FluxoCaixa';
 import MapaGeral from './pages/MapaGeral';
+import ImportarDocumento from './pages/ImportarDocumento';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -62,6 +63,7 @@ const AuthenticatedApp = () => {
         <Route path="/funcionarios" element={<Funcionarios />} />
         <Route path="/fluxocaixa" element={<FluxoCaixa />} />
         <Route path="/mapa" element={<MapaGeral />} />
+        <Route path="/importar" element={<ImportarDocumento />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

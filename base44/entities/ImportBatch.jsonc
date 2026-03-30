@@ -1,0 +1,56 @@
+{
+  "name": "ImportBatch",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "T\u00edtulo"
+    },
+    "batch_type": {
+      "type": "string",
+      "title": "Tipo de Documento"
+    },
+    "file_name": {
+      "type": "string",
+      "title": "Nome do Arquivo"
+    },
+    "total_records": {
+      "type": "number",
+      "title": "Total de Registros",
+      "default": 0
+    },
+    "success_count": {
+      "type": "number",
+      "title": "Salvos",
+      "default": 0
+    },
+    "duplicate_count": {
+      "type": "number",
+      "title": "Duplicatas",
+      "default": 0
+    },
+    "error_count": {
+      "type": "number",
+      "title": "Erros",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "processing",
+        "completed",
+        "failed"
+      ],
+      "title": "Status",
+      "default": "processing"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Observa\u00e7\u00f5es"
+    }
+  },
+  "required": [
+    "batch_type",
+    "status"
+  ]
+}
