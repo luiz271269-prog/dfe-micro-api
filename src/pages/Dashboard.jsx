@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { 
@@ -128,7 +128,7 @@ export default function Dashboard() {
     const titF = filter(tit, 'data_vencimento');
     const compF = filter(comp, 'data_emissao');
     const obrasF = filter(obras, 'data');
-    const mes = isAnnual ? selectedMonth.slice(0,4) : selectedMonth;
+
 
     setData(prev => {
       const d = { ...prev };
