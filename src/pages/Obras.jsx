@@ -150,6 +150,15 @@ export default function Obras() {
 
   const mainLocais = LOCAIS.filter(l => ['pavilhao', 'loja', 'terraco'].includes(l.value));
 
+  const monthTotals = useMemo(() => {
+    const t = {};
+    obras.forEach(o => {
+      const m = o.data?.slice(0, 7);
+      if (m) t[m] = (t[m] || 0) + (o.valor || 0);
+    });
+    return t;
+  }, [obras]);
+
   async function handleSubmit(e) {
     e.preventDefault();
     await base44.entities.ObraReforma.create({
