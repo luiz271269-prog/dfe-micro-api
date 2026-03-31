@@ -70,6 +70,14 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={`
         fixed md:relative z-50 md:z-auto h-full
