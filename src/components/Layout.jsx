@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart, 
   Hammer, CreditCard, Map, ChevronLeft, ChevronRight, LogOut,
-  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload
+  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload, Menu, X
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -65,12 +65,18 @@ function Breadcrumb({ location }) {
 export default function Layout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const today = new Date();
 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className={`${collapsed ? 'w-[72px]' : 'w-[260px]'} bg-sidebar flex flex-col border-r border-sidebar-border transition-all duration-300 ease-in-out shrink-0`}>
+      <aside className={`
+        fixed md:relative z-50 md:z-auto h-full
+        ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
+        ${collapsed ? 'md:w-[72px]' : 'md:w-[260px]'} w-[260px]
+        bg-sidebar flex flex-col border-r border-sidebar-border transition-all duration-300 ease-in-out shrink-0
+      `}>
         {/* Logo */}
         <div className="h-16 flex items-center px-4 border-b border-sidebar-border">
           {!collapsed ? (
@@ -98,6 +104,7 @@ export default function Layout() {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
                   ${isActive 
                     ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md shadow-sidebar-primary/20' 
@@ -116,7 +123,7 @@ export default function Layout() {
         <div className="p-2 border-t border-sidebar-border space-y-0.5">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full"
+            className="hidden md:flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full"
           >
             {collapsed ? <ChevronRight className="w-5 h-5 mx-auto" /> : <><ChevronLeft className="w-5 h-5" /><span>Recolher</span></>}
           </button>
@@ -132,6 +139,16 @@ export default function Layout() {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile top bar */}
+        <div className="flex md:hidden items-center gap-3 px-4 h-14 border-b bg-sidebar shrink-0">
+          <button onClick={() => setMobileOpen(true)} className="text-sidebar-foreground">
+            <Menu className="w-6 h-6" />
+          </button>
+          <div className="w-7 h-7 rounded-lg bg-sidebar-primary flex items-center justify-center">
+            <span className="text-sidebar-primary-foreground font-bold text-xs">NT</span>
+          </div>
+          <span className="text-sidebar-accent-foreground font-semibold text-sm">NeuralTec</span>
+        </div>
         <AlertBar />
         <Breadcrumb location={location} />
         <main className="flex-1 overflow-auto">
