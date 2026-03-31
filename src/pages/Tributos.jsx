@@ -83,7 +83,7 @@ export default function Tributos() {
   );
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Gestão de Tributos" subtitle={`${tributos.length} tributos cadastrados`}>
         <MonthNavigator
           selectedMonth={selectedMonth}
@@ -159,10 +159,10 @@ export default function Tributos() {
             <thead className="border-b">
               <tr className="bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold">Tipo</th>
-                <th className="text-left px-4 py-3 font-semibold">Descrição</th>
-                <th className="text-left px-4 py-3 font-semibold">Competência</th>
-                <th className="text-left px-4 py-3 font-semibold">Vencimento</th>
-                <th className="text-left px-4 py-3 font-semibold">Empresa</th>
+                <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">Descrição</th>
+                <th className="hidden md:table-cell text-left px-4 py-3 font-semibold">Competência</th>
+                <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">Vencimento</th>
+                <th className="hidden lg:table-cell text-left px-4 py-3 font-semibold">Empresa</th>
                 <th className="text-right px-4 py-3 font-semibold">Valor</th>
                 <th className="text-left px-4 py-3 font-semibold">Status</th>
               </tr>
@@ -172,14 +172,14 @@ export default function Tributos() {
                 <tr><td colSpan="7" className="px-4 py-8 text-center text-muted-foreground">Nenhum tributo encontrado</td></tr>
               ) : (
                 filtrados.map(t => (
-                  <tr key={t.id} className={`border-b ${t.status === 'vencido' ? 'bg-red-50' : ''}`}>
-                    <td className="px-4 py-3 font-semibold">{t.tipo}</td>
-                    <td className="px-4 py-3">{t.descricao || '—'}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{t.competencia}</td>
-                    <td className="px-4 py-3 text-xs">{formatDate(t.data_vencimento)}</td>
-                    <td className="px-4 py-3 text-xs">{t.empresa}</td>
-                    <td className="px-4 py-3 text-right font-bold">{formatCurrency(t.valor_original)}</td>
-                    <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
+                <tr key={t.id} className={`border-b ${t.status === 'vencido' ? 'bg-red-50' : ''}`}>
+                  <td className="px-4 py-3 font-semibold">{t.tipo}</td>
+                  <td className="hidden sm:table-cell px-4 py-3">{t.descricao || '—'}</td>
+                  <td className="hidden md:table-cell px-4 py-3 text-xs text-muted-foreground">{t.competencia}</td>
+                  <td className="hidden sm:table-cell px-4 py-3 text-xs">{formatDate(t.data_vencimento)}</td>
+                  <td className="hidden lg:table-cell px-4 py-3 text-xs">{t.empresa}</td>
+                  <td className="px-4 py-3 text-right font-bold">{formatCurrency(t.valor_original)}</td>
+                  <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
                   </tr>
                 ))
               )}

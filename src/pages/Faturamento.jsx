@@ -96,7 +96,7 @@ export default function Faturamento() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Faturamento" subtitle="Notas Fiscais e Contratos de Intermediação">
         <MonthNavigator
           selectedMonth={selectedMonth}
@@ -180,12 +180,12 @@ export default function Faturamento() {
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">NF/CI</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Vendedor</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Emissão</th>
+                <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Vendedor</th>
+                <th className="hidden md:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Emissão</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Total</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Recebido</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Aberto</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Próx. Venc.</th>
+                <th className="hidden sm:table-cell text-right px-4 py-3 font-semibold text-muted-foreground">Recebido</th>
+                <th className="hidden sm:table-cell text-right px-4 py-3 font-semibold text-muted-foreground">Aberto</th>
+                <th className="hidden lg:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Próx. Venc.</th>
                 <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Status</th>
               </tr>
             </thead>
@@ -198,18 +198,18 @@ export default function Faturamento() {
                 filtered.map(n => (
                   <tr key={n.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setDetalhes(n)}>
                     <td className="px-4 py-3 font-medium">{n.numero} <span className="text-xs text-muted-foreground">({n.tipo})</span></td>
-                    <td className="px-4 py-3">{n.cliente}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${n.vendedor === 'Tiago' ? 'bg-blue-100 text-blue-700' : n.vendedor === 'Thais' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'}`}>
-                        {n.vendedor}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(n.data_emissao)}</td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatCurrency(n.valor_total)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-green-600">{formatCurrency(n.valor_recebido)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-orange-600">{formatCurrency(n.valor_aberto)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm">{formatDate(n.data_vencimento_proxima)}</td>
-                    <td className="px-4 py-3 text-center"><StatusBadge status={n.status} /></td>
+                      <td className="px-4 py-3">{n.cliente}</td>
+                      <td className="hidden sm:table-cell px-4 py-3">
+                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${n.vendedor === 'Tiago' ? 'bg-blue-100 text-blue-700' : n.vendedor === 'Thais' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700'}`}>
+                         {n.vendedor}
+                       </span>
+                     </td>
+                      <td className="hidden md:table-cell px-4 py-3 whitespace-nowrap">{formatDate(n.data_emissao)}</td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatCurrency(n.valor_total)}</td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-green-600">{formatCurrency(n.valor_recebido)}</td>
+                      <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-orange-600">{formatCurrency(n.valor_aberto)}</td>
+                      <td className="hidden lg:table-cell px-4 py-3 whitespace-nowrap text-sm">{formatDate(n.data_vencimento_proxima)}</td>
+                      <td className="px-4 py-3 text-center"><StatusBadge status={n.status} /></td>
                   </tr>
                 ))
               )}

@@ -89,7 +89,7 @@ export default function ExtratoBancario() {
   const meses = [...new Set(lancamentos.map(l => l.mes_referencia).filter(Boolean))].sort();
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Extrato Bancário" subtitle="NeuralTec · Sicredi Conta 36092-2 · Cooperativa 2604">
         <MonthNavigator
           selectedMonth={selectedMonth}
@@ -159,9 +159,9 @@ export default function ExtratoBancario() {
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
+                <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Saldo</th>
+                <th className="hidden md:table-cell text-right px-4 py-3 font-semibold text-muted-foreground">Saldo</th>
               </tr>
             </thead>
             <tbody>
@@ -174,36 +174,36 @@ export default function ExtratoBancario() {
                   <tr key={l.id} className="border-b hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(l.data)}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium">{l.descricao}</p>
-                      {l.detalhe && <p className="text-xs text-muted-foreground">{l.detalhe}</p>}
+                     <p className="font-medium">{l.descricao}</p>
+                     {l.detalhe && <p className="text-xs text-muted-foreground">{l.detalhe}</p>}
                     </td>
-                    <td className="px-4 py-3">
-                       {editingCategoria === l.id ? (
-                         <select
-                           autoFocus
-                           defaultValue={l.categoria}
-                           onBlur={e => handleCategoriaChange(l.id, e.target.value)}
-                           onChange={e => handleCategoriaChange(l.id, e.target.value)}
-                           className="text-xs border rounded px-2 py-1 bg-background"
-                         >
-                           {Object.entries(categoriaLabels).map(([k, v]) => (
-                             <option key={k} value={k}>{v}</option>
-                           ))}
-                         </select>
-                       ) : (
-                         <button
-                           onClick={e => { e.stopPropagation(); setEditingCategoria(l.id); }}
-                           title="Clique para editar"
-                           className="hover:opacity-70 transition-opacity"
-                         >
-                           <StatusBadge status={l.categoria} />
-                         </button>
-                       )}
+                    <td className="hidden sm:table-cell px-4 py-3">
+                      {editingCategoria === l.id ? (
+                        <select
+                          autoFocus
+                          defaultValue={l.categoria}
+                          onBlur={e => handleCategoriaChange(l.id, e.target.value)}
+                          onChange={e => handleCategoriaChange(l.id, e.target.value)}
+                          className="text-xs border rounded px-2 py-1 bg-background"
+                        >
+                          {Object.entries(categoriaLabels).map(([k, v]) => (
+                            <option key={k} value={k}>{v}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <button
+                          onClick={e => { e.stopPropagation(); setEditingCategoria(l.id); }}
+                          title="Clique para editar"
+                          className="hover:opacity-70 transition-opacity"
+                        >
+                          <StatusBadge status={l.categoria} />
+                        </button>
+                      )}
                      </td>
                     <td className={`px-4 py-3 text-right font-semibold tabular-nums ${(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(l.valor)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{l.saldo_apos != null ? formatCurrency(l.saldo_apos) : '—'}</td>
+                    <td className="hidden md:table-cell px-4 py-3 text-right tabular-nums text-muted-foreground">{l.saldo_apos != null ? formatCurrency(l.saldo_apos) : '—'}</td>
                   </tr>
                 ))
               )}
