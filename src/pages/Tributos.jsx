@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, AlertTriangle, Calendar, AlertCircle } from 'lucide-react';
+import { Plus, AlertTriangle, Calendar, AlertCircle, DollarSign, CheckCircle } from 'lucide-react';
+import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -106,24 +107,30 @@ export default function Tributos() {
 
       {/* Cards resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs font-semibold text-muted-foreground mb-1">A Pagar</p>
-          <p className="text-2xl font-bold">{formatCurrency(totalAPagar)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{filtrados.filter(t => t.status !== 'pago').length} itens</p>
-        </div>
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs font-semibold text-muted-foreground mb-1">Pago no Mês</p>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPago)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{filtrados.filter(t => t.status === 'pago').length} itens</p>
-        </div>
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs font-semibold text-muted-foreground mb-1">Vencidos</p>
-          <p className={`text-2xl font-bold ${vencidos > 0 ? 'text-red-600' : 'text-slate-600'}`}>{vencidos}</p>
-          <p className="text-xs text-muted-foreground mt-1">tributos atrasados</p>
-        </div>
+        <GradientCard
+          title="A Pagar"
+          value={formatCurrency(totalAPagar)}
+          sub={`${filtrados.filter(t=>t.status!=='pago').length} itens pendentes`}
+          icon={AlertTriangle}
+          gradient="red"
+        />
+        <GradientCard
+          title="Pago no Mês"
+          value={formatCurrency(totalPago)}
+          sub={`${filtrados.filter(t=>t.status==='pago').length} itens quitados`}
+          icon={CheckCircle}
+          gradient="green"
+        />
+        <GradientCard
+          title="Vencidos"
+          value={vencidos}
+          sub={vencidos > 0 ? '⚠ Regularize imediatamente' : 'Tudo em dia'}
+          icon={AlertCircle}
+          gradient={vencidos > 0 ? 'red' : 'teal'}
+        />
       </div>
 
-      {/* Filtros */}
+      {/* Filtros */
       <div className="bg-card rounded-xl border p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Select value={filterTipo} onValueChange={setFilterTipo}>
           <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tipo" /></SelectTrigger>
@@ -149,8 +156,8 @@ export default function Tributos() {
       <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/30">
-              <tr>
+            <thead className="border-b">
+              <tr className="bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold">Tipo</th>
                 <th className="text-left px-4 py-3 font-semibold">Descrição</th>
                 <th className="text-left px-4 py-3 font-semibold">Competência</th>

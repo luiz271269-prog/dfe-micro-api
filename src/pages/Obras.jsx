@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Hammer, Building2, Wrench } from 'lucide-react';
+import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -186,13 +187,13 @@ export default function Obras() {
       </PageHeader>
 
       {/* Seção 1 — Resumo por local principal */}
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Resumo por Local</p>
+      <p className="text-xs font-bold text-white uppercase tracking-wider mb-3 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600">📍 Resumo por Local</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         {mainLocais.map(l => <LocalCard key={l.value} local={l} obras={obras} />)}
       </div>
 
-      {/* Seção 2 — Resumo por tipo de profissional */}
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Resumo por Especialidade</p>
+      {/* Seção 2 — Resumo por tipo de profissional */
+      <p className="text-xs font-bold text-white uppercase tracking-wider mb-3 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600">🔧 Resumo por Especialidade</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-6">
         {PROFISSIONAIS.map(p => {
           const items = obras.filter(o => o.tipo_profissional === p.value);
@@ -208,7 +209,7 @@ export default function Obras() {
       </div>
 
       {/* Seção 5 — Orçado vs Realizado */}
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Orçado × Realizado por Local</p>
+      <p className="text-xs font-bold text-white uppercase tracking-wider mb-3 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600">📊 Orçado × Realizado por Local</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         {mainLocais.map(l => <OrcadoRealizadoBar key={l.value} local={l} obras={obras} />)}
       </div>
@@ -253,7 +254,7 @@ export default function Obras() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
+              <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Data</th>
                 <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Local</th>
                 <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Profissional</th>

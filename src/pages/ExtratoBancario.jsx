@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, Filter } from 'lucide-react';
+import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -107,27 +108,23 @@ export default function ExtratoBancario() {
         {Object.entries(totais).map(([cat, val]) => {
           const isActive = filterCategoria === cat;
           return (
-            <button
+            <GradientCard
               key={cat}
+              title={categoriaLabels[cat] || cat}
+              value={formatCurrency(val)}
+              gradient={val >= 0 ? 'green' : 'red'}
+              active={isActive}
               onClick={() => setFilterCategoria(isActive ? 'all' : cat)}
-              className={`rounded-lg border p-3 text-left transition-all hover:shadow-md ${
-                isActive ? 'border-primary bg-primary/5 shadow ring-1 ring-primary/30' : 'bg-card hover:border-muted-foreground/30'
-              }`}
-            >
-              <p className={`text-xs font-semibold mb-0.5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>{categoriaLabels[cat] || cat}</p>
-              <p className={`text-sm font-bold tabular-nums ${val >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(val)}</p>
-            </button>
+            />
           );
         })}
-        <button
+        <GradientCard
+          title="Total"
+          value={formatCurrency(totalGeral)}
+          gradient={totalGeral >= 0 ? 'blue' : 'red'}
+          active={filterCategoria === 'all'}
           onClick={() => setFilterCategoria('all')}
-          className={`rounded-lg border p-3 text-left transition-all hover:shadow-md ${
-            filterCategoria === 'all' ? 'border-primary bg-primary/5 shadow ring-1 ring-primary/30' : 'bg-card hover:border-muted-foreground/30'
-          }`}
-        >
-          <p className={`text-xs font-semibold mb-0.5 ${filterCategoria === 'all' ? 'text-primary' : 'text-muted-foreground'}`}>Total</p>
-          <p className={`text-sm font-bold tabular-nums ${totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totalGeral)}</p>
-        </button>
+        />
       </div>
 
       {/* Filters */}
@@ -159,7 +156,7 @@ export default function ExtratoBancario() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
+              <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>

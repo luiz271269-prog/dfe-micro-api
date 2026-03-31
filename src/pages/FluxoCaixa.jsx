@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, AlertTriangle, TrendingDown } from 'lucide-react';
+import { Plus, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Landmark, DollarSign } from 'lucide-react';
+import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -130,29 +131,13 @@ export default function FluxoCaixa() {
 
       {/* Cards resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs font-semibold text-muted-foreground mb-1">Entradas</p>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(entradasTotal)}</p>
-          <p className="text-xs text-muted-foreground mt-1">próx. 30 dias</p>
-        </div>
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs font-semibold text-muted-foreground mb-1">Saídas</p>
-          <p className="text-2xl font-bold text-red-600">{formatCurrency(saidasTotal)}</p>
-          <p className="text-xs text-muted-foreground mt-1">próx. 30 dias</p>
-        </div>
-        <div className="bg-card rounded-xl border p-4">
-          <p className="text-xs font-semibold text-muted-foreground mb-1">Saldo Atual</p>
-          <p className="text-2xl font-bold">R$ 54.187,06</p>
-          <p className="text-xs text-muted-foreground mt-1">NeuralTec 36092-2</p>
-        </div>
-        <div className={`rounded-xl border p-4 ${alertaNegativo ? 'bg-red-50 border-red-200' : 'bg-card'}`}>
-          <p className="text-xs font-semibold text-muted-foreground mb-1">Saldo Projetado</p>
-          <p className={`text-2xl font-bold ${alertaNegativo ? 'text-red-600' : 'text-blue-600'}`}>{formatCurrency(saldoProjetado)}</p>
-          <p className="text-xs text-muted-foreground mt-1">em 30 dias</p>
-        </div>
+        <GradientCard title="Entradas" value={formatCurrency(entradasTotal)} sub="próx. 30 dias" icon={TrendingUp} gradient="green" />
+        <GradientCard title="Saídas" value={formatCurrency(saidasTotal)} sub="próx. 30 dias" icon={TrendingDown} gradient="red" />
+        <GradientCard title="Saldo Atual" value="R$ 54.187,06" sub="NeuralTec 36092-2" icon={Landmark} gradient="blue" />
+        <GradientCard title="Saldo Projetado" value={formatCurrency(saldoProjetado)} sub="em 30 dias" icon={BarChart3} gradient={alertaNegativo ? 'red' : 'teal'} />
       </div>
 
-      {/* Gráficos */}
+      {/* Gráficos */
       {chartData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <div className="bg-card rounded-xl border p-4">
@@ -200,8 +185,8 @@ export default function FluxoCaixa() {
       <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/30">
-              <tr>
+            <thead className="border-b">
+              <tr className="bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold">Data</th>
                 <th className="text-left px-4 py-3 font-semibold">Descrição</th>
                 <th className="text-left px-4 py-3 font-semibold">Tipo</th>

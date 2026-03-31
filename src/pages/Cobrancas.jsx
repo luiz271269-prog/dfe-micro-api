@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, AlertTriangle, Check } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock } from 'lucide-react';
+import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,10 +131,10 @@ export default function Cobrancas() {
       )}
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-card rounded-xl border p-4"><p className="text-xs text-muted-foreground">Total Emitido</p><p className="text-xl font-bold text-blue-600">{formatCurrency(totalEmitido)}</p></div>
-        <div className="bg-card rounded-xl border p-4"><p className="text-xs text-muted-foreground">Pago</p><p className="text-xl font-bold text-green-600">{formatCurrency(totalPago)}</p><p className="text-xs text-muted-foreground">{totalEmitido > 0 ? ((totalPago / totalEmitido) * 100).toFixed(1) : 0}%</p></div>
-        <div className="bg-card rounded-xl border p-4"><p className="text-xs text-muted-foreground">Em Aberto</p><p className="text-xl font-bold text-orange-600">{formatCurrency(totalAberto)}</p></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <GradientCard title="Total Emitido" value={formatCurrency(totalEmitido)} sub="Boletos gerados" icon={Receipt} gradient="blue" />
+        <GradientCard title="Recebido" value={formatCurrency(totalPago)} sub={`${totalEmitido > 0 ? ((totalPago/totalEmitido)*100).toFixed(1) : 0}% do emitido`} icon={TrendingUp} gradient="green" />
+        <GradientCard title="Em Aberto" value={formatCurrency(totalAberto)} sub="Aguardando pagamento" icon={Clock} gradient="orange" />
       </div>
 
       {/* Quick filters + search */}
@@ -166,7 +167,7 @@ export default function Cobrancas() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
+              <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Nosso Nº</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Vencimento</th>

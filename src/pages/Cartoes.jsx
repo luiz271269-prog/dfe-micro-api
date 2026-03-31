@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, CreditCard, ChevronDown, ChevronUp, Calendar, PieChart } from 'lucide-react';
+import { Plus, CreditCard, ChevronDown, ChevronUp, Calendar, PieChart, DollarSign, AlertCircle } from 'lucide-react';
+import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -163,6 +164,21 @@ export default function Cartoes() {
         />
         <Button onClick={() => setShowFaturaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Fatura</Button>
       </PageHeader>
+
+      {/* Resumo do mês */}
+      {(() => {
+        const totalMes = filteredFaturas.reduce((s,f)=>s+(f.valor_total||0),0);
+        const totalPagoMes = filteredFaturas.filter(f=>f.status==='paga_total').reduce((s,f)=>s+(f.valor_pago||0),0);
+        const proxVenc = cartoes.sort((a,b)=>a.dia_vencimento-b.dia_vencimento)[0];
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <GradientCard title="Total Faturas" value={formatCurrency(totalMes)} sub={`${filteredFaturas.length} faturas`} icon={CreditCard} gradient="purple" />
+            <GradientCard title="Total Pago" value={formatCurrency(totalPagoMes)} sub="Faturas quitadas" icon={DollarSign} gradient="green" />
+            <GradientCard title="A Pagar" value={formatCurrency(totalMes - totalPagoMes)} sub="Saldo restante" icon={AlertCircle} gradient="orange" />
+            <GradientCard title="Cartões Ativos" value={cartoes.filter(c=>c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
+          </div>
+        );
+      })()}
 
       {/* Timeline de vencimentos */}
       <div className="bg-card rounded-xl border p-5 mb-6">

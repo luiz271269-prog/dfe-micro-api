@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, FileText, TrendingUp, DollarSign } from 'lucide-react';
+import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,48 +110,34 @@ export default function Faturamento() {
 
       {/* Cards por vendedor */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <button
+        <GradientCard
+          title="Tiago (V-01)"
+          value={formatCurrency(tiagototal)}
+          sub={`✓ ${formatCurrency(tiagoRecebido)} · ⏳ ${formatCurrency(tiagoAberto)} · ${filtered.filter(n=>n.vendedor==='Tiago').length} NFs`}
+          icon={FileText}
+          gradient="blue"
+          active={filterVendedor === 'Tiago'}
           onClick={() => setFilterVendedor(filterVendedor === 'Tiago' ? 'all' : 'Tiago')}
-          className={`rounded-xl border p-5 text-left transition-all hover:shadow-lg group ${filterVendedor === 'Tiago' ? 'border-blue-400 bg-blue-50 shadow-md' : 'bg-card hover:border-blue-200'}`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tiago (V-01)</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${filterVendedor === 'Tiago' ? 'bg-blue-200 text-blue-800' : 'bg-blue-100 text-blue-600'}`}>{filtered.filter(n=>n.vendedor==='Tiago').length} NFs</span>
-          </div>
-          <p className="text-2xl font-bold text-blue-700 tabular-nums">{formatCurrency(tiagototal)}</p>
-          <div className="flex gap-3 mt-2">
-            <span className="text-xs text-green-600 font-medium">✓ {formatCurrency(tiagoRecebido)}</span>
-            <span className="text-xs text-orange-500 font-medium">⏳ {formatCurrency(tiagoAberto)}</span>
-          </div>
-        </button>
-        <button
+        />
+        <GradientCard
+          title="Thais (V-05)"
+          value={formatCurrency(thaisTotal)}
+          sub={`✓ ${formatCurrency(thaisRecebido)} · ⏳ ${formatCurrency(thaisAberto)} · ${filtered.filter(n=>n.vendedor==='Thais').length} NFs`}
+          icon={FileText}
+          gradient="purple"
+          active={filterVendedor === 'Thais'}
           onClick={() => setFilterVendedor(filterVendedor === 'Thais' ? 'all' : 'Thais')}
-          className={`rounded-xl border p-5 text-left transition-all hover:shadow-lg group ${filterVendedor === 'Thais' ? 'border-purple-400 bg-purple-50 shadow-md' : 'bg-card hover:border-purple-200'}`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Thais (V-05)</span>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${filterVendedor === 'Thais' ? 'bg-purple-200 text-purple-800' : 'bg-purple-100 text-purple-600'}`}>{filtered.filter(n=>n.vendedor==='Thais').length} NFs</span>
-          </div>
-          <p className="text-2xl font-bold text-purple-700 tabular-nums">{formatCurrency(thaisTotal)}</p>
-          <div className="flex gap-3 mt-2">
-            <span className="text-xs text-green-600 font-medium">✓ {formatCurrency(thaisRecebido)}</span>
-            <span className="text-xs text-orange-500 font-medium">⏳ {formatCurrency(thaisAberto)}</span>
-          </div>
-        </button>
-        <div className="rounded-xl border p-5 bg-gradient-to-br from-slate-50 to-slate-100">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Geral</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">{filtered.length} NFs</span>
-          </div>
-          <p className="text-2xl font-bold text-foreground tabular-nums">{formatCurrency(totalFaturado)}</p>
-          <div className="flex gap-3 mt-2">
-            <span className="text-xs text-green-600 font-medium">✓ {formatCurrency(totalRecebido)}</span>
-            <span className="text-xs text-orange-500 font-medium">⏳ {formatCurrency(totalAberto)}</span>
-          </div>
-        </div>
+        />
+        <GradientCard
+          title="Total Geral"
+          value={formatCurrency(totalFaturado)}
+          sub={`✓ ${formatCurrency(totalRecebido)} · ⏳ ${formatCurrency(totalAberto)} · ${filtered.length} NFs`}
+          icon={TrendingUp}
+          gradient="green"
+        />
       </div>
 
-      {/* Filters */}
+      {/* Filters */
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -190,7 +177,7 @@ export default function Faturamento() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
+              <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">NF/CI</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Vendedor</th>

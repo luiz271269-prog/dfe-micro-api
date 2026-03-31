@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, ShoppingCart, TrendingDown } from 'lucide-react';
+import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -98,30 +99,34 @@ export default function Compras() {
 
       {/* Cards por fornecedor */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {fornecedorOptions.map(f => {
+        {fornecedorOptions.map((f, i) => {
           const val = totaisFornecedor[f] || 0;
           const perc = grandTotal > 0 ? ((val / grandTotal) * 100).toFixed(0) : 0;
           const isActive = filterFornecedor === f;
+          const grads = ['orange', 'blue', 'purple'];
           return (
-            <button key={f} onClick={() => setFilterFornecedor(isActive ? 'all' : f)}
-              className={`rounded-xl border p-4 text-left transition-all hover:shadow-md ${isActive ? 'border-primary bg-primary/5' : 'bg-card'}`}>
-              <p className="text-[11px] font-semibold text-muted-foreground leading-tight">{f}</p>
-              <p className="text-lg font-bold text-red-600 mt-1">{formatCurrency(val)}</p>
-              <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-red-400 rounded-full" style={{ width: `${perc}%` }} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">{perc}% do total</p>
-            </button>
+            <GradientCard
+              key={f}
+              title={f}
+              value={formatCurrency(val)}
+              sub={`${perc}% do total`}
+              icon={ShoppingCart}
+              gradient={grads[i] || 'slate'}
+              active={isActive}
+              onClick={() => setFilterFornecedor(isActive ? 'all' : f)}
+            />
           );
         })}
-        <div className="rounded-xl border p-4 bg-card border-dashed">
-          <p className="text-[11px] font-semibold text-muted-foreground">Total Compras</p>
-          <p className="text-lg font-bold text-red-700 mt-1">{formatCurrency(grandTotal)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{compras.length} itens</p>
-        </div>
+        <GradientCard
+          title="Total Compras"
+          value={formatCurrency(grandTotal)}
+          sub={`${compras.length} itens`}
+          icon={TrendingDown}
+          gradient="red"
+        />
       </div>
 
-      {/* Filters */}
+      {/* Filters */
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -148,7 +153,7 @@ export default function Compras() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50">
+              <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Produto</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Fornecedor</th>
