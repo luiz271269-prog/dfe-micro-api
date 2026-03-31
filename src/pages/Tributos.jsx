@@ -130,7 +130,7 @@ export default function Tributos() {
         />
       </div>
 
-      {/* Filtros */
+      {/* Filtros */}
       <div className="bg-card rounded-xl border p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Select value={filterTipo} onValueChange={setFilterTipo}>
           <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tipo" /></SelectTrigger>

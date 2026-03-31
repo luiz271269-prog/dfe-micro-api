@@ -137,7 +137,7 @@ export default function FluxoCaixa() {
         <GradientCard title="Saldo Projetado" value={formatCurrency(saldoProjetado)} sub="em 30 dias" icon={BarChart3} gradient={alertaNegativo ? 'red' : 'teal'} />
       </div>
 
-      {/* Gráficos */
+      {/* Gráficos */}
       {chartData.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <div className="bg-card rounded-xl border p-4">

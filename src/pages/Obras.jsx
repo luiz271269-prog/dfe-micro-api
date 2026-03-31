@@ -192,7 +192,7 @@ export default function Obras() {
         {mainLocais.map(l => <LocalCard key={l.value} local={l} obras={obras} />)}
       </div>
 
-      {/* Seção 2 — Resumo por tipo de profissional */
+      {/* Seção 2 — Resumo por tipo de profissional */}
       <p className="text-xs font-bold text-white uppercase tracking-wider mb-3 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600">🔧 Resumo por Especialidade</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-6">
         {PROFISSIONAIS.map(p => {
