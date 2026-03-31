@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
-import { Scale, ChevronDown, ChevronUp, Play, RefreshCw } from 'lucide-react';
+import { Scale, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // ── Conciliação JS Nativa ──────────────────────────────────────────────────────
@@ -216,21 +216,45 @@ export default function ConciliacaoMensal() {
     });
   }, []);
 
-  // Carregar dados quando mês muda
+  // Carregar dados quando mês muda — se não há dados, processa automaticamente
   useEffect(() => {
     if (!mesSelecionado) return;
     setLoading(true);
     Promise.all([
       base44.entities.ConciliacaoItem.filter({ mes_referencia: mesSelecionado }),
       base44.entities.NotaFiscal.list('-data_emissao', 200),
-    ]).then(([concItems, todasNfs]) => {
-      setItens(concItems.sort((a, b) => a.data_extrato > b.data_extrato ? 1 : -1));
+      base44.entities.LancamentoBancario.list('-data', 500),
+    ]).then(async ([concItems, todasNfs, todosLanc]) => {
       const mesAnt = mesAnterior(mesSelecionado);
       const nfsFiltradas = todasNfs.filter(nf => {
         if (!nf.data_emissao) return false;
         return nf.data_emissao >= mesAnt + '-01' && nf.data_emissao <= mesSelecionado + '-31';
       });
       setNfsMes(nfsFiltradas);
+
+      if (concItems.length > 0) {
+        setItens(concItems.sort((a, b) => a.data_extrato > b.data_extrato ? 1 : -1));
+        return;
+      }
+
+      // Sem dados → processar automaticamente
+      const entradas = todosLanc.filter(l => l.mes_referencia === mesSelecionado && l.valor > 0);
+      if (entradas.length === 0) return;
+
+      setLoading(false);
+      setProcessando(true);
+      const resultado = conciliarMes(entradas, nfsFiltradas);
+      await base44.entities.ConciliacaoItem.bulkCreate(resultado);
+      const salvos = await base44.entities.ConciliacaoItem.filter({ mes_referencia: mesSelecionado });
+      const sorted = salvos.sort((a, b) => a.data_extrato > b.data_extrato ? 1 : -1);
+      setItens(sorted);
+      const counts = {};
+      resultado.forEach(r => { counts[r.status_conciliacao] = (counts[r.status_conciliacao] || 0) + 1; });
+      toast({
+        title: `✓ ${resultado.length} entradas processadas`,
+        description: `${counts.conciliado || 0} conciliadas · ${counts.cob_lote || 0} COB lotes · ${counts.nao_identificado || 0} a verificar`,
+      });
+      setProcessando(false);
     }).finally(() => setLoading(false));
   }, [mesSelecionado]);
 
@@ -313,14 +337,13 @@ export default function ConciliacaoMensal() {
           {temDados ? (
             <Button variant="outline" size="sm" onClick={() => handleProcessar(true)} disabled={processando}>
               <RefreshCw className={`w-4 h-4 ${processando ? 'animate-spin' : ''}`} />
-              Re-processar
+              {processando ? 'Re-processando...' : '↺ Re-processar'}
             </Button>
-          ) : (
-            <Button onClick={() => handleProcessar(false)} disabled={processando || loading}>
-              <Play className="w-4 h-4" />
-              {processando ? 'Processando...' : '▶ Conciliar Mês'}
-            </Button>
-          )}
+          ) : processando ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <RefreshCw className="w-4 h-4 animate-spin" /> Processando...
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -336,8 +359,8 @@ export default function ConciliacaoMensal() {
       {!loading && !temDados && !processando && (
         <div className="text-center py-16 border-2 border-dashed rounded-2xl text-muted-foreground">
           <Scale className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">Nenhuma conciliação processada para {fmtMesLabel(mesSelecionado)}</p>
-          <p className="text-sm mt-1">Clique em "▶ Conciliar Mês" para executar o matching automático</p>
+          <p className="font-medium">Nenhum lançamento encontrado para {fmtMesLabel(mesSelecionado)}</p>
+          <p className="text-sm mt-1">Verifique se há lançamentos bancários importados para este mês</p>
         </div>
       )}
 
