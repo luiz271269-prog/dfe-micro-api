@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart, 
   Hammer, CreditCard, Map, ChevronLeft, ChevronRight, LogOut,
-  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload, Menu, X
+  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload, Menu, X, Scale
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -20,6 +20,7 @@ const navItems = [
   { path: '/fluxocaixa', label: 'Fluxo de Caixa', icon: BarChart3 },
   { path: '/mapa', label: 'Mapa Geral', icon: Map },
   { path: '/importar', label: 'Importar Documento', icon: CloudUpload },
+  { path: '/conciliacao', label: 'Conciliação Mensal', icon: Scale },
 ];
 
 function AlertBar() {
