@@ -78,6 +78,74 @@ export default function ImportarDocumento() {
     setContasCartao(cartoes);
   }
 
+  // ---- IMPORTAÇÃO DIRETA DE FATURA DE CARTÃO ----
+  async function importarFaturaCartao(contaCartaoId) {
+    const res = await processDocument({ fileData, fileType, docType: 'fatura_cartao' });
+    const { parsed } = res.data || res;
+
+    if (!parsed || !parsed.fatura || !parsed.lancamentos) {
+      throw new Error('IA não retornou estrutura válida (fatura + lancamentos). Tente novamente.');
+    }
+    if (!Array.isArray(parsed.lancamentos) || parsed.lancamentos.length === 0) {
+      throw new Error('Nenhum lançamento encontrado na fatura.');
+    }
+
+    // Salvar FaturaCartao
+    const faturaData = {
+      conta_cartao_id: contaCartaoId,
+      mes_referencia: parsed.fatura.mes_referencia,
+      data_vencimento: parsed.fatura.data_vencimento,
+      valor_total: parsed.fatura.valor_total,
+      valor_pago: 0,
+      status: 'aberta',
+    };
+    const faturaResponse = await base44.entities.FaturaCartao.create(faturaData);
+    const faturaId = faturaResponse.id;
+    if (!faturaId) throw new Error('Falha ao criar FaturaCartao — sem ID retornado.');
+
+    // Salvar TODOS os LancamentoCartao
+    const errosLancamento = [];
+    let salvos = 0;
+    for (const lanc of parsed.lancamentos) {
+      try {
+        await base44.entities.LancamentoCartao.create({
+          fatura_id: faturaId,
+          data_lancamento: lanc.data_lancamento,
+          estabelecimento: lanc.estabelecimento || 'Não identificado',
+          categoria: lanc.categoria || 'outro',
+          valor: lanc.valor,
+          natureza: lanc.natureza || 'pessoal',
+          empresa_beneficiada: lanc.natureza === 'empresarial' ? 'NeuralTec' : 'pessoal',
+          observacao: lanc.descricao || '',
+        });
+        salvos++;
+      } catch (e) {
+        errosLancamento.push(`${lanc.estabelecimento}: ${e.message}`);
+      }
+    }
+
+    await base44.entities.ImportBatch.create({
+      title: `Fatura Cartão — ${file?.name || 'arquivo'}`,
+      batch_type: 'fatura_cartao',
+      file_name: file?.name || '',
+      total_records: parsed.lancamentos.length + 1,
+      success_count: salvos + 1,
+      duplicate_count: 0,
+      error_count: errosLancamento.length,
+      status: 'completed',
+      notes: errosLancamento.length > 0 ? `Erros: ${errosLancamento.join('; ')}` : '',
+    });
+
+    return {
+      faturaId,
+      mes_referencia: parsed.fatura.mes_referencia,
+      valor_total: parsed.fatura.valor_total,
+      totalLancamentos: parsed.lancamentos.length,
+      salvos,
+      erros: errosLancamento,
+    };
+  }
+
   async function loadHistory() {
     const batches = await base44.entities.ImportBatch.list('-created_date', 20);
     setHistory(batches);
@@ -116,6 +184,27 @@ export default function ImportarDocumento() {
     setProcessing(true);
     setRecords([]);
     setRawText(null);
+
+    // Fatura de cartão: fluxo direto — extrai e salva tudo em sequência
+    if (selectedType === 'fatura_cartao') {
+      try {
+        const resultado = await importarFaturaCartao(selectedCartaoId);
+        if (resultado.erros.length > 0) {
+          showToast(`✓ Fatura importada — ${resultado.salvos} lançamentos salvos · ${resultado.erros.length} erros`, 'success');
+          setRawText(`Lançamentos com erro:\n${resultado.erros.join('\n')}`);
+        } else {
+          showToast(`✓ Fatura ${resultado.mes_referencia} importada — ${resultado.salvos} lançamentos salvos`);
+        }
+        loadHistory();
+        setStep(4);
+      } catch (err) {
+        showToast(`Erro ao importar fatura: ${err.message}`, 'error');
+      }
+      setProcessing(false);
+      return;
+    }
+
+    // Outros tipos: fluxo com revisão
     try {
       const res = await processDocument({ fileData, fileType, docType: selectedType });
       const { parsed, rawText: raw } = res.data || res;
@@ -126,49 +215,13 @@ export default function ImportarDocumento() {
         return showToast('IA retornou texto não estruturado. Verifique o resultado bruto.', 'error');
       }
 
-      // Normalize to array
-      let items;
-      if (selectedType === 'fatura_cartao' && parsed && parsed.lancamentos) {
-        // For card invoices: create FaturaCartao + LancamentoCartao records
-        const fatura = parsed.fatura || {};
-        const mesRef = fatura.mes_referencia || '';
-        const dataVenc = fatura.data_vencimento || '';
-        const validStatuses = ['aberta', 'paga_total', 'vencida'];
-        const faturaRecord = {
-          conta_cartao_id: selectedCartaoId,
-          mes_referencia: mesRef,
-          data_vencimento: dataVenc,
-          valor_total: fatura.valor_total || 0,
-          status: 'aberta',
-        };
-        const lancamentos = (parsed.lancamentos || []).map(l => ({
-          fatura_id: '__PENDING__',
-          data_lancamento: l.data_lancamento || '',
-          estabelecimento: l.estabelecimento || '',
-          categoria: l.categoria || 'outro',
-          valor: l.valor || 0,
-          natureza: l.natureza || 'pessoal',
-          observacao: l.descricao || '',
-        }));
-        items = [{ __type: 'FaturaCartao', ...faturaRecord }, ...lancamentos.map(l => ({ __type: 'LancamentoCartao', ...l }))];
-      } else {
-        items = Array.isArray(parsed) ? parsed : (parsed.lancamentos ? [parsed.fatura, ...parsed.lancamentos] : [parsed]);
-      }
+      const items = Array.isArray(parsed) ? parsed : (parsed.lancamentos ? [parsed.fatura, ...parsed.lancamentos] : [parsed]);
 
-      // Deduplicate check
       const typeConfig = DOC_TYPES.find(d => d.id === selectedType);
       const enriched = await Promise.all(items.map(async (item) => {
         let dupStatus = 'novo';
         try {
-          if (selectedType === 'fatura_cartao') {
-            if (item.__type === 'FaturaCartao') {
-              const existing = await base44.entities.FaturaCartao.filter({ conta_cartao_id: item.conta_cartao_id, mes_referencia: item.mes_referencia });
-              if (existing && existing.length > 0) dupStatus = 'duplicata';
-            } else if (item.__type === 'LancamentoCartao') {
-              const existing = await base44.entities.LancamentoCartao.filter({ data_lancamento: item.data_lancamento, estabelecimento: item.estabelecimento, valor: item.valor });
-              if (existing && existing.length > 0) dupStatus = 'duplicata';
-            }
-          } else if (typeConfig?.dedup?.length) {
+          if (typeConfig?.dedup?.length) {
             const query = {};
             typeConfig.dedup.forEach(k => { if (item[k] !== undefined) query[k] = item[k]; });
             if (Object.keys(query).length > 0) {
