@@ -63,12 +63,14 @@ Deno.serve(async (req) => {
     const prompt = PROMPTS[docType];
     if (!prompt) return Response.json({ error: `Tipo desconhecido: ${docType}` }, { status: 400 });
 
-    // Use Base44 built-in InvokeLLM with vision (file_urls via base64 data URL)
-    const dataUrl = `data:${fileType};base64,${fileData}`;
+    // Upload file first to get a real URL (InvokeLLM doesn't support data: URIs for PDFs)
+    const binaryData = Uint8Array.from(atob(fileData), c => c.charCodeAt(0));
+    const blob = new Blob([binaryData], { type: fileType });
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: blob });
 
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: prompt,
-      file_urls: [dataUrl],
+      file_urls: [file_url],
       model: 'claude_sonnet_4_6',
     });
 
