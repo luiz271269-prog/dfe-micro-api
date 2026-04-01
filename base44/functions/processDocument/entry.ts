@@ -3,19 +3,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 const PROMPTS = {
   extrato_bancario: `Você é um sistema de extração de dados bancários. Analise este extrato bancário Sicredi e extraia TODOS os lançamentos em JSON.
 Retorne APENAS um array JSON válido, sem texto adicional, no formato:
-[{"data":"YYYY-MM-DD","descricao":"descrição exata do extrato","valor":numero_positivo_ou_negativo,"documento":"COB000001 ou PIX_DEB ou vazio","saldo_apos":numero,"conta_bancaria":"NeuralTec 36092-2"}]
+[{"data":"YYYY-MM-DD","descricao":"descrição exata do extrato","valor":numero_positivo_ou_negativo,"categoria":"recebimento ou fornecedor ou pessoal ou tributo ou despesa_operacional ou financeiro ou saque ou transferencia ou interno","saldo_apos":numero,"conta_bancaria":"NeuralTec 36092-2","detalhe":"documento ex: COB000001 ou PIX_DEB ou vazio"}]
 Regras:
 - Créditos (entradas): valor POSITIVO
 - Débitos (saídas): valor NEGATIVO
 - data no formato YYYY-MM-DD
 - valor como número (ex: -672.85 ou 45000.00)
+- categoria: recebimento para créditos; fornecedor para pagamentos a fornecedores; tributo para impostos/DAS; pessoal para salários; financeiro para tarifas/IOF; transferencia para TEDs entre contas; interno para estornos; despesa_operacional para demais débitos
 - Incluir TODOS os lançamentos, inclusive tarifas e pequenos valores
 - saldo_apos é o saldo após cada lançamento
 - Ignorar linha "SALDO ANTERIOR"`,
 
+
   boletos_liquidados: `Analise este comprovante/tela de boletos liquidados e extraia os pagamentos em JSON.
 Retorne APENAS array JSON:
-[{"pagador":"NOME DO PAGADOR","valor":numero,"data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","nosso_numero":"26/100XXX-X ou vazio","seu_numero":"NF-XXX ou vazio","status":"pago","cliente":"NOME"}]`,
+[{"nosso_numero":"26/100XXX-X ou vazio","seu_numero":"NF-XXX ou vazio","cliente":"NOME DO CLIENTE","data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","valor_titulo":numero,"valor_pago":numero,"status":"pago","canal_cobranca":"sicredi"}]`,
+
 
   relatorio_nfs: `Analise este relatório de notas fiscais (sistema Fabris/Ellitte) e extraia TODAS as NFs em JSON.
 Retorne APENAS array JSON:
@@ -54,7 +57,11 @@ Regras: competencia: inferir do título ex "FOLHA FEVEREIRO 2026" → "2026-02"`
 
   dda_boletos: `Analise este DDA/boletos a vencer e extraia em JSON.
 Retorne APENAS array JSON:
-[{"beneficiario":"NOME","data_vencimento":"YYYY-MM-DD","valor":numero,"documento":"XXXXXXXXXX","conta_bancaria":"NeuralTec 36092-2 ou Liesch 37101-4 ou KLI Tecnologia"}]`,
+[{"data":"YYYY-MM-DD","descricao":"NOME DO BENEFICIÁRIO / DESCRIÇÃO","valor":numero_negativo,"categoria":"fornecedor ou tributo ou financeiro ou despesa_operacional","conta_bancaria":"NeuralTec 36092-2 ou Liesch 37101-4 ou KLI Tecnologia","detalhe":"código de barras ou documento se disponível"}]
+Regras:
+- valor: NEGATIVO (são saídas/débitos futuros)
+- data: data de vencimento do boleto no formato YYYY-MM-DD`,
+
 };
 
 Deno.serve(async (req) => {
