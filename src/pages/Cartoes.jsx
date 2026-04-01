@@ -83,6 +83,7 @@ export default function Cartoes() {
   const [expandedCard, setExpandedCard] = useState(null);
   const [expandedFatura, setExpandedFatura] = useState(null);
   const [showFaturaForm, setShowFaturaForm] = useState(false);
+  const [editingLanc, setEditingLanc] = useState(null); // { id, field }
   const [faturaForm, setFaturaForm] = useState({
     conta_cartao_id: '', mes_referencia: '', data_vencimento: '',
     valor_total: '', status: 'aberta', data_pagamento: '', valor_pago: '0'
@@ -320,29 +321,83 @@ export default function Cartoes() {
                                       </thead>
                                       <tbody>
                                         {fatLancs.map(l => {
-                                          const isExcluded = l.observacao?.includes('Não faz parte');
-                                          return (
-                                            <tr key={l.id} className={`border-b last:border-b-0 ${isExcluded ? 'opacity-40' : ''}`}>
-                                              <td className="py-1.5 whitespace-nowrap">{formatDate(l.data_lancamento)}</td>
-                                              <td className="py-1.5 max-w-[180px] truncate" title={l.estabelecimento}>
-                                                {l.estabelecimento}
-                                                {isExcluded && <span className="ml-1 text-[9px] text-red-500 font-semibold">(não contabilizado)</span>}
-                                              </td>
-                                              <td className="py-1.5">
-                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${categoriaColors[l.categoria] || 'bg-slate-100 text-slate-700'}`}>
-                                                  {categoriaLabels[l.categoria] || l.categoria}
-                                                </span>
-                                              </td>
-                                              <td className="py-1.5">
-                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${l.natureza === 'empresarial' ? 'bg-blue-100 text-blue-700' : l.natureza === 'reembolso' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                                                  {l.natureza}
-                                                </span>
-                                              </td>
-                                              <td className={`py-1.5 text-right font-medium ${l.valor < 0 ? 'text-green-600' : ''}`}>
-                                                {formatCurrency(l.valor)}
-                                              </td>
-                                            </tr>
-                                          );
+                                         const isExcluded = l.observacao?.includes('Não faz parte');
+                                         const editingCat = editingLanc?.id === l.id && editingLanc?.field === 'categoria';
+                                         const editingNat = editingLanc?.id === l.id && editingLanc?.field === 'natureza';
+                                         return (
+                                           <tr key={l.id} className={`border-b last:border-b-0 ${isExcluded ? 'opacity-40' : ''}`}>
+                                             <td className="py-1.5 whitespace-nowrap">{formatDate(l.data_lancamento)}</td>
+                                             <td className="py-1.5 max-w-[180px] truncate" title={l.estabelecimento}>
+                                               {l.estabelecimento}
+                                               {isExcluded && <span className="ml-1 text-[9px] text-red-500 font-semibold">(não contabilizado)</span>}
+                                             </td>
+                                             <td className="py-1.5">
+                                               {editingCat ? (
+                                                 <Select
+                                                   value={l.categoria || ''}
+                                                   onValueChange={async v => {
+                                                     await base44.entities.LancamentoCartao.update(l.id, { categoria: v });
+                                                     setEditingLanc(null);
+                                                     loadData();
+                                                   }}
+                                                   open
+                                                   onOpenChange={open => { if (!open) setEditingLanc(null); }}
+                                                 >
+                                                   <SelectTrigger className="h-6 text-[10px] px-1.5 w-[130px]">
+                                                     <SelectValue />
+                                                   </SelectTrigger>
+                                                   <SelectContent>
+                                                     {Object.entries(categoriaLabels).map(([k, v]) => (
+                                                       <SelectItem key={k} value={k}>{v}</SelectItem>
+                                                     ))}
+                                                   </SelectContent>
+                                                 </Select>
+                                               ) : (
+                                                 <span
+                                                   onClick={() => setEditingLanc({ id: l.id, field: 'categoria' })}
+                                                   className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${categoriaColors[l.categoria] || 'bg-slate-100 text-slate-700'}`}
+                                                   title="Clique para editar"
+                                                 >
+                                                   {categoriaLabels[l.categoria] || l.categoria || '—'}
+                                                 </span>
+                                               )}
+                                             </td>
+                                             <td className="py-1.5">
+                                               {editingNat ? (
+                                                 <Select
+                                                   value={l.natureza || ''}
+                                                   onValueChange={async v => {
+                                                     await base44.entities.LancamentoCartao.update(l.id, { natureza: v });
+                                                     setEditingLanc(null);
+                                                     loadData();
+                                                   }}
+                                                   open
+                                                   onOpenChange={open => { if (!open) setEditingLanc(null); }}
+                                                 >
+                                                   <SelectTrigger className="h-6 text-[10px] px-1.5 w-[110px]">
+                                                     <SelectValue />
+                                                   </SelectTrigger>
+                                                   <SelectContent>
+                                                     <SelectItem value="empresarial">empresarial</SelectItem>
+                                                     <SelectItem value="pessoal">pessoal</SelectItem>
+                                                     <SelectItem value="reembolso">reembolso</SelectItem>
+                                                   </SelectContent>
+                                                 </Select>
+                                               ) : (
+                                                 <span
+                                                   onClick={() => setEditingLanc({ id: l.id, field: 'natureza' })}
+                                                   className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${l.natureza === 'empresarial' ? 'bg-blue-100 text-blue-700' : l.natureza === 'reembolso' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}
+                                                   title="Clique para editar"
+                                                 >
+                                                   {l.natureza || '—'}
+                                                 </span>
+                                               )}
+                                             </td>
+                                             <td className={`py-1.5 text-right font-medium ${l.valor < 0 ? 'text-green-600' : ''}`}>
+                                               {formatCurrency(l.valor)}
+                                             </td>
+                                           </tr>
+                                         );
                                         })}
                                       </tbody>
                                     </table>
