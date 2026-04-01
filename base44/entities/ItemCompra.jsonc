@@ -1,0 +1,63 @@
+{
+  "name": "ItemCompra",
+  "type": "object",
+  "properties": {
+    "fornecedor": {
+      "type": "string",
+      "title": "Fornecedor"
+    },
+    "numero_nota": {
+      "type": "string",
+      "title": "N\u00famero da Nota"
+    },
+    "data_emissao": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Emiss\u00e3o"
+    },
+    "descricao_produto": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o do Produto"
+    },
+    "categoria_produto": {
+      "type": "string",
+      "enum": [
+        "notebook",
+        "tablet",
+        "smartphone",
+        "componente",
+        "memoria",
+        "armazenamento",
+        "periferico",
+        "software",
+        "rede",
+        "outro"
+      ],
+      "title": "Categoria"
+    },
+    "quantidade": {
+      "type": "number",
+      "title": "Quantidade",
+      "default": 1
+    },
+    "valor_unitario": {
+      "type": "number",
+      "title": "Valor Unit\u00e1rio"
+    },
+    "valor_total": {
+      "type": "number",
+      "title": "Valor Total"
+    },
+    "codigo_produto": {
+      "type": "string",
+      "title": "C\u00f3digo do Produto"
+    }
+  },
+  "required": [
+    "fornecedor",
+    "data_emissao",
+    "descricao_produto",
+    "categoria_produto",
+    "valor_total"
+  ]
+}

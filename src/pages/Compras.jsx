@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, ShoppingCart, TrendingDown } from 'lucide-react';
+import { Plus, Search, ShoppingCart, TrendingDown, Building2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -30,20 +31,36 @@ export default function Compras() {
   const [filterFornecedor, setFilterFornecedor] = useState('all');
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [fornecedores, setFornecedores] = useState([]);
+  const [fornInput, setFornInput] = useState('COMPRAS A VISTA');
+  const [showFornSugg, setShowFornSugg] = useState(false);
   const [form, setForm] = useState({
     fornecedor: 'COMPRAS A VISTA', numero_nota: '', data_emissao: '',
     descricao_produto: '', categoria_produto: 'notebook', quantidade: '1',
-    valor_unitario: '', valor_total: ''
+    valor_unitario: '', valor_total: '', codigo_produto: ''
   });
 
   async function loadData() {
     setLoading(true);
-    const data = await base44.entities.ItemCompra.list('-data_emissao', 500);
+    const [data, forns] = await Promise.all([
+      base44.entities.ItemCompra.list('-data_emissao', 500),
+      base44.entities.Fornecedor.list('nome', 200),
+    ]);
     setCompras(data);
+    setFornecedores(forns);
     setLoading(false);
   }
 
   useEffect(() => { loadData(); }, []);
+
+  const fornSuggestions = useMemo(() => {
+    const todos = [
+      ...fornecedores.map(f => f.nome),
+      ...fornecedorOptions.filter(f => !fornecedores.some(fdb => fdb.nome === f))
+    ];
+    if (!fornInput) return todos;
+    return todos.filter(f => f.toLowerCase().includes(fornInput.toLowerCase()));
+  }, [fornecedores, fornInput]);
 
   const monthTotals = useMemo(() => {
     const t = {};
@@ -75,12 +92,14 @@ export default function Compras() {
     e.preventDefault();
     await base44.entities.ItemCompra.create({
       ...form,
+      fornecedor: fornInput || form.fornecedor,
       quantidade: parseInt(form.quantidade) || 1,
       valor_unitario: form.valor_unitario ? parseFloat(form.valor_unitario) : null,
       valor_total: parseFloat(form.valor_total),
     });
     setShowForm(false);
-    setForm({ fornecedor: 'COMPRAS A VISTA', numero_nota: '', data_emissao: '', descricao_produto: '', categoria_produto: 'notebook', quantidade: '1', valor_unitario: '', valor_total: '' });
+    setFornInput('COMPRAS A VISTA');
+    setForm({ fornecedor: 'COMPRAS A VISTA', numero_nota: '', data_emissao: '', descricao_produto: '', categoria_produto: 'notebook', quantidade: '1', valor_unitario: '', valor_total: '', codigo_produto: '' });
     loadData();
   }
 
@@ -94,6 +113,9 @@ export default function Compras() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
+        <Link to="/produtos?tab=fornecedores">
+          <Button variant="outline" className="gap-2"><Building2 className="w-4 h-4" /> Fornecedores</Button>
+        </Link>
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Compra</Button>
       </PageHeader>
 
@@ -207,12 +229,22 @@ export default function Compras() {
           <DialogHeader><DialogTitle>Nova Compra</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="relative">
                 <Label>Fornecedor</Label>
-                <Select value={form.fornecedor} onValueChange={v => setForm({...form, fornecedor: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{fornecedorOptions.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
-                </Select>
+                <Input
+                  value={fornInput}
+                  onChange={e => { setFornInput(e.target.value); setShowFornSugg(true); }}
+                  onFocus={() => setShowFornSugg(true)}
+                  onBlur={() => setTimeout(() => setShowFornSugg(false), 150)}
+                  placeholder="Digite ou selecione..."
+                />
+                {showFornSugg && fornSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full bg-popover border rounded-md shadow-md mt-1 max-h-40 overflow-y-auto">
+                    {fornSuggestions.map(f => (
+                      <div key={f} className="px-3 py-2 text-sm cursor-pointer hover:bg-accent" onMouseDown={() => { setFornInput(f); setShowFornSugg(false); }}>{f}</div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div><Label>Data Emissão</Label><Input type="date" value={form.data_emissao} onChange={e => setForm({...form, data_emissao: e.target.value})} required /></div>
             </div>
@@ -226,6 +258,10 @@ export default function Compras() {
                 </Select>
               </div>
               <div><Label>Nº Nota</Label><Input value={form.numero_nota} onChange={e => setForm({...form, numero_nota: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Código do Produto</Label><Input value={form.codigo_produto} onChange={e => setForm({...form, codigo_produto: e.target.value})} placeholder="Opcional" /></div>
+              <div></div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>Quantidade</Label><Input type="number" value={form.quantidade} onChange={e => setForm({...form, quantidade: e.target.value})} /></div>
