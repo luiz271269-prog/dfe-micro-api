@@ -31,11 +31,16 @@ Retorne APENAS array JSON:
 [{"fornecedor":"COMPRAS A VISTA ou MERCADO LIVRE ou PAUTA DISTRIBUIÇÃO","numero_nota":"XXXXX","data_emissao":"YYYY-MM-DD","descricao_produto":"NOME DO PRODUTO","categoria_produto":"notebook ou tablet ou componente ou periferico ou software ou outro","quantidade":numero,"valor_unitario":numero,"valor_total":numero}]`,
 
   fatura_cartao: `Analise esta fatura de cartão de crédito e extraia as informações em JSON.
-Retorne APENAS um objeto JSON:
-{"fatura":{"titular":"NOME","cartao_final":"XXXX","mes_referencia":"YYYY-MM","data_vencimento":"YYYY-MM-DD","valor_total":numero},"lancamentos":[{"data_lancamento":"YYYY-MM-DD","estabelecimento":"NOME","valor":numero,"parcela_numero":1,"parcela_total":1,"natureza":"empresarial ou pessoal","empresa_beneficiada":"NeuralTec ou pessoal"}]}
-Regras natureza:
-- empresarial: MercadoLivre compras, MATV Sul, Canva, fornecedores
-- pessoal: KaBuM, Shopee, Samsung, serviços pessoais`,
+Retorne APENAS um objeto JSON válido, sem texto adicional, markdown ou explicações:
+{"fatura":{"mes_referencia":"YYYY-MM","data_vencimento":"YYYY-MM-DD","valor_total":numero,"valor_minimo":numero_ou_null},"lancamentos":[{"data_lancamento":"YYYY-MM-DD","estabelecimento":"NOME DO ESTABELECIMENTO","descricao":"descricao completa","valor":numero,"parcela_numero":1,"parcela_total":1,"natureza":"empresarial ou pessoal","categoria":"fornecedor ou pessoal ou operacional ou alimentacao ou transporte ou tecnologia ou outro"}]}
+Regras:
+- data_lancamento: formato YYYY-MM-DD
+- valor: sempre positivo (débitos positivos, estornos/créditos negativos)
+- mes_referencia: inferir do cabeçalho da fatura (ex: FATURA MARÇO/2026 = 2026-03)
+- natureza empresarial: MercadoLivre, MATV Sul, Canva, fornecedores de negócios
+- natureza pessoal: KaBuM, Shopee, Samsung, serviços pessoais
+- Ignorar linhas de pagamento anterior, saldo anterior, limite
+- Incluir TODOS os lançamentos da fatura`,
 
   obra_reforma: `Analise este comprovante de pagamento (PIX ou boleto) referente a obra/reforma e extraia em JSON.
 Retorne APENAS objeto JSON:

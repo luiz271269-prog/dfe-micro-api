@@ -56,6 +56,8 @@ export default function ImportarDocumento() {
   const [file, setFile] = useState(null);
   const [fileData, setFileData] = useState(null);
   const [fileType, setFileType] = useState(null);
+  const [contasCartao, setContasCartao] = useState([]);
+  const [selectedCartaoId, setSelectedCartaoId] = useState('');
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [rawText, setRawText] = useState(null);
@@ -68,8 +70,13 @@ export default function ImportarDocumento() {
   const [step, setStep] = useState(1);
   const fileInputRef = useRef();
 
-  useEffect(() => { loadHistory(); }, []);
+  useEffect(() => { loadHistory(); loadCartoes(); }, []);
   useEffect(() => { if (preselected) setSelectedType(preselected); }, [preselected]);
+
+  async function loadCartoes() {
+    const cartoes = await base44.entities.ContaCartao.filter({ is_ativo: true });
+    setContasCartao(cartoes);
+  }
 
   async function loadHistory() {
     const batches = await base44.entities.ImportBatch.list('-created_date', 20);
@@ -105,6 +112,7 @@ export default function ImportarDocumento() {
 
   async function processWithAI() {
     if (!selectedType || !fileData) return showToast('Selecione o tipo de documento e faça upload do arquivo.', 'error');
+    if (selectedType === 'fatura_cartao' && !selectedCartaoId) return showToast('Selecione o cartão antes de processar.', 'error');
     setProcessing(true);
     setRecords([]);
     setRawText(null);
@@ -119,7 +127,33 @@ export default function ImportarDocumento() {
       }
 
       // Normalize to array
-      let items = Array.isArray(parsed) ? parsed : (parsed.lancamentos ? [parsed.fatura, ...parsed.lancamentos] : [parsed]);
+      let items;
+      if (selectedType === 'fatura_cartao' && parsed && parsed.lancamentos) {
+        // For card invoices: create FaturaCartao + LancamentoCartao records
+        const fatura = parsed.fatura || {};
+        const mesRef = fatura.mes_referencia || '';
+        const dataVenc = fatura.data_vencimento || '';
+        const validStatuses = ['aberta', 'paga_total', 'vencida'];
+        const faturaRecord = {
+          conta_cartao_id: selectedCartaoId,
+          mes_referencia: mesRef,
+          data_vencimento: dataVenc,
+          valor_total: fatura.valor_total || 0,
+          status: 'aberta',
+        };
+        const lancamentos = (parsed.lancamentos || []).map(l => ({
+          fatura_id: '__PENDING__',
+          data_lancamento: l.data_lancamento || '',
+          estabelecimento: l.estabelecimento || '',
+          categoria: l.categoria || 'outro',
+          valor: l.valor || 0,
+          natureza: l.natureza || 'pessoal',
+          observacao: l.descricao || '',
+        }));
+        items = [{ __type: 'FaturaCartao', ...faturaRecord }, ...lancamentos.map(l => ({ __type: 'LancamentoCartao', ...l }))];
+      } else {
+        items = Array.isArray(parsed) ? parsed : (parsed.lancamentos ? [parsed.fatura, ...parsed.lancamentos] : [parsed]);
+      }
 
       // Deduplicate check
       const typeConfig = DOC_TYPES.find(d => d.id === selectedType);
@@ -153,12 +187,36 @@ export default function ImportarDocumento() {
     const typeConfig = DOC_TYPES.find(d => d.id === selectedType);
     let saved = 0, errors = 0;
 
-    for (let i = 0; i < toSave.length; i++) {
-      setSaveProgress(`Salvando ${i + 1} de ${toSave.length}...`);
-      try {
-        await base44.entities[typeConfig.entity].create(toSave[i].data);
-        saved++;
-      } catch { errors++; }
+    // Special handling for fatura_cartao: create FaturaCartao first, then LancamentoCartao with fatura_id
+    if (selectedType === 'fatura_cartao') {
+      const faturaRec = toSave.find(r => r.data.__type === 'FaturaCartao');
+      const lancRecs = toSave.filter(r => r.data.__type === 'LancamentoCartao');
+      let faturaId = null;
+      if (faturaRec) {
+        setSaveProgress('Salvando fatura...');
+        try {
+          const { __type, ...fatData } = faturaRec.data;
+          const created = await base44.entities.FaturaCartao.create(fatData);
+          faturaId = created.id;
+          saved++;
+        } catch { errors++; }
+      }
+      for (let i = 0; i < lancRecs.length; i++) {
+        setSaveProgress(`Salvando lançamento ${i + 1} de ${lancRecs.length}...`);
+        try {
+          const { __type, ...lancData } = lancRecs[i].data;
+          await base44.entities.LancamentoCartao.create({ ...lancData, fatura_id: faturaId || '' });
+          saved++;
+        } catch { errors++; }
+      }
+    } else {
+      for (let i = 0; i < toSave.length; i++) {
+        setSaveProgress(`Salvando ${i + 1} de ${toSave.length}...`);
+        try {
+          await base44.entities[typeConfig.entity].create(toSave[i].data);
+          saved++;
+        } catch { errors++; }
+      }
     }
 
     const dupes = records.filter(r => r.status === 'duplicata').length;
@@ -280,6 +338,23 @@ export default function ImportarDocumento() {
                 </>
               )}
             </div>
+
+            {/* Card selector for fatura_cartao */}
+            {selectedType === 'fatura_cartao' && (
+              <div className="mt-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Selecionar Cartão *</label>
+                <select
+                  value={selectedCartaoId}
+                  onChange={e => setSelectedCartaoId(e.target.value)}
+                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="">— escolha o cartão —</option>
+                  {contasCartao.map(c => (
+                    <option key={c.id} value={c.id}>{c.nome} {c.bandeira ? `(${c.bandeira})` : ''} — {c.titular || ''}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {file && selectedType && (
               <Button onClick={processWithAI} disabled={processing} className="w-full mt-4 gap-2 h-11">
