@@ -256,7 +256,9 @@ export default function ImportarDocumento() {
   const selectedCount = records.filter(r => r.selected).length;
   const dupeCount = records.filter(r => r.status === 'duplicata').length;
 
-  const recordKeys = records.length > 0 ? Object.keys(records[0].data).slice(0, 7) : [];
+  const recordKeys = records.length > 0
+    ? [...new Set(records.flatMap(r => Object.keys(r.data)))].filter(k => k !== '__type').slice(0, 9)
+    : [];
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
