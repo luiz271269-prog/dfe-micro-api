@@ -222,7 +222,16 @@ export default function Cartoes() {
           return (
             <div key={c.id} className="bg-card rounded-xl border overflow-hidden">
               <button
-                onClick={() => setExpandedCard(isExpanded ? null : c.id)}
+                onClick={() => {
+                  if (isExpanded) {
+                    setExpandedCard(null);
+                    setExpandedFatura(null);
+                  } else {
+                    setExpandedCard(c.id);
+                    const firstFat = getCardFaturas(c.id)[0];
+                    if (firstFat) setExpandedFatura(firstFat.id);
+                  }
+                }}
                 className="w-full flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
