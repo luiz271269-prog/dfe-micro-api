@@ -160,7 +160,15 @@ export default function ImportarDocumento() {
       const enriched = await Promise.all(items.map(async (item) => {
         let dupStatus = 'novo';
         try {
-          if (typeConfig?.dedup?.length) {
+          if (selectedType === 'fatura_cartao') {
+            if (item.__type === 'FaturaCartao') {
+              const existing = await base44.entities.FaturaCartao.filter({ conta_cartao_id: item.conta_cartao_id, mes_referencia: item.mes_referencia });
+              if (existing && existing.length > 0) dupStatus = 'duplicata';
+            } else if (item.__type === 'LancamentoCartao') {
+              const existing = await base44.entities.LancamentoCartao.filter({ data_lancamento: item.data_lancamento, estabelecimento: item.estabelecimento, valor: item.valor });
+              if (existing && existing.length > 0) dupStatus = 'duplicata';
+            }
+          } else if (typeConfig?.dedup?.length) {
             const query = {};
             typeConfig.dedup.forEach(k => { if (item[k] !== undefined) query[k] = item[k]; });
             if (Object.keys(query).length > 0) {
