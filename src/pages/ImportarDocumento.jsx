@@ -141,7 +141,13 @@ export default function ImportarDocumento() {
 
       // Deduplicate check
       const typeConfig = DOC_TYPES.find(d => d.id === selectedType);
-      const enriched = await Promise.all(items.map(async (item) => {
+
+      // Track keys seen within this batch to catch same-file duplicates
+      const seenInBatch = new Set();
+
+      // Process sequentially to catch intra-batch duplicates
+      const enriched = [];
+      for (const item of items) {
         let dupStatus = 'novo';
         try {
           if (selectedType === 'fatura_cartao') {
@@ -154,15 +160,28 @@ export default function ImportarDocumento() {
             }
           } else if (typeConfig?.dedup?.length) {
             const query = {};
-            typeConfig.dedup.forEach(k => { if (item[k] !== undefined) query[k] = item[k]; });
-            if (Object.keys(query).length > 0) {
-              const existing = await base44.entities[typeConfig.entity].filter(query);
-              if (existing && existing.length > 0) dupStatus = 'duplicata';
+            // Normalize values to string to avoid type mismatch (e.g. numero: 77 vs "77")
+            typeConfig.dedup.forEach(k => {
+              if (item[k] !== undefined && item[k] !== null) {
+                query[k] = String(item[k]);
+              }
+            });
+
+            // Check intra-batch duplicate first
+            const batchKey = typeConfig.dedup.map(k => String(item[k] ?? '')).join('|');
+            if (seenInBatch.has(batchKey)) {
+              dupStatus = 'duplicata';
+            } else {
+              seenInBatch.add(batchKey);
+              if (Object.keys(query).length > 0) {
+                const existing = await base44.entities[typeConfig.entity].filter(query);
+                if (existing && existing.length > 0) dupStatus = 'duplicata';
+              }
             }
           }
         } catch {}
-        return { data: item, status: dupStatus, selected: dupStatus === 'novo' };
-      }));
+        enriched.push({ data: item, status: dupStatus, selected: dupStatus === 'novo' });
+      }
 
       setRecords(enriched);
       setStep(3);
