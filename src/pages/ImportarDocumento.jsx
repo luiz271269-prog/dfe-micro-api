@@ -129,30 +129,14 @@ export default function ImportarDocumento() {
       // Normalize to array
       let items;
       if (selectedType === 'fatura_cartao' && parsed && parsed.lancamentos) {
-        // For card invoices: create FaturaCartao + LancamentoCartao records
-        const fatura = parsed.fatura || {};
-        const mesRef = fatura.mes_referencia || '';
-        const dataVenc = fatura.data_vencimento || '';
-        const validStatuses = ['aberta', 'paga_total', 'vencida'];
-        const faturaRecord = {
-          conta_cartao_id: selectedCartaoId,
-          mes_referencia: mesRef,
-          data_vencimento: dataVenc,
-          valor_total: fatura.valor_total || 0,
-          status: 'aberta',
-        };
-        const lancamentos = (parsed.lancamentos || []).map(l => ({
-          fatura_id: '__PENDING__',
-          data_lancamento: l.data_lancamento || '',
-          estabelecimento: l.estabelecimento || '',
-          categoria: l.categoria || 'outro',
-          valor: l.valor || 0,
-          natureza: l.natureza || 'pessoal',
-          observacao: l.descricao || '',
-        }));
-        items = [{ __type: 'FaturaCartao', ...faturaRecord }, ...lancamentos.map(l => ({ __type: 'LancamentoCartao', ...l }))];
-      } else {
-        items = Array.isArray(parsed) ? parsed : (parsed.lancamentos ? [parsed.fatura, ...parsed.lancamentos] : [parsed]);
+      }
+
+      // Normaliza campos chave para evitar falhas de dedup por tipo (int vs string)
+      if (selectedType === 'relatorio_nfs') {
+        items = items.map(item => ({ ...item, numero: String(item.numero ?? '').trim() }));
+      }
+      if (selectedType === 'boletos_liquidados') {
+        items = items.map(item => ({ ...item, nosso_numero: String(item.nosso_numero ?? '').trim() }));
       }
 
       // Deduplicate check
