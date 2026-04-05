@@ -98,7 +98,14 @@ export default function ImportarDocumento() {
       const result = e.target.result;
       const base64 = result.split(',')[1];
       setFileData(base64);
-      setFileType(f.type || 'image/jpeg');
+      // Detect type from extension if browser doesn't provide it
+      let detectedType = f.type;
+      if (!detectedType) {
+        const ext = f.name.split('.').pop().toLowerCase();
+        const extMap = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', csv: 'text/csv' };
+        detectedType = extMap[ext] || 'application/octet-stream';
+      }
+      setFileType(detectedType);
     };
     reader.readAsDataURL(f);
   }
