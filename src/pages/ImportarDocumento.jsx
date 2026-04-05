@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { processDocument } from '@/functions/processDocument';
 import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, XCircle, Clock, ChevronDown, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
@@ -117,16 +116,63 @@ export default function ImportarDocumento() {
     if (f) handleFileSelect(f);
   }
 
+  const PROMPTS = {
+    extrato_bancario: `Você é um sistema de extração de dados bancários. Analise este extrato bancário Sicredi e extraia TODOS os lançamentos em JSON.
+Retorne APENAS um array JSON válido, sem texto adicional, no formato:
+[{"data":"YYYY-MM-DD","descricao":"descrição exata do extrato","valor":numero_positivo_ou_negativo,"categoria":"recebimento ou fornecedor ou pessoal ou tributo ou despesa_operacional ou financeiro ou saque ou transferencia ou interno","saldo_apos":numero,"conta_bancaria":"NeuralTec 36092-2","detalhe":"documento ex: COB000001 ou PIX_DEB ou vazio"}]
+Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lançamentos, ignorar apenas "SALDO ANTERIOR".`,
+    boletos_liquidados: `Analise este comprovante de boletos liquidados e extraia os pagamentos em JSON.
+Retorne APENAS array JSON:
+[{"nosso_numero":"26/100XXX-X","seu_numero":"NF-XXX","cliente":"NOME DO CLIENTE","data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","valor_titulo":numero,"valor_pago":numero,"status":"pago","canal_cobranca":"sicredi"}]`,
+    relatorio_nfs: `Analise este relatório de notas fiscais (sistema Fabris/Ellitte) e extraia TODAS as NFs em JSON.
+Retorne APENAS array JSON:
+[{"numero":"77","tipo":"NF","data_emissao":"YYYY-MM-DD","cliente":"NOME COMPLETO DO CLIENTE","valor_total":numero,"vendedor":"Thais ou Tiago ou Fat.Direto","status":"pago","valor_recebido":numero,"valor_aberto":numero}]`,
+    compras_fornecedor: `Analise este relatório de compras e extraia todos os itens em JSON.
+Retorne APENAS array JSON:
+[{"fornecedor":"NOME","numero_nota":"XXXXX","data_emissao":"YYYY-MM-DD","descricao_produto":"NOME DO PRODUTO","categoria_produto":"notebook ou tablet ou componente ou periferico ou software ou outro","quantidade":numero,"valor_unitario":numero,"valor_total":numero}]`,
+    fatura_cartao: `Analise esta fatura de cartão de crédito e extraia as informações em JSON.
+Retorne APENAS um objeto JSON válido:
+{"fatura":{"mes_referencia":"YYYY-MM","data_vencimento":"YYYY-MM-DD","valor_total":numero},"lancamentos":[{"data_lancamento":"YYYY-MM-DD","estabelecimento":"NOME","descricao":"descrição completa","valor":numero,"parcela_numero":1,"parcela_total":1,"natureza":"empresarial ou pessoal","categoria":"outro"}]}
+Incluir TODOS os lançamentos. Valor sempre positivo (estornos negativos).`,
+    obra_reforma: `Analise este comprovante de pagamento de obra/reforma e extraia em JSON.
+Retorne APENAS objeto JSON:
+{"data":"YYYY-MM-DD","responsavel":"NOME","valor":numero,"descricao":"descrição","fornecedor_cnpj_cpf":"CPF ou CNPJ","tipo_profissional":"serralheiro ou pedreiro ou pintor ou vidros ou eletricista ou hidraulico ou material ou outros","local_obra":"loja ou pavilhao ou terraco ou outro","forma_pagamento":"PIX ou boleto","tipo":"mao_obra ou material"}`,
+    folha_pagamento: `Analise esta folha de pagamento e extraia os dados de TODOS os funcionários em JSON.
+Retorne APENAS array JSON:
+[{"funcionario_nome":"NOME","competencia":"YYYY-MM","salario_bruto":numero,"horas_extras":numero,"comissao":numero,"outros_descontos":numero,"salario_liquido":numero,"status":"pago ou pendente","empresa":"NeuralTec"}]`,
+    dda_boletos: `Analise este DDA/boletos a vencer e extraia em JSON.
+Retorne APENAS array JSON:
+[{"data":"YYYY-MM-DD","descricao":"NOME DO BENEFICIÁRIO","valor":numero_negativo,"categoria":"fornecedor ou tributo ou financeiro ou despesa_operacional","conta_bancaria":"NeuralTec 36092-2 ou Liesch 37101-4","detalhe":"código se disponível"}]`,
+  };
+
   async function processWithAI() {
-    if (!selectedType || !fileData) return showToast('Selecione o tipo de documento e faça upload do arquivo.', 'error');
+    if (!selectedType || !file) return showToast('Selecione o tipo de documento e faça upload do arquivo.', 'error');
     if (selectedType === 'fatura_cartao' && !selectedCartaoId) return showToast('Selecione o cartão antes de processar.', 'error');
     setProcessing(true);
     setRecords([]);
     setRawText(null);
     try {
-      const res = await processDocument({ fileData, fileType, docType: selectedType });
-      const { parsed, rawText: raw } = res.data || res;
-      setRawText(raw);
+      // Upload do arquivo via integração nativa Base44
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+
+      // Chamar IA via integração nativa Base44
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: PROMPTS[selectedType],
+        file_urls: [file_url],
+        model: 'claude_sonnet_4_6',
+      });
+
+      const rawStr = typeof result === 'string' ? result.trim() : JSON.stringify(result);
+      setRawText(rawStr);
+
+      const clean = rawStr.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      let parsed;
+      try {
+        parsed = JSON.parse(clean);
+      } catch {
+        const match = clean.match(/[\[{][\s\S]*[\]|}]/);
+        if (match) parsed = JSON.parse(match[0]);
+      }
 
       if (!parsed) {
         setProcessing(false);
@@ -143,7 +189,6 @@ export default function ImportarDocumento() {
         items = Array.isArray(parsed) ? parsed : [parsed];
       }
 
-      // Normaliza campos chave para evitar falhas de dedup por tipo (int vs string)
       if (selectedType === 'relatorio_nfs') {
         items = items.map(item => ({ ...item, numero: String(item.numero ?? '').trim() }));
       }
@@ -151,13 +196,8 @@ export default function ImportarDocumento() {
         items = items.map(item => ({ ...item, nosso_numero: String(item.nosso_numero ?? '').trim() }));
       }
 
-      // Deduplicate check
       const typeConfig = DOC_TYPES.find(d => d.id === selectedType);
-
-      // Track keys seen within this batch to catch same-file duplicates
       const seenInBatch = new Set();
-
-      // Process sequentially to catch intra-batch duplicates
       const enriched = [];
       for (const item of items) {
         let dupStatus = 'novo';
@@ -172,29 +212,22 @@ export default function ImportarDocumento() {
             }
           } else if (typeConfig?.dedup?.length) {
             const query = {};
-            // Preserve original type: numbers stay as numbers, strings are trimmed
             typeConfig.dedup.forEach(k => {
               if (item[k] !== undefined && item[k] !== null) {
                 const v = item[k];
                 query[k] = typeof v === 'number' ? v : String(v).trim();
               }
             });
-
-            // Check intra-batch duplicate first (case-insensitive, trimmed)
             const batchKey = typeConfig.dedup.map(k => String(item[k] ?? '').trim().toLowerCase()).join('|');
             if (seenInBatch.has(batchKey)) {
               dupStatus = 'duplicata';
             } else {
               seenInBatch.add(batchKey);
               if (Object.keys(query).length > 0) {
-                // For extrato/dda: query only by date+descricao (avoid float comparison issues on valor)
                 const safeQuery = { ...query };
-                if (['extrato_bancario', 'dda_boletos'].includes(selectedType)) {
-                  delete safeQuery.valor;
-                }
+                if (['extrato_bancario', 'dda_boletos'].includes(selectedType)) delete safeQuery.valor;
                 const existing = await base44.entities[typeConfig.entity].filter(safeQuery);
                 if (existing && existing.length > 0) {
-                  // If valor is in dedup, do a secondary check for near-exact match
                   const dedupHasValor = typeConfig.dedup.includes('valor');
                   if (dedupHasValor) {
                     const matchValor = existing.some(e => Math.abs((e.valor || 0) - (item.valor || 0)) < 0.01);
