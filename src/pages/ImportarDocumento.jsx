@@ -8,7 +8,7 @@ import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
 
 const DOC_TYPES = [
-  { id: 'extrato_bancario',   label: 'Extrato Bancário Sicredi',  icon: Landmark,     color: 'blue',   entity: 'LancamentoBancario', dedup: ['data','descricao','valor'] },
+  { id: 'extrato_bancario',   label: 'Extrato Bancário Sicredi',  icon: Landmark,     color: 'blue',   entity: 'LancamentoBancario', dedup: ['data','valor'] },
   { id: 'boletos_liquidados', label: 'Boletos Liquidados',         icon: Receipt,      color: 'teal',   entity: 'TituloCobranca',    dedup: ['nosso_numero'] },
   { id: 'relatorio_nfs',      label: 'Relatório de Vendas/NFs',   icon: FileText,     color: 'green',  entity: 'NotaFiscal',        dedup: ['tipo','numero'] },
   { id: 'compras_fornecedor', label: 'Compras por Fornecedor',    icon: ShoppingCart, color: 'orange', entity: 'ItemCompra',        dedup: ['fornecedor','numero_nota','descricao_produto'] },
@@ -216,7 +216,6 @@ export default function ImportarDocumento() {
               seenInBatch.add(batchKey);
               if (Object.keys(query).length > 0) {
                 const safeQuery = { ...query };
-                if (['extrato_bancario', 'dda_boletos'].includes(selectedType)) delete safeQuery.valor;
                 const ex = await base44.entities[typeConfig.entity].filter(safeQuery);
                 if (ex?.length > 0) {
                   if (typeConfig.dedup.includes('valor')) {
