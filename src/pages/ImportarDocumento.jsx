@@ -14,7 +14,7 @@ const DOC_TYPES = [
   { id: 'fatura_cartao', label: 'Fatura de Cartão', icon: CreditCard, color: 'purple', entity: 'FaturaCartao', dedup: ['conta_cartao_id','mes_referencia'] },
   { id: 'obra_reforma', label: 'Obra e Reforma', icon: Hammer, color: 'brown', entity: 'ObraReforma', dedup: ['data','responsavel','valor'] },
   { id: 'folha_pagamento', label: 'Folha de Pagamento', icon: Users, color: 'slate', entity: 'FolhaPagamento', dedup: ['funcionario_nome','competencia'] },
-  { id: 'dda_boletos', label: 'DDA / Boletos a Vencer', icon: Landmark, color: 'indigo', entity: 'LancamentoBancario', dedup: ['data','beneficiario','valor'] },
+  { id: 'dda_boletos', label: 'DDA / Boletos a Vencer', icon: Landmark, color: 'indigo', entity: 'LancamentoBancario', dedup: ['data','descricao','valor'] },
 ];
 
 const COLOR_MAP = {
@@ -172,22 +172,37 @@ export default function ImportarDocumento() {
             }
           } else if (typeConfig?.dedup?.length) {
             const query = {};
-            // Normalize values to string to avoid type mismatch (e.g. numero: 77 vs "77")
+            // Preserve original type: numbers stay as numbers, strings are trimmed
             typeConfig.dedup.forEach(k => {
               if (item[k] !== undefined && item[k] !== null) {
-                query[k] = String(item[k]);
+                const v = item[k];
+                query[k] = typeof v === 'number' ? v : String(v).trim();
               }
             });
 
-            // Check intra-batch duplicate first
-            const batchKey = typeConfig.dedup.map(k => String(item[k] ?? '')).join('|');
+            // Check intra-batch duplicate first (case-insensitive, trimmed)
+            const batchKey = typeConfig.dedup.map(k => String(item[k] ?? '').trim().toLowerCase()).join('|');
             if (seenInBatch.has(batchKey)) {
               dupStatus = 'duplicata';
             } else {
               seenInBatch.add(batchKey);
               if (Object.keys(query).length > 0) {
-                const existing = await base44.entities[typeConfig.entity].filter(query);
-                if (existing && existing.length > 0) dupStatus = 'duplicata';
+                // For extrato/dda: query only by date+descricao (avoid float comparison issues on valor)
+                const safeQuery = { ...query };
+                if (['extrato_bancario', 'dda_boletos'].includes(selectedType)) {
+                  delete safeQuery.valor;
+                }
+                const existing = await base44.entities[typeConfig.entity].filter(safeQuery);
+                if (existing && existing.length > 0) {
+                  // If valor is in dedup, do a secondary check for near-exact match
+                  const dedupHasValor = typeConfig.dedup.includes('valor');
+                  if (dedupHasValor) {
+                    const matchValor = existing.some(e => Math.abs((e.valor || 0) - (item.valor || 0)) < 0.01);
+                    if (matchValor) dupStatus = 'duplicata';
+                  } else {
+                    dupStatus = 'duplicata';
+                  }
+                }
               }
             }
           }
