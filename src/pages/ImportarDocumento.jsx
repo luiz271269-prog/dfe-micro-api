@@ -496,7 +496,7 @@ export default function ImportarDocumento() {
                     const dt = DOC_TYPES.find(d => d.id === h.batch_type);
                     return (
                       <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(h.created_date)}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                         <td className="px-4 py-3 font-semibold text-sm">{dt?.label || h.batch_type}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[180px]">{h.file_name || '—'}</td>
                         <td className="px-4 py-3 text-right font-bold text-green-700">{h.success_count ?? 0}</td>
