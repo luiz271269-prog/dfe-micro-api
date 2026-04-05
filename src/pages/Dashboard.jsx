@@ -147,7 +147,13 @@ export default function Dashboard() {
   useEffect(() => {
     const handler = () => setRefreshKey(k => k + 1);
     window.addEventListener('neuralfinRefresh', handler);
-    return () => window.removeEventListener('neuralfinRefresh', handler);
+    // Reload when user returns to this tab/page
+    const onVisible = () => { if (document.visibilityState === 'visible') setRefreshKey(k => k + 1); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('neuralfinRefresh', handler);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [])
 
   // Correção 4: corrigir mes_referencia nulos uma única vez
