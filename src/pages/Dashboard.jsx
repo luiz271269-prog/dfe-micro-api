@@ -143,6 +143,18 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
 
+  // Correção 4: corrigir mes_referencia nulos uma única vez
+  useEffect(() => {
+    if (!localStorage.getItem('mesRef_corrigido_v1')) {
+      base44.entities.LancamentoBancario.filter({ mes_referencia: null }).then(semMes => {
+        if (!semMes?.length) return;
+        Promise.all(semMes.filter(r => r.data).map(r =>
+          base44.entities.LancamentoBancario.update(r.id, { mes_referencia: r.data.substring(0, 7) })
+        )).then(() => localStorage.setItem('mesRef_corrigido_v1', '1'));
+      });
+    }
+  }, []);
+
   useEffect(() => {
     async function load() {
       const [lancRaw, nfsRaw, titRaw, compRaw, obrasRaw, tribRaw, funcRaw, folhasRaw] = await Promise.all([
@@ -156,9 +168,14 @@ export default function Dashboard() {
         base44.entities.FolhaPagamento.list(),
       ]);
       setRawData({
-        lanc: asArray(lancRaw), nfs: asArray(nfsRaw), tit: asArray(titRaw),
-        comp: asArray(compRaw), obras: asArray(obrasRaw), trib: asArray(tribRaw),
-        func: asArray(funcRaw), folhas: asArray(folhasRaw),
+        lanc: Array.isArray(lancRaw) ? lancRaw : [],
+        nfs: Array.isArray(nfsRaw) ? nfsRaw : [],
+        tit: Array.isArray(titRaw) ? titRaw : [],
+        comp: Array.isArray(compRaw) ? compRaw : [],
+        obras: Array.isArray(obrasRaw) ? obrasRaw : [],
+        trib: Array.isArray(tribRaw) ? tribRaw : [],
+        func: Array.isArray(funcRaw) ? funcRaw : [],
+        folhas: Array.isArray(folhasRaw) ? folhasRaw : [],
       });
       setLoading(false);
     }
@@ -167,8 +184,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     const { lanc, nfs, tit, comp, obras, trib, func, folhas } = rawData;
+    // Correção 2: filtrar lançamentos por data para pegar registros com mes_referencia null
+    const inicio = selectedMonth + '-01';
+    const fim = selectedMonth + '-31';
+    const lancF = isAnnual ? lanc : lanc.filter(r => {
+      if (!r.data) return false;
+      return r.data >= inicio && r.data <= fim;
+    });
     const f = (arr, field) => isAnnual ? arr : arr.filter(r => (r[field]||'').startsWith(selectedMonth));
-    const lancF = f(lanc,'data'), nfsF = f(nfs,'data_emissao'), titF = f(tit,'data_vencimento');
+    const nfsF = f(nfs,'data_emissao'), titF = f(tit,'data_vencimento');
     const compF = f(comp,'data_emissao'), obrasF = f(obras,'data');
     setData(prev => {
       const d = { ...prev };

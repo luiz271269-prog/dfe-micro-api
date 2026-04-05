@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { InvokeLLM, UploadFile } from '@/integrations/Core';
 import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X } from 'lucide-react';
@@ -101,6 +102,7 @@ export default function ImportarDocumento() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [step, setStep] = useState(1);
   const fileInputRef = useRef();
+  const queryClient = useQueryClient();
 
   useEffect(() => { loadHistory(); loadCartoes(); }, []);
 
@@ -275,7 +277,12 @@ export default function ImportarDocumento() {
       for (let i = 0; i < toSave.length; i++) {
         setSaveProgress(`Salvando ${i + 1} de ${toSave.length}...`);
         try {
-          await base44.entities[typeConfig.entity].create(toSave[i].data);
+          // Correção 1: garantir mes_referencia para LancamentoBancario
+          let itemData = toSave[i].data;
+          if (typeConfig.entity === 'LancamentoBancario' && itemData.data && !itemData.mes_referencia) {
+            itemData = { ...itemData, mes_referencia: itemData.data.substring(0, 7) };
+          }
+          await base44.entities[typeConfig.entity].create(itemData);
           saved++;
         } catch { errors++; }
       }
@@ -298,6 +305,8 @@ export default function ImportarDocumento() {
     setStep(4);
     showToast(`✓ ${saved} novos registros salvos · ${dupes} duplicatas ignoradas`);
     loadHistory();
+    // Correção 3: invalidar cache para atualizar dashboard
+    queryClient.invalidateQueries();
   }
 
   function reset() {
