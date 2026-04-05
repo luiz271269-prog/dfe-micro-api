@@ -91,6 +91,7 @@ export default function ImportarDocumento() {
   const [selectedCartaoId, setSelectedCartaoId] = useState('');
   const [dragging, setDragging] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState('');
   const [rawText, setRawText] = useState(null);
   const [records, setRecords] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -136,11 +137,13 @@ export default function ImportarDocumento() {
     if (!selectedType || !file) return showToast('Selecione o tipo de documento e faça upload do arquivo.', 'error');
     if (selectedType === 'fatura_cartao' && !selectedCartaoId) return showToast('Selecione o cartão antes de processar.', 'error');
     setProcessing(true);
+    setProcessingStage('upload');
     setRecords([]);
     setRawText(null);
     try {
       // 1. Upload via integração nativa Base44
       const { file_url } = await UploadFile({ file });
+      setProcessingStage('ai');
 
       // 2. Extrair com InvokeLLM nativo Base44
       const result = await InvokeLLM({
@@ -410,7 +413,9 @@ export default function ImportarDocumento() {
             {file && selectedType && (
               <Button onClick={processWithAI} disabled={processing} className="w-full mt-4 gap-2 h-11">
                 {processing ? (
-                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Analisando documento com IA...</>
+                  <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {processingStage === 'upload' ? 'Enviando arquivo...' : 'Analisando com IA (pode levar ~30s)...'}
+                  </>
                 ) : <>✨ Processar com IA</>}
               </Button>
             )}
