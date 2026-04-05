@@ -142,6 +142,13 @@ export default function Dashboard() {
     saldoProjetado: 54187.06,
   });
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handler = () => setRefreshKey(k => k + 1);
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
+  }, [])
 
   // Correção 4: corrigir mes_referencia nulos uma única vez
   useEffect(() => {
@@ -180,7 +187,7 @@ export default function Dashboard() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [refreshKey]); // eslint-disable-line
 
   useEffect(() => {
     const { lanc, nfs, tit, comp, obras, trib, func, folhas } = rawData;

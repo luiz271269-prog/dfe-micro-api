@@ -304,8 +304,8 @@ export default function ImportarDocumento() {
     setStep(4);
     showToast(`✓ ${saved} novos registros salvos · ${dupes} duplicatas ignoradas`);
     loadHistory();
-    // Correção 3: invalidar cache para atualizar dashboard
-    queryClient.invalidateQueries();
+    // Disparar evento para atualizar dashboard
+    window.dispatchEvent(new Event('neuralfinRefresh'));
   }
 
   function reset() {
