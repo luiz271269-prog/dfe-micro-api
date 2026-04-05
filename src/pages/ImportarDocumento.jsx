@@ -135,7 +135,12 @@ export default function ImportarDocumento() {
 
       // Normalize to array
       let items;
-      if (selectedType === 'fatura_cartao' && parsed && parsed.lancamentos) {
+      if (selectedType === 'fatura_cartao' && parsed) {
+        const fatData = { ...parsed.fatura, __type: 'FaturaCartao', conta_cartao_id: selectedCartaoId };
+        const lancs = (parsed.lancamentos || []).map(l => ({ ...l, __type: 'LancamentoCartao' }));
+        items = [fatData, ...lancs];
+      } else {
+        items = Array.isArray(parsed) ? parsed : [parsed];
       }
 
       // Normaliza campos chave para evitar falhas de dedup por tipo (int vs string)
