@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: prompt,
       file_urls: [file_url],
-      model: 'claude_sonnet_4_6',
+      model: 'gemini_3_1_pro',
     });
 
     // result is a string when no response_json_schema is given
