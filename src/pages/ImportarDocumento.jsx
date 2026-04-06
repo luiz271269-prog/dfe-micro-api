@@ -104,7 +104,23 @@ export default function ImportarDocumento() {
   const fileInputRef = useRef();
   const queryClient = useQueryClient();
 
-  useEffect(() => { loadHistory(); loadCartoes(); }, []);
+  useEffect(() => {
+    loadHistory();
+    loadCartoes();
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          const f = item.getAsFile();
+          if (f) handleFileSelect(new File([f], `print_${Date.now()}.png`, { type: f.type }));
+          break;
+        }
+      }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []); // eslint-disable-line
 
   async function loadCartoes() {
     const cartoes = await base44.entities.ContaCartao.filter({ is_ativo: true });
