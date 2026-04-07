@@ -109,6 +109,7 @@ export default function ImportarDocumento() {
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [deduping, setDeduping] = useState(false);
+  const [lastImports, setLastImports] = useState({});
 
   async function handleDedup() {
     setDeduping(true);
@@ -147,8 +148,14 @@ export default function ImportarDocumento() {
   }
 
   async function loadHistory() {
-    const batches = await base44.entities.ImportBatch.list('-created_date', 20);
-    setHistory(batches);
+    const batches = await base44.entities.ImportBatch.list('-created_date', 100);
+    setHistory(batches.slice(0, 20));
+    // Última importação por tipo
+    const map = {};
+    batches.forEach(b => {
+      if (!map[b.batch_type] && b.status === 'completed') map[b.batch_type] = b;
+    });
+    setLastImports(map);
     setLoadingHistory(false);
   }
 
@@ -407,8 +414,17 @@ export default function ImportarDocumento() {
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colors.icon}`}>
                       <dt.icon className="w-4 h-4" />
                     </div>
-                    <span className={`text-sm font-semibold ${isActive ? 'text-foreground' : 'text-foreground/80'}`}>{dt.label}</span>
-                    {isActive && <span className="ml-auto text-primary text-xs font-bold">✓</span>}
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-sm font-semibold block ${isActive ? 'text-foreground' : 'text-foreground/80'}`}>{dt.label}</span>
+                      {lastImports[dt.id] ? (
+                        <span className="text-[10px] text-muted-foreground block truncate">
+                          {new Date(lastImports[dt.id].created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} · {lastImports[dt.id].created_by?.split('@')[0] || '—'} · {lastImports[dt.id].success_count ?? 0} registros
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground/50 block">Nunca importado</span>
+                      )}
+                    </div>
+                    {isActive && <span className="ml-auto text-primary text-xs font-bold shrink-0">✓</span>}
                   </button>
                 );
               })}
