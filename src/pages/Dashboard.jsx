@@ -131,7 +131,7 @@ export default function Dashboard() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [rawData, setRawData] = useState({ lanc:[], nfs:[], tit:[], comp:[], obras:[], trib:[], func:[], folhas:[] });
   const [data, setData] = useState({
-    bankBalance: 54187.06, liesch: 41, fundos: 100000,
+    bankBalance: 0, liesch: 41, fundos: 100000,
     recYTD: 0, pagYTD: 0,
     totalFat: 0, aReceber: 0, tiago: 0, thais: 0,
     emitido: 0, recebido: 0, emAberto: 0,
@@ -139,7 +139,7 @@ export default function Dashboard() {
     totalCartoes: 26553, proxVenc: 672.85,
     totalTrib: 0, tribVencer: 0, tribVencidos: 0,
     funcAtivos: 0, folhaAtual: 0,
-    saldoProjetado: 54187.06,
+    saldoProjetado: 0,
   });
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -180,8 +180,14 @@ export default function Dashboard() {
         base44.entities.Funcionario.list(),
         base44.entities.FolhaPagamento.list(),
       ]);
+      const lancArr = Array.isArray(lancRaw) ? lancRaw : [];
+      // Calcular saldo real: último lançamento NeuralTec com saldo_apos
+      const neuralLanc = lancArr
+        .filter(l => l.conta_bancaria === 'NeuralTec 36092-2' && l.saldo_apos != null)
+        .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+      const saldoReal = neuralLanc.length > 0 ? neuralLanc[0].saldo_apos : 0;
       setRawData({
-        lanc: Array.isArray(lancRaw) ? lancRaw : [],
+        lanc: lancArr,
         nfs: Array.isArray(nfsRaw) ? nfsRaw : [],
         tit: Array.isArray(titRaw) ? titRaw : [],
         comp: Array.isArray(compRaw) ? compRaw : [],
@@ -190,6 +196,9 @@ export default function Dashboard() {
         func: Array.isArray(funcRaw) ? funcRaw : [],
         folhas: Array.isArray(folhasRaw) ? folhasRaw : [],
       });
+      if (saldoReal > 0) {
+        setData(prev => ({ ...prev, bankBalance: saldoReal, saldoProjetado: saldoReal }));
+      }
       setLoading(false);
     }
     load();
