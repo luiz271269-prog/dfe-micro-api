@@ -317,10 +317,10 @@ export default function Dashboard() {
         <div>
           <p className="text-sm font-bold text-amber-900">Itens que precisam de atenção — {isAnnual ? '2026 (Anual)' : fmtMesLong(selectedMonth)}</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full font-medium">📤 DDA 30/03—01/04: NeuralTec R$ 925,15 · Liesch R$ 606,29 · KLI R$ 1.143,31 — Total R$ 2.674,75</span>
             <DASAlertBadge selectedMonth={selectedMonth} />
-            <span className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">✅ Sicredi NeuralTec Mar/2026 pago em 25/03</span>
-            <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-medium">💰 A receber: {formatCurrency(data.aReceber)}</span>
+            {data.tribVencidos > 0 && <span className="text-xs bg-red-100 text-red-700 border border-red-200 px-2.5 py-1 rounded-full font-medium">⚠ {data.tribVencidos} tributo(s) vencido(s) — ação imediata</span>}
+            {data.aReceber > 0 && <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-medium">💰 A receber: {formatCurrency(data.aReceber)}</span>}
+            {data.emAberto > 0 && <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full font-medium">📋 Cobranças em aberto: {formatCurrency(data.emAberto)}</span>}
           </div>
         </div>
       </div>
