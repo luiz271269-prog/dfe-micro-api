@@ -197,14 +197,15 @@ export default function ConciliacaoMensal() {
   const { toast } = useToast();
   const [meses, setMeses] = useState([]);
   const [mesSelecionado, setMesSelecionado] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processando, setProcessando] = useState(false);
   const [metodologiaAberta, setMetodologiaAberta] = useState(false);
   const [nfsMes, setNfsMes] = useState([]);
 
-  // Carregar meses disponíveis
-  useEffect(() => {
+  // Carregar meses disponíveis + refresh após importação
+  const loadMeses = () => {
     base44.entities.LancamentoBancario.list('-data', 500).then(lancamentos => {
       const mesSet = new Set();
       lancamentos.filter(l => l.valor > 0).forEach(l => {
@@ -212,9 +213,29 @@ export default function ConciliacaoMensal() {
       });
       const sorted = Array.from(mesSet).sort().reverse();
       setMeses(sorted);
-      if (sorted.length > 0) setMesSelecionado(sorted[0]);
+      if (sorted.length > 0 && !mesSelecionado) setMesSelecionado(sorted[0]);
     });
+  };
+
+  useEffect(() => {
+    loadMeses();
+    const handler = () => setRefreshKey(k => k + 1);
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
   }, []);
+
+  // Reprocessar ao receber refresh (nova importação)
+  useEffect(() => {
+    if (!mesSelecionado || refreshKey === 0) return;
+    // Deletar conciliação existente e reprocessar
+    base44.entities.ConciliacaoItem.filter({ mes_referencia: mesSelecionado }).then(async (items) => {
+      if (items.length > 0) {
+        await Promise.all(items.map(i => base44.entities.ConciliacaoItem.delete(i.id)));
+      }
+      setItens([]);
+    });
+    loadMeses();
+  }, [refreshKey]); // eslint-disable-line
 
   // Carregar dados quando mês muda — se não há dados, processa automaticamente
   useEffect(() => {
