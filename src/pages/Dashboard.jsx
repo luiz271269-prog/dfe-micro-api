@@ -136,7 +136,7 @@ export default function Dashboard() {
     totalFat: 0, aReceber: 0, tiago: 0, thais: 0,
     emitido: 0, recebido: 0, emAberto: 0,
     totalCompras: 0, totalObras: 0,
-    totalCartoes: 0, proxVenc: 0,
+    totalCartoes: 0, proxVenc: 0, nCartoes: 0,
     totalTrib: 0, tribVencer: 0, tribVencidos: 0,
     funcAtivos: 0, folhaAtual: 0,
     saldoProjetado: 0,
@@ -239,7 +239,8 @@ export default function Dashboard() {
       if (comp.length) d.totalCompras = compF.reduce((s,c)=>s+(c.valor_total||0),0);
       if (obras.length) d.totalObras = obrasF.reduce((s,o)=>s+(o.valor||0),0);
       if (trib.length) {
-        d.totalTrib = trib.reduce((s,t)=>s+(t.valor_original||0),0);
+        const tribPendentes = trib.filter(t => t.status === 'a_vencer' || t.status === 'vencido');
+        d.totalTrib = tribPendentes.reduce((s,t)=>s+(t.valor_original||0),0);
         d.tribVencer = trib.filter(t=>t.status==='a_vencer').length;
         d.tribVencidos = trib.filter(t=>t.status==='vencido').length;
       }
@@ -248,6 +249,7 @@ export default function Dashboard() {
       if (faturas.length) {
         const faturasF = isAnnual ? faturas : faturas.filter(f => (f.mes_referencia||'').startsWith(selectedMonth));
         d.totalCartoes = faturasF.reduce((s,f)=>s+(f.valor_total||0),0);
+        d.nCartoes = new Set(faturasF.map(f=>f.conta_cartao_id).filter(Boolean)).size;
         // Próx vencimento: menor data_vencimento entre faturas não pagas
         const abertas = faturas.filter(f => f.status !== 'paga_total').sort((a,b)=>(a.data_vencimento||'').localeCompare(b.data_vencimento||''));
         d.proxVenc = abertas.length > 0 ? abertas[0].valor_total : 0;
@@ -349,7 +351,7 @@ export default function Dashboard() {
       {/* ─── GRUPO 4: OPERACIONAL (Compras + Obras) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Section icon={ShoppingCart} label="Compras" gradient="orange" cols={1}>
-          <SectionMetric title="Total de Compras" value={formatCurrency(-data.totalCompras)} sub="À Vista 65% · ML 27% · Pauta 8%" icon={ShoppingCart} valueColor="red" href="/compras" />
+          <SectionMetric title="Total de Compras" value={formatCurrency(-data.totalCompras)} sub={isAnnual ? 'Acumulado anual' : fmtMesLong(selectedMonth)} icon={ShoppingCart} valueColor="red" href="/compras" />
         </Section>
         <Section icon={Hammer} label="Obras e Reformas" gradient="lime" cols={1}>
           <SectionMetric title="Total de Obras" value={formatCurrency(-data.totalObras)} sub="Mão de obra + Material" icon={Hammer} valueColor="green" href="/obras" />
@@ -359,7 +361,7 @@ export default function Dashboard() {
       {/* ─── GRUPO 5: CARTÕES + TRIBUTOS ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Section icon={CreditCard} label="Cartões de Crédito" gradient="purple" cols={2}>
-          <SectionMetric title="Pago no Banco" value={formatCurrency(-data.totalCartoes)} sub="7 cartões vinculados" icon={CreditCard} valueColor="purple" href="/cartoes" />
+          <SectionMetric title="Pago no Banco" value={formatCurrency(-data.totalCartoes)} sub={`${data.nCartoes || '—'} cartões no período`} icon={CreditCard} valueColor="purple" href="/cartoes" />
           <SectionMetric title="Próx. Vencimento" value={formatCurrency(data.proxVenc)} sub="Próxima fatura em aberto" icon={DollarSign} valueColor="amber" href="/cartoes" />
         </Section>
         <Section icon={AlertTriangle} label="Tributos" gradient="red" cols={2}>
