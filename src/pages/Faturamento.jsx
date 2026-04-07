@@ -11,13 +11,14 @@ import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '../lib/formatters';
+import ConciliacaoRelatorio from '../components/faturamento/ConciliacaoRelatorio';
 
 export default function Faturamento() {
   const [notas, setNotas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [detalhes, setDetalhes] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [selectedMonth, setSelectedMonth] = useState('2026-04');
   const [isAnnual, setIsAnnual] = useState(false);
   const [filterVendedor, setFilterVendedor] = useState('all');
   const [filterTipo, setFilterTipo] = useState('all');
@@ -36,7 +37,12 @@ export default function Faturamento() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const handler = () => loadData();
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
+  }, []);
 
   const monthTotals = useMemo(() => {
     const t = {};
@@ -107,6 +113,9 @@ export default function Faturamento() {
         />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova NF</Button>
       </PageHeader>
+
+      {/* Conciliação NFs × Relatório */}
+      <ConciliacaoRelatorio selectedMonth={selectedMonth} nfsMes={notas.filter(n => n.data_emissao?.startsWith(selectedMonth))} />
 
       {/* Cards por vendedor */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
