@@ -10,7 +10,8 @@ import { formatCurrency } from '../lib/formatters';
 const DOC_TYPES = [
   { id: 'extrato_bancario',   label: 'Extrato Bancário Sicredi',  icon: Landmark,     color: 'blue',   entity: 'LancamentoBancario', dedup: ['data','valor'] },
   { id: 'boletos_liquidados', label: 'Boletos Liquidados',         icon: Receipt,      color: 'teal',   entity: 'TituloCobranca',    dedup: ['nosso_numero'] },
-  { id: 'relatorio_nfs',      label: 'Relatório de Vendas/NFs',   icon: FileText,     color: 'green',  entity: 'NotaFiscal',        dedup: ['tipo','numero'] },
+  { id: 'relatorio_nfs',      label: 'NFes Emitidas no Mês (Fiscal)',   icon: FileText,     color: 'green',  entity: 'NotaFiscal',        dedup: ['tipo','numero'] },
+  { id: 'relatorio_vendas',   label: 'Relatório de Vendas (Fabris/Ellitte)', icon: FileText, color: 'teal', entity: 'RelatorioFaturamento', dedup: ['mes'] },
   { id: 'compras_fornecedor', label: 'Compras por Fornecedor',    icon: ShoppingCart, color: 'orange', entity: 'ItemCompra',        dedup: ['fornecedor','numero_nota','descricao_produto'] },
   { id: 'fatura_cartao',      label: 'Fatura de Cartão',          icon: CreditCard,   color: 'purple', entity: 'FaturaCartao',      dedup: ['conta_cartao_id','mes_referencia'] },
   { id: 'obra_reforma',       label: 'Obra e Reforma',            icon: Hammer,       color: 'brown',  entity: 'ObraReforma',       dedup: ['data','responsavel','valor'] },
@@ -21,6 +22,7 @@ const DOC_TYPES = [
 const COLOR_MAP = {
   blue:   { card: 'border-blue-200 bg-blue-50',     icon: 'text-blue-600 bg-blue-100',     active: 'border-blue-500 bg-blue-100 ring-2 ring-blue-300' },
   teal:   { card: 'border-teal-200 bg-teal-50',     icon: 'text-teal-600 bg-teal-100',     active: 'border-teal-500 bg-teal-100 ring-2 ring-teal-300' },
+  cyan:   { card: 'border-cyan-200 bg-cyan-50',      icon: 'text-cyan-600 bg-cyan-100',      active: 'border-cyan-500 bg-cyan-100 ring-2 ring-cyan-300' },
   green:  { card: 'border-green-200 bg-green-50',   icon: 'text-green-600 bg-green-100',   active: 'border-green-500 bg-green-100 ring-2 ring-green-300' },
   orange: { card: 'border-orange-200 bg-orange-50', icon: 'text-orange-600 bg-orange-100', active: 'border-orange-500 bg-orange-100 ring-2 ring-orange-300' },
   purple: { card: 'border-purple-200 bg-purple-50', icon: 'text-purple-600 bg-purple-100', active: 'border-purple-500 bg-purple-100 ring-2 ring-purple-300' },
@@ -39,9 +41,14 @@ Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lan�
 Retorne APENAS array JSON:
 [{"nosso_numero":"26/100XXX-X","seu_numero":"NF-XXX","cliente":"NOME DO CLIENTE","data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","valor_titulo":numero,"valor_pago":numero,"status":"pago","canal_cobranca":"sicredi"}]`,
 
-  relatorio_nfs: `Analise este relatório de notas fiscais (sistema Fabris/Ellitte) e extraia TODAS as NFs em JSON.
+  relatorio_nfs: `Analise este relatório/XML/PDF de notas fiscais emitidas (sistema fiscal, SEFAZ ou contabilidade) e extraia TODAS as NFs em JSON.
 Retorne APENAS array JSON:
 [{"numero":"77","tipo":"NF","data_emissao":"YYYY-MM-DD","cliente":"NOME COMPLETO DO CLIENTE","valor_total":numero,"vendedor":"Thais ou Tiago ou Fat.Direto","status":"pago","valor_recebido":numero,"valor_aberto":numero}]`,
+
+  relatorio_vendas: `Analise este relatório de vendas do mês (sistema Fabris/Ellitte ou planilha de vendas) e extraia o resumo mensal em JSON.
+Retorne APENAS um objeto JSON:
+{"mes":"YYYY-MM","ano":YYYY,"mes_nome":"Março 2026","saidas":numero_vendas_tiago,"servicos":numero_vendas_thais,"outros":numero_fat_direto,"total":numero_total_geral,"fonte":"fabris","observacoes":"observacao opcional"}
+Onde: saidas=vendas Tiago (V-01), servicos=vendas Thais (V-05), outros=faturamento direto, total=soma geral.`,
 
   compras_fornecedor: `Analise este relatório de compras e extraia todos os itens em JSON.
 Retorne APENAS array JSON:
