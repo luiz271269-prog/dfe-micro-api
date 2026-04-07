@@ -339,8 +339,9 @@ export default function ImportarDocumento() {
     setStep(4);
     showToast(`✓ ${saved} novos registros salvos · ${dupes} duplicatas ignoradas`);
     loadHistory();
-    // Disparar evento para atualizar dashboard
+    // Disparar evento para atualizar dashboard (página atual) + sinalizar para quando navegar
     window.dispatchEvent(new Event('neuralfinRefresh'));
+    localStorage.setItem('neuralfinPendingRefresh', Date.now().toString());
   }
 
   function reset() {

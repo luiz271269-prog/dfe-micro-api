@@ -145,10 +145,24 @@ export default function Dashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    // Verificar refresh pendente ao montar (vindo de outra página após importação)
+    const pending = localStorage.getItem('neuralfinPendingRefresh');
+    if (pending) {
+      localStorage.removeItem('neuralfinPendingRefresh');
+      setRefreshKey(k => k + 1);
+    }
     const handler = () => setRefreshKey(k => k + 1);
     window.addEventListener('neuralfinRefresh', handler);
     // Reload when user returns to this tab/page
-    const onVisible = () => { if (document.visibilityState === 'visible') setRefreshKey(k => k + 1); };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        const p = localStorage.getItem('neuralfinPendingRefresh');
+        if (p) {
+          localStorage.removeItem('neuralfinPendingRefresh');
+          setRefreshKey(k => k + 1);
+        }
+      }
+    };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener('neuralfinRefresh', handler);
