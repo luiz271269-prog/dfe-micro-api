@@ -26,7 +26,7 @@ export default function Compras() {
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [selectedMonth, setSelectedMonth] = useState('2026-04');
   const [isAnnual, setIsAnnual] = useState(false);
   const [filterFornecedor, setFilterFornecedor] = useState('all');
   const [filterCategoria, setFilterCategoria] = useState('all');
@@ -51,7 +51,12 @@ export default function Compras() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const handler = () => loadData();
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
+  }, []);
 
   const fornSuggestions = useMemo(() => {
     const todos = [
@@ -81,12 +86,19 @@ export default function Compras() {
   }, [compras, filterFornecedor, filterCategoria, searchTerm, selectedMonth, isAnnual]);
 
   const totalGeral = filtered.reduce((s, c) => s + (c.valor_total || 0), 0);
+
+  // Compras filtradas apenas por mês (sem filtros de fornecedor/categoria/busca) para os cards
+  const comprasMes = useMemo(() => {
+    if (isAnnual) return compras;
+    return compras.filter(c => c.data_emissao?.startsWith(selectedMonth));
+  }, [compras, selectedMonth, isAnnual]);
+
   const totaisFornecedor = useMemo(() => {
     const t = {};
-    compras.forEach(c => { t[c.fornecedor] = (t[c.fornecedor] || 0) + (c.valor_total || 0); });
+    comprasMes.forEach(c => { t[c.fornecedor] = (t[c.fornecedor] || 0) + (c.valor_total || 0); });
     return t;
-  }, [compras]);
-  const grandTotal = compras.reduce((s, c) => s + (c.valor_total || 0), 0);
+  }, [comprasMes]);
+  const grandTotal = comprasMes.reduce((s, c) => s + (c.valor_total || 0), 0);
 
   async function handleSubmit(e) {
     e.preventDefault();
