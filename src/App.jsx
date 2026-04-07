@@ -23,6 +23,7 @@ import ImportarDocumento from './pages/ImportarDocumento';
 import ConciliacaoMensal from './pages/ConciliacaoMensal';
 import ProdutosFornecedores from './pages/ProdutosFornecedores';
 import CruzamentoCompras from './pages/CruzamentoCompras';
+import Despesas from './pages/Despesas';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -70,6 +71,7 @@ const AuthenticatedApp = () => {
         <Route path="/conciliacao" element={<ConciliacaoMensal />} />
         <Route path="/produtos" element={<ProdutosFornecedores />} />
         <Route path="/cruzamento-compras" element={<CruzamentoCompras />} />
+        <Route path="/despesas" element={<Despesas />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
