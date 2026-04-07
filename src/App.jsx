@@ -22,6 +22,7 @@ import MapaGeral from './pages/MapaGeral';
 import ImportarDocumento from './pages/ImportarDocumento';
 import ConciliacaoMensal from './pages/ConciliacaoMensal';
 import ProdutosFornecedores from './pages/ProdutosFornecedores';
+import CruzamentoCompras from './pages/CruzamentoCompras';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -68,6 +69,7 @@ const AuthenticatedApp = () => {
         <Route path="/importar" element={<ImportarDocumento />} />
         <Route path="/conciliacao" element={<ConciliacaoMensal />} />
         <Route path="/produtos" element={<ProdutosFornecedores />} />
+        <Route path="/cruzamento-compras" element={<CruzamentoCompras />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
