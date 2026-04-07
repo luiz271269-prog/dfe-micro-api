@@ -31,10 +31,12 @@ export default function ConciliacaoRelatorio({ selectedMonth, nfsMes }) {
   const nfThais    = nfsMes.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_total || 0), 0);
   const nfDireto   = nfsMes.filter(n => n.vendedor === 'Fat.Direto').reduce((s, n) => s + (n.valor_total || 0), 0);
 
-  const relTotal   = relatorio?.total || 0;
+  // relatorio.total = total geral do mês (campo principal de comparação)
+  // relatorio.saidas = total de saídas/vendas (pode ser igual ao total)
+  const relTotal   = relatorio?.total || relatorio?.saidas || 0;
   const diferenca  = totalNFs - relTotal;
   const diffPct    = relTotal > 0 ? Math.abs(diferenca / relTotal) * 100 : 0;
-  const ok         = diffPct <= 2;
+  const ok         = diffPct <= 3;
 
   const semRelatorio = !loading && !relatorio;
 
@@ -92,44 +94,46 @@ export default function ConciliacaoRelatorio({ selectedMonth, nfsMes }) {
                 </div>
               </div>
 
-              {/* Detalhe por vendedor */}
+              {/* Detalhe por vendedor no sistema vs totais do relatório */}
               <div className="rounded-xl border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/30">
-                      <th className="text-left px-4 py-2 text-xs font-semibold text-muted-foreground">Vendedor / Item</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">NFs Sistema</th>
-                      <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">Relatório</th>
+                      <th className="text-left px-4 py-2 text-xs font-semibold text-muted-foreground">Item</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">NFs no Sistema</th>
+                      <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">Relatório Fabris</th>
                       <th className="text-right px-4 py-2 text-xs font-semibold text-muted-foreground">Diferença</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      { label: 'Tiago (V-01)', nf: nfTiago, rel: relatorio?.saidas || 0 },
-                      { label: 'Thais (V-05)', nf: nfThais, rel: relatorio?.servicos || 0 },
-                      { label: 'Fat. Direto', nf: nfDireto, rel: relatorio?.outros || 0 },
-                    ].map(row => {
-                      const dif = row.nf - row.rel;
-                      return (
-                        <tr key={row.label} className="border-b hover:bg-muted/20">
-                          <td className="px-4 py-2 font-medium">{row.label}</td>
-                          <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(row.nf)}</td>
-                          <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">{formatCurrency(row.rel)}</td>
-                          <td className={`px-4 py-2 text-right tabular-nums font-semibold ${Math.abs(dif) < 1 ? 'text-emerald-600' : dif > 0 ? 'text-orange-600' : 'text-blue-600'}`}>
-                            {Math.abs(dif) < 1 ? '✓' : formatCurrency(dif)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    <tr className="bg-muted/30 font-bold">
-                      <td className="px-4 py-2">Total</td>
+                      { label: 'Tiago (V-01)', nf: nfTiago, rel: null },
+                      { label: 'Thais (V-05)', nf: nfThais, rel: null },
+                      { label: 'Fat. Direto', nf: nfDireto, rel: null },
+                    ].map(row => (
+                      <tr key={row.label} className="border-b hover:bg-muted/20">
+                        <td className="px-4 py-2 font-medium">{row.label}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(row.nf)}</td>
+                        <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">—</td>
+                        <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">—</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/30 font-bold border-t-2">
+                      <td className="px-4 py-2">Total Geral</td>
                       <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(totalNFs)}</td>
                       <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(relTotal)}</td>
-                      <td className={`px-4 py-2 text-right tabular-nums ${ok ? 'text-emerald-600' : 'text-orange-600'}`}>{formatCurrency(diferenca)}</td>
+                      <td className={`px-4 py-2 text-right tabular-nums font-bold ${ok ? 'text-emerald-600' : 'text-orange-600'}`}>
+                        {Math.abs(diferenca) < 1 ? '✓ Conciliado' : formatCurrency(diferenca)}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
+              {relatorio?.saidas != null && (
+                <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+                  <strong>Relatório Fabris:</strong> Saídas {formatCurrency(relatorio.saidas)} · Serviços {formatCurrency(relatorio.servicos || 0)} · Outros {formatCurrency(relatorio.outros || 0)} · <strong>Total {formatCurrency(relTotal)}</strong>
+                </div>
+              )}
 
               {relatorio?.observacoes && (
                 <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
