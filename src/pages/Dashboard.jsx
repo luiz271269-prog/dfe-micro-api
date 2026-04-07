@@ -9,7 +9,7 @@ import {
 import { formatCurrency } from '../lib/formatters';
 import DASAlertBadge from '../components/dashboard/DASAlertBadge';
 
-const ALL_MONTHS = ['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03'];
+const ALL_MONTHS = ['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04'];
 
 function fmtMes(m) {
   const [y, mo] = m.split('-');
@@ -127,16 +127,16 @@ function SectionMetric({ title, value, sub, icon: Icon, valueColor, href }) {
 }
 
 export default function Dashboard() {
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [selectedMonth, setSelectedMonth] = useState('2026-04');
   const [isAnnual, setIsAnnual] = useState(false);
-  const [rawData, setRawData] = useState({ lanc:[], nfs:[], tit:[], comp:[], obras:[], trib:[], func:[], folhas:[] });
+  const [rawData, setRawData] = useState({ lanc:[], nfs:[], tit:[], comp:[], obras:[], trib:[], func:[], folhas:[], faturas:[] });
   const [data, setData] = useState({
     bankBalance: 0, liesch: 41, fundos: 100000,
     recYTD: 0, pagYTD: 0,
     totalFat: 0, aReceber: 0, tiago: 0, thais: 0,
     emitido: 0, recebido: 0, emAberto: 0,
     totalCompras: 0, totalObras: 0,
-    totalCartoes: 26553, proxVenc: 672.85,
+    totalCartoes: 0, proxVenc: 0,
     totalTrib: 0, tribVencer: 0, tribVencidos: 0,
     funcAtivos: 0, folhaAtual: 0,
     saldoProjetado: 0,
@@ -170,7 +170,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function load() {
-      const [lancRaw, nfsRaw, titRaw, compRaw, obrasRaw, tribRaw, funcRaw, folhasRaw] = await Promise.all([
+      const [lancRaw, nfsRaw, titRaw, compRaw, obrasRaw, tribRaw, funcRaw, folhasRaw, faturasRaw] = await Promise.all([
         base44.entities.LancamentoBancario.list(),
         base44.entities.NotaFiscal.list(),
         base44.entities.TituloCobranca.list(),
@@ -179,6 +179,7 @@ export default function Dashboard() {
         base44.entities.Tributo.list(),
         base44.entities.Funcionario.list(),
         base44.entities.FolhaPagamento.list(),
+        base44.entities.FaturaCartao.list(),
       ]);
       const lancArr = Array.isArray(lancRaw) ? lancRaw : [];
       // Calcular saldo real: último lançamento NeuralTec com saldo_apos
@@ -186,6 +187,7 @@ export default function Dashboard() {
         .filter(l => l.conta_bancaria === 'NeuralTec 36092-2' && l.saldo_apos != null)
         .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
       const saldoReal = neuralLanc.length > 0 ? neuralLanc[0].saldo_apos : 0;
+      const faturasArr = Array.isArray(faturasRaw) ? faturasRaw : [];
       setRawData({
         lanc: lancArr,
         nfs: Array.isArray(nfsRaw) ? nfsRaw : [],
@@ -195,6 +197,7 @@ export default function Dashboard() {
         trib: Array.isArray(tribRaw) ? tribRaw : [],
         func: Array.isArray(funcRaw) ? funcRaw : [],
         folhas: Array.isArray(folhasRaw) ? folhasRaw : [],
+        faturas: faturasArr,
       });
       if (saldoReal > 0) {
         setData(prev => ({ ...prev, bankBalance: saldoReal, saldoProjetado: saldoReal }));
@@ -205,7 +208,7 @@ export default function Dashboard() {
   }, [refreshKey]); // eslint-disable-line
 
   useEffect(() => {
-    const { lanc, nfs, tit, comp, obras, trib, func, folhas } = rawData;
+    const { lanc, nfs, tit, comp, obras, trib, func, folhas, faturas } = rawData;
     // Correção 2: filtrar lançamentos por data para pegar registros com mes_referencia null
     const inicio = selectedMonth + '-01';
     const fim = selectedMonth + '-31';
@@ -242,6 +245,13 @@ export default function Dashboard() {
       }
       if (func.length) d.funcAtivos = func.filter(f=>f.status==='ativo').length;
       if (folhas.length) d.folhaAtual = folhas.filter(f=>f.competencia===selectedMonth&&f.status==='pago').reduce((s,f)=>s+(f.salario_liquido||0),0);
+      if (faturas.length) {
+        const faturasF = isAnnual ? faturas : faturas.filter(f => (f.mes_referencia||'').startsWith(selectedMonth));
+        d.totalCartoes = faturasF.reduce((s,f)=>s+(f.valor_total||0),0);
+        // Próx vencimento: menor data_vencimento entre faturas não pagas
+        const abertas = faturas.filter(f => f.status !== 'paga_total').sort((a,b)=>(a.data_vencimento||'').localeCompare(b.data_vencimento||''));
+        d.proxVenc = abertas.length > 0 ? abertas[0].valor_total : 0;
+      }
       return d;
     });
   }, [rawData, selectedMonth, isAnnual]);
@@ -350,7 +360,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Section icon={CreditCard} label="Cartões de Crédito" gradient="purple" cols={2}>
           <SectionMetric title="Pago no Banco" value={formatCurrency(-data.totalCartoes)} sub="7 cartões vinculados" icon={CreditCard} valueColor="purple" href="/cartoes" />
-          <SectionMetric title="Próx. Vencimento" value={formatCurrency(data.proxVenc)} sub="25/03 Sicredi NT" icon={DollarSign} valueColor="amber" href="/cartoes" />
+          <SectionMetric title="Próx. Vencimento" value={formatCurrency(data.proxVenc)} sub="Próxima fatura em aberto" icon={DollarSign} valueColor="amber" href="/cartoes" />
         </Section>
         <Section icon={AlertTriangle} label="Tributos" gradient="red" cols={2}>
           <SectionMetric title="Total a Pagar" value={formatCurrency(data.totalTrib)} sub={`${data.tribVencer} a vencer`} icon={AlertTriangle} valueColor="blue" href="/tributos" />
