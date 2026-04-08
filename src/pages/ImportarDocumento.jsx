@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { InvokeLLM, UploadFile } from '@/integrations/Core';
 import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Trash2 } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
+import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
 import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
@@ -227,50 +228,22 @@ export default function ImportarDocumento() {
       if (selectedType === 'relatorio_nfs') items = items.map(i => ({ ...i, numero: String(i.numero ?? '').trim() }));
       if (selectedType === 'boletos_liquidados') items = items.map(i => ({ ...i, nosso_numero: String(i.nosso_numero ?? '').trim() }));
 
-      // 5. Deduplicação
+      // 5. Deduplicação via motor genérico
       const typeConfig = DOC_TYPES.find(d => d.id === selectedType);
-      const seenInBatch = new Set();
-      const enriched = [];
+      let enriched = [];
 
-      for (const item of items) {
-        let dupStatus = 'novo';
-        try {
-          if (selectedType === 'fatura_cartao') {
-            if (item.__type === 'FaturaCartao') {
-              const ex = await base44.entities.FaturaCartao.filter({ conta_cartao_id: item.conta_cartao_id, mes_referencia: item.mes_referencia });
-              if (ex?.length > 0) dupStatus = 'duplicata';
-            } else {
-              const ex = await base44.entities.LancamentoCartao.filter({ data_lancamento: item.data_lancamento, estabelecimento: item.estabelecimento, valor: item.valor });
-              if (ex?.length > 0) dupStatus = 'duplicata';
-            }
-          } else if (typeConfig?.dedup?.length) {
-            const query = {};
-            typeConfig.dedup.forEach(k => {
-              if (item[k] !== undefined && item[k] !== null) {
-                const v = item[k];
-                query[k] = typeof v === 'number' ? v : String(v).trim();
-              }
-            });
-            const batchKey = typeConfig.dedup.map(k => String(item[k] ?? '').trim().toLowerCase()).join('|');
-            if (seenInBatch.has(batchKey)) {
-              dupStatus = 'duplicata';
-            } else {
-              seenInBatch.add(batchKey);
-              if (Object.keys(query).length > 0) {
-                const safeQuery = { ...query };
-                const ex = await base44.entities[typeConfig.entity].filter(safeQuery);
-                if (ex?.length > 0) {
-                  if (typeConfig.dedup.includes('valor')) {
-                    if (ex.some(e => Math.abs((e.valor || 0) - (item.valor || 0)) < 0.01)) dupStatus = 'duplicata';
-                  } else {
-                    dupStatus = 'duplicata';
-                  }
-                }
-              }
-            }
-          }
-        } catch {}
-        enriched.push({ data: item, status: dupStatus, selected: dupStatus === 'novo' });
+      if (selectedType === 'fatura_cartao') {
+        // Caso especial: 2 tipos de entidade (FaturaCartao + LancamentoCartao)
+        const fats = items.filter(i => i.__type === 'FaturaCartao');
+        const lancs = items.filter(i => i.__type === 'LancamentoCartao');
+
+        const dedupFats = await deduplicateRecords(fats, 'FaturaCartao');
+        const dedupLancs = await deduplicateRecords(lancs, 'LancamentoCartao');
+
+        enriched = [...dedupFats, ...dedupLancs];
+      } else {
+        // Caso genérico: aplica deduplicação via motor
+        enriched = await deduplicateRecords(items, typeConfig.entity);
       }
 
       setRecords(enriched);
@@ -288,45 +261,35 @@ export default function ImportarDocumento() {
     const typeConfig = DOC_TYPES.find(d => d.id === selectedType);
     let saved = 0, errors = 0;
 
+    // Usar motor de deduplicação para salvar
     if (selectedType === 'fatura_cartao') {
-      const allLancs = records.filter(r => r.data.__type === 'LancamentoCartao' && r.status !== 'duplicata');
-      const faturaRec = records.find(r => r.data.__type === 'FaturaCartao');
-      let faturaId = null;
-      if (faturaRec) {
-        if (faturaRec.status === 'duplicata') {
-          const ex = await base44.entities.FaturaCartao.filter({ conta_cartao_id: faturaRec.data.conta_cartao_id, mes_referencia: faturaRec.data.mes_referencia });
-          faturaId = ex?.[0]?.id || null;
-        } else {
-          try {
-            const { __type, ...fatData } = faturaRec.data;
-            const created = await base44.entities.FaturaCartao.create(fatData);
-            faturaId = created.id;
-            saved++;
-          } catch { errors++; }
+      const faturaRecs = records.filter(r => r.data.__type === 'FaturaCartao');
+      const lancRecs = records.filter(r => r.data.__type === 'LancamentoCartao' && r.status !== 'duplicata');
+
+      const statsFat = await saveDeduplicatedRecords('FaturaCartao', faturaRecs);
+      saved += statsFat.saved;
+      errors += statsFat.errors;
+
+      if (statsFat.saved > 0) {
+        const created = await base44.entities.FaturaCartao.filter({ status: 'aberta' });
+        const faturaId = created?.[0]?.id;
+
+        if (faturaId) {
+          for (let i = 0; i < lancRecs.length; i++) {
+            setSaveProgress(`Salvando lançamento ${i + 1} de ${lancRecs.length}...`);
+            try {
+              const { __type, ...lancData } = lancRecs[i].data;
+              await base44.entities.LancamentoCartao.create({ ...lancData, fatura_id: faturaId });
+              saved++;
+            } catch { errors++; }
+          }
         }
       }
-      if (!faturaId) { showToast('Não foi possível obter o ID da fatura.', 'error'); setSaving(false); return; }
-      for (let i = 0; i < allLancs.length; i++) {
-        setSaveProgress(`Salvando lançamento ${i + 1} de ${allLancs.length}...`);
-        try {
-          const { __type, ...lancData } = allLancs[i].data;
-          await base44.entities.LancamentoCartao.create({ ...lancData, fatura_id: faturaId });
-          saved++;
-        } catch { errors++; }
-      }
     } else {
-      for (let i = 0; i < toSave.length; i++) {
-        setSaveProgress(`Salvando ${i + 1} de ${toSave.length}...`);
-        try {
-          // Correção 1: garantir mes_referencia para LancamentoBancario
-          let itemData = toSave[i].data;
-          if (typeConfig.entity === 'LancamentoBancario' && itemData.data && !itemData.mes_referencia) {
-            itemData = { ...itemData, mes_referencia: itemData.data.substring(0, 7) };
-          }
-          await base44.entities[typeConfig.entity].create(itemData);
-          saved++;
-        } catch { errors++; }
-      }
+      // Caso genérico: usar motor genérico
+      const stats = await saveDeduplicatedRecords(typeConfig.entity, toSave);
+      saved = stats.saved;
+      errors = stats.errors;
     }
 
     const dupes = records.filter(r => r.status === 'duplicata').length;
