@@ -6,6 +6,7 @@ import {
   DollarSign, Users, BarChart3
 } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
+import MapaCoberturaReconciliacao from '../components/shared/MapaCoberturaReconciliacao';
 import { formatCurrency } from '../lib/formatters';
 
 function StatusIndicator({ status }) {
@@ -250,7 +251,12 @@ export default function MapaGeral() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      {/* Cobertura de Reconciliação */}
+      <div className="mt-8">
+        <MapaCoberturaReconciliacao />
+      </div>
+
+      <div className="space-y-3 mt-8">
         {modules.map((m, i) => <ModuleCard key={i} {...m} />)}
       </div>
     </div>
