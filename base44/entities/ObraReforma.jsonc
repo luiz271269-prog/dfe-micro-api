@@ -80,6 +80,10 @@
     "fornecedor_cnpj_cpf": {
       "type": "string",
       "title": "CPF / CNPJ do Prestador"
+    },
+    "lancamento_cartao_id": {
+      "type": "string",
+      "title": "ID Lan\u00e7amento Cart\u00e3o (origem)"
     }
   },
   "required": [
