@@ -148,13 +148,7 @@ export default function ExtratoBancario() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={filterMes} onValueChange={setFilterMes}>
-          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Mês" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos Meses</SelectItem>
-            {meses.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
+
       </div>
 
       {/* Table */}
