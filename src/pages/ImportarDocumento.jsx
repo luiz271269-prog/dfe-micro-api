@@ -263,26 +263,37 @@ export default function ImportarDocumento() {
 
     // Usar motor de deduplicação para salvar
     if (selectedType === 'fatura_cartao') {
-      const faturaRecs = records.filter(r => r.data.__type === 'FaturaCartao');
-      const lancRecs = records.filter(r => r.data.__type === 'LancamentoCartao' && r.status !== 'duplicata');
+      const faturaRec = records.find(r => r.data.__type === 'FaturaCartao' && r.selected && r.status !== 'erro');
+      const lancRecs = records.filter(r => r.data.__type === 'LancamentoCartao' && r.selected && r.status !== 'erro');
 
-      const statsFat = await saveDeduplicatedRecords('FaturaCartao', faturaRecs);
-      saved += statsFat.saved;
-      errors += statsFat.errors;
+      let faturaId = null;
 
-      if (statsFat.saved > 0) {
-        const created = await base44.entities.FaturaCartao.filter({ status: 'aberta' });
-        const faturaId = created?.[0]?.id;
+      if (faturaRec) {
+        if (faturaRec.status === 'duplicata') {
+          // Fatura já existe — buscar pelo cartão + mês
+          const { __type, ...fatData } = faturaRec.data;
+          const ex = await base44.entities.FaturaCartao.filter({
+            conta_cartao_id: fatData.conta_cartao_id,
+            mes_referencia: fatData.mes_referencia,
+          });
+          faturaId = ex?.[0]?.id || null;
+          if (faturaId) saved++;
+        } else {
+          // Criar fatura nova e capturar o ID retornado
+          const { __type, ...fatData } = faturaRec.data;
+          const createdFatura = await base44.entities.FaturaCartao.create(fatData);
+          faturaId = createdFatura?.id || null;
+          if (faturaId) saved++;
+          else errors++;
+        }
+      }
 
-        if (faturaId) {
-          for (let i = 0; i < lancRecs.length; i++) {
-            setSaveProgress(`Salvando lançamento ${i + 1} de ${lancRecs.length}...`);
-            try {
-              const { __type, ...lancData } = lancRecs[i].data;
-              await base44.entities.LancamentoCartao.create({ ...lancData, fatura_id: faturaId });
-              saved++;
-            } catch { errors++; }
-          }
+      if (faturaId) {
+        for (let i = 0; i < lancRecs.length; i++) {
+          setSaveProgress(`Salvando lançamento ${i + 1} de ${lancRecs.length}...`);
+          const { __type, ...lancData } = lancRecs[i].data;
+          await base44.entities.LancamentoCartao.create({ ...lancData, fatura_id: faturaId });
+          saved++;
         }
       }
     } else {
