@@ -109,6 +109,9 @@ export default function Cartoes() {
 
   useEffect(() => {
     loadData();
+    const handler = () => loadData();
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
   }, []);
 
   async function handleFaturaSubmit(e) {

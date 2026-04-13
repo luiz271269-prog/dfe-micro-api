@@ -189,7 +189,12 @@ export default function Funcionarios() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const handler = () => loadData();
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
+  }, []);
 
   async function handleFuncSubmit(e) {
     e.preventDefault();

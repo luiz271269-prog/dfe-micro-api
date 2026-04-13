@@ -34,7 +34,12 @@ export default function ExtratoBancario() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const handler = () => loadData();
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
+  }, []);
 
   const filtered = useMemo(() => {
     return lancamentos.filter(l => {

@@ -39,6 +39,9 @@ export default function Tributos() {
 
   useEffect(() => {
     loadData();
+    const handler = () => loadData();
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
   }, []);
 
   async function handleSubmit(e) {

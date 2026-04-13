@@ -123,7 +123,12 @@ export default function Obras() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    const handler = () => loadData();
+    window.addEventListener('neuralfinRefresh', handler);
+    return () => window.removeEventListener('neuralfinRefresh', handler);
+  }, []);
 
   const meses = useMemo(() => {
     const set = new Set(obras.map(o => o.data?.slice(0, 7)).filter(Boolean));
