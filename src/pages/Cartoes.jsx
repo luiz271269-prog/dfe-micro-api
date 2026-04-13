@@ -111,7 +111,9 @@ export default function Cartoes() {
     loadData();
     const handler = () => loadData();
     window.addEventListener('neuralfinRefresh', handler);
-    return () => window.removeEventListener('neuralfinRefresh', handler);
+    const unsubFat = base44.entities.FaturaCartao.subscribe(() => loadData());
+    const unsubLanc = base44.entities.LancamentoCartao.subscribe(() => loadData());
+    return () => { window.removeEventListener('neuralfinRefresh', handler); unsubFat(); unsubLanc(); };
   }, []);
 
   async function handleFaturaSubmit(e) {

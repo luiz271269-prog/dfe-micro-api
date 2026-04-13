@@ -193,7 +193,9 @@ export default function Funcionarios() {
     loadData();
     const handler = () => loadData();
     window.addEventListener('neuralfinRefresh', handler);
-    return () => window.removeEventListener('neuralfinRefresh', handler);
+    const unsubFunc = base44.entities.Funcionario.subscribe(() => loadData());
+    const unsubFolha = base44.entities.FolhaPagamento.subscribe(() => loadData());
+    return () => { window.removeEventListener('neuralfinRefresh', handler); unsubFunc(); unsubFolha(); };
   }, []);
 
   async function handleFuncSubmit(e) {

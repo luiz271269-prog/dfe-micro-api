@@ -41,7 +41,8 @@ export default function Tributos() {
     loadData();
     const handler = () => loadData();
     window.addEventListener('neuralfinRefresh', handler);
-    return () => window.removeEventListener('neuralfinRefresh', handler);
+    const unsub = base44.entities.Tributo.subscribe(() => loadData());
+    return () => { window.removeEventListener('neuralfinRefresh', handler); unsub(); };
   }, []);
 
   async function handleSubmit(e) {

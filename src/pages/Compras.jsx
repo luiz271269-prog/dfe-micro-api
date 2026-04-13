@@ -55,7 +55,8 @@ export default function Compras() {
     loadData();
     const handler = () => loadData();
     window.addEventListener('neuralfinRefresh', handler);
-    return () => window.removeEventListener('neuralfinRefresh', handler);
+    const unsub = base44.entities.ItemCompra.subscribe(() => loadData());
+    return () => { window.removeEventListener('neuralfinRefresh', handler); unsub(); };
   }, []);
 
   const fornSuggestions = useMemo(() => {

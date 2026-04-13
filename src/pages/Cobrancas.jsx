@@ -45,7 +45,8 @@ export default function Cobrancas() {
     loadData();
     const handler = () => loadData();
     window.addEventListener('neuralfinRefresh', handler);
-    return () => window.removeEventListener('neuralfinRefresh', handler);
+    const unsub = base44.entities.TituloCobranca.subscribe(() => loadData());
+    return () => { window.removeEventListener('neuralfinRefresh', handler); unsub(); };
   }, []);
 
   const monthTotals = useMemo(() => {
