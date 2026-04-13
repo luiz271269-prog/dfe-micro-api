@@ -5,77 +5,72 @@ Deno.serve(async (req) => {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Buscar todos os lançamentos
+  const { mes } = await req.json().catch(() => ({}));
+  const targetMes = mes || '2026-04';
+
   const lancamentos = await base44.asServiceRole.entities.LancamentoBancario.list('-data', 1000);
+  const doMes = lancamentos.filter(l => (l.mes_referencia || (l.data || '').slice(0, 7)) === targetMes);
 
-  // ── 1. DUPLICATAS ─────────────────────────────────────────────────────────
-  const seen = {};
-  const duplicatas = [];
-
-  for (const l of lancamentos) {
+  // ── 1. Duplicatas exatas (mesma data + valor + descricao) ─────────────────
+  const seenExato = {};
+  const duplicatasExatas = [];
+  for (const l of doMes) {
     const key = `${l.data}|${l.valor}|${(l.descricao || '').trim().toLowerCase()}`;
-    if (seen[key]) {
-      duplicatas.push({ id: l.id, data: l.data, valor: l.valor, descricao: l.descricao });
+    if (seenExato[key]) {
+      duplicatasExatas.push({ id: l.id, data: l.data, valor: l.valor, descricao: l.descricao, tipo: 'exata' });
     } else {
-      seen[key] = l.id;
+      seenExato[key] = l.id;
     }
   }
 
-  // ── 2. ANÁLISE POR MÊS ───────────────────────────────────────────────────
-  const meses = {};
-  for (const l of lancamentos) {
-    const mes = l.mes_referencia || (l.data || '').slice(0, 7);
-    if (!mes) continue;
-    if (!meses[mes]) meses[mes] = { count: 0, total: 0, saldoInicial: null, saldoFinal: null, lancs: [] };
-    meses[mes].count++;
-    meses[mes].total += l.valor || 0;
-    meses[mes].lancs.push(l);
-  }
-
-  // Para cada mês, ordenar por data e verificar consistência do saldo
-  const mesSummary = {};
-  for (const [mes, info] of Object.entries(meses)) {
-    const sorted = info.lancs.sort((a, b) => new Date(a.data) - new Date(b.data));
-    const comSaldo = sorted.filter(l => l.saldo_apos != null);
-    
-    let saldoProblems = [];
-    // Verificar se saldo_apos é consistente: saldo_apos[i] deve ser ≈ saldo_apos[i-1] + valor[i]
-    for (let i = 1; i < comSaldo.length; i++) {
-      const esperado = comSaldo[i - 1].saldo_apos + comSaldo[i].valor;
-      const real = comSaldo[i].saldo_apos;
-      const diff = Math.abs(esperado - real);
-      // tolerância de R$ 0.10 para arredondamentos
-      if (diff > 0.10) {
-        saldoProblems.push({
-          data: comSaldo[i].data,
-          descricao: comSaldo[i].descricao,
-          saldo_anterior: comSaldo[i - 1].saldo_apos,
-          valor: comSaldo[i].valor,
-          saldo_esperado: Math.round(esperado * 100) / 100,
-          saldo_real: real,
-          diferenca: Math.round(diff * 100) / 100,
+  // ── 2. Duplicatas semânticas (mesma data + mesmo valor, descrição diferente) ──
+  // Ex: "APLEX DISTRIBUIDORA" e "LIQUIDACAO BOLETO ... APLEX DISTRIBUI" — mesmo pagamento
+  const seenValorData = {};
+  const duplicatasSemânticas = [];
+  for (const l of doMes) {
+    const key = `${l.data}|${l.valor}`;
+    if (seenValorData[key]) {
+      const prev = seenValorData[key];
+      // só alertar se valor for negativo (saída) - para evitar falsos positivos em recebimentos
+      if (l.valor < 0) {
+        duplicatasSemânticas.push({
+          data: l.data,
+          valor: l.valor,
+          descricao_a: prev.descricao,
+          descricao_b: l.descricao,
+          id_a: prev.id,
+          id_b: l.id,
+          detalhe_a: prev.detalhe,
+          detalhe_b: l.detalhe,
         });
       }
+    } else {
+      seenValorData[key] = l;
     }
-
-    mesSummary[mes] = {
-      count: info.count,
-      total: Math.round(info.total * 100) / 100,
-      comSaldo: comSaldo.length,
-      semSaldo: sorted.length - comSaldo.length,
-      saldoInicial: comSaldo.length > 0 ? comSaldo[0].saldo_apos - comSaldo[0].valor : null,
-      saldoFinal: comSaldo.length > 0 ? comSaldo[comSaldo.length - 1].saldo_apos : null,
-      saldoProblems: saldoProblems.slice(0, 5), // máx 5 por mês
-      totalSaldoProblems: saldoProblems.length,
-    };
   }
 
+  // ── 3. Resumo por data ────────────────────────────────────────────────────
+  const porData = {};
+  for (const l of doMes) {
+    const d = l.data;
+    if (!porData[d]) porData[d] = { count: 0, total: 0 };
+    porData[d].count++;
+    porData[d].total += l.valor || 0;
+  }
+
+  // ── 4. Totais gerais ──────────────────────────────────────────────────────
+  const totalDB = doMes.reduce((s, l) => s + (l.valor || 0), 0);
+  const entradas = doMes.filter(l => l.valor > 0).reduce((s, l) => s + l.valor, 0);
+  const saidas = doMes.filter(l => l.valor < 0).reduce((s, l) => s + l.valor, 0);
+
   return Response.json({
-    totalLancamentos: lancamentos.length,
-    duplicatas: {
-      count: duplicatas.length,
-      registros: duplicatas.slice(0, 20),
-    },
-    meses: mesSummary,
+    mes: targetMes,
+    totalLancamentos: doMes.length,
+    totalDB: Math.round(totalDB * 100) / 100,
+    entradas: Math.round(entradas * 100) / 100,
+    saidas: Math.round(saidas * 100) / 100,
+    duplicatasExatas,
+    duplicatasSemânticas,
+    porData,
   });
 });
