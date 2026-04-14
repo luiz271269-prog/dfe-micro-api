@@ -97,10 +97,10 @@ export async function deduplicateRecords(records, entityType) {
   const seenInBatch = new Set();
   const enriched = [];
 
-  // Buscar todos os registros existentes na entidade uma vez
+  // Buscar apenas os registros recentes (últimos 200) para deduplicação rápida
   let existingRecords = [];
   try {
-    existingRecords = await base44.entities[entity].list('-created_date', 1000);
+    existingRecords = await base44.entities[entity].list('-created_date', 200);
   } catch {
     // Se falhar, continua sem validar duplicatas no banco
   }
@@ -158,16 +158,17 @@ export async function saveDeduplicatedRecords(entityType, recordsWithStatus) {
   const { entity } = config;
   const toSave = recordsWithStatus.filter(r => r.selected && r.status !== 'erro');
 
+  // Salvar em paralelo (lotes de 5) para maior velocidade
   let saved = 0;
   let errors = 0;
+  const BATCH = 5;
 
-  for (const record of toSave) {
-    try {
-      await base44.entities[entity].create(record.data);
-      saved++;
-    } catch {
-      errors++;
-    }
+  for (let i = 0; i < toSave.length; i += BATCH) {
+    const chunk = toSave.slice(i, i + BATCH);
+    const results = await Promise.allSettled(
+      chunk.map(record => base44.entities[entity].create(record.data))
+    );
+    results.forEach(r => { if (r.status === 'fulfilled') saved++; else errors++; });
   }
 
   return {

@@ -256,12 +256,14 @@ export default function ImportarDocumento() {
       let enriched = [];
 
       if (selectedType === 'fatura_cartao') {
-        // Caso especial: 2 tipos de entidade (FaturaCartao + LancamentoCartao)
+        // Caso especial: 2 tipos de entidade — deduplicar em paralelo
         const fats = items.filter(i => i.__type === 'FaturaCartao');
         const lancs = items.filter(i => i.__type === 'LancamentoCartao');
 
-        const dedupFats = await deduplicateRecords(fats, 'FaturaCartao');
-        const dedupLancs = await deduplicateRecords(lancs, 'LancamentoCartao');
+        const [dedupFats, dedupLancs] = await Promise.all([
+          deduplicateRecords(fats, 'FaturaCartao'),
+          deduplicateRecords(lancs, 'LancamentoCartao'),
+        ]);
 
         enriched = [...dedupFats, ...dedupLancs];
       } else {
