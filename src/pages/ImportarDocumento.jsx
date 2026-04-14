@@ -330,9 +330,18 @@ export default function ImportarDocumento() {
 
     const dupes = records.filter(r => r.status === 'duplicata').length;
 
-    // Para fatura_cartao, salvar metadados da fatura no notes como JSON
+    // Salvar metadados extras no notes como JSON conforme tipo
     let notesValue = fileUrl || '';
-    if (selectedType === 'fatura_cartao') {
+    if (selectedType === 'folha_pagamento') {
+      const competencias = [...new Set(
+        records.filter(r => r.data.competencia).map(r => r.data.competencia)
+      )];
+      notesValue = JSON.stringify({
+        file_url: fileUrl || '',
+        competencias,
+        competencia: competencias[0] || null,
+      });
+    } else if (selectedType === 'fatura_cartao') {
       const faturaRec2 = records.find(r => r.data.__type === 'FaturaCartao');
       const cartaoInfo = contasCartao.find(c => c.id === (faturaRec2?.data?.conta_cartao_id || selectedCartaoId));
       notesValue = JSON.stringify({
@@ -580,6 +589,9 @@ export default function ImportarDocumento() {
                              <th className="text-right px-3 py-2 font-semibold text-muted-foreground text-[10px]">Total</th>
                              <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Vencimento</th>
                            </>}
+                           {selectedType === 'folha_pagamento' && (
+                             <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Competência</th>
+                           )}
                            <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Status</th>
                          </tr>
                        </thead>
@@ -622,6 +634,9 @@ export default function ImportarDocumento() {
                                      {notesData.nome_cartao.split('—')[0].trim()}{notesData.bandeira ? ` · ${notesData.bandeira}` : ''}{notesData.dia_vencimento ? ` · dia ${notesData.dia_vencimento}` : ''}
                                    </p>
                                  )}
+                                 {notesData?.competencia && (
+                                   <p className="text-[9px] text-blue-600 font-semibold">Competência: {notesData.competencia}</p>
+                                 )}
                                </td>
                                {!selectedType && <td className="px-3 py-1.5 font-semibold text-[10px]">{dt?.label || h.batch_type}</td>}
                                <td className="px-3 py-1.5 text-[10px] text-primary font-medium truncate max-w-[120px]">{h.file_name || '—'}</td>
@@ -636,6 +651,11 @@ export default function ImportarDocumento() {
                                      : '—'}
                                  </td>
                                </>}
+                               {selectedType === 'folha_pagamento' && (
+                                 <td className="px-3 py-1.5 text-center text-[10px] font-semibold text-blue-700">
+                                   {notesData?.competencia || '—'}
+                                 </td>
+                               )}
                                <td className="px-3 py-1.5 text-center"><StatusBadge status={h.status} /></td>
                              </tr>
                            );
