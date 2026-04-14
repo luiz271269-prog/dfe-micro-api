@@ -111,6 +111,7 @@ export default function ImportarDocumento() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [deduping, setDeduping] = useState(false);
   const [lastImports, setLastImports] = useState({});
+  const [filePreview, setFilePreview] = useState(null);
 
   async function handleDedup() {
     setDeduping(true);
@@ -169,6 +170,12 @@ export default function ImportarDocumento() {
     if (!f) return;
     setFile(f);
     setStep(Math.max(step, 2));
+    if (f.type.startsWith('image/')) {
+      const url = URL.createObjectURL(f);
+      setFilePreview(url);
+    } else {
+      setFilePreview(null);
+    }
   }
 
   function onDrop(e) {
@@ -419,10 +426,14 @@ export default function ImportarDocumento() {
                 onChange={(e) => handleFileSelect(e.target.files[0])} />
               {file ? (
                 <div>
-                  <FileText className="w-10 h-10 text-primary mx-auto mb-2" />
+                  {filePreview ? (
+                    <img src={filePreview} alt="preview" className="max-h-32 mx-auto mb-2 rounded-lg object-contain border" />
+                  ) : (
+                    <FileText className="w-10 h-10 text-primary mx-auto mb-2" />
+                  )}
                   <p className="font-semibold text-sm">{file.name}</p>
                   <p className="text-xs text-muted-foreground mt-1">{(file.size / 1024).toFixed(1)} KB</p>
-                  <button onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                  <button onClick={(e) => { e.stopPropagation(); setFile(null); setFilePreview(null); }}
                     className="mt-2 text-xs text-red-500 hover:underline">Remover</button>
                 </div>
               ) : (
@@ -526,44 +537,63 @@ export default function ImportarDocumento() {
 
       {/* Histórico */}
       <div>
-        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Histórico de Importações</h2>
-        <div className="bg-card rounded-xl border overflow-hidden">
-          {loadingHistory ? (
-            <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>
-          ) : history.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma importação realizada ainda</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Data</th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Documento</th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Arquivo</th>
-                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Salvos</th>
-                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Duplicatas</th>
-                    <th className="text-center px-4 py-3 font-semibold text-muted-foreground text-xs">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map(h => {
-                    const dt = DOC_TYPES.find(d => d.id === h.batch_type);
-                    return (
-                      <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                        <td className="px-4 py-3 font-semibold text-sm">{dt?.label || h.batch_type}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[180px]">{h.file_name || '—'}</td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700">{h.success_count ?? 0}</td>
-                        <td className="px-4 py-3 text-right text-yellow-600">{h.duplicate_count ?? 0}</td>
-                        <td className="px-4 py-3 text-center"><StatusBadge status={h.status} /></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        {(() => {
+          const filteredHistory = selectedType
+            ? history.filter(h => h.batch_type === selectedType)
+            : history;
+          const selectedDt = DOC_TYPES.find(d => d.id === selectedType);
+          return (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                  Histórico{selectedType ? ` — ${selectedDt?.label}` : ' de Importações'}
+                </h2>
+                {selectedType && (
+                  <span className="text-xs text-muted-foreground">{filteredHistory.length} importação(ões)</span>
+                )}
+              </div>
+              <div className="bg-card rounded-xl border overflow-hidden">
+                {loadingHistory ? (
+                  <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>
+                ) : filteredHistory.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground text-sm">
+                    {selectedType ? `Nenhuma importação de "${selectedDt?.label}" ainda` : 'Nenhuma importação realizada ainda'}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Data</th>
+                          {!selectedType && <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Documento</th>}
+                          <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Arquivo</th>
+                          <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Salvos</th>
+                          <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Duplicatas</th>
+                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground text-xs">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredHistory.map(h => {
+                          const dt = DOC_TYPES.find(d => d.id === h.batch_type);
+                          return (
+                            <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
+                              <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                              {!selectedType && <td className="px-4 py-3 font-semibold text-sm">{dt?.label || h.batch_type}</td>}
+                              <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[180px]">{h.file_name || '—'}</td>
+                              <td className="px-4 py-3 text-right font-bold text-green-700">{h.success_count ?? 0}</td>
+                              <td className="px-4 py-3 text-right text-yellow-600">{h.duplicate_count ?? 0}</td>
+                              <td className="px-4 py-3 text-center"><StatusBadge status={h.status} /></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );
