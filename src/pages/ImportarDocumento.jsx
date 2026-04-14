@@ -374,7 +374,7 @@ export default function ImportarDocumento() {
           <Button onClick={reset}>Nova Importação</Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 mb-8">
           {/* Tipo de documento */}
           <div>
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">1. Tipo de Documento</h2>
