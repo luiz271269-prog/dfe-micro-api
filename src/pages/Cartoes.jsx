@@ -79,7 +79,7 @@ export default function Cartoes() {
   const [faturas, setFaturas] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [selectedMonth, setSelectedMonth] = useState('2026-04');
   const [isAnnual, setIsAnnual] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
   const [expandedFatura, setExpandedFatura] = useState(null);
