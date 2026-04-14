@@ -430,62 +430,9 @@ export default function ImportarDocumento() {
             </div>
           </div>
 
-          {/* Upload + Calendário + Histórico */}
+          {/* Upload */}
           <div>
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">2. Arquivo</h2>
-
-            {selectedType === 'fatura_cartao' && (
-              <div className="mb-4">
-                {/* Calendário visual de vencimentos */}
-                <div className="bg-muted/30 rounded-xl border p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" /> Calendário de Vencimentos — clique para selecionar
-                  </p>
-                  <div className="flex items-start gap-3 overflow-x-auto pb-1">
-                    {[...contasCartao].sort((a,b)=>(a.dia_vencimento||0)-(b.dia_vencimento||0)).map(c => {
-                      const isSelected = selectedCartaoId === c.id;
-                      const lastImp = history.find(h => h.batch_type === 'fatura_cartao' && h.status === 'completed' && (h.title || '').toLowerCase().includes(c.nome.split('—')[0].trim().toLowerCase()));
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelectedCartaoId(isSelected ? '' : c.id)}
-                          className="flex flex-col items-center gap-1 min-w-[62px] shrink-0"
-                        >
-                          <div className={`w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center transition-all ${
-                            isSelected
-                              ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-md'
-                              : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-300'
-                          }`}>
-                            <span className="text-base font-bold leading-none">{c.dia_vencimento}</span>
-                            <span className="text-[8px] font-medium">dia</span>
-                          </div>
-                          <p className="text-[9px] text-center text-muted-foreground leading-tight max-w-[62px] truncate font-medium">{c.nome.split('—')[0].trim()}</p>
-                          {lastImp ? (
-                            <p className="text-[8px] text-center text-emerald-600 leading-tight max-w-[62px]">
-                              {new Date(lastImp.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                              {lastImp.success_count > 0 && <> · {lastImp.success_count}reg</>}
-                            </p>
-                          ) : (
-                            <p className="text-[8px] text-center text-muted-foreground/40 leading-tight">nunca</p>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {selectedCartaoId && (
-                    <p className="text-xs text-primary font-semibold mt-2 flex items-center gap-1">
-                      <CheckCircle className="w-3.5 h-3.5" /> {contasCartao.find(c=>c.id===selectedCartaoId)?.nome}
-                    </p>
-                  )}
-                  {!selectedCartaoId && (
-                    <p className="text-[10px] text-muted-foreground/60 mt-2 italic">Nenhum cartão selecionado — a IA tentará identificar automaticamente</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Drop zone — abaixo do calendário */}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
               onDragLeave={() => setDragging(false)}
@@ -513,6 +460,48 @@ export default function ImportarDocumento() {
               )}
             </div>
 
+            {selectedType === 'fatura_cartao' && (
+              <div className="mt-4">
+                {/* Calendário visual de vencimentos */}
+                <div className="bg-muted/30 rounded-xl border p-3 mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Calendário de Vencimentos — clique para selecionar
+                  </p>
+                  <div className="flex items-start gap-3 overflow-x-auto pb-1">
+                    {[...contasCartao].sort((a,b)=>(a.dia_vencimento||0)-(b.dia_vencimento||0)).map(c => {
+                      const isSelected = selectedCartaoId === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelectedCartaoId(isSelected ? '' : c.id)}
+                          className="flex flex-col items-center gap-1 min-w-[58px] shrink-0"
+                        >
+                          <div className={`w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center transition-all ${
+                            isSelected
+                              ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-md'
+                              : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-300'
+                          }`}>
+                            <span className="text-base font-bold leading-none">{c.dia_vencimento}</span>
+                            <span className="text-[8px] font-medium">dia</span>
+                          </div>
+                          <p className="text-[9px] text-center text-muted-foreground leading-tight max-w-[58px] truncate">{c.nome.split('—')[0].trim()}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedCartaoId && (
+                    <p className="text-xs text-primary font-semibold mt-2 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5" /> {contasCartao.find(c=>c.id===selectedCartaoId)?.nome}
+                    </p>
+                  )}
+                  {!selectedCartaoId && (
+                    <p className="text-[10px] text-muted-foreground/60 mt-2 italic">Nenhum cartão selecionado — a IA tentará identificar automaticamente</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {file && selectedType && (
               <Button onClick={processWithAI} disabled={processing} className="w-full mt-4 gap-2 h-11">
                 {processing ? (
@@ -529,76 +518,6 @@ export default function ImportarDocumento() {
                 <pre className="text-[11px] text-yellow-900 whitespace-pre-wrap max-h-48 overflow-y-auto">{rawText}</pre>
               </div>
             )}
-
-            {/* Histórico inline — abaixo do drop zone */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Histórico de Importações</h2>
-                {selectedType && (
-                  <span className="text-[10px] text-primary font-semibold">{DOC_TYPES.find(d=>d.id===selectedType)?.label}</span>
-                )}
-              </div>
-              <div className="bg-card rounded-xl border overflow-hidden">
-                {loadingHistory ? (
-                  <div className="p-6 text-center"><div className="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>
-                ) : (() => {
-                  const filtered = selectedType ? history.filter(h => h.batch_type === selectedType) : history;
-                  if (filtered.length === 0) return (
-                    <div className="p-6 text-center text-muted-foreground text-xs">
-                      {selectedType ? 'Nenhuma importação deste tipo ainda' : 'Nenhuma importação realizada ainda'}
-                    </div>
-                  );
-                  return (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-muted/30">
-                            <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px] w-8">Img</th>
-                            <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Data/Hora</th>
-                            {!selectedType && <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Documento</th>}
-                            <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Arquivo</th>
-                            <th className="text-right px-3 py-2 font-semibold text-muted-foreground text-[10px]">Salvos</th>
-                            <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filtered.map(h => {
-                            const dt = DOC_TYPES.find(d => d.id === h.batch_type);
-                            const imgUrl = h.notes && h.notes.startsWith('http') ? h.notes : null;
-                            const isImage = imgUrl && /\.(png|jpg|jpeg|gif|webp)/i.test(imgUrl);
-                            return (
-                              <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
-                                <td className="px-3 py-1.5">
-                                  {isImage ? (
-                                    <a href={imgUrl} target="_blank" rel="noreferrer">
-                                      <img src={imgUrl} alt="thumb" className="w-8 h-8 object-cover rounded-lg border shadow-sm hover:scale-110 transition-transform" />
-                                    </a>
-                                  ) : imgUrl ? (
-                                    <a href={imgUrl} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg border bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
-                                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                                    </a>
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-lg bg-muted/40 flex items-center justify-center">
-                                      {dt && <dt.icon className="w-3.5 h-3.5 text-muted-foreground/40" />}
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="px-3 py-1.5 text-[10px] text-muted-foreground whitespace-nowrap">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                                {!selectedType && <td className="px-3 py-1.5 font-semibold text-[10px]">{dt?.label || h.batch_type}</td>}
-                                <td className="px-3 py-1.5 text-[10px] text-muted-foreground truncate max-w-[120px]">{h.file_name || '—'}</td>
-                                <td className="px-3 py-1.5 text-right font-bold text-green-700 text-[10px]">{h.success_count ?? 0}</td>
-                                <td className="px-3 py-1.5 text-center"><StatusBadge status={h.status} /></td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-
           </div>
         </div>
       )}
@@ -659,6 +578,81 @@ export default function ImportarDocumento() {
         </div>
       )}
 
+      {/* Histórico */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Histórico de Importações</h2>
+            {selectedType && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Filtrando: <span className="text-primary font-semibold">{DOC_TYPES.find(d=>d.id===selectedType)?.label}</span>
+                <button onClick={() => {}} className="ml-2 text-muted-foreground/50 hover:text-muted-foreground text-[10px]">ver todos</button>
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border overflow-hidden">
+          {loadingHistory ? (
+            <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>
+          ) : (() => {
+            const filtered = selectedType ? history.filter(h => h.batch_type === selectedType) : history;
+            if (filtered.length === 0) return (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                {selectedType ? 'Nenhuma importação deste tipo ainda' : 'Nenhuma importação realizada ainda'}
+              </div>
+            );
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs w-10">Img</th>
+                      <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Data</th>
+                      {!selectedType && <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Documento</th>}
+                      <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Arquivo</th>
+                      <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground text-xs">Salvos</th>
+                      <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground text-xs">Duplic.</th>
+                      <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground text-xs">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map(h => {
+                      const dt = DOC_TYPES.find(d => d.id === h.batch_type);
+                      const imgUrl = h.notes && h.notes.startsWith('http') ? h.notes : null;
+                      const isImage = imgUrl && /\.(png|jpg|jpeg|gif|webp)/i.test(imgUrl);
+                      return (
+                        <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
+                          <td className="px-3 py-2">
+                            {isImage ? (
+                              <a href={imgUrl} target="_blank" rel="noreferrer">
+                                <img src={imgUrl} alt="thumb" className="w-9 h-9 object-cover rounded-lg border shadow-sm hover:scale-110 transition-transform" />
+                              </a>
+                            ) : imgUrl ? (
+                              <a href={imgUrl} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-lg border bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
+                                <FileText className="w-4 h-4 text-muted-foreground" />
+                              </a>
+                            ) : (
+                              <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center">
+                                {dt && <dt.icon className="w-4 h-4 text-muted-foreground/40" />}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                          {!selectedType && <td className="px-3 py-2 font-semibold text-xs">{dt?.label || h.batch_type}</td>}
+                          <td className="px-3 py-2 text-xs text-muted-foreground truncate max-w-[160px]">{h.file_name || '—'}</td>
+                          <td className="px-3 py-2 text-right font-bold text-green-700 text-xs">{h.success_count ?? 0}</td>
+                          <td className="px-3 py-2 text-right text-yellow-600 text-xs">{h.duplicate_count ?? 0}</td>
+                          <td className="px-3 py-2 text-center"><StatusBadge status={h.status} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
     </div>
   );
 }

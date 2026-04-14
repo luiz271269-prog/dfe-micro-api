@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertCircle, HelpCircle, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, HelpCircle } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 
 export default function ConciliacaoCartoes({ lancamentos, selectedMonth }) {
   const [obras, setObras] = useState([]);
   const [despesas, setDespesas] = useState([]);
-  const [activeKey, setActiveKey] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -18,56 +17,66 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth }) {
     });
   }, []);
 
-  // Classificar cada lançamento individualmente (para filtro por categoria)
-  function classificarLanc(lanc) {
+  // Classificar lançamentos
+  const classificacao = lancamentos.reduce((acc, lanc) => {
     const { estabelecimento, categoria, natureza, valor, observacao } = lanc;
     const desc = (estabelecimento || '').toUpperCase();
 
-    if (observacao?.includes('Não faz parte')) return 'excluido';
+    if (observacao?.includes('Não faz parte')) {
+      acc.excluido = (acc.excluido || 0) + Math.abs(valor || 0);
+      return acc;
+    }
 
+    // Parcelamento: detectar múltiplos pagamentos iguais no mesmo mês
     const mesmoValor = lancamentos.filter(l => Math.abs((l.valor || 0) - (valor || 0)) < 0.01).length;
-    if (mesmoValor >= 2 && (desc.includes('FINANCEIRA') || desc.includes('BANCO'))) return 'parcelamento';
+    if (mesmoValor >= 2 && (desc.includes('FINANCEIRA') || desc.includes('BANCO'))) {
+      acc.parcelamento = (acc.parcelamento || 0) + Math.abs(valor || 0);
+      return acc;
+    }
 
-    const obraVinculada = obras.some(o =>
+    // Obra: se houver obra vinculada
+    const obraVinculada = obras.some(o => 
+      (o.data?.startsWith(selectedMonth) || true) && 
       (o.descricao?.toUpperCase().includes(desc.split(' ')[0]) || o.responsavel?.toUpperCase().includes(desc))
     );
-    if (obraVinculada) return 'obra';
+    if (obraVinculada) {
+      acc.obra = (acc.obra || 0) + Math.abs(valor || 0);
+      return acc;
+    }
 
-    const despesaVinculada = despesas.some(d =>
+    // Despesa: se houver despesa vinculada ou categoria de despesa
+    const despesaVinculada = despesas.some(d => 
+      (d.data?.startsWith(selectedMonth) || true) && 
       (d.descricao?.toUpperCase().includes(desc.split(' ')[0]) || d.fornecedor?.toUpperCase().includes(desc))
     );
     const categoriasDespesa = ['aluguel', 'energia', 'agua', 'manutencao', 'limpeza', 'contabilidade', 'juridico', 'seguro'];
-    if (despesaVinculada || categoriasDespesa.includes(categoria)) return 'despesa';
+    if (despesaVinculada || categoriasDespesa.includes(categoria)) {
+      acc.despesa = (acc.despesa || 0) + Math.abs(valor || 0);
+      return acc;
+    }
 
+    // Pessoal: natureza pessoal ou categorias pessoais
     const categoriassPessoais = ['alimentacao', 'combustivel', 'saude_bem_estar', 'beleza', 'farmacia', 'transporte', 'lazer'];
-    if (natureza === 'pessoal' || categoriassPessoais.includes(categoria)) return 'pessoal';
+    if (natureza === 'pessoal' || categoriassPessoais.includes(categoria)) {
+      acc.pessoal = (acc.pessoal || 0) + Math.abs(valor || 0);
+      return acc;
+    }
 
-    return 'nao_classificado';
-  }
-
-  const lancComClasse = lancamentos.map(l => ({ ...l, _classe: classificarLanc(l) }));
-
-  const classificacao = lancComClasse.reduce((acc, l) => {
-    acc[l._classe] = (acc[l._classe] || 0) + Math.abs(l.valor || 0);
+    // Padrão: não classificado
+    acc.nao_classificado = (acc.nao_classificado || 0) + Math.abs(valor || 0);
     return acc;
   }, {});
 
   const total = Object.values(classificacao).reduce((s, v) => s + v, 0);
 
   const items = [
-    { label: '🏗️ Obra e Reforma',       key: 'obra',             bg: 'bg-orange-50',  border: 'border-orange-300', text: 'text-orange-700', activeBg: 'bg-orange-100' },
-    { label: '💼 Despesa Operacional',   key: 'despesa',          bg: 'bg-blue-50',    border: 'border-blue-300',   text: 'text-blue-700',   activeBg: 'bg-blue-100' },
-    { label: '👤 Gasto Pessoal',         key: 'pessoal',          bg: 'bg-purple-50',  border: 'border-purple-300', text: 'text-purple-700', activeBg: 'bg-purple-100' },
-    { label: '📅 Parcelamento',          key: 'parcelamento',     bg: 'bg-amber-50',   border: 'border-amber-300',  text: 'text-amber-700',  activeBg: 'bg-amber-100' },
-    { label: '❓ Não Classificado',      key: 'nao_classificado', bg: 'bg-red-50',     border: 'border-red-300',    text: 'text-red-700',    activeBg: 'bg-red-100' },
-    { label: '🚫 Excluído',              key: 'excluido',         bg: 'bg-slate-50',   border: 'border-slate-300',  text: 'text-slate-600',  activeBg: 'bg-slate-100' },
+    { label: '🏗️ Obra e Reforma', key: 'obra', color: 'bg-orange-50 border-orange-200', textColor: 'text-orange-700' },
+    { label: '💼 Despesa Operacional', key: 'despesa', color: 'bg-blue-50 border-blue-200', textColor: 'text-blue-700' },
+    { label: '👤 Gasto Pessoal', key: 'pessoal', color: 'bg-purple-50 border-purple-200', textColor: 'text-purple-700' },
+    { label: '📅 Parcelamento', key: 'parcelamento', color: 'bg-amber-50 border-amber-200', textColor: 'text-amber-700' },
+    { label: '❓ Não Classificado', key: 'nao_classificado', color: 'bg-red-50 border-red-200', textColor: 'text-red-700' },
+    { label: '🚫 Excluído', key: 'excluido', color: 'bg-slate-50 border-slate-200', textColor: 'text-slate-700' },
   ];
-
-  const filteredLancs = activeKey
-    ? lancComClasse.filter(l => l._classe === activeKey)
-    : [];
-
-  const activeItem = items.find(i => i.key === activeKey);
 
   return (
     <div className="bg-card rounded-xl border overflow-hidden mb-6">
@@ -75,93 +84,48 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth }) {
         <AlertCircle className="w-5 h-5 text-white" />
         <h3 className="text-sm font-bold text-white uppercase tracking-widest">Conciliação de Cartões</h3>
       </div>
-
-      {/* Grid de cards lado a lado */}
-      <div className="p-4 grid grid-cols-3 sm:grid-cols-6 gap-2">
+      
+      <div className="p-5 space-y-3">
         {items.map(item => {
           const value = classificacao[item.key] || 0;
-          const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-          const isActive = activeKey === item.key;
+          const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+          const hasValue = value > 0;
 
           return (
-            <button
-              key={item.key}
-              onClick={() => setActiveKey(isActive ? null : item.key)}
-              className={`rounded-lg border p-2.5 text-left transition-all hover:shadow-md ${
-                isActive
-                  ? `${item.activeBg} ${item.border} ring-2 ring-offset-1 ring-current`
-                  : `${item.bg} ${item.border} hover:opacity-90`
-              }`}
-            >
-              <p className={`text-[10px] font-semibold ${item.text} mb-1 leading-tight`}>{item.label}</p>
-              <p className={`text-sm font-bold ${item.text} leading-tight`}>{formatCurrency(value)}</p>
-              {value > 0 && (
-                <p className={`text-[9px] ${item.text} opacity-70 mt-0.5`}>{pct}%</p>
-              )}
-            </button>
+            <div key={item.key} className={`rounded-lg border p-3 ${item.color}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className={`text-sm font-semibold ${item.textColor}`}>{item.label}</span>
+                {hasValue && <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-white ${item.textColor}`}>{pct}%</span>}
+              </div>
+              <p className={`text-lg font-bold ${item.textColor}`}>
+                {formatCurrency(value)}
+              </p>
+              {!hasValue && <p className={`text-xs ${item.textColor} opacity-60`}>Nenhum lançamento</p>}
+            </div>
           );
         })}
-      </div>
 
-      {/* Total */}
-      <div className="px-4 pb-3">
-        <div className="rounded-lg border-2 border-primary bg-primary/5 px-3 py-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-foreground">Total Geral</span>
-          <p className="text-base font-bold text-primary">{formatCurrency(total)}</p>
-        </div>
-      </div>
-
-      {/* Listagem filtrada ao clicar */}
-      {activeKey && filteredLancs.length > 0 && (
-        <div className="border-t px-4 pb-4">
-          <div className="flex items-center justify-between py-2 mb-2">
-            <p className={`text-xs font-bold ${activeItem?.text}`}>
-              {activeItem?.label} — {filteredLancs.length} lançamento(s)
-            </p>
-            <button onClick={() => setActiveKey(null)} className="text-muted-foreground hover:text-foreground">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b bg-muted/20">
-                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground">Data</th>
-                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground">Estabelecimento</th>
-                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground">Natureza</th>
-                  <th className="text-right px-2 py-1.5 font-semibold text-muted-foreground">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLancs.map((l, i) => (
-                  <tr key={i} className="border-b hover:bg-muted/10">
-                    <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">{l.data_lancamento || '—'}</td>
-                    <td className="px-2 py-1.5 max-w-[180px] truncate">{l.estabelecimento || '—'}</td>
-                    <td className="px-2 py-1.5 text-muted-foreground capitalize">{l.natureza || '—'}</td>
-                    <td className="px-2 py-1.5 text-right font-semibold">{formatCurrency(Math.abs(l.valor || 0))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Total */}
+        <div className="rounded-lg border-2 border-primary bg-primary/5 p-3 mt-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-foreground">Total Geral</span>
+            <p className="text-lg font-bold text-primary">{formatCurrency(total)}</p>
           </div>
         </div>
-      )}
 
-      {activeKey && filteredLancs.length === 0 && (
-        <div className="border-t px-4 py-4 text-center text-xs text-muted-foreground">
-          Nenhum lançamento nesta categoria
-        </div>
-      )}
-
-      {/* Alerta de não classificados */}
-      {(classificacao.nao_classificado || 0) > 0 && (
-        <div className="mx-4 mb-4 rounded-lg bg-yellow-50 border border-yellow-200 p-2.5 flex items-start gap-2">
-          <HelpCircle className="w-4 h-4 text-yellow-700 shrink-0 mt-0.5" />
-          <p className="text-xs text-yellow-800">
-            <span className="font-semibold">{formatCurrency(classificacao.nao_classificado)}</span> não classificados — categorize na tabela acima.
-          </p>
-        </div>
-      )}
+        {/* Alerta de não classificados */}
+        {(classificacao.nao_classificado || 0) > 0 && (
+          <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 mt-3 flex items-start gap-2.5">
+            <HelpCircle className="w-4 h-4 text-yellow-700 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-yellow-800">Atenção: Lançamentos não classificados</p>
+              <p className="text-xs text-yellow-700 mt-1">
+                {formatCurrency(classificacao.nao_classificado)} ainda não foram categorizados. Classifique-os na tabela acima como Obra, Despesa ou Pessoal.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
