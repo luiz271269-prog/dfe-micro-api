@@ -111,6 +111,7 @@ export default function ImportarDocumento() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [deduping, setDeduping] = useState(false);
   const [lastImports, setLastImports] = useState({});
+  const [fileUrl, setFileUrl] = useState(null);
 
   async function handleDedup() {
     setDeduping(true);
@@ -185,9 +186,11 @@ export default function ImportarDocumento() {
     setProcessingStage('upload');
     setRecords([]);
     setRawText(null);
+    setFileUrl(null);
     try {
       // 1. Upload via integração nativa Base44
       const { file_url } = await UploadFile({ file });
+      setFileUrl(file_url);
       setProcessingStage('ai');
 
       // 2. Extrair com InvokeLLM nativo Base44
@@ -333,6 +336,7 @@ export default function ImportarDocumento() {
       duplicate_count: dupes,
       error_count: errors,
       status: errors === records.length ? 'failed' : 'completed',
+      notes: fileUrl || '',
     });
 
     setSaving(false);
@@ -348,6 +352,7 @@ export default function ImportarDocumento() {
   function reset() {
     setSelectedType(preselected || null);
     setFile(null);
+    setFileUrl(null);
     setRecords([]); setRawText(null); setStep(1);
   }
 
@@ -575,43 +580,77 @@ export default function ImportarDocumento() {
 
       {/* Histórico */}
       <div>
-        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Histórico de Importações</h2>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Histórico de Importações</h2>
+            {selectedType && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Filtrando: <span className="text-primary font-semibold">{DOC_TYPES.find(d=>d.id===selectedType)?.label}</span>
+                <button onClick={() => {}} className="ml-2 text-muted-foreground/50 hover:text-muted-foreground text-[10px]">ver todos</button>
+              </p>
+            )}
+          </div>
+        </div>
         <div className="bg-card rounded-xl border overflow-hidden">
           {loadingHistory ? (
             <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>
-          ) : history.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma importação realizada ainda</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Data</th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Documento</th>
-                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Arquivo</th>
-                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Salvos</th>
-                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Duplicatas</th>
-                    <th className="text-center px-4 py-3 font-semibold text-muted-foreground text-xs">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map(h => {
-                    const dt = DOC_TYPES.find(d => d.id === h.batch_type);
-                    return (
-                      <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                        <td className="px-4 py-3 font-semibold text-sm">{dt?.label || h.batch_type}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[180px]">{h.file_name || '—'}</td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700">{h.success_count ?? 0}</td>
-                        <td className="px-4 py-3 text-right text-yellow-600">{h.duplicate_count ?? 0}</td>
-                        <td className="px-4 py-3 text-center"><StatusBadge status={h.status} /></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          ) : (() => {
+            const filtered = selectedType ? history.filter(h => h.batch_type === selectedType) : history;
+            if (filtered.length === 0) return (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                {selectedType ? 'Nenhuma importação deste tipo ainda' : 'Nenhuma importação realizada ainda'}
+              </div>
+            );
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs w-10">Img</th>
+                      <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Data</th>
+                      {!selectedType && <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Documento</th>}
+                      <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground text-xs">Arquivo</th>
+                      <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground text-xs">Salvos</th>
+                      <th className="text-right px-3 py-2.5 font-semibold text-muted-foreground text-xs">Duplic.</th>
+                      <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground text-xs">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map(h => {
+                      const dt = DOC_TYPES.find(d => d.id === h.batch_type);
+                      const imgUrl = h.notes && h.notes.startsWith('http') ? h.notes : null;
+                      const isImage = imgUrl && /\.(png|jpg|jpeg|gif|webp)/i.test(imgUrl);
+                      return (
+                        <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
+                          <td className="px-3 py-2">
+                            {isImage ? (
+                              <a href={imgUrl} target="_blank" rel="noreferrer">
+                                <img src={imgUrl} alt="thumb" className="w-9 h-9 object-cover rounded-lg border shadow-sm hover:scale-110 transition-transform" />
+                              </a>
+                            ) : imgUrl ? (
+                              <a href={imgUrl} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-lg border bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
+                                <FileText className="w-4 h-4 text-muted-foreground" />
+                              </a>
+                            ) : (
+                              <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center">
+                                {dt && <dt.icon className="w-4 h-4 text-muted-foreground/40" />}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                          {!selectedType && <td className="px-3 py-2 font-semibold text-xs">{dt?.label || h.batch_type}</td>}
+                          <td className="px-3 py-2 text-xs text-muted-foreground truncate max-w-[160px]">{h.file_name || '—'}</td>
+                          <td className="px-3 py-2 text-right font-bold text-green-700 text-xs">{h.success_count ?? 0}</td>
+                          <td className="px-3 py-2 text-right text-yellow-600 text-xs">{h.duplicate_count ?? 0}</td>
+                          <td className="px-3 py-2 text-center"><StatusBadge status={h.status} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
