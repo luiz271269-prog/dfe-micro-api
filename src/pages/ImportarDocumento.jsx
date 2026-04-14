@@ -108,6 +108,7 @@ export default function ImportarDocumento() {
   const [saveProgress, setSaveProgress] = useState('');
   const [toast, setToast] = useState(null);
   const [history, setHistory] = useState([]);
+  const [faturasCartao, setFaturasCartao] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [deduping, setDeduping] = useState(false);
   const [lastImports, setLastImports] = useState({});
@@ -150,8 +151,12 @@ export default function ImportarDocumento() {
   }
 
   async function loadHistory() {
-    const batches = await base44.entities.ImportBatch.list('-created_date', 100);
+    const [batches, faturas] = await Promise.all([
+      base44.entities.ImportBatch.list('-created_date', 100),
+      base44.entities.FaturaCartao.list('-created_date', 100),
+    ]);
     setHistory(batches.slice(0, 20));
+    setFaturasCartao(faturas);
     // Última importação por tipo
     const map = {};
     batches.forEach(b => {
@@ -553,46 +558,83 @@ export default function ImportarDocumento() {
                   return (
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b bg-muted/30">
-                            <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px] w-8">Img</th>
-                            <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Data/Hora</th>
-                            {!selectedType && <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Documento</th>}
-                            <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Arquivo</th>
-                            <th className="text-right px-3 py-2 font-semibold text-muted-foreground text-[10px]">Salvos</th>
-                            <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filtered.map(h => {
-                            const dt = DOC_TYPES.find(d => d.id === h.batch_type);
-                            const imgUrl = h.notes && h.notes.startsWith('http') ? h.notes : null;
-                            const isImage = imgUrl && /\.(png|jpg|jpeg|gif|webp)/i.test(imgUrl);
-                            return (
-                              <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
-                                <td className="px-3 py-1.5">
-                                  {isImage ? (
-                                    <a href={imgUrl} target="_blank" rel="noreferrer">
-                                      <img src={imgUrl} alt="thumb" className="w-8 h-8 object-cover rounded-lg border shadow-sm hover:scale-110 transition-transform" />
-                                    </a>
-                                  ) : imgUrl ? (
-                                    <a href={imgUrl} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg border bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
-                                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                                    </a>
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-lg bg-muted/40 flex items-center justify-center">
-                                      {dt && <dt.icon className="w-3.5 h-3.5 text-muted-foreground/40" />}
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="px-3 py-1.5 text-[10px] text-muted-foreground whitespace-nowrap">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                                {!selectedType && <td className="px-3 py-1.5 font-semibold text-[10px]">{dt?.label || h.batch_type}</td>}
-                                <td className="px-3 py-1.5 text-[10px] text-muted-foreground truncate max-w-[120px]">{h.file_name || '—'}</td>
-                                <td className="px-3 py-1.5 text-right font-bold text-green-700 text-[10px]">{h.success_count ?? 0}</td>
-                                <td className="px-3 py-1.5 text-center"><StatusBadge status={h.status} /></td>
-                              </tr>
-                            );
-                          })}
+                       <thead>
+                         <tr className="border-b bg-muted/30">
+                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px] w-8">Img</th>
+                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Data/Hora</th>
+                           {!selectedType && <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Documento</th>}
+                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Arquivo</th>
+                           <th className="text-right px-3 py-2 font-semibold text-muted-foreground text-[10px]">Salvos</th>
+                           {selectedType === 'fatura_cartao' && <>
+                             <th className="text-right px-3 py-2 font-semibold text-muted-foreground text-[10px]">Total</th>
+                             <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Vencimento</th>
+                           </>}
+                           <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Status</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {filtered.map(h => {
+                           const dt = DOC_TYPES.find(d => d.id === h.batch_type);
+                           const imgUrl = h.notes && h.notes.startsWith('http') ? h.notes : null;
+                           const isImage = imgUrl && /\.(png|jpg|jpeg|gif|webp)/i.test(imgUrl);
+                           // Cruzar com FaturaCartao pelo tempo de criação mais próximo
+                           let faturaMatch = null;
+                           if (h.batch_type === 'fatura_cartao' && h.created_date) {
+                             const batchTime = new Date(h.created_date).getTime();
+                             faturaMatch = faturasCartao
+                               .filter(f => f.created_date)
+                               .sort((a, b) => {
+                                 const da = Math.abs(new Date(a.created_date).getTime() - batchTime);
+                                 const db = Math.abs(new Date(b.created_date).getTime() - batchTime);
+                                 return da - db;
+                               })[0] || null;
+                             // só usar se criada dentro de 5 min do batch
+                             if (faturaMatch && Math.abs(new Date(faturaMatch.created_date).getTime() - batchTime) > 5 * 60 * 1000) {
+                               faturaMatch = null;
+                             }
+                           }
+                           // Cartão vinculado
+                           const cartaoVinc = faturaMatch
+                             ? contasCartao.find(c => c.id === faturaMatch.conta_cartao_id)
+                             : null;
+                           return (
+                             <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
+                               <td className="px-3 py-1.5">
+                                 {isImage ? (
+                                   <a href={imgUrl} target="_blank" rel="noreferrer">
+                                     <img src={imgUrl} alt="thumb" className="w-8 h-8 object-cover rounded-lg border shadow-sm hover:scale-110 transition-transform" />
+                                   </a>
+                                 ) : imgUrl ? (
+                                   <a href={imgUrl} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg border bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
+                                     <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                                   </a>
+                                 ) : (
+                                   <div className="w-8 h-8 rounded-lg bg-muted/40 flex items-center justify-center">
+                                     {dt && <dt.icon className="w-3.5 h-3.5 text-muted-foreground/40" />}
+                                   </div>
+                                 )}
+                               </td>
+                               <td className="px-3 py-1.5 text-[10px] text-muted-foreground whitespace-nowrap">
+                                 {h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                 {cartaoVinc && <p className="text-[9px] text-purple-600 font-semibold">{cartaoVinc.nome.split('—')[0].trim()} · dia {cartaoVinc.dia_vencimento}</p>}
+                               </td>
+                               {!selectedType && <td className="px-3 py-1.5 font-semibold text-[10px]">{dt?.label || h.batch_type}</td>}
+                               <td className="px-3 py-1.5 text-[10px] text-muted-foreground truncate max-w-[120px]">{h.file_name || '—'}</td>
+                               <td className="px-3 py-1.5 text-right font-bold text-green-700 text-[10px]">{h.success_count ?? 0}</td>
+                               {selectedType === 'fatura_cartao' && <>
+                                 <td className="px-3 py-1.5 text-right font-bold text-[10px]">
+                                   {faturaMatch ? formatCurrency(faturaMatch.valor_total) : '—'}
+                                 </td>
+                                 <td className="px-3 py-1.5 text-center text-[10px] text-muted-foreground">
+                                   {faturaMatch?.data_vencimento
+                                     ? new Date(faturaMatch.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                                     : '—'}
+                                 </td>
+                               </>}
+                               <td className="px-3 py-1.5 text-center"><StatusBadge status={h.status} /></td>
+                             </tr>
+                           );
+                         })}
                         </tbody>
                       </table>
                     </div>
