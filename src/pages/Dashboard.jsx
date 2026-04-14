@@ -184,13 +184,22 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function load() {
-      const [lancRaw, nfsRaw, titRaw, compRaw, obrasRaw, tribRaw, funcRaw, folhasRaw, faturasRaw] = await Promise.all([
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+      // Carregar em lotes para não exceder rate limit
+      const [lancRaw, nfsRaw, titRaw] = await Promise.all([
         base44.entities.LancamentoBancario.list(),
         base44.entities.NotaFiscal.list(),
         base44.entities.TituloCobranca.list(),
+      ]);
+      await sleep(300);
+      const [compRaw, obrasRaw, tribRaw] = await Promise.all([
         base44.entities.ItemCompra.list(),
         base44.entities.ObraReforma.list(),
         base44.entities.Tributo.list(),
+      ]);
+      await sleep(300);
+      const [funcRaw, folhasRaw, faturasRaw] = await Promise.all([
         base44.entities.Funcionario.list(),
         base44.entities.FolhaPagamento.list(),
         base44.entities.FaturaCartao.list(),
