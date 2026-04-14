@@ -46,42 +46,34 @@ function tempoEmpresa(dataAdmissao) {
   return m > 0 ? `${anos}a ${m}m` : `${anos} ano${anos > 1 ? 's' : ''}`;
 }
 
-function FuncCard({ func, folhas, onClick }) {
-  const setor = SETOR_CONFIG[func.setor] || { label: func.setor, color: 'bg-slate-100 text-slate-700 border-slate-200' };
+function FuncRow({ func, folhas, onClick }) {
   const status = STATUS_CONFIG[func.status] || { label: func.status, color: 'bg-slate-100 text-slate-700' };
   const historico = folhas.filter(f => f.funcionario_nome === func.nome);
   return (
-    <button
+    <tr
       onClick={() => onClick(func)}
-      className="bg-card border rounded-xl p-4 text-left hover:shadow-lg hover:border-primary/30 transition-all group w-full"
+      className="border-b hover:bg-muted/20 transition-colors cursor-pointer"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-sm shrink-0">
-          {func.nome?.split(' ').map(n => n[0]).slice(0,2).join('')}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs shrink-0">
+            {func.nome?.split(' ').map(n => n[0]).slice(0,2).join('')}
+          </div>
+          <div>
+            <p className="font-semibold text-sm text-foreground">{func.nome}</p>
+            <p className="text-xs text-muted-foreground">{func.cargo}</p>
+          </div>
         </div>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${status.color}`}>{status.label}</span>
-      </div>
-      <p className="font-bold text-foreground text-sm leading-tight">{func.nome}</p>
-      <p className="text-xs text-muted-foreground mt-0.5 mb-2">{func.cargo}</p>
-      <div className="flex flex-wrap gap-1 mb-3">
-        <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${setor.color}`}>{setor.label}</span>
-        <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200">{func.empresa}</span>
-        <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-50 text-slate-600 border-slate-200">{func.tipo_contrato}</span>
-      </div>
-      <div className="flex items-center justify-between pt-2 border-t">
-        <div>
-          <p className="text-xs text-muted-foreground">Salário Base</p>
-          <p className="text-sm font-bold text-foreground">{formatCurrency(func.salario_base)}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">Tempo</p>
-          <p className="text-sm font-semibold text-muted-foreground">{tempoEmpresa(func.data_admissao)}</p>
-        </div>
-      </div>
-      {historico.length > 0 && (
-        <p className="text-[11px] text-muted-foreground mt-2">{historico.length} competência(s) na folha</p>
-      )}
-    </button>
+      </td>
+      <td className="px-3 py-3 text-xs text-muted-foreground">{func.empresa}</td>
+      <td className="px-3 py-3 text-xs text-muted-foreground">{func.tipo_contrato}</td>
+      <td className="px-3 py-3 text-sm font-semibold tabular-nums">{formatCurrency(func.salario_base)}</td>
+      <td className="px-3 py-3 text-xs text-muted-foreground">{tempoEmpresa(func.data_admissao)}</td>
+      <td className="px-3 py-3 text-xs text-muted-foreground">{historico.length > 0 ? `${historico.length} folha(s)` : '—'}</td>
+      <td className="px-3 py-3">
+        <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${status.color}`}>{status.label}</span>
+      </td>
+    </tr>
   );
 }
 
@@ -338,17 +330,32 @@ export default function Funcionarios() {
 
       {/* ABA 1 — Funcionários */}
       {activeTab === 'funcionarios' && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {Object.entries(gruposFunc).sort().map(([setor, funcs]) => {
             const sc = SETOR_CONFIG[setor] || { label: setor, color: 'bg-slate-100 text-slate-700' };
             return (
               <div key={setor}>
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-2">
                   <span className={`text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider border ${sc.color}`}>{sc.label}</span>
                   <span className="text-xs text-muted-foreground">{funcs.length} pessoa{funcs.length !== 1 ? 's' : ''}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {funcs.map(f => <FuncCard key={f.id} func={f} folhas={folhas} onClick={setSelectedFunc} />)}
+                <div className="bg-card rounded-xl border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/30 text-xs">
+                        <th className="text-left px-4 py-2 font-semibold text-muted-foreground">Funcionário</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Empresa</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Contrato</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Salário Base</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Tempo</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Folhas</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {funcs.map(f => <FuncRow key={f.id} func={f} folhas={folhas} onClick={setSelectedFunc} />)}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             );
