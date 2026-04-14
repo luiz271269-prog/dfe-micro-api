@@ -108,7 +108,6 @@ export default function ImportarDocumento() {
   const [saveProgress, setSaveProgress] = useState('');
   const [toast, setToast] = useState(null);
   const [history, setHistory] = useState([]);
-  const [faturasCartao, setFaturasCartao] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [deduping, setDeduping] = useState(false);
   const [lastImports, setLastImports] = useState({});
@@ -151,12 +150,8 @@ export default function ImportarDocumento() {
   }
 
   async function loadHistory() {
-    const [batches, faturas] = await Promise.all([
-      base44.entities.ImportBatch.list('-created_date', 100),
-      base44.entities.FaturaCartao.list('-created_date', 100),
-    ]);
+    const batches = await base44.entities.ImportBatch.list('-created_date', 100);
     setHistory(batches.slice(0, 20));
-    setFaturasCartao(faturas);
     // Última importação por tipo
     const map = {};
     batches.forEach(b => {
@@ -334,6 +329,22 @@ export default function ImportarDocumento() {
     }
 
     const dupes = records.filter(r => r.status === 'duplicata').length;
+
+    // Para fatura_cartao, salvar metadados da fatura no notes como JSON
+    let notesValue = fileUrl || '';
+    if (selectedType === 'fatura_cartao') {
+      const faturaRec2 = records.find(r => r.data.__type === 'FaturaCartao');
+      const cartaoInfo = contasCartao.find(c => c.id === (faturaRec2?.data?.conta_cartao_id || selectedCartaoId));
+      notesValue = JSON.stringify({
+        file_url: fileUrl || '',
+        valor_total: faturaRec2?.data?.valor_total || null,
+        data_vencimento: faturaRec2?.data?.data_vencimento || null,
+        nome_cartao: cartaoInfo?.nome || null,
+        bandeira: cartaoInfo?.bandeira || null,
+        dia_vencimento: cartaoInfo?.dia_vencimento || null,
+      });
+    }
+
     await base44.entities.ImportBatch.create({
       title: `${typeConfig?.label} — ${file?.name || 'arquivo'}`,
       batch_type: selectedType,
@@ -343,7 +354,7 @@ export default function ImportarDocumento() {
       duplicate_count: dupes,
       error_count: errors,
       status: errors === records.length ? 'failed' : 'completed',
-      notes: fileUrl || '',
+      notes: notesValue,
     });
 
     setSaving(false);
@@ -575,28 +586,18 @@ export default function ImportarDocumento() {
                        <tbody>
                          {filtered.map(h => {
                            const dt = DOC_TYPES.find(d => d.id === h.batch_type);
-                           const imgUrl = h.notes && h.notes.startsWith('http') ? h.notes : null;
-                           const isImage = imgUrl && /\.(png|jpg|jpeg|gif|webp)/i.test(imgUrl);
-                           // Cruzar com FaturaCartao pelo tempo de criação mais próximo
-                           let faturaMatch = null;
-                           if (h.batch_type === 'fatura_cartao' && h.created_date) {
-                             const batchTime = new Date(h.created_date).getTime();
-                             faturaMatch = faturasCartao
-                               .filter(f => f.created_date)
-                               .sort((a, b) => {
-                                 const da = Math.abs(new Date(a.created_date).getTime() - batchTime);
-                                 const db = Math.abs(new Date(b.created_date).getTime() - batchTime);
-                                 return da - db;
-                               })[0] || null;
-                             // só usar se criada dentro de 5 min do batch
-                             if (faturaMatch && Math.abs(new Date(faturaMatch.created_date).getTime() - batchTime) > 5 * 60 * 1000) {
-                               faturaMatch = null;
+                           // Parse notes: pode ser JSON (fatura_cartao) ou URL direta
+                           let notesData = null;
+                           let imgUrl = null;
+                           if (h.notes) {
+                             try {
+                               notesData = JSON.parse(h.notes);
+                               imgUrl = notesData.file_url && notesData.file_url.startsWith('http') ? notesData.file_url : null;
+                             } catch {
+                               imgUrl = h.notes.startsWith('http') ? h.notes : null;
                              }
                            }
-                           // Cartão vinculado
-                           const cartaoVinc = faturaMatch
-                             ? contasCartao.find(c => c.id === faturaMatch.conta_cartao_id)
-                             : null;
+                           const isImage = imgUrl && /\.(png|jpg|jpeg|gif|webp)/i.test(imgUrl);
                            return (
                              <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
                                <td className="px-3 py-1.5">
@@ -616,18 +617,22 @@ export default function ImportarDocumento() {
                                </td>
                                <td className="px-3 py-1.5 text-[10px] text-muted-foreground whitespace-nowrap">
                                  {h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                 {cartaoVinc && <p className="text-[9px] text-purple-600 font-semibold">{cartaoVinc.nome.split('—')[0].trim()} · dia {cartaoVinc.dia_vencimento}</p>}
+                                 {notesData?.nome_cartao && (
+                                   <p className="text-[9px] text-purple-600 font-semibold">
+                                     {notesData.nome_cartao.split('—')[0].trim()}{notesData.bandeira ? ` · ${notesData.bandeira}` : ''}{notesData.dia_vencimento ? ` · dia ${notesData.dia_vencimento}` : ''}
+                                   </p>
+                                 )}
                                </td>
                                {!selectedType && <td className="px-3 py-1.5 font-semibold text-[10px]">{dt?.label || h.batch_type}</td>}
-                               <td className="px-3 py-1.5 text-[10px] text-muted-foreground truncate max-w-[120px]">{h.file_name || '—'}</td>
+                               <td className="px-3 py-1.5 text-[10px] text-primary font-medium truncate max-w-[120px]">{h.file_name || '—'}</td>
                                <td className="px-3 py-1.5 text-right font-bold text-green-700 text-[10px]">{h.success_count ?? 0}</td>
                                {selectedType === 'fatura_cartao' && <>
                                  <td className="px-3 py-1.5 text-right font-bold text-[10px]">
-                                   {faturaMatch ? formatCurrency(faturaMatch.valor_total) : '—'}
+                                   {notesData?.valor_total ? formatCurrency(notesData.valor_total) : '—'}
                                  </td>
                                  <td className="px-3 py-1.5 text-center text-[10px] text-muted-foreground">
-                                   {faturaMatch?.data_vencimento
-                                     ? new Date(faturaMatch.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                                   {notesData?.data_vencimento
+                                     ? new Date(notesData.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
                                      : '—'}
                                  </td>
                                </>}
