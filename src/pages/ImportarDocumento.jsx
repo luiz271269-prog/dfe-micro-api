@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { InvokeLLM, UploadFile } from '@/integrations/Core';
-import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Trash2 } from 'lucide-react';
+import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Trash2, Calendar } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
 import { Button } from '@/components/ui/button';
@@ -180,7 +180,7 @@ export default function ImportarDocumento() {
 
   async function processWithAI() {
     if (!selectedType || !file) return showToast('Selecione o tipo de documento e faça upload do arquivo.', 'error');
-    if (selectedType === 'fatura_cartao' && !selectedCartaoId) return showToast('Selecione o cartão antes de processar.', 'error');
+    // selectedCartaoId é opcional para fatura_cartao — a IA tentará identificar automaticamente
     setProcessing(true);
     setProcessingStage('upload');
     setRecords([]);
@@ -218,7 +218,27 @@ export default function ImportarDocumento() {
       // 4. Normalizar para array de itens
       let items;
       if (selectedType === 'fatura_cartao') {
-        const fatData = { ...parsed.fatura, __type: 'FaturaCartao', conta_cartao_id: selectedCartaoId };
+        // Auto-identificação do cartão se nenhum foi selecionado
+        let cartaoIdFinal = selectedCartaoId;
+        if (!cartaoIdFinal && parsed.fatura) {
+          const fatTitular = (parsed.fatura.titular || parsed.fatura.portador || parsed.fatura.nome_cartao || '').toLowerCase();
+          const fatBandeira = (parsed.fatura.bandeira || parsed.fatura.operadora || '').toLowerCase();
+          const match = contasCartao.find(c => {
+            const titular = (c.titular || '').toLowerCase();
+            const bandeira = (c.bandeira || '').toLowerCase();
+            const nomePartes = c.nome.toLowerCase().split('—').map(p => p.trim());
+            if (fatTitular && titular && fatTitular.split(' ').some(w => w.length > 3 && titular.includes(w))) return true;
+            if (fatBandeira && bandeira && fatBandeira.includes(bandeira)) return true;
+            if (fatTitular && nomePartes.some(p => fatTitular.includes(p) || p.split(' ').some(w => w.length > 3 && fatTitular.includes(w)))) return true;
+            return false;
+          });
+          if (match) {
+            cartaoIdFinal = match.id;
+            setSelectedCartaoId(match.id);
+            showToast(`✓ Cartão identificado automaticamente: ${match.nome}`, 'success');
+          }
+        }
+        const fatData = { ...parsed.fatura, __type: 'FaturaCartao', conta_cartao_id: cartaoIdFinal };
         const lancs = (parsed.lancamentos || []).map(l => ({ ...l, __type: 'LancamentoCartao' }));
         items = [fatData, ...lancs];
       } else {
@@ -437,14 +457,43 @@ export default function ImportarDocumento() {
 
             {selectedType === 'fatura_cartao' && (
               <div className="mt-4">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Selecionar Cartão *</label>
-                <select value={selectedCartaoId} onChange={e => setSelectedCartaoId(e.target.value)}
-                  className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                  <option value="">— escolha o cartão —</option>
-                  {contasCartao.map(c => (
-                    <option key={c.id} value={c.id}>{c.nome} {c.bandeira ? `(${c.bandeira})` : ''} — {c.titular || ''}</option>
-                  ))}
-                </select>
+                {/* Calendário visual de vencimentos */}
+                <div className="bg-muted/30 rounded-xl border p-3 mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" /> Calendário de Vencimentos — clique para selecionar
+                  </p>
+                  <div className="flex items-start gap-3 overflow-x-auto pb-1">
+                    {[...contasCartao].sort((a,b)=>(a.dia_vencimento||0)-(b.dia_vencimento||0)).map(c => {
+                      const isSelected = selectedCartaoId === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setSelectedCartaoId(isSelected ? '' : c.id)}
+                          className="flex flex-col items-center gap-1 min-w-[58px] shrink-0"
+                        >
+                          <div className={`w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center transition-all ${
+                            isSelected
+                              ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-md'
+                              : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-purple-50 hover:border-purple-300'
+                          }`}>
+                            <span className="text-base font-bold leading-none">{c.dia_vencimento}</span>
+                            <span className="text-[8px] font-medium">dia</span>
+                          </div>
+                          <p className="text-[9px] text-center text-muted-foreground leading-tight max-w-[58px] truncate">{c.nome.split('—')[0].trim()}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedCartaoId && (
+                    <p className="text-xs text-primary font-semibold mt-2 flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5" /> {contasCartao.find(c=>c.id===selectedCartaoId)?.nome}
+                    </p>
+                  )}
+                  {!selectedCartaoId && (
+                    <p className="text-[10px] text-muted-foreground/60 mt-2 italic">Nenhum cartão selecionado — a IA tentará identificar automaticamente</p>
+                  )}
+                </div>
               </div>
             )}
 
