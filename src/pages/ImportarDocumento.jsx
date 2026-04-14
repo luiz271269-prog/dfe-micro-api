@@ -491,7 +491,7 @@ export default function ImportarDocumento() {
               onDragLeave={() => setDragging(false)}
               onDrop={onDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
+              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
             >
               <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv" className="hidden"
                 onChange={(e) => handleFileSelect(e.target.files[0])} />
@@ -505,10 +505,10 @@ export default function ImportarDocumento() {
                 </div>
               ) : (
                 <>
-                  <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-foreground">Arraste o arquivo aqui</p>
-                  <p className="text-xs text-muted-foreground mt-1">PDF, PNG, JPG, XLSX, CSV</p>
-                  <Button variant="outline" size="sm" className="mt-4 pointer-events-none">Selecionar arquivo</Button>
+                  <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-foreground">Arraste o arquivo aqui</p>
+                  <p className="text-[11px] text-muted-foreground">PDF, PNG, JPG, XLSX, CSV</p>
+                  <Button variant="outline" size="sm" className="mt-2 pointer-events-none text-xs h-7">Selecionar arquivo</Button>
                 </>
               )}
             </div>
