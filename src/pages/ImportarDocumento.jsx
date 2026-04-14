@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { InvokeLLM, UploadFile } from '@/integrations/Core';
-import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Trash2, Calendar } from 'lucide-react';
+import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Trash2 } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
 import { Button } from '@/components/ui/button';
@@ -111,7 +111,6 @@ export default function ImportarDocumento() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [deduping, setDeduping] = useState(false);
   const [lastImports, setLastImports] = useState({});
-  const [filePreview, setFilePreview] = useState(null);
 
   async function handleDedup() {
     setDeduping(true);
@@ -170,12 +169,6 @@ export default function ImportarDocumento() {
     if (!f) return;
     setFile(f);
     setStep(Math.max(step, 2));
-    if (f.type.startsWith('image/')) {
-      const url = URL.createObjectURL(f);
-      setFilePreview(url);
-    } else {
-      setFilePreview(null);
-    }
   }
 
   function onDrop(e) {
@@ -225,28 +218,7 @@ export default function ImportarDocumento() {
       // 4. Normalizar para array de itens
       let items;
       if (selectedType === 'fatura_cartao') {
-        // Tentar auto-identificar o cartão pelos dados extraídos
-        let cartaoIdFinal = selectedCartaoId;
-        if (!cartaoIdFinal && parsed.fatura) {
-          const fatNome = (parsed.fatura.titular || parsed.fatura.nome_cartao || parsed.fatura.portador || '').toLowerCase();
-          const fatBandeira = (parsed.fatura.bandeira || parsed.fatura.operadora || '').toLowerCase();
-          const cartaoAtual = await base44.entities.ContaCartao.filter({ is_ativo: true });
-          const match = cartaoAtual.find(c => {
-            const nome = c.nome.toLowerCase();
-            const titular = (c.titular || '').toLowerCase();
-            const bandeira = (c.bandeira || '').toLowerCase();
-            if (fatNome && titular && fatNome.includes(titular.split(' ')[0].toLowerCase())) return true;
-            if (fatBandeira && bandeira && fatBandeira.includes(bandeira)) return true;
-            if (fatNome && nome && nome.split('—').some(part => fatNome.includes(part.trim().toLowerCase()))) return true;
-            return false;
-          });
-          if (match) {
-            cartaoIdFinal = match.id;
-            setSelectedCartaoId(match.id);
-            showToast(`✓ Cartão identificado automaticamente: ${match.nome}`, 'success');
-          }
-        }
-        const fatData = { ...parsed.fatura, __type: 'FaturaCartao', conta_cartao_id: cartaoIdFinal };
+        const fatData = { ...parsed.fatura, __type: 'FaturaCartao', conta_cartao_id: selectedCartaoId };
         const lancs = (parsed.lancamentos || []).map(l => ({ ...l, __type: 'LancamentoCartao' }));
         items = [fatData, ...lancs];
       } else {
@@ -447,14 +419,10 @@ export default function ImportarDocumento() {
                 onChange={(e) => handleFileSelect(e.target.files[0])} />
               {file ? (
                 <div>
-                  {filePreview ? (
-                    <img src={filePreview} alt="preview" className="max-h-32 mx-auto mb-2 rounded-lg object-contain border" />
-                  ) : (
-                    <FileText className="w-10 h-10 text-primary mx-auto mb-2" />
-                  )}
+                  <FileText className="w-10 h-10 text-primary mx-auto mb-2" />
                   <p className="font-semibold text-sm">{file.name}</p>
                   <p className="text-xs text-muted-foreground mt-1">{(file.size / 1024).toFixed(1)} KB</p>
-                  <button onClick={(e) => { e.stopPropagation(); setFile(null); setFilePreview(null); }}
+                  <button onClick={(e) => { e.stopPropagation(); setFile(null); }}
                     className="mt-2 text-xs text-red-500 hover:underline">Remover</button>
                 </div>
               ) : (
@@ -469,42 +437,7 @@ export default function ImportarDocumento() {
 
             {selectedType === 'fatura_cartao' && (
               <div className="mt-4">
-                {/* Calendário de vencimentos */}
-                <div className="bg-card rounded-xl border p-4 mb-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Calendar className="w-3.5 h-3.5" /> Selecionar Cartão pelo Calendário
-                  </p>
-                  <div className="flex items-start gap-3 overflow-x-auto pb-1">
-                    {contasCartao.sort((a,b)=>(a.dia_vencimento||0)-(b.dia_vencimento||0)).map(c => {
-                      const isSelected = selectedCartaoId === c.id;
-                      const cls = isSelected
-                        ? 'bg-primary border-primary text-primary-foreground scale-110 shadow-md'
-                        : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-300';
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setSelectedCartaoId(isSelected ? '' : c.id)}
-                          className="flex flex-col items-center gap-1 min-w-[64px]"
-                        >
-                          <div className={`w-12 h-12 rounded-full border-2 flex flex-col items-center justify-center transition-all ${cls}`}>
-                            <span className="text-base font-bold leading-none">{c.dia_vencimento}</span>
-                            <span className="text-[8px] font-medium">dia</span>
-                          </div>
-                          <p className="text-[9px] text-center text-muted-foreground leading-tight max-w-[64px] truncate">{c.nome.split('—')[0].trim()}</p>
-                          <p className="text-[9px] text-center text-muted-foreground truncate max-w-[64px]">{c.titular?.split(' ')[0] || ''}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {selectedCartaoId && (
-                    <p className="text-xs text-primary font-semibold mt-2">
-                      ✓ {contasCartao.find(c=>c.id===selectedCartaoId)?.nome}
-                    </p>
-                  )}
-                </div>
-                {/* Fallback select */}
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">ou selecione na lista</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Selecionar Cartão *</label>
                 <select value={selectedCartaoId} onChange={e => setSelectedCartaoId(e.target.value)}
                   className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
                   <option value="">— escolha o cartão —</option>
@@ -593,63 +526,44 @@ export default function ImportarDocumento() {
 
       {/* Histórico */}
       <div>
-        {(() => {
-          const filteredHistory = selectedType
-            ? history.filter(h => h.batch_type === selectedType)
-            : history;
-          const selectedDt = DOC_TYPES.find(d => d.id === selectedType);
-          return (
-            <>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                  Histórico{selectedType ? ` — ${selectedDt?.label}` : ' de Importações'}
-                </h2>
-                {selectedType && (
-                  <span className="text-xs text-muted-foreground">{filteredHistory.length} importação(ões)</span>
-                )}
-              </div>
-              <div className="bg-card rounded-xl border overflow-hidden">
-                {loadingHistory ? (
-                  <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>
-                ) : filteredHistory.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground text-sm">
-                    {selectedType ? `Nenhuma importação de "${selectedDt?.label}" ainda` : 'Nenhuma importação realizada ainda'}
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/30">
-                          <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Data</th>
-                          {!selectedType && <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Documento</th>}
-                          <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Arquivo</th>
-                          <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Salvos</th>
-                          <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Duplicatas</th>
-                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground text-xs">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredHistory.map(h => {
-                          const dt = DOC_TYPES.find(d => d.id === h.batch_type);
-                          return (
-                            <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
-                              <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                              {!selectedType && <td className="px-4 py-3 font-semibold text-sm">{dt?.label || h.batch_type}</td>}
-                              <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[180px]">{h.file_name || '—'}</td>
-                              <td className="px-4 py-3 text-right font-bold text-green-700">{h.success_count ?? 0}</td>
-                              <td className="px-4 py-3 text-right text-yellow-600">{h.duplicate_count ?? 0}</td>
-                              <td className="px-4 py-3 text-center"><StatusBadge status={h.status} /></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </>
-          );
-        })()}
+        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Histórico de Importações</h2>
+        <div className="bg-card rounded-xl border overflow-hidden">
+          {loadingHistory ? (
+            <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>
+          ) : history.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">Nenhuma importação realizada ainda</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Data</th>
+                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Documento</th>
+                    <th className="text-left px-4 py-3 font-semibold text-muted-foreground text-xs">Arquivo</th>
+                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Salvos</th>
+                    <th className="text-right px-4 py-3 font-semibold text-muted-foreground text-xs">Duplicatas</th>
+                    <th className="text-center px-4 py-3 font-semibold text-muted-foreground text-xs">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map(h => {
+                    const dt = DOC_TYPES.find(d => d.id === h.batch_type);
+                    return (
+                      <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
+                        <td className="px-4 py-3 text-xs text-muted-foreground">{h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                        <td className="px-4 py-3 font-semibold text-sm">{dt?.label || h.batch_type}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[180px]">{h.file_name || '—'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-green-700">{h.success_count ?? 0}</td>
+                        <td className="px-4 py-3 text-right text-yellow-600">{h.duplicate_count ?? 0}</td>
+                        <td className="px-4 py-3 text-center"><StatusBadge status={h.status} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
