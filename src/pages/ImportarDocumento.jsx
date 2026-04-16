@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { InvokeLLM, UploadFile } from '@/integrations/Core';
-import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Trash2, Calendar } from 'lucide-react';
+import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Trash2, Calendar, Wallet } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ const DOC_TYPES = [
   { id: 'obra_reforma',       label: 'Obra e Reforma',            icon: Hammer,       color: 'brown',  entity: 'ObraReforma',       dedup: ['data','responsavel','valor'] },
   { id: 'folha_pagamento',    label: 'Folha de Pagamento',        icon: Users,        color: 'slate',  entity: 'FolhaPagamento',    dedup: ['funcionario_nome','competencia'] },
   { id: 'dda_boletos',        label: 'DDA / Boletos a Vencer',   icon: Landmark,     color: 'indigo', entity: 'LancamentoBancario', dedup: ['data','descricao','valor'] },
+  { id: 'despesas_operacionais', label: 'Despesas Operacionais', icon: Wallet,       color: 'rose',   entity: 'DespesaOperacional', dedup: ['data','descricao','valor'] },
 ];
 
 const COLOR_MAP = {
@@ -31,6 +32,7 @@ const COLOR_MAP = {
   brown:  { card: 'border-amber-200 bg-amber-50',   icon: 'text-amber-700 bg-amber-100',   active: 'border-amber-600 bg-amber-100 ring-2 ring-amber-400' },
   slate:  { card: 'border-slate-200 bg-slate-50',   icon: 'text-slate-600 bg-slate-100',   active: 'border-slate-500 bg-slate-100 ring-2 ring-slate-300' },
   indigo: { card: 'border-indigo-200 bg-indigo-50', icon: 'text-indigo-600 bg-indigo-100', active: 'border-indigo-500 bg-indigo-100 ring-2 ring-indigo-300' },
+  rose:   { card: 'border-rose-200 bg-rose-50',     icon: 'text-rose-600 bg-rose-100',     active: 'border-rose-500 bg-rose-100 ring-2 ring-rose-300' },
 };
 
 const PROMPTS = {
@@ -72,6 +74,11 @@ Retorne APENAS array JSON:
   dda_boletos: `Analise este DDA/boletos a vencer e extraia em JSON.
 Retorne APENAS array JSON:
 [{"data":"YYYY-MM-DD","descricao":"NOME DO BENEFICIÁRIO","valor":numero_negativo,"categoria":"fornecedor ou tributo ou financeiro ou despesa_operacional","conta_bancaria":"NeuralTec 36092-2 ou Liesch 37101-4","detalhe":"código se disponível"}]`,
+
+  despesas_operacionais: `Analise este documento de despesas operacionais (nota fiscal, recibo, comprovante, planilha ou extrato) e extraia TODAS as despesas em JSON.
+Retorne APENAS array JSON:
+[{"data":"YYYY-MM-DD","descricao":"descrição da despesa","fornecedor":"nome do fornecedor ou prestador","categoria":"aluguel ou energia ou agua ou internet ou telefone ou manutencao ou limpeza ou marketing ou contabilidade ou juridico ou seguro ou transporte ou alimentacao ou material_escritorio ou outro","valor":numero_positivo,"forma_pagamento":"pix ou boleto ou cartao ou debito_automatico ou dinheiro ou transferencia","status":"pago ou pendente","empresa":"NeuralTec ou Liesch","observacoes":"observação opcional"}]
+Regras: valor SEMPRE positivo. Se data de vencimento informada mas não paga = status pendente. Identificar empresa pelo contexto (NeuralTec ou Liesch).`,
 };
 
 function StatusBadge({ status }) {

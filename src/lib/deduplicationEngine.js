@@ -50,6 +50,10 @@ const DEDUP_CONFIG = {
     entity: 'ConciliacaoItem',
     keys: ['mes_referencia', 'data_extrato', 'desc_extrato', 'valor_extrato'],
   },
+  DespesaOperacional: {
+    entity: 'DespesaOperacional',
+    keys: ['data', 'descricao', 'valor'],
+  },
 };
 
 /**
