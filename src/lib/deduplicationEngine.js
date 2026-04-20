@@ -12,7 +12,7 @@ const DEDUP_CONFIG = {
   },
   NotaFiscal: {
     entity: 'NotaFiscal',
-    keys: ['numero', 'tipo'],
+    keys: ['numero'], // apenas número — NF e NFe com mesmo número são a mesma nota (contabilidade vs Fabris)
   },
   TituloCobranca: {
     entity: 'TituloCobranca',
