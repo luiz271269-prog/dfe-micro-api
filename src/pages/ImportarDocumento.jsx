@@ -322,7 +322,7 @@ export default function ImportarDocumento() {
           if (faturaId) saved++;
         } else if (faturaRec.selected) {
           // Criar fatura nova
-          const createdFatura = await base44.entities.FaturaCartao.create(fatData);
+          const createdFatura = await base44.entities.FaturaCartao.create({ status: 'aberta', ...fatData });
           faturaId = createdFatura?.id || null;
           if (faturaId) saved++;
           else errors++;
