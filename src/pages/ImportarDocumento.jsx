@@ -295,24 +295,33 @@ export default function ImportarDocumento() {
 
     // Usar motor de deduplicação para salvar
     if (selectedType === 'fatura_cartao') {
-      const faturaRec = records.find(r => r.data.__type === 'FaturaCartao' && r.selected && r.status !== 'erro');
+      // Pegar fatura independente de estar selecionada — lançamentos dependem do ID dela
+      const faturaRec = records.find(r => r.data.__type === 'FaturaCartao');
       const lancRecs = records.filter(r => r.data.__type === 'LancamentoCartao' && r.selected && r.status !== 'erro');
 
       let faturaId = null;
 
       if (faturaRec) {
+        const { __type, ...fatData } = faturaRec.data;
+
         if (faturaRec.status === 'duplicata') {
-          // Fatura já existe — buscar pelo cartão + mês
-          const { __type, ...fatData } = faturaRec.data;
-          const ex = await base44.entities.FaturaCartao.filter({
-            conta_cartao_id: fatData.conta_cartao_id,
-            mes_referencia: fatData.mes_referencia,
-          });
+          // Fatura já existe — buscar no banco. Tentar por conta_cartao_id+mês, ou só pelo mês se sem cartão
+          let ex = [];
+          if (fatData.conta_cartao_id) {
+            ex = await base44.entities.FaturaCartao.filter({
+              conta_cartao_id: fatData.conta_cartao_id,
+              mes_referencia: fatData.mes_referencia,
+            });
+          }
+          if (!ex?.length && fatData.mes_referencia) {
+            // Fallback: buscar todas do mês e cruzar por valor_total
+            const todas = await base44.entities.FaturaCartao.filter({ mes_referencia: fatData.mes_referencia });
+            ex = todas.filter(f => Math.abs(f.valor_total - fatData.valor_total) < 1);
+          }
           faturaId = ex?.[0]?.id || null;
           if (faturaId) saved++;
-        } else {
-          // Criar fatura nova e capturar o ID retornado
-          const { __type, ...fatData } = faturaRec.data;
+        } else if (faturaRec.selected) {
+          // Criar fatura nova
           const createdFatura = await base44.entities.FaturaCartao.create(fatData);
           faturaId = createdFatura?.id || null;
           if (faturaId) saved++;
@@ -327,6 +336,8 @@ export default function ImportarDocumento() {
           await base44.entities.LancamentoCartao.create({ ...lancData, fatura_id: faturaId });
           saved++;
         }
+      } else if (lancRecs.length > 0) {
+        showToast('⚠️ Selecione um cartão no calendário — não foi possível identificar a fatura para vincular os lançamentos.', 'error');
       }
     } else {
       // Caso genérico: usar motor genérico
