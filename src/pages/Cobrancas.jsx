@@ -57,12 +57,27 @@ export default function Cobrancas() {
     return t;
   }, [titulos]);
 
+  // Helper: dias até o vencimento (negativo = vencido)
+  const diasAteVenc = (dataVenc) => {
+    if (!dataVenc) return null;
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const venc = new Date(dataVenc + 'T00:00:00');
+    return Math.round((venc - hoje) / 86400000);
+  };
+
   const filtered = useMemo(() => {
     return titulos.filter(t => {
-      if (!isAnnual && !t.data_vencimento?.startsWith(selectedMonth)) return false;
-      if (quickFilter === 'pagos' && t.status !== 'pago') return false;
-      if (quickFilter === 'abertos' && t.status !== 'em_aberto') return false;
-      if (quickFilter === 'vencidos' && t.status !== 'vencido') return false;
+      // Filtro "vencendo esta semana" ignora filtro de mês — mostra todos nos próximos 7 dias
+      if (quickFilter === 'semana') {
+        if (t.status === 'pago') return false;
+        const d = diasAteVenc(t.data_vencimento);
+        if (d === null || d < 0 || d > 7) return false;
+      } else {
+        if (!isAnnual && !t.data_vencimento?.startsWith(selectedMonth)) return false;
+        if (quickFilter === 'pagos' && t.status !== 'pago') return false;
+        if (quickFilter === 'abertos' && t.status !== 'em_aberto') return false;
+        if (quickFilter === 'vencidos' && t.status !== 'vencido') return false;
+      }
       if (searchTerm && !t.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) && !t.nosso_numero?.includes(searchTerm)) return false;
       return true;
     });
@@ -106,7 +121,19 @@ export default function Cobrancas() {
     loadData();
   }
 
-  const countByStatus = { todos: titulos.length, pagos: titulos.filter(t => t.status === 'pago').length, abertos: titulos.filter(t => t.status === 'em_aberto').length, vencidos: titulos.filter(t => t.status === 'vencido').length };
+  const countVencendoSemana = titulos.filter(t => {
+    if (t.status === 'pago') return false;
+    const d = diasAteVenc(t.data_vencimento);
+    return d !== null && d >= 0 && d <= 7;
+  }).length;
+
+  const countByStatus = {
+    todos: titulos.length,
+    pagos: titulos.filter(t => t.status === 'pago').length,
+    abertos: titulos.filter(t => t.status === 'em_aberto').length,
+    vencidos: titulos.filter(t => t.status === 'vencido').length,
+    semana: countVencendoSemana,
+  };
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
@@ -149,18 +176,26 @@ export default function Cobrancas() {
           {[
             { key: 'todos', label: 'Todos' },
             { key: 'abertos', label: 'Em Aberto' },
+            { key: 'semana', label: 'Vencendo esta semana', highlight: true },
             { key: 'vencidos', label: 'Vencidos' },
             { key: 'pagos', label: 'Pagos' },
-          ].map(f => (
-            <button
-              key={f.key}
-              onClick={() => setQuickFilter(f.key)}
-              className={`px-3 py-2 text-xs font-semibold transition-colors flex items-center gap-1.5 ${quickFilter === f.key ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:bg-muted'}`}
-            >
-              {f.label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${quickFilter === f.key ? 'bg-white/20' : 'bg-muted'}`}>{countByStatus[f.key]}</span>
-            </button>
-          ))}
+          ].map(f => {
+            const isActive = quickFilter === f.key;
+            const baseClass = isActive
+              ? (f.highlight ? 'bg-red-600 text-white' : 'bg-primary text-primary-foreground')
+              : (f.highlight ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-card text-muted-foreground hover:bg-muted');
+            return (
+              <button
+                key={f.key}
+                onClick={() => setQuickFilter(f.key)}
+                className={`px-3 py-2 text-xs font-semibold transition-colors flex items-center gap-1.5 ${baseClass}`}
+              >
+                {f.highlight && <AlertTriangle className="w-3 h-3" />}
+                {f.label}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : f.highlight ? 'bg-red-200' : 'bg-muted'}`}>{countByStatus[f.key]}</span>
+              </button>
+            );
+          })}
         </div>
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -190,11 +225,24 @@ export default function Cobrancas() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhum título encontrado</td></tr>
               ) : (
-                filtered.map(t => (
-                  <tr key={t.id} className={`border-b transition-colors ${statusRowColors[t.status] || ''} hover:brightness-95`}>
-                    <td className="px-4 py-3 font-medium">{t.nosso_numero}</td>
-                    <td className="px-4 py-3">{t.cliente}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(t.data_vencimento)}</td>
+                filtered.map(t => {
+                  const dias = diasAteVenc(t.data_vencimento);
+                  const vencendoCritico = t.status !== 'pago' && dias !== null && dias >= 0 && dias <= 3;
+                  const rowClass = vencendoCritico
+                    ? 'bg-red-100/70 hover:bg-red-100 border-l-4 border-l-red-600'
+                    : `${statusRowColors[t.status] || ''} hover:brightness-95`;
+                  return (
+                  <tr key={t.id} className={`border-b transition-colors ${rowClass}`}>
+                    <td className={`px-4 py-3 font-medium ${vencendoCritico ? 'text-red-800' : ''}`}>{t.nosso_numero}</td>
+                    <td className={`px-4 py-3 ${vencendoCritico ? 'text-red-800 font-semibold' : ''}`}>{t.cliente}</td>
+                    <td className={`px-4 py-3 whitespace-nowrap ${vencendoCritico ? 'text-red-700 font-bold' : ''}`}>
+                      {formatDate(t.data_vencimento)}
+                      {vencendoCritico && (
+                        <span className="ml-2 text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded-full font-bold">
+                          {dias === 0 ? 'HOJE' : `${dias}d`}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">{t.parcela_numero && t.parcela_total ? `${t.parcela_numero}/${t.parcela_total}` : '—'}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatCurrency(t.valor_titulo)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-green-700">{formatCurrency(t.valor_pago)}</td>
@@ -209,7 +257,8 @@ export default function Cobrancas() {
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
             {filtered.length > 0 && (
