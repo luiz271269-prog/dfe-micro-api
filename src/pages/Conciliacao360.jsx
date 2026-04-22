@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Link2, TrendingUp, CreditCard, ArrowDownCircle, AlertTriangle, Sparkles } from 'lucide-react';
+import { Link2, TrendingUp, CreditCard, ArrowDownCircle, AlertTriangle, Sparkles, Upload, Landmark } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
 import MonthNavigator from '../components/shared/MonthNavigator';
 import TabReceita from '../components/conciliacao360/TabReceita';
@@ -79,6 +81,28 @@ export default function Conciliacao360() {
       <PageHeader title="Conciliação 360°" subtitle="Cruze extrato, notas, títulos, cartões e despesas em um só lugar">
         <MonthNavigator selectedMonth={mes} onSelectMonth={setMes} />
       </PageHeader>
+
+      {/* Ação: importar extrato direto na fila */}
+      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 mb-4 flex items-center justify-between gap-4 shadow-md">
+        <div className="flex items-center gap-3 text-white">
+          <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+            <Landmark className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold">Importar Extrato OFX / PDF</p>
+            <p className="text-[11px] text-white/80">
+              {dados.lancamentos.length > 0
+                ? `${dados.lancamentos.length} lançamentos na fila deste mês. Envie um novo extrato para adicionar mais à conciliação.`
+                : 'Nenhum lançamento no mês ainda. Faça upload do OFX/PDF do banco para começar a conciliar.'}
+            </p>
+          </div>
+        </div>
+        <Link to="/importar?tipo=extrato_bancario">
+          <Button variant="secondary" className="gap-2 bg-white text-indigo-700 hover:bg-white/90">
+            <Upload className="w-4 h-4" /> Importar Extrato
+          </Button>
+        </Link>
+      </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
         <p className="text-sm text-blue-900 font-semibold mb-1">💡 Como usar</p>

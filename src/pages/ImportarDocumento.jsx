@@ -36,10 +36,11 @@ const COLOR_MAP = {
 };
 
 const PROMPTS = {
-  extrato_bancario: `Você é um sistema de extração de dados bancários. Analise este extrato bancário Sicredi e extraia TODOS os lançamentos em JSON.
+  extrato_bancario: `Você é um sistema de extração de dados bancários. Analise este extrato (PDF, imagem ou arquivo OFX/QFX do Sicredi ou qualquer banco) e extraia TODOS os lançamentos em JSON.
+Para arquivos OFX/QFX: extraia cada <STMTTRN> — use <DTPOSTED> como data, <TRNAMT> como valor (mantendo sinal), <MEMO> ou <NAME> como descrição, <FITID> como detalhe.
 Retorne APENAS um array JSON válido, sem texto adicional, no formato:
-[{"data":"YYYY-MM-DD","descricao":"descrição exata do extrato","valor":numero_positivo_ou_negativo,"categoria":"recebimento ou fornecedor ou pessoal ou tributo ou despesa_operacional ou financeiro ou saque ou transferencia ou interno","saldo_apos":numero,"conta_bancaria":"NeuralTec 36092-2","detalhe":"documento ex: COB000001 ou PIX_DEB ou vazio"}]
-Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lançamentos, ignorar apenas "SALDO ANTERIOR".`,
+[{"data":"YYYY-MM-DD","descricao":"descrição exata do extrato","valor":numero_positivo_ou_negativo,"categoria":"recebimento ou fornecedor ou pessoal ou tributo ou despesa_operacional ou financeiro ou saque ou transferencia ou interno","saldo_apos":numero,"conta_bancaria":"NeuralTec 36092-2","detalhe":"documento ex: COB000001 ou PIX_DEB ou FITID ou vazio"}]
+Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lançamentos, ignorar apenas "SALDO ANTERIOR" e linhas de saldo consolidado.`,
 
   boletos_liquidados: `Analise este comprovante de boletos liquidados e extraia os pagamentos em JSON.
 Retorne APENAS array JSON:
@@ -543,7 +544,7 @@ export default function ImportarDocumento() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
             >
-              <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv" className="hidden"
+              <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv,.ofx,.qfx,.txt" className="hidden"
                 onChange={(e) => handleFileSelect(e.target.files[0])} />
               {file ? (
                 <div>
@@ -557,7 +558,7 @@ export default function ImportarDocumento() {
                 <>
                   <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-2" />
                   <p className="text-xs font-semibold text-foreground">Arraste o arquivo aqui</p>
-                  <p className="text-[11px] text-muted-foreground">PDF, PNG, JPG, XLSX, CSV</p>
+                  <p className="text-[11px] text-muted-foreground">PDF, PNG, JPG, XLSX, CSV, OFX</p>
                   <Button variant="outline" size="sm" className="mt-2 pointer-events-none text-xs h-7">Selecionar arquivo</Button>
                 </>
               )}
