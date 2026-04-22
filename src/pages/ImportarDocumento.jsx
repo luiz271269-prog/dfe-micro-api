@@ -290,6 +290,7 @@ export default function ImportarDocumento() {
     const toSave = records.filter(r => r.selected && r.status !== 'erro');
     if (toSave.length === 0) return showToast('Nenhum registro selecionado para salvar.', 'error');
     setSaving(true);
+    try {
     const typeConfig = DOC_TYPES.find(d => d.id === selectedType);
     let saved = 0, errors = 0;
 
@@ -322,7 +323,7 @@ export default function ImportarDocumento() {
           if (faturaId) saved++;
         } else if (faturaRec.selected) {
           // Criar fatura nova
-          const createdFatura = await base44.entities.FaturaCartao.create({ status: 'aberta', ...fatData });
+          const createdFatura = await base44.entities.FaturaCartao.create({ ...fatData, status: fatData.status || 'aberta', valor_pago: fatData.valor_pago ?? 0 });
           faturaId = createdFatura?.id || null;
           if (faturaId) saved++;
           else errors++;
@@ -384,14 +385,18 @@ export default function ImportarDocumento() {
       notes: notesValue,
     });
 
-    setSaving(false);
-    setSaveProgress('');
-    setStep(4);
-    showToast(`✓ ${saved} novos registros salvos · ${dupes} duplicatas ignoradas`);
-    loadHistory();
-    // Disparar evento para atualizar dashboard (página atual) + sinalizar para quando navegar
-    window.dispatchEvent(new Event('neuralfinRefresh'));
-    localStorage.setItem('neuralfinPendingRefresh', Date.now().toString());
+      setSaving(false);
+      setSaveProgress('');
+      setStep(4);
+      showToast(`✓ ${saved} novos registros salvos · ${dupes} duplicatas ignoradas`);
+      loadHistory();
+      window.dispatchEvent(new Event('neuralfinRefresh'));
+      localStorage.setItem('neuralfinPendingRefresh', Date.now().toString());
+    } catch (err) {
+      setSaving(false);
+      setSaveProgress('');
+      showToast(`Erro ao salvar: ${err.message}`, 'error');
+    }
   }
 
   function reset() {
