@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Link2, TrendingUp, CreditCard, ArrowDownCircle, AlertTriangle } from 'lucide-react';
+import { Link2, TrendingUp, CreditCard, ArrowDownCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import MonthNavigator from '../components/shared/MonthNavigator';
 import TabReceita from '../components/conciliacao360/TabReceita';
 import TabPagamentos from '../components/conciliacao360/TabPagamentos';
 import TabCartoes from '../components/conciliacao360/TabCartoes';
 import TabExcecoes from '../components/conciliacao360/TabExcecoes';
+import TabSugestoes from '../components/conciliacao360/TabSugestoes';
 
 export default function Conciliacao360() {
   const hoje = new Date();
@@ -90,7 +91,7 @@ export default function Conciliacao360() {
       </div>
 
       <Tabs defaultValue="pagamentos" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="receita" className="gap-2">
             <TrendingUp className="w-4 h-4" />
             Receita
@@ -110,6 +111,10 @@ export default function Conciliacao360() {
             <AlertTriangle className="w-4 h-4" />
             Exceções
           </TabsTrigger>
+          <TabsTrigger value="sugestoes" className="gap-2">
+            <Sparkles className="w-4 h-4" />
+            Sugestões Auto
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="receita">
@@ -123,6 +128,9 @@ export default function Conciliacao360() {
         </TabsContent>
         <TabsContent value="excecoes">
           <TabExcecoes loading={loading} dados={dados} mes={mes} onRefresh={load} />
+        </TabsContent>
+        <TabsContent value="sugestoes">
+          <TabSugestoes loading={loading} dados={dados} mes={mes} onRefresh={load} />
         </TabsContent>
       </Tabs>
     </div>
