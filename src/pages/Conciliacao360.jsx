@@ -19,12 +19,12 @@ export default function Conciliacao360() {
   const [loading, setLoading] = useState(true);
   const [dados, setDados] = useState({
     lancamentos: [], notas: [], titulos: [], faturas: [],
-    lancCartao: [], despesas: [], tributos: [], cartoes: [], regrasRecorrentes: [],
+    lancCartao: [], despesas: [], tributos: [], cartoes: [], regrasRecorrentes: [], folhas: [],
   });
 
   async function load() {
     setLoading(true);
-    const [lancamentos, notas, titulos, faturas, lancCartao, despesas, tributos, cartoes, regrasRecorrentes] = await Promise.all([
+    const [lancamentos, notas, titulos, faturas, lancCartao, despesas, tributos, cartoes, regrasRecorrentes, folhas] = await Promise.all([
       base44.entities.LancamentoBancario.filter({ mes_referencia: mes }),
       base44.entities.NotaFiscal.list('-data_emissao', 500),
       base44.entities.TituloCobranca.list('-data_vencimento', 500),
@@ -34,8 +34,9 @@ export default function Conciliacao360() {
       base44.entities.Tributo.list('-data_vencimento', 200),
       base44.entities.ContaCartao.filter({ is_ativo: true }),
       base44.entities.RegraRecorrente.filter({ is_ativa: true }),
+      base44.entities.FolhaPagamento.filter({ status: 'pendente' }),
     ]);
-    setDados({ lancamentos, notas, titulos, faturas, lancCartao, despesas, tributos, cartoes, regrasRecorrentes });
+    setDados({ lancamentos, notas, titulos, faturas, lancCartao, despesas, tributos, cartoes, regrasRecorrentes, folhas });
     setLoading(false);
   }
 

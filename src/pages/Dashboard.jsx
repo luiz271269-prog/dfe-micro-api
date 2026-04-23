@@ -332,6 +332,22 @@ export default function Dashboard() {
         <MetricCard title="Cobranças Recebidas" value={`${percCob}%`} sub={`${formatCurrency(data.recebido)} de ${formatCurrency(data.emitido)}`} icon={PiggyBank} gradient="teal" href="/cobrancas" />
       </div>
 
+      {/* ─── CTA CONTAS A PAGAR ─── */}
+      <Link to="/contas-a-pagar" className="block">
+        <div className="bg-gradient-to-r from-rose-600 to-red-700 rounded-2xl p-4 flex items-center justify-between gap-4 text-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">Contas a Pagar — Agenda Consolidada</p>
+              <p className="text-[11px] opacity-90">Despesas + Tributos + Folha + Faturas de cartão com aging e baixa automática pelo extrato</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5" />
+        </div>
+      </Link>
+
       {/* ─── ALERT BANNER ─── */}
       <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">

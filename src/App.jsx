@@ -27,6 +27,7 @@ import Despesas from './pages/Despesas';
 import AuditoriaArquivos from './pages/AuditoriaArquivos';
 import Conciliacao360 from './pages/Conciliacao360';
 import Recorrentes from './pages/Recorrentes';
+import ContasAPagar from './pages/ContasAPagar';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -78,6 +79,7 @@ const AuthenticatedApp = () => {
         <Route path="/auditoria" element={<AuditoriaArquivos />} />
         <Route path="/conciliacao360" element={<Conciliacao360 />} />
         <Route path="/recorrentes" element={<Recorrentes />} />
+        <Route path="/contas-a-pagar" element={<ContasAPagar />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

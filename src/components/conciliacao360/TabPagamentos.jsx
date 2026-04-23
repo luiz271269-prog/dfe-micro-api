@@ -2,19 +2,21 @@ import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Link2, CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark, Repeat, AlertTriangle } from 'lucide-react';
+import { Link2, CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark, Repeat, AlertTriangle, Clock } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import { aplicarRegra } from '../../lib/recurringEngine';
+import { consolidarContasPagar, acharContaPagarPorLancamento } from '../../lib/contasPagarEngine';
 
 /**
  * Classifica cada débito do extrato. Prioridade:
- * 0. RECORRENTE (regras do usuário) — gera alerta se valor divergente
- * 1. pagamento_fatura
- * 2. pagamento_tributo
- * 3. despesa_direta
- * 4. nao_classificado
+ * 0. RECORRENTE (regras do usuário) — alerta se divergente
+ * 1. CONTA A PAGAR PENDENTE (DDA) — match com despesa/tributo/folha/fatura em aberto
+ * 2. pagamento_fatura
+ * 3. pagamento_tributo
+ * 4. despesa_direta (despesa já paga com mesma data)
+ * 5. nao_classificado
  */
-function classificarDebito(lanc, faturas, despesas, tributos, regras = []) {
+function classificarDebito(lanc, faturas, despesas, tributos, regras = [], contasPagar = []) {
   // 0. Regra recorrente (PRIORIDADE MÁXIMA)
   for (const regra of regras) {
     const r = aplicarRegra(lanc, regra);
@@ -26,6 +28,16 @@ function classificarDebito(lanc, faturas, despesas, tributos, regras = []) {
         recorrenteInfo: r,
       };
     }
+  }
+
+  // 1. Conta a pagar pendente (DDA) — match por valor + vencimento próximo
+  const dda = acharContaPagarPorLancamento(lanc, contasPagar);
+  if (dda) {
+    return {
+      tipo: 'conta_pagar_pendente',
+      vinculo: dda,
+      label: `A pagar (${dda.origem_tipo})`,
+    };
   }
 
   const desc = (lanc.descricao || '').toUpperCase();
@@ -48,24 +60,34 @@ function classificarDebito(lanc, faturas, despesas, tributos, regras = []) {
 }
 
 const TIPO_CONFIG = {
-  recorrente:         { icon: Repeat,      color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  pagamento_fatura:   { icon: CreditCard,  color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  pagamento_tributo:  { icon: Landmark,    color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  despesa_direta:     { icon: Wallet,      color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  pagamento_boleto:   { icon: Receipt,     color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  nao_classificado:   { icon: AlertCircle, color: 'bg-rose-100 text-rose-700 border-rose-200' },
+  recorrente:            { icon: Repeat,      color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  conta_pagar_pendente:  { icon: Clock,       color: 'bg-teal-100 text-teal-700 border-teal-200' },
+  pagamento_fatura:      { icon: CreditCard,  color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  pagamento_tributo:     { icon: Landmark,    color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  despesa_direta:        { icon: Wallet,      color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  pagamento_boleto:      { icon: Receipt,     color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  nao_classificado:      { icon: AlertCircle, color: 'bg-rose-100 text-rose-700 border-rose-200' },
 };
 
 export default function TabPagamentos({ loading, dados, onRefresh }) {
   const [vincularLanc, setVincularLanc] = useState(null);
   const [salvando, setSalvando] = useState(false);
 
+  // Consolida lista de contas a pagar pendentes (DDA, tributos, folha, faturas em aberto)
+  const contasPagar = useMemo(() => consolidarContasPagar({
+    despesas: dados.despesas,
+    tributos: dados.tributos,
+    folhas: dados.folhas || [],
+    faturas: dados.faturas,
+    cartoes: dados.cartoes,
+  }), [dados]);
+
   const pagamentos = useMemo(() => {
     const debitos = dados.lancamentos.filter(l => l.valor < 0);
     return debitos
-      .map(l => ({ ...l, classificacao: classificarDebito(l, dados.faturas, dados.despesas, dados.tributos, dados.regrasRecorrentes || []) }))
+      .map(l => ({ ...l, classificacao: classificarDebito(l, dados.faturas, dados.despesas, dados.tributos, dados.regrasRecorrentes || [], contasPagar) }))
       .sort((a, b) => (a.data > b.data ? -1 : 1));
-  }, [dados]);
+  }, [dados, contasPagar]);
 
   const stats = useMemo(() => ({
     total: pagamentos.length,
@@ -75,6 +97,40 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
     recorrentesDivergentes: pagamentos.filter(p => p.classificacao.tipo === 'recorrente' && p.classificacao.recorrenteInfo?.status === 'divergente').length,
     totalValor: pagamentos.reduce((a, p) => a + Math.abs(p.valor), 0),
   }), [pagamentos]);
+
+  // Dá baixa automática no item pendente vinculado ao débito
+  async function darBaixaDDA(lanc, item) {
+    setSalvando(true);
+    try {
+      if (item.origem_tipo === 'despesa') {
+        await base44.entities.DespesaOperacional.update(item.origem_id, {
+          status: 'pago',
+          data: lanc.data,
+        });
+      } else if (item.origem_tipo === 'tributo') {
+        await base44.entities.Tributo.update(item.origem_id, {
+          status: 'pago',
+          data_pagamento: lanc.data,
+          valor_pago: Math.abs(lanc.valor),
+        });
+      } else if (item.origem_tipo === 'folha') {
+        await base44.entities.FolhaPagamento.update(item.origem_id, {
+          status: 'pago',
+          data_pagamento: lanc.data,
+        });
+      } else if (item.origem_tipo === 'fatura') {
+        await base44.entities.FaturaCartao.update(item.origem_id, {
+          status: 'paga_total',
+          data_pagamento: lanc.data,
+          valor_pago: Math.abs(lanc.valor),
+        });
+      }
+    } finally {
+      setSalvando(false);
+      setVincularLanc(null);
+      onRefresh();
+    }
+  }
 
   async function criarDespesaRapida(lanc) {
     setSalvando(true);
@@ -183,7 +239,11 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
                       )}
                     </td>
                     <td className="px-3 py-2 text-center">
-                      {!p.classificacao.vinculo && (
+                      {p.classificacao.tipo === 'conta_pagar_pendente' ? (
+                        <Button size="sm" className="h-6 text-[10px] bg-teal-600 hover:bg-teal-700" onClick={() => darBaixaDDA(p, p.classificacao.vinculo)} disabled={salvando}>
+                          <CheckCircle className="w-3 h-3 mr-1" /> Dar baixa
+                        </Button>
+                      ) : !p.classificacao.vinculo && (
                         <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setVincularLanc(p)}>
                           <Link2 className="w-3 h-3 mr-1" /> Vincular
                         </Button>
