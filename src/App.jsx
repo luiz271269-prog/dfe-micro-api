@@ -26,6 +26,8 @@ import CruzamentoCompras from './pages/CruzamentoCompras';
 import Despesas from './pages/Despesas';
 import AuditoriaArquivos from './pages/AuditoriaArquivos';
 import Conciliacao360 from './pages/Conciliacao360';
+import Recorrentes from './pages/Recorrentes';
+import DespesasRecorrentes from './pages/DespesasRecorrentes';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -76,6 +78,8 @@ const AuthenticatedApp = () => {
         <Route path="/despesas" element={<Despesas />} />
         <Route path="/auditoria" element={<AuditoriaArquivos />} />
         <Route path="/conciliacao360" element={<Conciliacao360 />} />
+        <Route path="/recorrentes" element={<Recorrentes />} />
+        <Route path="/recorrentes" element={<DespesasRecorrentes />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Link2, CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark } from 'lucide-react';
+import { Link2, CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark, Repeat, AlertTriangle } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
+import { aplicarRegras } from '../../lib/recurringEngine.js';
 
 /**
  * Classifica cada débito do extrato em 4 caixas:
@@ -12,9 +13,20 @@ import { formatCurrency, formatDate } from '../../lib/formatters';
  * - pagamento_boleto  → linkar TituloCobranca ou DespesaOperacional
  * - despesa_direta    → linkar DespesaOperacional
  */
-function classificarDebito(lanc, faturas, despesas, tributos) {
+function classificarDebito(lanc, faturas, despesas, tributos, regrasRecorrentes = []) {
   const desc = (lanc.descricao || '').toUpperCase();
   const valor = Math.abs(lanc.valor);
+
+  // 0. Regra recorrente (prioridade máxima)
+  const rec = aplicarRegras(lanc, regrasRecorrentes);
+  if (rec) {
+    return {
+      tipo: 'despesa_recorrente',
+      vinculo: rec.regra,
+      label: rec.status === 'divergente' ? 'Recorrente divergente' : 'Recorrente',
+      recorrente: rec,
+    };
+  }
 
   // 1. Fatura de cartão
   if (desc.includes('PAGTO CARTAO') || desc.includes('FATURA CARTAO') || desc.includes('PAGAMENTO CARTAO')) {
@@ -37,6 +49,7 @@ function classificarDebito(lanc, faturas, despesas, tributos) {
 }
 
 const TIPO_CONFIG = {
+  despesa_recorrente: { icon: Repeat,     color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
   pagamento_fatura:   { icon: CreditCard, color: 'bg-purple-100 text-purple-700 border-purple-200' },
   pagamento_tributo:  { icon: Landmark,   color: 'bg-orange-100 text-orange-700 border-orange-200' },
   despesa_direta:     { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
@@ -51,7 +64,7 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
   const pagamentos = useMemo(() => {
     const debitos = dados.lancamentos.filter(l => l.valor < 0);
     return debitos
-      .map(l => ({ ...l, classificacao: classificarDebito(l, dados.faturas, dados.despesas, dados.tributos) }))
+      .map(l => ({ ...l, classificacao: classificarDebito(l, dados.faturas, dados.despesas, dados.tributos, dados.regrasRecorrentes || []) }))
       .sort((a, b) => (a.data > b.data ? -1 : 1));
   }, [dados]);
 
@@ -60,6 +73,8 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
     vinculados: pagamentos.filter(p => p.classificacao.vinculo).length,
     pendentes: pagamentos.filter(p => !p.classificacao.vinculo).length,
     totalValor: pagamentos.reduce((a, p) => a + Math.abs(p.valor), 0),
+    recorrentes: pagamentos.filter(p => p.classificacao.tipo === 'despesa_recorrente').length,
+    recorrentesDivergentes: pagamentos.filter(p => p.classificacao.recorrente?.status === 'divergente').length,
   }), [pagamentos]);
 
   async function criarDespesaRapida(lanc) {
@@ -85,11 +100,18 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
   return (
     <div>
       {/* Resumo */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
         <div className="bg-card rounded-xl border p-3">
           <p className="text-[10px] font-bold uppercase text-muted-foreground">Total débitos</p>
           <p className="text-xl font-bold">{stats.total}</p>
           <p className="text-[10px] text-muted-foreground">{formatCurrency(stats.totalValor)}</p>
+        </div>
+        <div className="bg-indigo-50 rounded-xl border border-indigo-200 p-3">
+          <p className="text-[10px] font-bold uppercase text-indigo-700 flex items-center gap-1"><Repeat className="w-3 h-3" /> Recorrentes</p>
+          <p className="text-xl font-bold text-indigo-700">{stats.recorrentes}</p>
+          {stats.recorrentesDivergentes > 0 && (
+            <p className="text-[10px] text-rose-600 font-bold">⚠ {stats.recorrentesDivergentes} divergente(s)</p>
+          )}
         </div>
         <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-3">
           <p className="text-[10px] font-bold uppercase text-emerald-700">Vinculados</p>
@@ -123,16 +145,26 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
               {pagamentos.map(p => {
                 const cfg = TIPO_CONFIG[p.classificacao.tipo];
                 const Icon = cfg.icon;
+                const rec = p.classificacao.recorrente;
+                const isDivergente = rec?.status === 'divergente';
                 return (
-                  <tr key={p.id} className="border-b hover:bg-muted/20">
+                  <tr key={p.id} className={`border-b hover:bg-muted/20 ${isDivergente ? 'bg-amber-50/50' : ''}`}>
                     <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatDate(p.data)}</td>
                     <td className="px-3 py-2 font-medium">
                       <p className="truncate max-w-[280px]">{p.descricao}</p>
                       {p.detalhe && <p className="text-[10px] text-muted-foreground">{p.detalhe}</p>}
                     </td>
-                    <td className="px-3 py-2 text-right font-bold text-rose-600 tabular-nums">{formatCurrency(p.valor)}</td>
+                    <td className="px-3 py-2 text-right font-bold text-rose-600 tabular-nums">
+                      {formatCurrency(p.valor)}
+                      {isDivergente && (
+                        <p className="text-[10px] font-bold text-amber-700 flex items-center gap-1 justify-end">
+                          <AlertTriangle className="w-3 h-3" />
+                          {rec.diffAbs > 0 ? '+' : ''}{formatCurrency(rec.diffAbs)} ({(rec.diffPct * 100).toFixed(1)}%)
+                        </p>
+                      )}
+                    </td>
                     <td className="px-3 py-2">
-                      <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-semibold ${cfg.color}`}>
+                      <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-semibold ${isDivergente ? 'bg-amber-100 text-amber-800 border-amber-300' : cfg.color}`}>
                         <Icon className="w-3 h-3" /> {p.classificacao.label}
                       </span>
                     </td>
@@ -141,7 +173,7 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
                         <div className="flex items-center gap-1 text-emerald-700">
                           <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                           <span className="truncate max-w-[200px]">
-                            {p.classificacao.vinculo.descricao || p.classificacao.vinculo.tipo || p.classificacao.vinculo.mes_referencia || '—'}
+                            {p.classificacao.vinculo.nome || p.classificacao.vinculo.descricao || p.classificacao.vinculo.tipo || p.classificacao.vinculo.mes_referencia || '—'}
                           </span>
                         </div>
                       ) : (

@@ -1,0 +1,94 @@
+{
+  "name": "RegraRecorrente",
+  "type": "object",
+  "properties": {
+    "nome": {
+      "type": "string",
+      "title": "Nome da Regra (ex: Aluguel Pavilh\u00e3o, Internet Vivo)"
+    },
+    "padrao_descricao": {
+      "type": "string",
+      "title": "Palavra-chave da descri\u00e7\u00e3o no extrato"
+    },
+    "fornecedor": {
+      "type": "string",
+      "title": "Fornecedor/Benefici\u00e1rio"
+    },
+    "valor_esperado": {
+      "type": "number",
+      "title": "Valor esperado (R$)"
+    },
+    "tolerancia_percentual": {
+      "type": "number",
+      "title": "Toler\u00e2ncia (%)",
+      "default": 5
+    },
+    "dia_vencimento": {
+      "type": "number",
+      "title": "Dia do m\u00eas esperado"
+    },
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "aluguel",
+        "energia",
+        "agua",
+        "internet",
+        "telefone",
+        "software",
+        "contabilidade",
+        "seguro",
+        "manutencao",
+        "marketing",
+        "outro"
+      ],
+      "title": "Categoria"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "enum": [
+        "pix",
+        "boleto",
+        "debito_automatico",
+        "cartao",
+        "transferencia"
+      ],
+      "title": "Forma de pagamento t\u00edpica"
+    },
+    "is_ativa": {
+      "type": "boolean",
+      "title": "Ativa",
+      "default": true
+    },
+    "historico_valores": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "title": "Hist\u00f3rico de valores observados"
+    },
+    "ultima_ocorrencia": {
+      "type": "string",
+      "format": "date",
+      "title": "\u00daltima ocorr\u00eancia detectada"
+    },
+    "observacoes": {
+      "type": "string",
+      "title": "Observa\u00e7\u00f5es"
+    }
+  },
+  "required": [
+    "nome",
+    "padrao_descricao",
+    "valor_esperado",
+    "categoria"
+  ]
+}
