@@ -1,0 +1,92 @@
+{
+  "name": "NotificacaoConformidade",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "score_baixo",
+        "ncm_invalido",
+        "aliquota_atipica",
+        "valor_divergente",
+        "cst_inconsistente",
+        "aritmetica_icms",
+        "sem_pedido"
+      ],
+      "title": "Tipo de alerta"
+    },
+    "severidade": {
+      "type": "string",
+      "enum": [
+        "alta",
+        "media",
+        "baixa"
+      ],
+      "default": "alta",
+      "title": "Severidade"
+    },
+    "titulo": {
+      "type": "string",
+      "title": "T\u00edtulo do alerta"
+    },
+    "mensagem": {
+      "type": "string",
+      "title": "Mensagem detalhada"
+    },
+    "nfe_analise_id": {
+      "type": "string",
+      "title": "ID da NFeAnalise"
+    },
+    "nfe_numero": {
+      "type": "string",
+      "title": "N\u00famero da NF-e"
+    },
+    "emitente_nome": {
+      "type": "string"
+    },
+    "score_conformidade": {
+      "type": "number"
+    },
+    "detalhes": {
+      "type": "array",
+      "title": "Diverg\u00eancias espec\u00edficas detectadas",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "produto": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "lida": {
+      "type": "boolean",
+      "default": false,
+      "title": "Lida"
+    },
+    "resolvida": {
+      "type": "boolean",
+      "default": false,
+      "title": "Resolvida"
+    },
+    "email_enviado": {
+      "type": "boolean",
+      "default": false,
+      "title": "E-mail enviado"
+    },
+    "destinatario_email": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tipo",
+    "titulo",
+    "mensagem"
+  ]
+}

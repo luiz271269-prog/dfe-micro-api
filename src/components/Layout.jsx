@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import PainelNotificacoes from './notificacoes/PainelNotificacoes';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,7 +28,6 @@ const navItems = [
   { path: '/analise-nfe', label: 'Análise XML NF-e (Drive)', icon: FileCode },
   { path: '/dre-tributario', label: 'DRE Tributário', icon: Scale },
   { path: '/simulacao-custo', label: 'Simulação de Custo', icon: Calculator },
-  { path: '/simulacao-custo', label: 'Simulação de Custo', icon: FlaskConical },
   { path: '/produtos', label: 'Produtos & Fornecedores', icon: Package },
   { path: '/cruzamento-compras', label: 'Compras × Pagamentos', icon: GitCompare },
   { path: '/despesas', label: 'Despesas Operacionais', icon: Wallet },
@@ -171,6 +171,9 @@ export default function Layout() {
           <span className="text-sidebar-accent-foreground font-semibold text-sm">NeuralTec</span>
         </div>
         <AlertBar />
+        <div className="relative flex items-center justify-end px-4 h-9 border-b bg-card shrink-0">
+          <PainelNotificacoes />
+        </div>
         <Breadcrumb location={location} />
         <main className="flex-1 overflow-auto">
           <Outlet />
