@@ -22,30 +22,49 @@
       "type": "string",
       "title": "S\u00e9rie"
     },
+    "natureza_operacao": {
+      "type": "string",
+      "title": "Natureza da opera\u00e7\u00e3o"
+    },
     "data_emissao": {
       "type": "string",
       "format": "date",
       "title": "Data de emiss\u00e3o"
     },
     "emitente_cnpj": {
-      "type": "string",
-      "title": "CNPJ emitente"
+      "type": "string"
     },
     "emitente_nome": {
+      "type": "string"
+    },
+    "emitente_uf": {
+      "type": "string"
+    },
+    "emitente_regime": {
       "type": "string",
-      "title": "Raz\u00e3o social emitente"
+      "enum": [
+        "simples_nacional",
+        "lucro_presumido_real",
+        "mei",
+        "desconhecido"
+      ],
+      "default": "desconhecido"
     },
     "destinatario_cnpj": {
-      "type": "string",
-      "title": "CNPJ destinat\u00e1rio"
+      "type": "string"
     },
     "destinatario_nome": {
-      "type": "string",
-      "title": "Raz\u00e3o social destinat\u00e1rio"
+      "type": "string"
+    },
+    "destinatario_uf": {
+      "type": "string"
+    },
+    "operacao_interestadual": {
+      "type": "boolean",
+      "default": false
     },
     "valor_produtos": {
-      "type": "number",
-      "title": "Valor total produtos"
+      "type": "number"
     },
     "valor_frete": {
       "type": "number",
@@ -55,11 +74,22 @@
       "type": "number",
       "default": 0
     },
-    "valor_total": {
+    "valor_outras_despesas": {
       "type": "number",
-      "title": "Valor total da nota"
+      "default": 0
+    },
+    "valor_total": {
+      "type": "number"
+    },
+    "icms_base": {
+      "type": "number",
+      "default": 0
     },
     "icms_total": {
+      "type": "number",
+      "default": 0
+    },
+    "icms_st_base": {
       "type": "number",
       "default": 0
     },
@@ -76,6 +106,10 @@
       "default": 0
     },
     "cofins_total": {
+      "type": "number",
+      "default": 0
+    },
+    "tributos_aproximados": {
       "type": "number",
       "default": 0
     },
@@ -109,7 +143,13 @@
           "valor_total": {
             "type": "number"
           },
-          "icms_valor": {
+          "cst_icms": {
+            "type": "string"
+          },
+          "origem_mercadoria": {
+            "type": "string"
+          },
+          "icms_base": {
             "type": "number",
             "default": 0
           },
@@ -117,7 +157,37 @@
             "type": "number",
             "default": 0
           },
+          "icms_valor": {
+            "type": "number",
+            "default": 0
+          },
+          "icms_st_base": {
+            "type": "number",
+            "default": 0
+          },
+          "icms_st_aliquota": {
+            "type": "number",
+            "default": 0
+          },
+          "icms_st_valor": {
+            "type": "number",
+            "default": 0
+          },
+          "cst_ipi": {
+            "type": "string"
+          },
+          "ipi_aliquota": {
+            "type": "number",
+            "default": 0
+          },
           "ipi_valor": {
+            "type": "number",
+            "default": 0
+          },
+          "cst_pis": {
+            "type": "string"
+          },
+          "pis_aliquota": {
             "type": "number",
             "default": 0
           },
@@ -125,9 +195,33 @@
             "type": "number",
             "default": 0
           },
+          "cst_cofins": {
+            "type": "string"
+          },
+          "cofins_aliquota": {
+            "type": "number",
+            "default": 0
+          },
           "cofins_valor": {
             "type": "number",
             "default": 0
+          },
+          "conformidade_fiscal": {
+            "type": "object",
+            "properties": {
+              "score": {
+                "type": "number"
+              },
+              "alertas": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cfop_categoria": {
+                "type": "string"
+              }
+            }
           }
         }
       }
@@ -149,15 +243,60 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "title": "IDs dos ItemCompra correspondentes"
+      }
     },
     "divergencias": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "title": "Lista de diverg\u00eancias encontradas"
+      }
+    },
+    "divergencias_fiscais": {
+      "type": "array",
+      "title": "Diverg\u00eancias fiscais detalhadas (impostos)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tipo": {
+            "type": "string"
+          },
+          "produto": {
+            "type": "string"
+          },
+          "campo": {
+            "type": "string"
+          },
+          "esperado": {
+            "type": "string"
+          },
+          "encontrado": {
+            "type": "string"
+          },
+          "severidade": {
+            "type": "string",
+            "enum": [
+              "alta",
+              "media",
+              "baixa",
+              "info"
+            ]
+          },
+          "observacao": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "score_conformidade": {
+      "type": "number",
+      "title": "Score de conformidade (0-100)",
+      "default": 0
+    },
+    "alertas_conformidade": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "observacoes": {
       "type": "string"

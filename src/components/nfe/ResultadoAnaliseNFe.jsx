@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { CheckCircle2, AlertTriangle, XCircle, FileSearch, Package, Receipt } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { CheckCircle2, AlertTriangle, XCircle, FileSearch, Package, Receipt, Shield } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
+import ConformidadeFiscal from './ConformidadeFiscal';
 
 const STATUS_CFG = {
   match_exato:          { label: 'Match exato',         color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
@@ -31,6 +33,7 @@ export default function ResultadoAnaliseNFe({ analises }) {
                 <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Valor</th>
                 <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Produtos</th>
                 <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Status</th>
+                <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Score fiscal</th>
                 <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Divergências</th>
                 <th className="w-8"></th>
               </tr>
@@ -53,8 +56,15 @@ export default function ResultadoAnaliseNFe({ analises }) {
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      {a.divergencias?.length > 0 ? (
-                        <span className="text-rose-600 font-bold">{a.divergencias.length}</span>
+                      {a.score_conformidade !== undefined ? (
+                        <span className={`font-bold ${a.score_conformidade >= 85 ? 'text-emerald-600' : a.score_conformidade >= 65 ? 'text-amber-600' : 'text-rose-600'}`}>
+                          {a.score_conformidade}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {(a.divergencias?.length || 0) + (a.divergencias_fiscais?.length || 0) > 0 ? (
+                        <span className="text-rose-600 font-bold">{(a.divergencias?.length || 0) + (a.divergencias_fiscais?.length || 0)}</span>
                       ) : (
                         <span className="text-emerald-600">✓</span>
                       )}
@@ -69,14 +79,20 @@ export default function ResultadoAnaliseNFe({ analises }) {
       </div>
 
       <Dialog open={!!detalhe} onOpenChange={() => setDetalhe(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5" /> NF-e {detalhe?.numero_nota} · {detalhe?.emitente_nome}
             </DialogTitle>
           </DialogHeader>
           {detalhe && (
-            <div className="space-y-4">
+            <Tabs defaultValue="resumo" className="w-full">
+              <TabsList className="mb-3">
+                <TabsTrigger value="resumo" className="gap-1.5 text-xs"><Receipt className="w-3.5 h-3.5" /> Resumo</TabsTrigger>
+                <TabsTrigger value="conformidade" className="gap-1.5 text-xs"><Shield className="w-3.5 h-3.5" /> Conformidade Fiscal</TabsTrigger>
+                <TabsTrigger value="produtos" className="gap-1.5 text-xs"><Package className="w-3.5 h-3.5" /> Produtos</TabsTrigger>
+              </TabsList>
+            <TabsContent value="resumo" className="space-y-4">
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="bg-muted rounded-lg p-2"><p className="text-muted-foreground">Chave</p><p className="font-mono text-[10px] break-all">{detalhe.chave_acesso || '—'}</p></div>
                 <div className="bg-muted rounded-lg p-2"><p className="text-muted-foreground">Emissão</p><p className="font-semibold">{detalhe.data_emissao ? formatDate(detalhe.data_emissao) : '—'}</p></div>
@@ -105,7 +121,13 @@ export default function ResultadoAnaliseNFe({ analises }) {
                   </ul>
                 </div>
               )}
+            </TabsContent>
 
+            <TabsContent value="conformidade">
+              <ConformidadeFiscal analise={detalhe} />
+            </TabsContent>
+
+            <TabsContent value="produtos">
               {/* Produtos */}
               <div>
                 <p className="text-xs font-bold uppercase text-muted-foreground mb-2 flex items-center gap-1"><Package className="w-3 h-3" /> {detalhe.produtos?.length || 0} produto(s)</p>
@@ -142,7 +164,8 @@ export default function ResultadoAnaliseNFe({ analises }) {
                   </table>
                 </div>
               </div>
-            </div>
+            </TabsContent>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>

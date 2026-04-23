@@ -3,9 +3,11 @@ import { base44 } from '@/api/base44Client';
 import PageHeader from '../components/shared/PageHeader';
 import GoogleDrivePicker from '../components/nfe/GoogleDrivePicker';
 import ResultadoAnaliseNFe from '../components/nfe/ResultadoAnaliseNFe';
+import RelatorioConformidade from '../components/nfe/RelatorioConformidade';
 import { analisarXMLNFe } from '@/functions/analisarXMLNFe';
 import { Button } from '@/components/ui/button';
-import { FileText, Loader2, RefreshCw, CheckCircle2, AlertTriangle, XCircle, FileSearch } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { FileText, Loader2, RefreshCw, CheckCircle2, AlertTriangle, XCircle, FileSearch, Shield, BarChart3 } from 'lucide-react';
 
 const CONNECTOR_ID = '69e4cc139c63e916cf87b922'; // Drive "Financeiro"
 
@@ -88,6 +90,8 @@ export default function AnaliseNFe() {
     matches: analises.filter(a => a.status_comparacao === 'match_exato').length,
     divergencias: analises.filter(a => a.status_comparacao?.startsWith('divergencia')).length,
     semPedido: analises.filter(a => a.status_comparacao === 'sem_pedido').length,
+    scoreMedio: analises.length > 0 ? Math.round(analises.reduce((s, a) => s + (a.score_conformidade || 0), 0) / analises.length) : 0,
+    divergenciasFiscais: analises.reduce((s, a) => s + (a.divergencias_fiscais?.length || 0), 0),
   };
 
   return (
@@ -117,9 +121,9 @@ export default function AnaliseNFe() {
       ) : (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-5">
             <div className="bg-card rounded-xl border p-4">
-              <div className="flex items-center justify-between mb-1"><p className="text-[10px] font-bold uppercase text-muted-foreground">Total analisadas</p><FileText className="w-4 h-4 opacity-60" /></div>
+              <div className="flex items-center justify-between mb-1"><p className="text-[10px] font-bold uppercase text-muted-foreground">Total</p><FileText className="w-4 h-4 opacity-60" /></div>
               <p className="text-xl font-bold">{stats.total}</p>
             </div>
             <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4">
@@ -127,12 +131,20 @@ export default function AnaliseNFe() {
               <p className="text-xl font-bold text-emerald-700">{stats.matches}</p>
             </div>
             <div className="bg-amber-50 rounded-xl border border-amber-200 p-4">
-              <div className="flex items-center justify-between mb-1"><p className="text-[10px] font-bold uppercase text-amber-700">Com divergência</p><AlertTriangle className="w-4 h-4 text-amber-600" /></div>
+              <div className="flex items-center justify-between mb-1"><p className="text-[10px] font-bold uppercase text-amber-700">Divergência</p><AlertTriangle className="w-4 h-4 text-amber-600" /></div>
               <p className="text-xl font-bold text-amber-700">{stats.divergencias}</p>
             </div>
             <div className="bg-rose-50 rounded-xl border border-rose-200 p-4">
               <div className="flex items-center justify-between mb-1"><p className="text-[10px] font-bold uppercase text-rose-700">Sem pedido</p><XCircle className="w-4 h-4 text-rose-600" /></div>
               <p className="text-xl font-bold text-rose-700">{stats.semPedido}</p>
+            </div>
+            <div className="bg-indigo-50 rounded-xl border border-indigo-200 p-4">
+              <div className="flex items-center justify-between mb-1"><p className="text-[10px] font-bold uppercase text-indigo-700">Score médio</p><Shield className="w-4 h-4 text-indigo-600" /></div>
+              <p className={`text-xl font-bold ${stats.scoreMedio >= 85 ? 'text-emerald-700' : stats.scoreMedio >= 65 ? 'text-amber-700' : 'text-rose-700'}`}>{stats.scoreMedio}<span className="text-xs text-muted-foreground">/100</span></p>
+            </div>
+            <div className="bg-purple-50 rounded-xl border border-purple-200 p-4">
+              <div className="flex items-center justify-between mb-1"><p className="text-[10px] font-bold uppercase text-purple-700">Div. fiscais</p><AlertTriangle className="w-4 h-4 text-purple-600" /></div>
+              <p className="text-xl font-bold text-purple-700">{stats.divergenciasFiscais}</p>
             </div>
           </div>
 
@@ -158,9 +170,20 @@ export default function AnaliseNFe() {
             </div>
           )}
 
-          {/* Resultados */}
+          {/* Resultados com abas */}
           {analises.length > 0 ? (
-            <ResultadoAnaliseNFe analises={analises} />
+            <Tabs defaultValue="lista" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="lista" className="gap-2"><FileText className="w-4 h-4" /> NF-e analisadas</TabsTrigger>
+                <TabsTrigger value="relatorio" className="gap-2"><BarChart3 className="w-4 h-4" /> Relatório de Conformidade Fiscal</TabsTrigger>
+              </TabsList>
+              <TabsContent value="lista">
+                <ResultadoAnaliseNFe analises={analises} />
+              </TabsContent>
+              <TabsContent value="relatorio">
+                <RelatorioConformidade analises={analises} />
+              </TabsContent>
+            </Tabs>
           ) : (
             <div className="bg-card border rounded-xl p-8 text-center">
               <FileSearch className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
