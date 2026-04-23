@@ -4,57 +4,56 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Link2, CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark, Repeat, AlertTriangle } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
-import { aplicarRegras } from '../../lib/recurringEngine.js';
+import { aplicarRegra } from '../../lib/recurringEngine';
 
 /**
- * Classifica cada débito do extrato em 4 caixas:
- * - pagamento_fatura  → linkar FaturaCartao
- * - pagamento_tributo → linkar Tributo
- * - pagamento_boleto  → linkar TituloCobranca ou DespesaOperacional
- * - despesa_direta    → linkar DespesaOperacional
+ * Classifica cada débito do extrato. Prioridade:
+ * 0. RECORRENTE (regras do usuário) — gera alerta se valor divergente
+ * 1. pagamento_fatura
+ * 2. pagamento_tributo
+ * 3. despesa_direta
+ * 4. nao_classificado
  */
-function classificarDebito(lanc, faturas, despesas, tributos, regrasRecorrentes = []) {
+function classificarDebito(lanc, faturas, despesas, tributos, regras = []) {
+  // 0. Regra recorrente (PRIORIDADE MÁXIMA)
+  for (const regra of regras) {
+    const r = aplicarRegra(lanc, regra);
+    if (r.match) {
+      return {
+        tipo: 'recorrente',
+        vinculo: regra,
+        label: r.status === 'divergente' ? 'Recorrente (divergente)' : 'Recorrente',
+        recorrenteInfo: r,
+      };
+    }
+  }
+
   const desc = (lanc.descricao || '').toUpperCase();
   const valor = Math.abs(lanc.valor);
 
-  // 0. Regra recorrente (prioridade máxima)
-  const rec = aplicarRegras(lanc, regrasRecorrentes);
-  if (rec) {
-    return {
-      tipo: 'despesa_recorrente',
-      vinculo: rec.regra,
-      label: rec.status === 'divergente' ? 'Recorrente divergente' : 'Recorrente',
-      recorrente: rec,
-    };
-  }
-
-  // 1. Fatura de cartão
   if (desc.includes('PAGTO CARTAO') || desc.includes('FATURA CARTAO') || desc.includes('PAGAMENTO CARTAO')) {
     const match = faturas.find(f => Math.abs(f.valor_total - valor) < 1);
     return { tipo: 'pagamento_fatura', vinculo: match, label: 'Fatura de Cartão' };
   }
 
-  // 2. Tributo
   if (lanc.categoria === 'tributo' || desc.includes('DARF') || desc.includes('DAS') || desc.includes('ARRECADACAO')) {
     const match = tributos.find(t => Math.abs((t.valor_pago || t.valor_original) - valor) < 0.5);
     return { tipo: 'pagamento_tributo', vinculo: match, label: 'Tributo' };
   }
 
-  // 3. Despesa direta (por data + valor)
   const despMatch = despesas.find(d => Math.abs(d.valor - valor) < 0.5 && d.data === lanc.data);
   if (despMatch) return { tipo: 'despesa_direta', vinculo: despMatch, label: 'Despesa' };
 
-  // 4. Sem classificação
   return { tipo: 'nao_classificado', vinculo: null, label: 'Sem vínculo' };
 }
 
 const TIPO_CONFIG = {
-  despesa_recorrente: { icon: Repeat,     color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  pagamento_fatura:   { icon: CreditCard, color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  pagamento_tributo:  { icon: Landmark,   color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  despesa_direta:     { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  pagamento_boleto:   { icon: Receipt,    color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  nao_classificado:   { icon: AlertCircle,color: 'bg-rose-100 text-rose-700 border-rose-200' },
+  recorrente:         { icon: Repeat,      color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  pagamento_fatura:   { icon: CreditCard,  color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  pagamento_tributo:  { icon: Landmark,    color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  despesa_direta:     { icon: Wallet,      color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  pagamento_boleto:   { icon: Receipt,     color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  nao_classificado:   { icon: AlertCircle, color: 'bg-rose-100 text-rose-700 border-rose-200' },
 };
 
 export default function TabPagamentos({ loading, dados, onRefresh }) {
@@ -72,9 +71,9 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
     total: pagamentos.length,
     vinculados: pagamentos.filter(p => p.classificacao.vinculo).length,
     pendentes: pagamentos.filter(p => !p.classificacao.vinculo).length,
+    recorrentes: pagamentos.filter(p => p.classificacao.tipo === 'recorrente').length,
+    recorrentesDivergentes: pagamentos.filter(p => p.classificacao.tipo === 'recorrente' && p.classificacao.recorrenteInfo?.status === 'divergente').length,
     totalValor: pagamentos.reduce((a, p) => a + Math.abs(p.valor), 0),
-    recorrentes: pagamentos.filter(p => p.classificacao.tipo === 'despesa_recorrente').length,
-    recorrentesDivergentes: pagamentos.filter(p => p.classificacao.recorrente?.status === 'divergente').length,
   }), [pagamentos]);
 
   async function criarDespesaRapida(lanc) {
@@ -100,7 +99,7 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
   return (
     <div>
       {/* Resumo */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+      <div className="grid grid-cols-5 gap-3 mb-4">
         <div className="bg-card rounded-xl border p-3">
           <p className="text-[10px] font-bold uppercase text-muted-foreground">Total débitos</p>
           <p className="text-xl font-bold">{stats.total}</p>
@@ -110,7 +109,7 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
           <p className="text-[10px] font-bold uppercase text-indigo-700 flex items-center gap-1"><Repeat className="w-3 h-3" /> Recorrentes</p>
           <p className="text-xl font-bold text-indigo-700">{stats.recorrentes}</p>
           {stats.recorrentesDivergentes > 0 && (
-            <p className="text-[10px] text-rose-600 font-bold">⚠ {stats.recorrentesDivergentes} divergente(s)</p>
+            <p className="text-[10px] text-amber-700 font-bold flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> {stats.recorrentesDivergentes} divergente(s)</p>
           )}
         </div>
         <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-3">
@@ -145,10 +144,10 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
               {pagamentos.map(p => {
                 const cfg = TIPO_CONFIG[p.classificacao.tipo];
                 const Icon = cfg.icon;
-                const rec = p.classificacao.recorrente;
-                const isDivergente = rec?.status === 'divergente';
+                const rec = p.classificacao.recorrenteInfo;
+                const divergente = rec?.status === 'divergente';
                 return (
-                  <tr key={p.id} className={`border-b hover:bg-muted/20 ${isDivergente ? 'bg-amber-50/50' : ''}`}>
+                  <tr key={p.id} className={`border-b hover:bg-muted/20 ${divergente ? 'bg-amber-50/50' : ''}`}>
                     <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatDate(p.data)}</td>
                     <td className="px-3 py-2 font-medium">
                       <p className="truncate max-w-[280px]">{p.descricao}</p>
@@ -156,16 +155,17 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
                     </td>
                     <td className="px-3 py-2 text-right font-bold text-rose-600 tabular-nums">
                       {formatCurrency(p.valor)}
-                      {isDivergente && (
-                        <p className="text-[10px] font-bold text-amber-700 flex items-center gap-1 justify-end">
-                          <AlertTriangle className="w-3 h-3" />
-                          {rec.diffAbs > 0 ? '+' : ''}{formatCurrency(rec.diffAbs)} ({(rec.diffPct * 100).toFixed(1)}%)
+                      {divergente && (
+                        <p className="text-[10px] text-amber-700 font-bold">
+                          vs. {formatCurrency(rec.valorEsperado)} ({rec.desvioPercentual > 0 ? '+' : ''}{rec.desvioPercentual.toFixed(1)}%)
                         </p>
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-semibold ${isDivergente ? 'bg-amber-100 text-amber-800 border-amber-300' : cfg.color}`}>
-                        <Icon className="w-3 h-3" /> {p.classificacao.label}
+                      <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-semibold ${divergente ? 'bg-amber-100 text-amber-700 border-amber-200' : cfg.color}`}>
+                        <Icon className="w-3 h-3" />
+                        {divergente && <AlertTriangle className="w-3 h-3" />}
+                        {p.classificacao.label}
                       </span>
                     </td>
                     <td className="px-3 py-2">
@@ -173,7 +173,9 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
                         <div className="flex items-center gap-1 text-emerald-700">
                           <CheckCircle className="w-3.5 h-3.5 shrink-0" />
                           <span className="truncate max-w-[200px]">
-                            {p.classificacao.vinculo.nome || p.classificacao.vinculo.descricao || p.classificacao.vinculo.tipo || p.classificacao.vinculo.mes_referencia || '—'}
+                            {p.classificacao.tipo === 'recorrente'
+                              ? `${p.classificacao.vinculo.nome} (${p.classificacao.vinculo.categoria})`
+                              : (p.classificacao.vinculo.descricao || p.classificacao.vinculo.tipo || p.classificacao.vinculo.mes_referencia || '—')}
                           </span>
                         </div>
                       ) : (

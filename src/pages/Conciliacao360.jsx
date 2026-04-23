@@ -33,7 +33,7 @@ export default function Conciliacao360() {
       base44.entities.DespesaOperacional.list('-data', 500),
       base44.entities.Tributo.list('-data_vencimento', 200),
       base44.entities.ContaCartao.filter({ is_ativo: true }),
-      base44.entities.RegraRecorrente.filter({ ativa: true }),
+      base44.entities.RegraRecorrente.filter({ is_ativa: true }),
     ]);
     setDados({ lancamentos, notas, titulos, faturas, lancCartao, despesas, tributos, cartoes, regrasRecorrentes });
     setLoading(false);
