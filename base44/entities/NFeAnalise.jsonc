@@ -1,0 +1,170 @@
+{
+  "name": "NFeAnalise",
+  "type": "object",
+  "properties": {
+    "drive_file_id": {
+      "type": "string",
+      "title": "ID do arquivo no Drive"
+    },
+    "drive_file_name": {
+      "type": "string",
+      "title": "Nome do arquivo"
+    },
+    "chave_acesso": {
+      "type": "string",
+      "title": "Chave de acesso da NF-e (44 d\u00edgitos)"
+    },
+    "numero_nota": {
+      "type": "string",
+      "title": "N\u00famero da nota"
+    },
+    "serie": {
+      "type": "string",
+      "title": "S\u00e9rie"
+    },
+    "data_emissao": {
+      "type": "string",
+      "format": "date",
+      "title": "Data de emiss\u00e3o"
+    },
+    "emitente_cnpj": {
+      "type": "string",
+      "title": "CNPJ emitente"
+    },
+    "emitente_nome": {
+      "type": "string",
+      "title": "Raz\u00e3o social emitente"
+    },
+    "destinatario_cnpj": {
+      "type": "string",
+      "title": "CNPJ destinat\u00e1rio"
+    },
+    "destinatario_nome": {
+      "type": "string",
+      "title": "Raz\u00e3o social destinat\u00e1rio"
+    },
+    "valor_produtos": {
+      "type": "number",
+      "title": "Valor total produtos"
+    },
+    "valor_frete": {
+      "type": "number",
+      "default": 0
+    },
+    "valor_desconto": {
+      "type": "number",
+      "default": 0
+    },
+    "valor_total": {
+      "type": "number",
+      "title": "Valor total da nota"
+    },
+    "icms_total": {
+      "type": "number",
+      "default": 0
+    },
+    "icms_st_total": {
+      "type": "number",
+      "default": 0
+    },
+    "ipi_total": {
+      "type": "number",
+      "default": 0
+    },
+    "pis_total": {
+      "type": "number",
+      "default": 0
+    },
+    "cofins_total": {
+      "type": "number",
+      "default": 0
+    },
+    "produtos": {
+      "type": "array",
+      "title": "Produtos extra\u00eddos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "ncm": {
+            "type": "string"
+          },
+          "cfop": {
+            "type": "string"
+          },
+          "unidade": {
+            "type": "string"
+          },
+          "quantidade": {
+            "type": "number"
+          },
+          "valor_unitario": {
+            "type": "number"
+          },
+          "valor_total": {
+            "type": "number"
+          },
+          "icms_valor": {
+            "type": "number",
+            "default": 0
+          },
+          "icms_aliquota": {
+            "type": "number",
+            "default": 0
+          },
+          "ipi_valor": {
+            "type": "number",
+            "default": 0
+          },
+          "pis_valor": {
+            "type": "number",
+            "default": 0
+          },
+          "cofins_valor": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      }
+    },
+    "status_comparacao": {
+      "type": "string",
+      "enum": [
+        "sem_pedido",
+        "match_exato",
+        "divergencia_valor",
+        "divergencia_qtd",
+        "divergencia_produto",
+        "pendente"
+      ],
+      "default": "pendente",
+      "title": "Status da compara\u00e7\u00e3o com ItemCompra"
+    },
+    "item_compra_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "IDs dos ItemCompra correspondentes"
+    },
+    "divergencias": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Lista de diverg\u00eancias encontradas"
+    },
+    "observacoes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "drive_file_id",
+    "drive_file_name"
+  ]
+}
