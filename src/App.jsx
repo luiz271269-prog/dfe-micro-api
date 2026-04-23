@@ -31,6 +31,7 @@ import ContasAPagar from './pages/ContasAPagar';
 import ControleProdutos from './pages/ControleProdutos';
 import AnaliseNFe from './pages/AnaliseNFe';
 import DRETributario from './pages/DRETributario';
+import SimulacaoCusto from './pages/SimulacaoCusto';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -86,6 +87,7 @@ const AuthenticatedApp = () => {
         <Route path="/controle-produtos" element={<ControleProdutos />} />
         <Route path="/analise-nfe" element={<AnaliseNFe />} />
         <Route path="/dre-tributario" element={<DRETributario />} />
+        <Route path="/simulacao-custo" element={<SimulacaoCusto />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
