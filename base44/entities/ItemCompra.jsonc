@@ -6,6 +6,10 @@
       "type": "string",
       "title": "Fornecedor"
     },
+    "fornecedor_id": {
+      "type": "string",
+      "title": "ID do Fornecedor mestre (opcional)"
+    },
     "numero_nota": {
       "type": "string",
       "title": "N\u00famero da Nota"
@@ -51,6 +55,43 @@
     "codigo_produto": {
       "type": "string",
       "title": "C\u00f3digo do Produto"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "enum": [
+        "cartao",
+        "banco_pix",
+        "banco_boleto",
+        "banco_transferencia",
+        "dinheiro",
+        "nao_definida"
+      ],
+      "title": "Forma de Pagamento",
+      "default": "nao_definida"
+    },
+    "status_pagamento": {
+      "type": "string",
+      "enum": [
+        "pago",
+        "parcial",
+        "pendente",
+        "nao_identificado"
+      ],
+      "title": "Status do Pagamento",
+      "default": "nao_identificado"
+    },
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID Lan\u00e7amento Banc\u00e1rio (quando pago via banco)"
+    },
+    "lancamento_cartao_id": {
+      "type": "string",
+      "title": "ID Lan\u00e7amento Cart\u00e3o (quando pago via cart\u00e3o)"
+    },
+    "valor_pago": {
+      "type": "number",
+      "title": "Valor efetivamente pago (R$)",
+      "default": 0
     }
   },
   "required": [

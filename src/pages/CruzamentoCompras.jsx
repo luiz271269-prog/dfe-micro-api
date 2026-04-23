@@ -3,6 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { formatCurrency } from '../lib/formatters';
 import PageHeader from '../components/shared/PageHeader';
 import { ShoppingCart, Landmark, CreditCard, AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import MatchingCompraPagamento from '../components/cruzamento/MatchingCompraPagamento';
 
 const ALL_MONTHS = ['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04'];
 
@@ -54,20 +56,26 @@ export default function CruzamentoCompras() {
   const [lancCartao, setLancCartao] = useState([]);
   const [expandedForn, setExpandedForn] = useState(null);
 
-  useEffect(() => {
-    async function load() {
-      const [c, l, lc] = await Promise.all([
-        base44.entities.ItemCompra.list(),
-        base44.entities.LancamentoBancario.list(),
-        base44.entities.LancamentoCartao.list(),
-      ]);
-      setCompras(Array.isArray(c) ? c : []);
-      setLancamentos(Array.isArray(l) ? l : []);
-      setLancCartao(Array.isArray(lc) ? lc : []);
-      setLoading(false);
-    }
-    load();
-  }, []);
+  async function load() {
+    const [c, l, lc] = await Promise.all([
+      base44.entities.ItemCompra.list('-data_emissao', 1000),
+      base44.entities.LancamentoBancario.list('-data', 1000),
+      base44.entities.LancamentoCartao.list('-data_lancamento', 1000),
+    ]);
+    setCompras(Array.isArray(c) ? c : []);
+    setLancamentos(Array.isArray(l) ? l : []);
+    setLancCartao(Array.isArray(lc) ? lc : []);
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  // Compras filtradas para a aba matching
+  const comprasFiltradas = useMemo(() => {
+    if (isAnnual) return compras;
+    const inicio = selectedMonth + '-01';
+    const fim = selectedMonth + '-31';
+    return compras.filter(c => (c.data_emissao || '') >= inicio && (c.data_emissao || '') <= fim);
+  }, [compras, selectedMonth, isAnnual]);
 
   const analysis = useMemo(() => {
     const inicio = selectedMonth + '-01';
@@ -145,6 +153,29 @@ export default function CruzamentoCompras() {
           Anual
         </button>
       </div>
+
+      <Tabs defaultValue="matching" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="matching" className="gap-2"><CheckCircle className="w-4 h-4" /> Matching item-a-item</TabsTrigger>
+          <TabsTrigger value="fornecedor" className="gap-2"><ShoppingCart className="w-4 h-4" /> Visão por fornecedor</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="matching">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-3">
+            <p className="text-xs text-indigo-900 leading-relaxed">
+              <strong>Evita dupla contagem:</strong> cada compra deve estar vinculada ao pagamento correspondente (cartão ou banco).
+              Use "Auto-vincular alta confiança" para processar em lote matches com valor+data+fornecedor perfeitos.
+            </p>
+          </div>
+          <MatchingCompraPagamento
+            compras={comprasFiltradas}
+            lancamentosBanco={lancamentos}
+            lancamentosCartao={lancCartao}
+            onRefresh={load}
+          />
+        </TabsContent>
+
+        <TabsContent value="fornecedor">
 
       {/* Cards resumo */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
@@ -281,6 +312,8 @@ export default function CruzamentoCompras() {
           <div className="p-12 text-center text-muted-foreground text-sm">Nenhuma compra encontrada no período selecionado.</div>
         )}
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Link2, TrendingUp, CreditCard, ArrowDownCircle, AlertTriangle, Sparkles, Upload, Landmark } from 'lucide-react';
+import { Link2, TrendingUp, CreditCard, ArrowDownCircle, AlertTriangle, Sparkles, Upload, Landmark, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { conciliarLoteExtrato } from '@/functions/conciliarLoteExtrato';
 import PageHeader from '../components/shared/PageHeader';
 import MonthNavigator from '../components/shared/MonthNavigator';
 import TabReceita from '../components/conciliacao360/TabReceita';
@@ -17,6 +18,8 @@ export default function Conciliacao360() {
   const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
   const [mes, setMes] = useState(mesAtual);
   const [loading, setLoading] = useState(true);
+  const [rodandoAuto, setRodandoAuto] = useState(false);
+  const [resultadoAuto, setResultadoAuto] = useState(null);
   const [dados, setDados] = useState({
     lancamentos: [], notas: [], titulos: [], faturas: [],
     lancCartao: [], despesas: [], tributos: [], cartoes: [], regrasRecorrentes: [], folhas: [],
@@ -41,6 +44,15 @@ export default function Conciliacao360() {
   }
 
   useEffect(() => { load(); }, [mes]); // eslint-disable-line
+
+  async function rodarAutoBaixa() {
+    setRodandoAuto(true);
+    setResultadoAuto(null);
+    const res = await conciliarLoteExtrato({ mes_referencia: mes });
+    setResultadoAuto(res?.data || null);
+    setRodandoAuto(false);
+    load();
+  }
 
   // Estatísticas de "pendente de vínculo" para os badges das abas
   const stats = useMemo(() => {
@@ -81,8 +93,20 @@ export default function Conciliacao360() {
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Conciliação 360°" subtitle="Cruze extrato, notas, títulos, cartões e despesas em um só lugar">
+        <Button onClick={rodarAutoBaixa} disabled={rodandoAuto} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+          <Zap className="w-4 h-4" /> {rodandoAuto ? 'Processando...' : 'Auto-baixa do extrato'}
+        </Button>
         <MonthNavigator selectedMonth={mes} onSelectMonth={setMes} />
       </PageHeader>
+
+      {resultadoAuto && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 text-sm">
+          <p className="font-bold text-emerald-900">
+            ✓ {resultadoAuto.baixas_automaticas || 0} baixas automáticas · {resultadoAuto.duplicidades_detectadas || 0} duplicidades detectadas
+          </p>
+          <p className="text-xs text-emerald-700 mt-0.5">{resultadoAuto.processados} débitos processados no mês</p>
+        </div>
+      )}
 
       {/* Ação: importar extrato direto na fila */}
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 rounded-xl p-4 mb-4 flex items-center justify-between gap-4 shadow-md">

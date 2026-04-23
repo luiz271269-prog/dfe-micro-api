@@ -1,0 +1,55 @@
+{
+  "name": "LancamentoCartao",
+  "type": "object",
+  "properties": {
+    "fatura_id": {
+      "type": "string",
+      "title": "Fatura"
+    },
+    "data_lancamento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Lan\u00e7amento"
+    },
+    "estabelecimento": {
+      "type": "string",
+      "title": "Estabelecimento"
+    },
+    "categoria": {
+      "type": "string",
+      "title": "Categoria"
+    },
+    "valor": {
+      "type": "number",
+      "title": "Valor"
+    },
+    "natureza": {
+      "type": "string",
+      "enum": [
+        "empresarial",
+        "pessoal",
+        "reembolso"
+      ],
+      "title": "Natureza"
+    },
+    "empresa_beneficiada": {
+      "type": "string",
+      "title": "Empresa Beneficiada"
+    },
+    "observacao": {
+      "type": "string",
+      "title": "Observa\u00e7\u00e3o"
+    },
+    "item_compra_id": {
+      "type": "string",
+      "title": "ID ItemCompra vinculado (evita dupla contagem)"
+    }
+  },
+  "required": [
+    "fatura_id",
+    "data_lancamento",
+    "estabelecimento",
+    "valor",
+    "natureza"
+  ]
+}
