@@ -25,6 +25,7 @@ const navItems = [
   { path: '/conciliacao360', label: 'Conciliação 360°', icon: Target },
   { path: '/controle-produtos', label: 'Controle de Produtos (IA)', icon: Bot },
   { path: '/analise-nfe', label: 'Análise XML NF-e (Drive)', icon: FileCode },
+  { path: '/dre-tributario', label: 'DRE Tributário', icon: Scale },
   { path: '/produtos', label: 'Produtos & Fornecedores', icon: Package },
   { path: '/cruzamento-compras', label: 'Compras × Pagamentos', icon: GitCompare },
   { path: '/despesas', label: 'Despesas Operacionais', icon: Wallet },

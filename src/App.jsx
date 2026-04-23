@@ -30,6 +30,7 @@ import Recorrentes from './pages/Recorrentes';
 import ContasAPagar from './pages/ContasAPagar';
 import ControleProdutos from './pages/ControleProdutos';
 import AnaliseNFe from './pages/AnaliseNFe';
+import DRETributario from './pages/DRETributario';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -84,6 +85,7 @@ const AuthenticatedApp = () => {
         <Route path="/contas-a-pagar" element={<ContasAPagar />} />
         <Route path="/controle-produtos" element={<ControleProdutos />} />
         <Route path="/analise-nfe" element={<AnaliseNFe />} />
+        <Route path="/dre-tributario" element={<DRETributario />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
