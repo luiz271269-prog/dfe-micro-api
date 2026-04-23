@@ -30,13 +30,19 @@ function classificarDebito(lanc, faturas, despesas, tributos, regras = [], conta
     }
   }
 
-  // 1. Conta a pagar pendente (DDA) — match por valor + vencimento próximo
+  // 1. Conta a pagar pendente (DDA/Boleto/Tributo) — match por valor + vencimento próximo
   const dda = acharContaPagarPorLancamento(lanc, contasPagar);
   if (dda) {
+    const tipoLabel = {
+      despesa: 'DDA/Boleto',
+      tributo: 'Tributo a vencer',
+      folha: 'Folha',
+      fatura: 'Fatura Cartão',
+    }[dda.origem_tipo] || dda.origem_tipo;
     return {
       tipo: 'conta_pagar_pendente',
       vinculo: dda,
-      label: `A pagar (${dda.origem_tipo})`,
+      label: tipoLabel,
     };
   }
 

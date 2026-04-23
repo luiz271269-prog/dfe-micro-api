@@ -106,16 +106,26 @@ export function calcularAging(itens, hoje = new Date()) {
 
 /**
  * Dado um débito do extrato bancário, procura o item de conta a pagar compatível.
- * Match por valor (±0.50) + data_vencimento próxima (±7 dias).
+ * Match por valor (±0.50) + data_vencimento próxima (±15 dias).
+ * Usa scoring: prioriza match de data exata, depois menor diferença de valor/data.
  */
-export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias = 7, toleranciaValor = 0.5) {
+export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias = 15, toleranciaValor = 0.5) {
   const valor = Math.abs(lanc.valor);
   const dataLanc = new Date(lanc.data);
 
-  return contasPagar.find(c => {
-    if (Math.abs(c.valor - valor) > toleranciaValor) return false;
-    if (!c.data_vencimento) return false;
-    const diff = Math.abs((new Date(c.data_vencimento) - dataLanc) / 86400000);
-    return diff <= toleranciaDias;
-  });
+  const candidatos = contasPagar
+    .map(c => {
+      if (Math.abs(c.valor - valor) > toleranciaValor) return null;
+      if (!c.data_vencimento) return null;
+      const diffDias = Math.abs((new Date(c.data_vencimento) - dataLanc) / 86400000);
+      if (diffDias > toleranciaDias) return null;
+      const diffValor = Math.abs(c.valor - valor);
+      // score: menor é melhor. Prioriza data exata + valor exato.
+      const score = diffDias * 10 + diffValor;
+      return { item: c, score };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.score - b.score);
+
+  return candidatos[0]?.item || null;
 }
