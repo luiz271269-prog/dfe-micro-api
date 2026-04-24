@@ -35,13 +35,20 @@ export default function PainelNotificacoes() {
   const [notifs, setNotifs] = useState([]);
 
   async function carregar() {
-    const list = await base44.entities.NotificacaoConformidade.filter({ resolvida: false }, '-created_date', 30);
-    setNotifs(Array.isArray(list) ? list : []);
+    try {
+      const list = await base44.entities.NotificacaoConformidade.filter({ resolvida: false }, '-created_date', 30);
+      setNotifs(Array.isArray(list) ? list : []);
+    } catch {
+      // silencioso: rede instável ou entidade ainda não disponível
+    }
   }
 
   useEffect(() => {
     carregar();
-    const unsub = base44.entities.NotificacaoConformidade.subscribe(() => carregar());
+    let unsub = () => {};
+    try {
+      unsub = base44.entities.NotificacaoConformidade.subscribe(() => carregar());
+    } catch {}
     const interval = setInterval(carregar, 60000);
     return () => { unsub(); clearInterval(interval); };
   }, []);
