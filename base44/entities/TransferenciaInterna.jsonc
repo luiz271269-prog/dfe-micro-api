@@ -1,0 +1,55 @@
+{
+  "name": "TransferenciaInterna",
+  "type": "object",
+  "description": "Pareia d\u00e9bito + cr\u00e9dito em contas pr\u00f3prias (NeuralTec \u2194 Liesch, conta corrente \u2194 aplica\u00e7\u00e3o). Elimina dupla contagem no fluxo consolidado.",
+  "properties": {
+    "lancamento_debito_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario \u2014 lado do d\u00e9bito (sa\u00edda)"
+    },
+    "lancamento_credito_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario \u2014 lado do cr\u00e9dito (entrada)"
+    },
+    "conta_origem": {
+      "type": "string",
+      "title": "Conta de origem"
+    },
+    "conta_destino": {
+      "type": "string",
+      "title": "Conta de destino"
+    },
+    "valor": {
+      "type": "number",
+      "title": "Valor transferido (R$)"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "title": "Data da transfer\u00eancia"
+    },
+    "finalidade": {
+      "type": "string",
+      "enum": [
+        "aporte",
+        "resgate_aplicacao",
+        "aplicacao",
+        "pagamento_interno",
+        "ajuste_caixa",
+        "outro"
+      ],
+      "default": "outro",
+      "title": "Finalidade"
+    },
+    "observacao": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "lancamento_debito_id",
+    "conta_origem",
+    "conta_destino",
+    "valor",
+    "data"
+  ]
+}

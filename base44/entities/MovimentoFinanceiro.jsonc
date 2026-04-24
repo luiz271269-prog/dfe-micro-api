@@ -1,0 +1,91 @@
+{
+  "name": "MovimentoFinanceiro",
+  "type": "object",
+  "description": "Absorve categorias do extrato sem entidade pr\u00f3pria: empr\u00e9stimos (incl. parcelas), tarifas banc\u00e1rias, juros, IOF, rendimento de aplica\u00e7\u00e3o, cheque especial. Permite controle de amortiza\u00e7\u00e3o e previsibilidade de custos financeiros.",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "emprestimo",
+        "parcela_emprestimo",
+        "tarifa_bancaria",
+        "juros",
+        "iof",
+        "rendimento_aplicacao",
+        "cheque_especial",
+        "saque",
+        "outro"
+      ],
+      "title": "Tipo de movimento financeiro"
+    },
+    "descricao": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o"
+    },
+    "valor": {
+      "type": "number",
+      "title": "Valor (R$ \u2014 positivo para entrada, negativo para sa\u00edda)"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "title": "Data"
+    },
+    "conta_bancaria": {
+      "type": "string",
+      "title": "Conta banc\u00e1ria afetada"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    },
+    "contrato_numero": {
+      "type": "string",
+      "title": "N\u00famero do contrato (empr\u00e9stimo)"
+    },
+    "instituicao": {
+      "type": "string",
+      "title": "Institui\u00e7\u00e3o financeira"
+    },
+    "parcela_atual": {
+      "type": "number",
+      "title": "Parcela atual"
+    },
+    "parcela_total": {
+      "type": "number",
+      "title": "Total de parcelas"
+    },
+    "taxa_juros": {
+      "type": "number",
+      "title": "Taxa de juros (%)"
+    },
+    "saldo_devedor": {
+      "type": "number",
+      "title": "Saldo devedor ap\u00f3s este movimento"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "quitado",
+        "vencido",
+        "cancelado"
+      ],
+      "default": "ativo",
+      "title": "Status"
+    },
+    "observacoes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tipo",
+    "descricao",
+    "valor",
+    "data"
+  ]
+}

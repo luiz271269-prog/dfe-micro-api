@@ -40,6 +40,30 @@ Deno.serve(async (req) => {
     const baixas = [];
     const duplicidades = [];
 
+    // Mapa dos tipos para VinculoExtrato
+    const tipoMap = {
+      despesa: 'DespesaOperacional',
+      tributo: 'Tributo',
+      folha: 'FolhaPagamento',
+      fatura: 'FaturaCartao',
+    };
+
+    // Pré-carrega vínculos já existentes nos lançamentos em escopo p/ evitar duplicidade
+    const lancIds = debitos.map(l => l.id);
+    const vinculosExistentes = lancIds.length > 0
+      ? await base44.asServiceRole.entities.VinculoExtrato.list('-created_date', 10000)
+      : [];
+    const jaVinculado = new Set(
+      vinculosExistentes
+        .filter(v => lancIds.includes(v.lancamento_bancario_id))
+        .map(v => `${v.lancamento_bancario_id}|${v.entidade_tipo}|${v.entidade_id}`)
+    );
+    const temVinculoLanc = new Set(
+      vinculosExistentes
+        .filter(v => lancIds.includes(v.lancamento_bancario_id))
+        .map(v => v.lancamento_bancario_id)
+    );
+
     for (const lanc of debitos) {
       const valorAbs = Math.abs(lanc.valor);
 
@@ -93,13 +117,21 @@ Deno.serve(async (req) => {
         candidatos.push({ tipo: 'fatura', ref: fat, score: dd * 10 + Math.abs(aberto - valorAbs) });
       }
 
+      // Se já tem vínculo neste lançamento, pula (evita baixar 2x)
+      if (temVinculoLanc.has(lanc.id)) continue;
+
       candidatos.sort((a, b) => a.score - b.score);
       const best = candidatos[0];
       if (!best) continue;
       // Só dá baixa automática se confiança alta: score < 5 (data próxima + valor exato)
       if (best.score >= 5) continue;
 
+      const entidadeTipo = tipoMap[best.tipo];
+      const chaveVinc = `${lanc.id}|${entidadeTipo}|${best.ref.id}`;
+      if (jaVinculado.has(chaveVinc)) continue;
+
       try {
+        // 1) Atualiza status da obrigação (retrocompat — UIs atuais lêem status)
         if (best.tipo === 'despesa') {
           await base44.asServiceRole.entities.DespesaOperacional.update(best.ref.id, {
             status: 'pago', data: lanc.data,
@@ -117,6 +149,26 @@ Deno.serve(async (req) => {
             status: 'paga_total', data_pagamento: lanc.data, valor_pago: valorAbs,
           });
         }
+
+        // 2) Cria VinculoExtrato (fonte de verdade da conciliação)
+        await base44.asServiceRole.entities.VinculoExtrato.create({
+          lancamento_bancario_id: lanc.id,
+          entidade_tipo: entidadeTipo,
+          entidade_id: best.ref.id,
+          valor_alocado: valorAbs,
+          tipo_vinculo: 'pagamento_integral',
+          conciliado_por: 'auto',
+          confianca: Math.max(60, Math.round(100 - best.score * 5)),
+        });
+        jaVinculado.add(chaveVinc);
+
+        // 3) Atualiza cache do LancamentoBancario
+        await base44.asServiceRole.entities.LancamentoBancario.update(lanc.id, {
+          status_conciliacao: 'conciliado',
+          vinculos_count: 1,
+          valor_conciliado: valorAbs,
+        });
+
         baixas.push({
           lanc_id: lanc.id, tipo: best.tipo, ref_id: best.ref.id,
           data: lanc.data, valor: lanc.valor, descricao: lanc.descricao,

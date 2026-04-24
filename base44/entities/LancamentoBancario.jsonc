@@ -49,7 +49,7 @@
     },
     "item_compra_id": {
       "type": "string",
-      "title": "ID ItemCompra vinculado (evita dupla contagem)"
+      "title": "ID ItemCompra vinculado (legado \u2014 manter p/ retrocompat; preferir VinculoExtrato)"
     },
     "alerta_duplicidade": {
       "type": "boolean",
@@ -59,6 +59,27 @@
     "duplicidade_ref": {
       "type": "string",
       "title": "ID do lan\u00e7amento refer\u00eancia (quando marcado como duplicado)"
+    },
+    "status_conciliacao": {
+      "type": "string",
+      "enum": [
+        "nao_conciliado",
+        "parcial",
+        "conciliado",
+        "ignorar"
+      ],
+      "default": "nao_conciliado",
+      "title": "Status de concilia\u00e7\u00e3o com entidade de controle"
+    },
+    "vinculos_count": {
+      "type": "number",
+      "default": 0,
+      "title": "Cache: quantos VinculoExtrato apontam para este lan\u00e7amento"
+    },
+    "valor_conciliado": {
+      "type": "number",
+      "default": 0,
+      "title": "Cache: soma dos valor_alocado dos v\u00ednculos (R$)"
     }
   },
   "required": [

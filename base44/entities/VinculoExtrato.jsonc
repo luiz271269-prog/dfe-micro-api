@@ -1,0 +1,74 @@
+{
+  "name": "VinculoExtrato",
+  "type": "object",
+  "description": "Tabela de jun\u00e7\u00e3o universal entre LancamentoBancario e qualquer entidade de controle (Tributo, FolhaPagamento, DespesaOperacional, ObraReforma, TituloCobranca, NotaFiscal, ItemCompra, FaturaCartao, MovimentoFinanceiro). Permite v\u00ednculos N\u2194N \u2014 1 lan\u00e7amento pode quitar v\u00e1rias obriga\u00e7\u00f5es e 1 obriga\u00e7\u00e3o pode ser paga em m\u00faltiplos lan\u00e7amentos.",
+  "properties": {
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario (extrato \u2014 sempre obrigat\u00f3rio)"
+    },
+    "entidade_tipo": {
+      "type": "string",
+      "enum": [
+        "Tributo",
+        "FolhaPagamento",
+        "DespesaOperacional",
+        "ObraReforma",
+        "TituloCobranca",
+        "NotaFiscal",
+        "ItemCompra",
+        "FaturaCartao",
+        "MovimentoFinanceiro",
+        "TransferenciaInterna"
+      ],
+      "title": "Tipo da entidade de controle vinculada"
+    },
+    "entidade_id": {
+      "type": "string",
+      "title": "ID do registro da entidade de controle"
+    },
+    "valor_alocado": {
+      "type": "number",
+      "title": "Valor alocado deste lan\u00e7amento para esta obriga\u00e7\u00e3o (R$)"
+    },
+    "tipo_vinculo": {
+      "type": "string",
+      "enum": [
+        "pagamento_integral",
+        "pagamento_parcial",
+        "adiantamento",
+        "estorno",
+        "recebimento_integral",
+        "recebimento_parcial"
+      ],
+      "default": "pagamento_integral",
+      "title": "Natureza do v\u00ednculo"
+    },
+    "conciliado_por": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "manual",
+        "regra_recorrente",
+        "migracao"
+      ],
+      "default": "manual",
+      "title": "Origem da concilia\u00e7\u00e3o"
+    },
+    "confianca": {
+      "type": "number",
+      "default": 100,
+      "title": "Confian\u00e7a do match (0-100) \u2014 usado em auto-baixa"
+    },
+    "observacao": {
+      "type": "string",
+      "title": "Observa\u00e7\u00e3o livre"
+    }
+  },
+  "required": [
+    "lancamento_bancario_id",
+    "entidade_tipo",
+    "entidade_id",
+    "valor_alocado"
+  ]
+}
