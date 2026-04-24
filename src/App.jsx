@@ -32,6 +32,7 @@ import ControleProdutos from './pages/ControleProdutos';
 import AnaliseNFe from './pages/AnaliseNFe';
 import DRETributario from './pages/DRETributario';
 import SimulacaoCusto from './pages/SimulacaoCusto';
+import DiagnosticoConciliacao from './pages/DiagnosticoConciliacao';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -88,6 +89,7 @@ const AuthenticatedApp = () => {
         <Route path="/analise-nfe" element={<AnaliseNFe />} />
         <Route path="/dre-tributario" element={<DRETributario />} />
         <Route path="/simulacao-custo" element={<SimulacaoCusto />} />
+        <Route path="/diagnostico-conciliacao" element={<DiagnosticoConciliacao />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

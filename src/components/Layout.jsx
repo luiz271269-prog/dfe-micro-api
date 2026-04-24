@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart, 
   Hammer, CreditCard, Map, ChevronLeft, ChevronRight, LogOut,
-  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload, Menu, X, Scale, Package, GitCompare, Wallet, FolderOpen, Target, Repeat, Bot, FileCode, Calculator, FlaskConical
+  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload, Menu, X, Scale, Package, GitCompare, Wallet, FolderOpen, Target, Repeat, Bot, FileCode, Calculator, FlaskConical, Activity
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -24,6 +24,7 @@ const navItems = [
   { path: '/importar', label: 'Importar Documento', icon: CloudUpload },
   { path: '/conciliacao', label: 'Conciliação Mensal', icon: Scale },
   { path: '/conciliacao360', label: 'Conciliação 360°', icon: Target },
+  { path: '/diagnostico-conciliacao', label: 'Diagnóstico de Fluxos', icon: Activity },
   { path: '/controle-produtos', label: 'Controle de Produtos (IA)', icon: Bot },
   { path: '/analise-nfe', label: 'Análise XML NF-e (Drive)', icon: FileCode },
   { path: '/dre-tributario', label: 'DRE Tributário', icon: Scale },
