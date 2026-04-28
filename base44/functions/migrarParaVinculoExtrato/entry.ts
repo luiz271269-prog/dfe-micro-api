@@ -4,16 +4,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
  * Migração ONE-SHOT: converte vínculos legados em VinculoExtrato e recalcula
  * status_conciliacao + vinculos_count + valor_conciliado em LancamentoBancario.
  *
- * Só roda para admins. Idempotente — ignora vínculos já existentes (match por lancamento_bancario_id + entidade_tipo + entidade_id).
+ * Idempotente — ignora vínculos já existentes.
+ * Usa bulkCreate + delays para respeitar rate limit.
  *
- * Fontes migradas:
- *  1) ItemCompra.lancamento_bancario_id  → VinculoExtrato(entidade_tipo=ItemCompra)
- *  2) ConciliacaoItem.lancamento_bancario_id + nota_fiscal_ids[] → VinculoExtrato(NotaFiscal)
- *  3) Match automático (status=pago + valor ± tolerância) para Tributo, FolhaPagamento,
- *     DespesaOperacional, ObraReforma, FaturaCartao — confianca=70 (precisa revisão manual).
- *
- * Payload opcional: { desde_data: "YYYY-MM-DD" } — limita escopo.
+ * Payload: { desde_data?: "YYYY-MM-DD", apenas_recalcular?: boolean }
  */
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,6 +20,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const desdeData = body.desde_data || '2025-01-01';
+    const apenasRecalcular = !!body.apenas_recalcular;
 
     const stats = {
       item_compra: 0,
@@ -37,29 +36,40 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole.entities;
 
-    // Carregar tudo que vai ser necessário
-    const [lancamentos, itens, concilItems, tributos, folhas, despesas, obras, faturas, vinculosExistentes] = await Promise.all([
-      svc.LancamentoBancario.list('-data', 5000),
-      svc.ItemCompra.list('-data_emissao', 5000),
-      svc.ConciliacaoItem.list('-data_extrato', 2000),
-      svc.Tributo.filter({ status: 'pago' }, '-data_pagamento', 2000),
-      svc.FolhaPagamento.filter({ status: 'pago' }, '-data_pagamento', 2000),
-      svc.DespesaOperacional.filter({ status: 'pago' }, '-data', 2000),
-      svc.ObraReforma.list('-data', 2000),
-      svc.FaturaCartao.filter({ status: 'paga_total' }, '-data_pagamento', 500),
-      svc.VinculoExtrato.list('-created_date', 10000).catch(() => []),
-    ]);
+    // 1) Carregar dados em sequência com delay (evita rate limit)
+    const lancamentos = await svc.LancamentoBancario.list('-data', 5000);
+    await sleep(200);
+    const itens = await svc.ItemCompra.list('-data_emissao', 5000);
+    await sleep(200);
+    const concilItems = await svc.ConciliacaoItem.list('-data_extrato', 2000);
+    await sleep(200);
+    const tributos = await svc.Tributo.filter({ status: 'pago' }, '-data_pagamento', 2000);
+    await sleep(200);
+    const folhas = await svc.FolhaPagamento.filter({ status: 'pago' }, '-data_pagamento', 2000);
+    await sleep(200);
+    const despesas = await svc.DespesaOperacional.filter({ status: 'pago' }, '-data', 2000);
+    await sleep(200);
+    const obras = await svc.ObraReforma.list('-data', 2000);
+    await sleep(200);
+    const faturas = await svc.FaturaCartao.filter({ status: 'paga_total' }, '-data_pagamento', 500);
+    await sleep(200);
+    const vinculosExistentes = await svc.VinculoExtrato.list('-created_date', 20000).catch(() => []);
 
     const lancMap = new Map(lancamentos.map(l => [l.id, l]));
     const key = (lancId, tipo, entId) => `${lancId}|${tipo}|${entId}`;
     const jaExiste = new Set(vinculosExistentes.map(v => key(v.lancamento_bancario_id, v.entidade_tipo, v.entidade_id)));
 
-    async function criarVinculo(lancId, tipo, entId, valor, tipoVinculo = 'pagamento_integral', confianca = 100) {
-      if (!lancId || !entId) return false;
-      if (!lancMap.has(lancId)) return false;
+    // Acumula vínculos para criar em lote
+    const novosVinculos = [];
+    const tracker = []; // [{ key, statKey }]
+
+    function acumularVinculo(lancId, tipo, entId, valor, tipoVinculo, confianca, statKey) {
+      if (!lancId || !entId) return;
+      if (!lancMap.has(lancId)) return;
       const k = key(lancId, tipo, entId);
-      if (jaExiste.has(k)) { stats.ja_existentes++; return false; }
-      await svc.VinculoExtrato.create({
+      if (jaExiste.has(k)) { stats.ja_existentes++; return; }
+      jaExiste.add(k); // evita duplicata dentro deste mesmo run
+      novosVinculos.push({
         lancamento_bancario_id: lancId,
         entidade_tipo: tipo,
         entidade_id: entId,
@@ -68,58 +78,119 @@ Deno.serve(async (req) => {
         conciliado_por: 'migracao',
         confianca,
       });
-      jaExiste.add(k);
-      return true;
+      tracker.push({ statKey });
     }
 
-    // 1) ItemCompra.lancamento_bancario_id → VinculoExtrato
-    for (const it of itens) {
-      if (!it.lancamento_bancario_id) continue;
-      if (it.data_emissao && it.data_emissao < desdeData) continue;
-      const ok = await criarVinculo(it.lancamento_bancario_id, 'ItemCompra', it.id, it.valor_pago || it.valor_total, 'pagamento_integral', 100);
-      if (ok) stats.item_compra++;
-    }
-
-    // 2) ConciliacaoItem → VinculoExtrato(NotaFiscal)
-    for (const ci of concilItems) {
-      if (!ci.lancamento_bancario_id) continue;
-      if (ci.data_extrato && ci.data_extrato < desdeData) continue;
-      const nfIds = Array.isArray(ci.nota_fiscal_ids) ? ci.nota_fiscal_ids : [];
-      for (const nfId of nfIds) {
-        const valor = nfIds.length > 0 ? (ci.valor_extrato || 0) / nfIds.length : ci.valor_extrato;
-        const ok = await criarVinculo(ci.lancamento_bancario_id, 'NotaFiscal', nfId, valor, 'recebimento_integral', 95);
-        if (ok) stats.conciliacao_item++;
+    if (!apenasRecalcular) {
+      // (1) ItemCompra.lancamento_bancario_id → VinculoExtrato
+      for (const it of itens) {
+        if (!it.lancamento_bancario_id) continue;
+        if (it.data_emissao && it.data_emissao < desdeData) continue;
+        acumularVinculo(it.lancamento_bancario_id, 'ItemCompra', it.id, it.valor_pago || it.valor_total, 'pagamento_integral', 100, 'item_compra');
       }
-    }
 
-    // 3) Matches automáticos — status=pago + valor ± tolerância + data próxima
-    const debitos = lancamentos.filter(l => l.valor < 0 && l.data >= desdeData);
-
-    // Helper genérico de match
-    async function matchAuto(registros, entidadeTipo, getValor, getData, tolerancia, janelaDias, statFrom) {
-      for (const r of registros) {
-        const valorObrig = getValor(r);
-        const dataObrig = getData(r);
-        if (!valorObrig || !dataObrig) continue;
-        const cand = debitos.find(l => {
-          if (Math.abs(Math.abs(l.valor) - valorObrig) > tolerancia) return false;
-          const diff = Math.abs(new Date(l.data) - new Date(dataObrig)) / 86400000;
-          return diff <= janelaDias;
-        });
-        if (cand) {
-          const ok = await criarVinculo(cand.id, entidadeTipo, r.id, valorObrig, 'pagamento_integral', 70);
-          if (ok) stats[statFrom]++;
+      // (2) ConciliacaoItem → VinculoExtrato(NotaFiscal)
+      for (const ci of concilItems) {
+        if (!ci.lancamento_bancario_id) continue;
+        if (ci.data_extrato && ci.data_extrato < desdeData) continue;
+        const nfIds = Array.isArray(ci.nota_fiscal_ids) ? ci.nota_fiscal_ids : [];
+        for (const nfId of nfIds) {
+          const valor = nfIds.length > 0 ? (ci.valor_extrato || 0) / nfIds.length : ci.valor_extrato;
+          acumularVinculo(ci.lancamento_bancario_id, 'NotaFiscal', nfId, valor, 'recebimento_integral', 95, 'conciliacao_item');
         }
       }
+
+      // (3) Match automático para obrigações marcadas como pagas
+      // Fallback: se data_pagamento está nula, usar data principal da obrigação
+      const debitos = lancamentos.filter(l => l.valor < 0 && l.data >= desdeData);
+
+      // Set para evitar usar o mesmo lançamento p/ múltiplas obrigações
+      const lancsUsados = new Set();
+
+      function matchAuto(registros, entidadeTipo, getValor, getData, tolerancia, janelaDias, statKey) {
+        for (const r of registros) {
+          const valorObrig = getValor(r);
+          const dataObrig = getData(r);
+          if (!valorObrig || !dataObrig) continue;
+          // Procura melhor candidato (menor diff de data) dentro da janela
+          let melhor = null;
+          let melhorDiff = Infinity;
+          for (const l of debitos) {
+            if (lancsUsados.has(l.id)) continue;
+            if (Math.abs(Math.abs(l.valor) - valorObrig) > tolerancia) continue;
+            const diff = Math.abs(new Date(l.data) - new Date(dataObrig)) / 86400000;
+            if (diff > janelaDias) continue;
+            if (diff < melhorDiff) {
+              melhor = l;
+              melhorDiff = diff;
+            }
+          }
+          if (melhor) {
+            acumularVinculo(melhor.id, entidadeTipo, r.id, valorObrig, 'pagamento_integral', 70, statKey);
+            lancsUsados.add(melhor.id);
+          }
+        }
+      }
+
+      // Tributo: data_pagamento se houver, senão data_vencimento
+      matchAuto(tributos, 'Tributo',
+        t => t.valor_pago || t.valor_original,
+        t => t.data_pagamento || t.data_vencimento,
+        1.00, 7, 'tributo_auto');
+
+      // FolhaPagamento: data_pagamento OU dia 5 da competência seguinte
+      matchAuto(folhas, 'FolhaPagamento',
+        f => f.salario_liquido,
+        f => {
+          if (f.data_pagamento) return f.data_pagamento;
+          const [y, m] = (f.competencia || '').split('-').map(Number);
+          if (!y || !m) return null;
+          // Pagamento típico: 5º dia útil do mês seguinte
+          return new Date(y, m, 5).toISOString().slice(0, 10);
+        },
+        1.00, 15, 'folha_auto');
+
+      // Despesa: data (despesas geralmente têm data = data do pagamento)
+      matchAuto(despesas, 'DespesaOperacional',
+        d => d.valor,
+        d => d.data || d.data_vencimento,
+        1.00, 7, 'despesa_auto');
+
+      // Obra: data
+      matchAuto(obras.filter(o => o.valor), 'ObraReforma',
+        o => o.valor,
+        o => o.data,
+        1.00, 5, 'obra_auto');
+
+      // Fatura cartão: data_pagamento OU data_vencimento
+      matchAuto(faturas, 'FaturaCartao',
+        f => f.valor_pago || f.valor_total,
+        f => f.data_pagamento || f.data_vencimento,
+        2.00, 5, 'fatura_auto');
+
+      // (4) Inserir em lotes pequenos com retry em rate limit
+      const BATCH = 25;
+      for (let i = 0; i < novosVinculos.length; i += BATCH) {
+        const slice = novosVinculos.slice(i, i + BATCH);
+        const sliceTracker = tracker.slice(i, i + BATCH);
+        let tentativas = 0;
+        while (tentativas < 3) {
+          try {
+            await svc.VinculoExtrato.bulkCreate(slice);
+            sliceTracker.forEach(t => stats[t.statKey]++);
+            break;
+          } catch (e) {
+            tentativas++;
+            if (tentativas >= 3) throw e;
+            await sleep(2000 * tentativas);
+          }
+        }
+        await sleep(800);
+      }
     }
 
-    await matchAuto(tributos, 'Tributo', t => t.valor_pago || t.valor_original, t => t.data_pagamento, 0.50, 3, 'tributo_auto');
-    await matchAuto(folhas, 'FolhaPagamento', f => f.salario_liquido, f => f.data_pagamento, 0.50, 5, 'folha_auto');
-    await matchAuto(despesas, 'DespesaOperacional', d => d.valor, d => d.data, 0.50, 3, 'despesa_auto');
-    await matchAuto(obras.filter(o => o.valor), 'ObraReforma', o => o.valor, o => o.data, 1.00, 3, 'obra_auto');
-    await matchAuto(faturas, 'FaturaCartao', f => f.valor_pago || f.valor_total, f => f.data_pagamento, 1.00, 3, 'fatura_auto');
-
-    // 4) Recalcular cache no LancamentoBancario (status_conciliacao, vinculos_count, valor_conciliado)
+    // (5) Recalcular cache — em chunks com delay alto
+    await sleep(1000);
     const todosVinculos = await svc.VinculoExtrato.list('-created_date', 20000);
     const porLanc = new Map();
     for (const v of todosVinculos) {
@@ -128,26 +199,51 @@ Deno.serve(async (req) => {
       porLanc.set(v.lancamento_bancario_id, arr);
     }
 
+    const paraAtualizar = [];
     for (const lanc of lancamentos) {
       if (lanc.data < desdeData) continue;
       const vs = porLanc.get(lanc.id) || [];
       const valorConc = vs.reduce((s, v) => s + (v.valor_alocado || 0), 0);
       const valorAbs = Math.abs(lanc.valor || 0);
       let status = 'nao_conciliado';
-      if (vs.length > 0) {
-        status = valorConc >= valorAbs - 0.5 ? 'conciliado' : 'parcial';
-      }
+      if (vs.length > 0) status = valorConc >= valorAbs - 0.5 ? 'conciliado' : 'parcial';
       if (lanc.status_conciliacao !== status || lanc.vinculos_count !== vs.length) {
-        await svc.LancamentoBancario.update(lanc.id, {
-          status_conciliacao: status,
-          vinculos_count: vs.length,
-          valor_conciliado: valorConc,
-        });
-        stats.lancamentos_atualizados++;
+        paraAtualizar.push({ id: lanc.id, status, vs_count: vs.length, valor_conc: valorConc });
       }
     }
 
-    return Response.json({ success: true, stats });
+    // Updates em chunks de 10 com delay longo + retry
+    for (let i = 0; i < paraAtualizar.length; i += 10) {
+      const chunk = paraAtualizar.slice(i, i + 10);
+      for (const u of chunk) {
+        let tentativas = 0;
+        while (tentativas < 3) {
+          try {
+            await svc.LancamentoBancario.update(u.id, {
+              status_conciliacao: u.status,
+              vinculos_count: u.vs_count,
+              valor_conciliado: u.valor_conc,
+            });
+            stats.lancamentos_atualizados++;
+            break;
+          } catch (e) {
+            tentativas++;
+            if (tentativas >= 3) break; // não trava o resto
+            await sleep(2000 * tentativas);
+          }
+        }
+        await sleep(150);
+      }
+      await sleep(1000);
+    }
+
+    // Resumo de cobertura
+    const cobertura = {
+      total: lancamentos.filter(l => l.data >= desdeData).length,
+      conciliados: lancamentos.filter(l => l.data >= desdeData && (porLanc.get(l.id)?.length || 0) > 0).length,
+    };
+
+    return Response.json({ success: true, stats, cobertura });
   } catch (error) {
     return Response.json({ error: error.message, stack: error.stack }, { status: 500 });
   }
