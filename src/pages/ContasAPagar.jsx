@@ -42,7 +42,25 @@ export default function ContasAPagar() {
     setDados({ despesas, tributos, folhas, faturas, cartoes });
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const handler = () => load();
+    window.addEventListener('neuralfinRefresh', handler);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        const p = localStorage.getItem('neuralfinPendingRefresh');
+        if (p) {
+          localStorage.removeItem('neuralfinPendingRefresh');
+          load();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('neuralfinRefresh', handler);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   const itensRaw = useMemo(() => consolidarContasPagar(dados), [dados]);
   const itens = useMemo(() => {
