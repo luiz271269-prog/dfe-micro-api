@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Send, Bot, User } from 'lucide-react';
+import { Send, Bot, User, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ReactMarkdown from 'react-markdown';
@@ -50,10 +50,20 @@ export default function ChatControllerAgent() {
     <div className="bg-card rounded-xl border overflow-hidden flex flex-col h-[600px]">
       <div className="px-4 py-3 border-b bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center gap-2">
         <Bot className="w-5 h-5" />
-        <div>
+        <div className="flex-1">
           <p className="text-sm font-bold">Financial Controller</p>
           <p className="text-[10px] opacity-90">Analise compras, variações de preço, fornecedores</p>
         </div>
+        <a
+          href={base44.agents.getWhatsAppConnectURL(AGENT_NAME)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors shadow"
+          title="Conversar pelo WhatsApp"
+        >
+          <MessageCircle className="w-4 h-4" />
+          WhatsApp
+        </a>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
