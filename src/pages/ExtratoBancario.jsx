@@ -32,8 +32,22 @@ export default function ExtratoBancario() {
 
   async function loadData() {
     setLoading(true);
-    const data = await base44.entities.LancamentoBancario.list('-data', 500);
-    setLancamentos(data);
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        const data = await base44.entities.LancamentoBancario.list('-data', 500);
+        setLancamentos(data);
+        break;
+      } catch (e) {
+        attempts++;
+        const isRateLimit = e?.status === 429 || (e?.message || '').includes('Rate limit');
+        if (isRateLimit && attempts < 3) {
+          await new Promise(r => setTimeout(r, 1500 * attempts));
+        } else {
+          break;
+        }
+      }
+    }
     setLoading(false);
   }
 
