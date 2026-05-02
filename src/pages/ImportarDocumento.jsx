@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { InvokeLLM, UploadFile } from '@/integrations/Core';
-import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Trash2, Calendar, Wallet } from 'lucide-react';
+import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Calendar, Wallet } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
 import { Button } from '@/components/ui/button';
@@ -117,19 +117,8 @@ export default function ImportarDocumento() {
   const [toast, setToast] = useState(null);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
-  const [deduping, setDeduping] = useState(false);
   const [lastImports, setLastImports] = useState({});
   const [fileUrl, setFileUrl] = useState(null);
-
-  async function handleDedup() {
-    setDeduping(true);
-    const res = await deduplicarImportacoes({});
-    const total = res?.data?.total || 0;
-    showToast(total > 0 ? `✓ ${total} duplicatas removidas` : '✓ Nenhuma duplicata encontrada', 'success');
-    window.dispatchEvent(new Event('neuralfinRefresh'));
-    loadHistory();
-    setDeduping(false);
-  }
   const [step, setStep] = useState(1);
   const fileInputRef = useRef();
   const queryClient = useQueryClient();
@@ -386,10 +375,23 @@ export default function ImportarDocumento() {
       notes: notesValue,
     });
 
+      // Deduplicação automática pós-salvamento — limpa duplicatas remanescentes no banco
+      // para o(s) tipo(s) de entidade afetados por esta importação
+      setSaveProgress('Verificando duplicatas no banco...');
+      const entidadesAfetadas = selectedType === 'fatura_cartao'
+        ? ['FaturaCartao', 'LancamentoCartao']
+        : [typeConfig.entity];
+      let removidos = 0;
+      try {
+        const dedupRes = await deduplicarImportacoes({ only: entidadesAfetadas });
+        removidos = dedupRes?.data?.total || 0;
+      } catch { /* falha silenciosa — importação já foi salva */ }
+
       setSaving(false);
       setSaveProgress('');
       setStep(4);
-      showToast(`✓ ${saved} novos registros salvos · ${dupes} duplicatas ignoradas`);
+      const dedupMsg = removidos > 0 ? ` · 🧹 ${removidos} duplicatas removidas do banco` : '';
+      showToast(`✓ ${saved} novos registros salvos · ${dupes} ignoradas na importação${dedupMsg}`);
       loadHistory();
       window.dispatchEvent(new Event('neuralfinRefresh'));
       localStorage.setItem('neuralfinPendingRefresh', Date.now().toString());
@@ -415,11 +417,7 @@ export default function ImportarDocumento() {
 
   return (
     <div className="p-4 lg:p-8 max-w-6xl mx-auto">
-      <PageHeader title="Importar Documento" subtitle="Extração de dados financeiros com IA">
-        <Button variant="outline" size="sm" onClick={handleDedup} disabled={deduping} className="gap-2">
-          <Trash2 className="w-4 h-4" />{deduping ? 'Deduplicando...' : 'Deduplicar Dados'}
-        </Button>
-      </PageHeader>
+      <PageHeader title="Importar Documento" subtitle="Extração de dados financeiros com IA · deduplicação automática" />
 
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>

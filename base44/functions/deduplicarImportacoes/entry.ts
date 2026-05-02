@@ -33,16 +33,86 @@ async function deleteWithThrottle(entityClient, ids) {
         attempts++;
         const isRateLimit = e?.status === 429 || (e?.message || '').includes('Rate limit');
         if (isRateLimit && attempts < 3) {
-          await sleep(2000 * attempts); // backoff exponencial
+          await sleep(2000 * attempts);
         } else {
-          break; // não trava o batch por causa de 1 erro
+          break;
         }
       }
     }
-    await sleep(120); // ~8 deletes/seg — bem abaixo do limite
+    await sleep(120);
   }
   return removed;
 }
+
+// Configuração das entidades a deduplicar — chaves contábeis únicas por entidade
+const ENTITIES_CONFIG = [
+  {
+    name: 'NotaFiscal',
+    keyFn: r => r.tipo && r.numero ? `${r.tipo}|${String(r.numero).trim()}` : null,
+  },
+  {
+    name: 'LancamentoBancario',
+    keyFn: r => r.data && r.valor != null
+      ? `${r.data}|${Number(r.valor).toFixed(2)}|${r.conta_bancaria || ''}`
+      : null,
+  },
+  {
+    name: 'ItemCompra',
+    keyFn: r => r.fornecedor && r.descricao_produto
+      ? `${(r.fornecedor||'').trim()}|${(r.numero_nota||'').trim()}|${(r.descricao_produto||'').trim()}`
+      : null,
+  },
+  {
+    name: 'TituloCobranca',
+    keyFn: r => r.nosso_numero ? String(r.nosso_numero).trim() : null,
+  },
+  {
+    name: 'RelatorioFaturamento',
+    keyFn: r => r.mes ? String(r.mes).trim() : null,
+  },
+  {
+    name: 'ConciliacaoItem',
+    keyFn: r => r.mes_referencia && r.data_extrato && r.desc_extrato
+      ? `${r.mes_referencia}|${r.data_extrato}|${(r.desc_extrato||'').trim()}|${Number(r.valor_extrato||0).toFixed(2)}`
+      : null,
+  },
+  {
+    name: 'DespesaOperacional',
+    keyFn: r => r.data && r.descricao && r.valor != null
+      ? `${r.data}|${(r.descricao||'').trim().toLowerCase()}|${Number(r.valor).toFixed(2)}`
+      : null,
+  },
+  {
+    name: 'FaturaCartao',
+    keyFn: r => r.conta_cartao_id && r.mes_referencia
+      ? `${r.conta_cartao_id}|${r.mes_referencia}`
+      : null,
+  },
+  {
+    name: 'LancamentoCartao',
+    keyFn: r => r.fatura_id && r.data_lancamento && r.estabelecimento && r.valor != null
+      ? `${r.fatura_id}|${r.data_lancamento}|${(r.estabelecimento||'').trim().toLowerCase()}|${Number(r.valor).toFixed(2)}`
+      : null,
+  },
+  {
+    name: 'FolhaPagamento',
+    keyFn: r => r.funcionario_nome && r.competencia
+      ? `${(r.funcionario_nome||'').trim().toLowerCase()}|${r.competencia}`
+      : null,
+  },
+  {
+    name: 'Tributo',
+    keyFn: r => r.tipo && r.competencia && r.empresa
+      ? `${r.tipo}|${r.competencia}|${r.empresa}`
+      : null,
+  },
+  {
+    name: 'ObraReforma',
+    keyFn: r => r.data && r.responsavel && r.valor != null
+      ? `${r.data}|${(r.responsavel||'').trim().toLowerCase()}|${Number(r.valor).toFixed(2)}`
+      : null,
+  },
+];
 
 Deno.serve(async (req) => {
   try {
@@ -50,55 +120,26 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Aceita parâmetro opcional `only` para limitar a uma entidade específica (importações)
+    let body = {};
+    try { body = await req.json(); } catch { /* sem body */ }
+    const only = body?.only ? (Array.isArray(body.only) ? body.only : [body.only]) : null;
+
     const svc = base44.asServiceRole.entities;
     const results = {};
+    const targets = only ? ENTITIES_CONFIG.filter(c => only.includes(c.name)) : ENTITIES_CONFIG;
 
-    // 1. NotaFiscal
-    const nfs = await svc.NotaFiscal.list('-created_date', 5000);
-    await sleep(300);
-    const nfDups = dedup(nfs, r => r.tipo && r.numero ? `${r.tipo}|${String(r.numero).trim()}` : null);
-    results.NotaFiscal = await deleteWithThrottle(svc.NotaFiscal, nfDups);
-    await sleep(500);
-
-    // 2. LancamentoBancario — chave contábil: data + valor + conta_bancaria
-    const lanc = await svc.LancamentoBancario.list('-created_date', 10000);
-    await sleep(300);
-    const lancDups = dedup(lanc, r => r.data && r.valor != null
-      ? `${r.data}|${Number(r.valor).toFixed(2)}|${r.conta_bancaria || ''}`
-      : null);
-    results.LancamentoBancario = await deleteWithThrottle(svc.LancamentoBancario, lancDups);
-    await sleep(500);
-
-    // 3. ItemCompra
-    const comp = await svc.ItemCompra.list('-created_date', 5000);
-    await sleep(300);
-    const compDups = dedup(comp, r => r.fornecedor && r.descricao_produto
-      ? `${(r.fornecedor||'').trim()}|${(r.numero_nota||'').trim()}|${(r.descricao_produto||'').trim()}`
-      : null);
-    results.ItemCompra = await deleteWithThrottle(svc.ItemCompra, compDups);
-    await sleep(500);
-
-    // 4. TituloCobranca
-    const tit = await svc.TituloCobranca.list('-created_date', 5000);
-    await sleep(300);
-    const titDups = dedup(tit, r => r.nosso_numero ? String(r.nosso_numero).trim() : null);
-    results.TituloCobranca = await deleteWithThrottle(svc.TituloCobranca, titDups);
-    await sleep(500);
-
-    // 5. RelatorioFaturamento
-    const rel = await svc.RelatorioFaturamento.list('-created_date', 1000);
-    await sleep(300);
-    const relDups = dedup(rel, r => r.mes ? String(r.mes).trim() : null);
-    results.RelatorioFaturamento = await deleteWithThrottle(svc.RelatorioFaturamento, relDups);
-    await sleep(500);
-
-    // 6. ConciliacaoItem
-    const conc = await svc.ConciliacaoItem.list('-created_date', 5000);
-    await sleep(300);
-    const concDups = dedup(conc, r => r.mes_referencia && r.data_extrato && r.desc_extrato
-      ? `${r.mes_referencia}|${r.data_extrato}|${(r.desc_extrato||'').trim()}|${Number(r.valor_extrato||0).toFixed(2)}`
-      : null);
-    results.ConciliacaoItem = await deleteWithThrottle(svc.ConciliacaoItem, concDups);
+    for (const cfg of targets) {
+      try {
+        const records = await svc[cfg.name].list('-created_date', 10000);
+        await sleep(300);
+        const dups = dedup(records, cfg.keyFn);
+        results[cfg.name] = await deleteWithThrottle(svc[cfg.name], dups);
+        await sleep(400);
+      } catch (e) {
+        results[cfg.name] = 0;
+      }
+    }
 
     const total = Object.values(results).reduce((s, v) => s + v, 0);
 
