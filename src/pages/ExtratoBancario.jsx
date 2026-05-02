@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, Trash2 } from 'lucide-react';
+import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,8 @@ export default function ExtratoBancario() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('2026-03');
   const [isAnnual, setIsAnnual] = useState(false);
+  const [deduping, setDeduping] = useState(false);
+  const [dedupResult, setDedupResult] = useState(null);
   const [form, setForm] = useState({
     data: '', descricao: '', valor: '', categoria: 'recebimento',
     saldo_apos: '', conta_bancaria: 'NeuralTec 36092-2', detalhe: '', mes_referencia: ''
@@ -71,6 +74,18 @@ export default function ExtratoBancario() {
     loadData();
   }
 
+  async function handleDedup() {
+    if (!confirm('Remover lançamentos duplicados (mesma data + valor + conta)? Esta ação não pode ser desfeita.')) return;
+    setDeduping(true);
+    setDedupResult(null);
+    const res = await deduplicarImportacoes({});
+    const removidos = res?.data?.removed?.LancamentoBancario || 0;
+    setDedupResult(removidos);
+    setDeduping(false);
+    loadData();
+    setTimeout(() => setDedupResult(null), 5000);
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     await base44.entities.LancamentoBancario.create({
@@ -104,10 +119,19 @@ export default function ExtratoBancario() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
+        <Button variant="outline" onClick={handleDedup} disabled={deduping} className="gap-2" size="sm">
+          <Trash2 className="w-4 h-4" /> {deduping ? 'Deduplicando...' : 'Deduplicar'}
+        </Button>
         <Button onClick={() => setShowForm(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Novo Lançamento
         </Button>
       </PageHeader>
+
+      {dedupResult !== null && (
+        <div className={`mb-4 px-4 py-2 rounded-lg text-sm font-semibold ${dedupResult > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
+          {dedupResult > 0 ? `✓ ${dedupResult} lançamento(s) duplicado(s) removido(s) do banco` : '✓ Nenhuma duplicata encontrada — banco já está limpo'}
+        </div>
+      )}
 
       {/* Totais por categoria — clicável para filtrar */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
