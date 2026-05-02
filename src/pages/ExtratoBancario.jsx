@@ -3,7 +3,11 @@ import { base44 } from '@/api/base44Client';
 import { Plus, Search, Filter, Trash2 } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { GradientCard } from '../components/shared/GradientCard';
-import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
+import MonthNavigator from '../components/shared/MonthNavigator';
+import MobileKPICarousel from '../components/shared/MobileKPICarousel';
+import MobileFilterDrawer from '../components/shared/MobileFilterDrawer';
+import ResponsiveListView from '../components/shared/ResponsiveListView';
+import MobileListCard from '../components/shared/MobileListCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -19,7 +23,6 @@ export default function ExtratoBancario() {
   const [showForm, setShowForm] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [editingCategoria, setEditingCategoria] = useState(null);
-  const [filterMes, setFilterMes] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('2026-03');
   const [isAnnual, setIsAnnual] = useState(false);
@@ -65,11 +68,10 @@ export default function ExtratoBancario() {
         if (mes !== selectedMonth) return false;
       }
       if (filterCategoria !== 'all' && l.categoria !== filterCategoria) return false;
-      if (filterMes !== 'all' && l.mes_referencia !== filterMes) return false;
       if (searchTerm && !l.descricao?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
-  }, [lancamentos, filterCategoria, filterMes, searchTerm, selectedMonth, isAnnual]);
+  }, [lancamentos, filterCategoria, searchTerm, selectedMonth, isAnnual]);
 
   const totais = useMemo(() => {
     const cats = {};
@@ -120,11 +122,23 @@ export default function ExtratoBancario() {
     return totals;
   }, [lancamentos]);
 
-  const meses = [...new Set(lancamentos.map(l => l.mes_referencia).filter(Boolean))].sort();
+  const activeFilterCount = (filterCategoria !== 'all' ? 1 : 0) + (searchTerm ? 1 : 0);
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
-      <PageHeader title="Extrato Bancário" subtitle="NeuralTec · Sicredi Conta 36092-2 · Cooperativa 2604">
+    <div className="p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto">
+      <PageHeader title="Extrato Bancário" subtitle="NeuralTec · Sicredi 36092-2">
+        <div className="flex gap-2 flex-wrap w-full md:w-auto">
+          <Button onClick={() => setShowForm(true)} className="gap-2 flex-1 md:flex-none" size="sm">
+            <Plus className="w-4 h-4" /> Novo
+          </Button>
+          <Button variant="outline" onClick={handleDedup} disabled={deduping} className="gap-2 flex-1 md:flex-none" size="sm">
+            <Trash2 className="w-4 h-4" /> {deduping ? '...' : 'Deduplicar'}
+          </Button>
+        </div>
+      </PageHeader>
+
+      {/* Month navigator — separado em linha própria no mobile */}
+      <div className="mb-4 -mx-1 overflow-x-auto">
         <MonthNavigator
           selectedMonth={selectedMonth}
           onSelectMonth={m => { setSelectedMonth(m); }}
@@ -132,22 +146,16 @@ export default function ExtratoBancario() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
-        <Button variant="outline" onClick={handleDedup} disabled={deduping} className="gap-2" size="sm">
-          <Trash2 className="w-4 h-4" /> {deduping ? 'Deduplicando...' : 'Deduplicar'}
-        </Button>
-        <Button onClick={() => setShowForm(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> Novo Lançamento
-        </Button>
-      </PageHeader>
+      </div>
 
       {dedupResult !== null && (
-        <div className={`mb-4 px-4 py-2 rounded-lg text-sm font-semibold ${dedupResult > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
-          {dedupResult > 0 ? `✓ ${dedupResult} lançamento(s) duplicado(s) removido(s) do banco` : '✓ Nenhuma duplicata encontrada — banco já está limpo'}
+        <div className={`mb-4 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold ${dedupResult > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
+          {dedupResult > 0 ? `✓ ${dedupResult} duplicata(s) removida(s)` : '✓ Banco já está limpo'}
         </div>
       )}
 
-      {/* Totais por categoria — clicável para filtrar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      {/* KPIs por categoria — carrossel no mobile, grid no desktop */}
+      <MobileKPICarousel desktopGridClass="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         {Object.entries(totais).map(([cat, val]) => {
           const isActive = filterCategoria === cat;
           return (
@@ -168,37 +176,100 @@ export default function ExtratoBancario() {
           active={filterCategoria === 'all'}
           onClick={() => setFilterCategoria('all')}
         />
-      </div>
+      </MobileKPICarousel>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      {/* Filtros — busca sempre visível, categoria no drawer no mobile */}
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar descrição..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
+          <Input placeholder="Buscar descrição..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9" />
         </div>
-        <Select value={filterCategoria} onValueChange={setFilterCategoria}>
-          <SelectTrigger className="w-[180px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Categoria" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas Categorias</SelectItem>
-            {Object.entries(categoriaLabels).map(([k, v]) => (
-              <SelectItem key={k} value={k}>{v}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+        <div className="md:hidden shrink-0 w-32">
+          <MobileFilterDrawer activeCount={filterCategoria !== 'all' ? 1 : 0}>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Categoria</Label>
+              <Select value={filterCategoria} onValueChange={setFilterCategoria}>
+                <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas Categorias</SelectItem>
+                  {Object.entries(categoriaLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </MobileFilterDrawer>
+        </div>
+        <div className="hidden md:block">
+          <Select value={filterCategoria} onValueChange={setFilterCategoria}>
+            <SelectTrigger className="w-[180px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Categoria" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas Categorias</SelectItem>
+              {Object.entries(categoriaLabels).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-card rounded-xl border overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Listagem responsiva */}
+      <ResponsiveListView
+        items={filtered}
+        loading={loading}
+        emptyMessage="Nenhum lançamento encontrado"
+        mobileRender={(l) => (
+          <MobileListCard
+            topLeft={formatDate(l.data)}
+            topRight={formatCurrency(l.valor)}
+            topRightClass={(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}
+            title={l.descricao}
+            subtitle={l.detalhe}
+            meta={l.saldo_apos != null ? `Saldo: ${formatCurrency(l.saldo_apos)}` : null}
+            badge={
+              <button
+                onClick={e => { e.stopPropagation(); setEditingCategoria(editingCategoria === l.id ? null : l.id); }}
+                className="hover:opacity-70 transition-opacity"
+              >
+                {editingCategoria === l.id ? (
+                  <select
+                    autoFocus
+                    defaultValue={l.categoria}
+                    onClick={e => e.stopPropagation()}
+                    onBlur={e => handleCategoriaChange(l.id, e.target.value)}
+                    onChange={e => handleCategoriaChange(l.id, e.target.value)}
+                    className="text-xs border rounded px-2 py-1 bg-background"
+                  >
+                    {Object.entries(categoriaLabels).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <StatusBadge status={l.categoria} />
+                )}
+              </button>
+            }
+          />
+        )}
+        mobileFooter={
+          filtered.length > 0 && (
+            <div className="bg-card border rounded-xl p-3 mt-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold">Total ({filtered.length})</span>
+                <span className={`font-bold tabular-nums ${totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totalGeral)}</span>
+              </div>
+            </div>
+          )
+        }
+        desktop={
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
-                <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
-                <th className="hidden md:table-cell text-right px-4 py-3 font-semibold text-muted-foreground">Saldo</th>
+                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Saldo</th>
               </tr>
             </thead>
             <tbody>
@@ -211,10 +282,10 @@ export default function ExtratoBancario() {
                   <tr key={l.id} className="border-b hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(l.data)}</td>
                     <td className="px-4 py-3">
-                     <p className="font-medium">{l.descricao}</p>
-                     {l.detalhe && <p className="text-xs text-muted-foreground">{l.detalhe}</p>}
+                      <p className="font-medium">{l.descricao}</p>
+                      {l.detalhe && <p className="text-xs text-muted-foreground">{l.detalhe}</p>}
                     </td>
-                    <td className="hidden sm:table-cell px-4 py-3">
+                    <td className="px-4 py-3">
                       {editingCategoria === l.id ? (
                         <select
                           autoFocus
@@ -236,11 +307,11 @@ export default function ExtratoBancario() {
                           <StatusBadge status={l.categoria} />
                         </button>
                       )}
-                     </td>
+                    </td>
                     <td className={`px-4 py-3 text-right font-semibold tabular-nums ${(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(l.valor)}
                     </td>
-                    <td className="hidden md:table-cell px-4 py-3 text-right tabular-nums text-muted-foreground">{l.saldo_apos != null ? formatCurrency(l.saldo_apos) : '—'}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{l.saldo_apos != null ? formatCurrency(l.saldo_apos) : '—'}</td>
                   </tr>
                 ))
               )}
@@ -255,20 +326,20 @@ export default function ExtratoBancario() {
               </tfoot>
             )}
           </table>
-        </div>
-      </div>
+        }
+      />
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Novo Lançamento Bancário</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label>Data</Label><Input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} required /></div>
               <div><Label>Valor (R$)</Label><Input type="number" step="0.01" value={form.valor} onChange={e => setForm({...form, valor: e.target.value})} required /></div>
             </div>
             <div><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} required /></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label>Categoria</Label>
                 <Select value={form.categoria} onValueChange={v => setForm({...form, categoria: v})}>
@@ -280,7 +351,7 @@ export default function ExtratoBancario() {
               </div>
               <div><Label>Mês Referência</Label><Input placeholder="ex: 2025-03" value={form.mes_referencia} onChange={e => setForm({...form, mes_referencia: e.target.value})} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label>Saldo Após</Label><Input type="number" step="0.01" value={form.saldo_apos} onChange={e => setForm({...form, saldo_apos: e.target.value})} /></div>
               <div><Label>Conta Bancária</Label><Input value={form.conta_bancaria} onChange={e => setForm({...form, conta_bancaria: e.target.value})} /></div>
             </div>
