@@ -41,8 +41,7 @@ export default function ExtratoBancario() {
     loadData();
     const handler = () => loadData();
     window.addEventListener('neuralfinRefresh', handler);
-    const unsub = base44.entities.LancamentoBancario.subscribe(() => loadData());
-    return () => { window.removeEventListener('neuralfinRefresh', handler); unsub(); };
+    return () => { window.removeEventListener('neuralfinRefresh', handler); };
   }, []);
 
   const filtered = useMemo(() => {
