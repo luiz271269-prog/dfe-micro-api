@@ -8,7 +8,7 @@ import { base44 } from '@/api/base44Client';
 const DEDUP_CONFIG = {
   LancamentoBancario: {
     entity: 'LancamentoBancario',
-    keys: ['data', 'valor', 'descricao'],
+    keys: ['data', 'valor', 'conta_bancaria'],
   },
   NotaFiscal: {
     entity: 'NotaFiscal',
@@ -62,7 +62,7 @@ const DEDUP_CONFIG = {
 function normalizeValue(value) {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value.trim().toLowerCase();
-  if (typeof value === 'number') return value;
+  if (typeof value === 'number') return value.toFixed(2); // evita 850 vs 850.00
   return String(value).trim().toLowerCase();
 }
 
@@ -101,10 +101,11 @@ export async function deduplicateRecords(records, entityType) {
   const seenInBatch = new Set();
   const enriched = [];
 
-  // Buscar apenas os registros recentes (últimos 200) para deduplicação rápida
+  // Buscar TODOS os registros existentes para evitar duplicatas em importações de meses antigos
+  // (200 era insuficiente quando o histórico já passa de 200 lançamentos)
   let existingRecords = [];
   try {
-    existingRecords = await base44.entities[entity].list('-created_date', 200);
+    existingRecords = await base44.entities[entity].list('-created_date', 10000);
   } catch {
     // Se falhar, continua sem validar duplicatas no banco
   }
