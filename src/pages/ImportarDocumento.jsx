@@ -57,20 +57,23 @@ Retorne APENAS um objeto JSON:
 Onde: saidas=vendas Tiago (V-01), servicos=vendas Thais (V-05), outros=faturamento direto, total=soma geral.`,
 
   relatorio_vendas_detalhado: `Você é um sistema de extração do RELATÓRIO DE VENDAS DIÁRIO (NeuralTec — sistema Fabris/Ellitte).
-O relatório lista cada NOTA FISCAL e suas PARCELAS de cobrança. Estrutura típica de cada nota:
+O relatório lista cada NOTA FISCAL e suas PARCELAS de cobrança, em ordem de número de nota e por duplicatas.
 
+CABEÇALHO DO RELATÓRIO contém o período: "Período: DD/MM/AAAA até DD/MM/AAAA". Use esse período para validar a data_emissao das NFs.
+
+ESTRUTURA TÍPICA DE CADA NOTA (linha de cabeçalho da NF + linhas de parcelas indentadas):
 NF-180         6.040,00                          22855 - SEPE GERACAO DE ENERGIA LTDA      95 - TIAGO -V 01
    180/1       3.020,00     21    27/04/2026     SICREDI                       27/04/2026  3.020,00
-   180/2       3.020,00     42    18/05/2026     SICREDI
+   180/2       3.020,00     42    18/05/2026     SICREDI                                            (vazio = NÃO PAGA)
 
-Cada NF tem N parcelas (180/1, 180/2, 180/3...). Cada parcela tem: prazo (dias), vencimento, canal de cobrança (SICREDI/CARTEIRA/MAGALU), e quando paga: data e valor pago.
+COLUNAS (da esquerda para direita): DP (nº da nota ou parcela) | Valor | Prazo Dias | Venc. | Tipo Cobran. | Pagto. (data) | Valor Pago
 
-A linha do cabeçalho da NF traz: número da nota, valor total, código+nome do CLIENTE, e o vendedor (95-TIAGO V-01 → "Tiago" / 8-THAIS V-05 → "Thais" / FAT.DIRETO → "Fat.Direto").
+A linha do cabeçalho da NF traz: "NF-XXX" + valor total + "código - NOME DO CLIENTE" + vendedor ("95 - TIAGO -V 01"→Tiago / "8 - THAIS -V-05"→Thais / "FAT.DIRETO"→Fat.Direto).
 
-Retorne APENAS um objeto JSON com DUAS LISTAS:
+Retorne APENAS um objeto JSON válido com DUAS LISTAS:
 {
   "notas":[
-    {"numero":"180","tipo":"NF","data_emissao":"YYYY-MM-DD","cliente":"SEPE GERACAO DE ENERGIA LTDA","vendedor":"Tiago","valor_total":6040.00,"valor_recebido":3020.00,"valor_aberto":3020.00,"status":"parcial","canal_cobranca":"sicredi","data_vencimento_proxima":"2026-05-18"}
+    {"numero":"180","tipo":"NF","data_emissao":"2026-04-06","cliente":"SEPE GERACAO DE ENERGIA LTDA","vendedor":"Tiago","valor_total":6040.00,"valor_recebido":3020.00,"valor_aberto":3020.00,"status":"parcial","canal_cobranca":"sicredi","data_vencimento_proxima":"2026-05-18"}
   ],
   "cobrancas":[
     {"nosso_numero":"180/1","seu_numero":"NF-180","cliente":"SEPE GERACAO DE ENERGIA LTDA","data_vencimento":"2026-04-27","data_pagamento":"2026-04-27","valor_titulo":3020.00,"valor_pago":3020.00,"status":"pago","canal_cobranca":"sicredi","parcela_numero":1,"parcela_total":2},
@@ -78,16 +81,51 @@ Retorne APENAS um objeto JSON com DUAS LISTAS:
   ]
 }
 
-REGRAS:
-- Extraia TODAS as NFs e TODAS as parcelas (mesmo as que ainda não venceram).
-- vendedor: identifique pela coluna final ("V 01"→Tiago, "V-05"→Thais, "FAT.DIRETO"→Fat.Direto).
-- canal_cobranca: minúsculas — "sicredi" / "carteira" / "magalu" / "fat_direto".
-- data_emissao da NF: se não constar explícita, use a data de vencimento da 1ª parcela menos o prazo em dias (ex: parcela 21 dias venc 27/04 → emissão 06/04). Formato YYYY-MM-DD.
-- status da NF: "pago" se TODAS parcelas pagas, "parcial" se algumas pagas, "a_vencer" se nenhuma paga e nenhuma vencida, "vencido" se há parcela vencida sem pagamento.
-- status da cobrança: "pago" se valor_pago > 0, "em_aberto" se data_vencimento > hoje (2026-05-04), "vencido" se data_vencimento < hoje e sem pagamento.
-- valor_recebido da NF = soma de valor_pago das parcelas. valor_aberto = valor_total − valor_recebido.
-- data_vencimento_proxima = menor data_vencimento entre parcelas ainda não pagas (status != pago).
-- Use ponto como separador decimal (3020.00, não 3.020,00).`,
+REGRAS CRÍTICAS:
+1. EXTRAIA TODAS AS NFs E TODAS AS PARCELAS sem exceção, mesmo as que ainda não venceram ou estão sem pagamento. NÃO PULE NENHUMA LINHA.
+
+2. VENDEDOR: identifique pela coluna final do cabeçalho da NF:
+   - "V 01" ou "V-01" ou "95 - TIAGO" → "Tiago"
+   - "V-05" ou "V 05" ou "8 - THAIS" → "Thais"
+   - "FAT.DIRETO" ou "Fat.Direto" → "Fat.Direto"
+
+3. CANAL DE COBRANÇA: SEMPRE minúsculas — "sicredi" / "carteira" / "magalu" / "fat_direto". A coluna "Tipo Cobran." traz isso para cada parcela.
+
+4. DATA DE EMISSÃO da NF (formato YYYY-MM-DD):
+   - Calcule: data_vencimento da 1ª parcela MENOS o prazo em dias (coluna "Prazo Dias").
+   - Exemplo: parcela 21 dias com venc 27/04/2026 → emissão = 06/04/2026.
+   - VALIDE: a data calculada DEVE estar dentro do período do cabeçalho. Se sair fora, use o último dia do período.
+
+5. PAGAMENTO DE PARCELA — leia COM CUIDADO:
+   - Se a coluna "Pagto." E "Valor Pago" estão PREENCHIDAS → status="pago", data_pagamento=data, valor_pago=valor.
+   - Se a coluna "Pagto." está VAZIA → valor_pago=0, NÃO inclua data_pagamento (omita o campo), status="em_aberto" ou "vencido".
+   - NUNCA invente data_pagamento. Só preencha se aparecer explicitamente no relatório.
+
+6. STATUS DA COBRANÇA (data de hoje será passada dinamicamente — use a data atual do contexto):
+   - "pago" se valor_pago > 0
+   - "em_aberto" se valor_pago = 0 E data_vencimento >= hoje
+   - "vencido" se valor_pago = 0 E data_vencimento < hoje
+
+7. STATUS DA NF:
+   - "pago" se TODAS parcelas pagas
+   - "parcial" se algumas pagas (≥1 paga e ≥1 não paga)
+   - "a_vencer" se nenhuma paga e nenhuma vencida
+   - "vencido" se há ≥1 parcela vencida sem pagamento
+
+8. CÁLCULOS DA NF:
+   - valor_recebido = SOMA dos valor_pago de todas as parcelas
+   - valor_aberto = valor_total − valor_recebido
+   - data_vencimento_proxima = MENOR data_vencimento entre parcelas com status != "pago"
+   - canal_cobranca da NF = canal mais frequente entre as parcelas (geralmente todas iguais)
+
+9. CLIENTE: extraia APENAS o nome (após o "código - "). Ex: "22855 - SEPE GERACAO DE ENERGIA LTDA" → cliente="SEPE GERACAO DE ENERGIA LTDA".
+
+10. VALORES — formato decimal com PONTO:
+    - "3.020,00" → 3020.00
+    - "1.301,34" → 1301.34 (PRESERVE os centavos exatos, NÃO arredonde)
+    - Para parcelas com valores diferentes (ex: 1.301,34 / 1.301,33 / 1.301,33), mantenha cada valor exato como aparece.
+
+11. parcela_numero e parcela_total: extraídos de "180/1" → numero=1, total=ver quantas parcelas a NF tem (180/1, 180/2 → total=2).`,
 
   compras_fornecedor: `Analise este relatório de compras e extraia todos os itens em JSON.
 Retorne APENAS array JSON:
@@ -224,9 +262,11 @@ export default function ImportarDocumento() {
       setFileUrl(file_url);
       setProcessingStage('ai');
 
-      // 2. Extrair com InvokeLLM nativo Base44
+      // 2. Extrair com InvokeLLM nativo Base44 — injeta data atual no prompt
+      const hojeISO = new Date().toISOString().split('T')[0];
+      const promptComContexto = PROMPTS[selectedType].replace(/\{\{HOJE\}\}/g, hojeISO) + `\n\nDATA DE REFERÊNCIA (hoje): ${hojeISO}`;
       const result = await InvokeLLM({
-        prompt: PROMPTS[selectedType],
+        prompt: promptComContexto,
         file_urls: [file_url],
         model: 'claude_sonnet_4_6',
       });
