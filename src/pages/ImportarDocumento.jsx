@@ -13,7 +13,8 @@ const DOC_TYPES = [
   { id: 'extrato_bancario',   label: 'Extrato Bancário Sicredi',  icon: Landmark,     color: 'blue',   entity: 'LancamentoBancario', dedup: ['data','valor'] },
   { id: 'boletos_liquidados', label: 'Boletos Liquidados',         icon: Receipt,      color: 'teal',   entity: 'TituloCobranca',    dedup: ['nosso_numero'] },
   { id: 'relatorio_nfs',      label: 'NFes Emitidas no Mês (Fiscal)',   icon: FileText,     color: 'green',  entity: 'NotaFiscal',        dedup: ['tipo','numero'] },
-  { id: 'relatorio_vendas',   label: 'Relatório de Vendas (Fabris/Ellitte)', icon: FileText, color: 'teal', entity: 'RelatorioFaturamento', dedup: ['mes'] },
+  { id: 'relatorio_vendas_detalhado', label: 'Relatório de Vendas Diário (NFs + Parcelas)', icon: FileText, color: 'cyan', entity: 'NotaFiscal', dedup: ['numero'] },
+  { id: 'relatorio_vendas',   label: 'Resumo Mensal de Vendas (Fabris/Ellitte)', icon: FileText, color: 'teal', entity: 'RelatorioFaturamento', dedup: ['mes'] },
   { id: 'compras_fornecedor', label: 'Compras por Fornecedor',    icon: ShoppingCart, color: 'orange', entity: 'ItemCompra',        dedup: ['fornecedor','numero_nota','descricao_produto'] },
   { id: 'fatura_cartao',      label: 'Fatura de Cartão',          icon: CreditCard,   color: 'purple', entity: 'FaturaCartao',      dedup: ['conta_cartao_id','mes_referencia'] },
   { id: 'obra_reforma',       label: 'Obra e Reforma',            icon: Hammer,       color: 'brown',  entity: 'ObraReforma',       dedup: ['data','responsavel','valor'] },
@@ -54,6 +55,39 @@ Retorne APENAS array JSON:
 Retorne APENAS um objeto JSON:
 {"mes":"YYYY-MM","ano":YYYY,"mes_nome":"Março 2026","saidas":numero_vendas_tiago,"servicos":numero_vendas_thais,"outros":numero_fat_direto,"total":numero_total_geral,"fonte":"fabris","observacoes":"observacao opcional"}
 Onde: saidas=vendas Tiago (V-01), servicos=vendas Thais (V-05), outros=faturamento direto, total=soma geral.`,
+
+  relatorio_vendas_detalhado: `Você é um sistema de extração do RELATÓRIO DE VENDAS DIÁRIO (NeuralTec — sistema Fabris/Ellitte).
+O relatório lista cada NOTA FISCAL e suas PARCELAS de cobrança. Estrutura típica de cada nota:
+
+NF-180         6.040,00                          22855 - SEPE GERACAO DE ENERGIA LTDA      95 - TIAGO -V 01
+   180/1       3.020,00     21    27/04/2026     SICREDI                       27/04/2026  3.020,00
+   180/2       3.020,00     42    18/05/2026     SICREDI
+
+Cada NF tem N parcelas (180/1, 180/2, 180/3...). Cada parcela tem: prazo (dias), vencimento, canal de cobrança (SICREDI/CARTEIRA/MAGALU), e quando paga: data e valor pago.
+
+A linha do cabeçalho da NF traz: número da nota, valor total, código+nome do CLIENTE, e o vendedor (95-TIAGO V-01 → "Tiago" / 8-THAIS V-05 → "Thais" / FAT.DIRETO → "Fat.Direto").
+
+Retorne APENAS um objeto JSON com DUAS LISTAS:
+{
+  "notas":[
+    {"numero":"180","tipo":"NF","data_emissao":"YYYY-MM-DD","cliente":"SEPE GERACAO DE ENERGIA LTDA","vendedor":"Tiago","valor_total":6040.00,"valor_recebido":3020.00,"valor_aberto":3020.00,"status":"parcial","canal_cobranca":"sicredi","data_vencimento_proxima":"2026-05-18"}
+  ],
+  "cobrancas":[
+    {"nosso_numero":"180/1","seu_numero":"NF-180","cliente":"SEPE GERACAO DE ENERGIA LTDA","data_vencimento":"2026-04-27","data_pagamento":"2026-04-27","valor_titulo":3020.00,"valor_pago":3020.00,"status":"pago","canal_cobranca":"sicredi","parcela_numero":1,"parcela_total":2},
+    {"nosso_numero":"180/2","seu_numero":"NF-180","cliente":"SEPE GERACAO DE ENERGIA LTDA","data_vencimento":"2026-05-18","valor_titulo":3020.00,"valor_pago":0,"status":"em_aberto","canal_cobranca":"sicredi","parcela_numero":2,"parcela_total":2}
+  ]
+}
+
+REGRAS:
+- Extraia TODAS as NFs e TODAS as parcelas (mesmo as que ainda não venceram).
+- vendedor: identifique pela coluna final ("V 01"→Tiago, "V-05"→Thais, "FAT.DIRETO"→Fat.Direto).
+- canal_cobranca: minúsculas — "sicredi" / "carteira" / "magalu" / "fat_direto".
+- data_emissao da NF: se não constar explícita, use a data de vencimento da 1ª parcela menos o prazo em dias (ex: parcela 21 dias venc 27/04 → emissão 06/04). Formato YYYY-MM-DD.
+- status da NF: "pago" se TODAS parcelas pagas, "parcial" se algumas pagas, "a_vencer" se nenhuma paga e nenhuma vencida, "vencido" se há parcela vencida sem pagamento.
+- status da cobrança: "pago" se valor_pago > 0, "em_aberto" se data_vencimento > hoje (2026-05-04), "vencido" se data_vencimento < hoje e sem pagamento.
+- valor_recebido da NF = soma de valor_pago das parcelas. valor_aberto = valor_total − valor_recebido.
+- data_vencimento_proxima = menor data_vencimento entre parcelas ainda não pagas (status != pago).
+- Use ponto como separador decimal (3020.00, não 3.020,00).`,
 
   compras_fornecedor: `Analise este relatório de compras e extraia todos os itens em JSON.
 Retorne APENAS array JSON:
@@ -241,6 +275,19 @@ export default function ImportarDocumento() {
         const fatData = { ...parsed.fatura, __type: 'FaturaCartao', conta_cartao_id: cartaoIdFinal };
         const lancs = (parsed.lancamentos || []).map(l => ({ ...l, __type: 'LancamentoCartao' }));
         items = [fatData, ...lancs];
+      } else if (selectedType === 'relatorio_vendas_detalhado') {
+        // Caso especial: 2 entidades — NotaFiscal + TituloCobranca
+        const notas = (parsed.notas || []).map(n => ({
+          ...n,
+          numero: String(n.numero ?? '').trim(),
+          __type: 'NotaFiscal',
+        }));
+        const cobrancas = (parsed.cobrancas || []).map(c => ({
+          ...c,
+          nosso_numero: String(c.nosso_numero ?? '').trim(),
+          __type: 'TituloCobranca',
+        }));
+        items = [...notas, ...cobrancas];
       } else {
         items = Array.isArray(parsed) ? parsed : [parsed];
       }
@@ -263,6 +310,17 @@ export default function ImportarDocumento() {
         ]);
 
         enriched = [...dedupFats, ...dedupLancs];
+      } else if (selectedType === 'relatorio_vendas_detalhado') {
+        // Caso especial: 2 entidades — NotaFiscal + TituloCobranca
+        const notas = items.filter(i => i.__type === 'NotaFiscal');
+        const cobs = items.filter(i => i.__type === 'TituloCobranca');
+
+        const [dedupNotas, dedupCobs] = await Promise.all([
+          deduplicateRecords(notas, 'NotaFiscal'),
+          deduplicateRecords(cobs, 'TituloCobranca'),
+        ]);
+
+        enriched = [...dedupNotas, ...dedupCobs];
       } else {
         // Caso genérico: aplica deduplicação via motor
         enriched = await deduplicateRecords(items, typeConfig.entity);
@@ -330,6 +388,24 @@ export default function ImportarDocumento() {
       } else if (lancRecs.length > 0) {
         showToast('⚠️ Selecione um cartão no calendário — não foi possível identificar a fatura para vincular os lançamentos.', 'error');
       }
+    } else if (selectedType === 'relatorio_vendas_detalhado') {
+      // Salvar NotaFiscal + TituloCobranca em paralelo (motor genérico, mas separado por __type)
+      const notasToSave = records.filter(r => r.selected && r.status !== 'erro' && r.data.__type === 'NotaFiscal')
+        .map(r => ({ ...r, data: { ...r.data, __type: undefined } }));
+      const cobsToSave = records.filter(r => r.selected && r.status !== 'erro' && r.data.__type === 'TituloCobranca')
+        .map(r => ({ ...r, data: { ...r.data, __type: undefined } }));
+
+      // Remover __type antes de salvar
+      notasToSave.forEach(r => delete r.data.__type);
+      cobsToSave.forEach(r => delete r.data.__type);
+
+      setSaveProgress(`Salvando ${notasToSave.length} notas + ${cobsToSave.length} cobranças...`);
+      const [statsN, statsC] = await Promise.all([
+        saveDeduplicatedRecords('NotaFiscal', notasToSave),
+        saveDeduplicatedRecords('TituloCobranca', cobsToSave),
+      ]);
+      saved = statsN.saved + statsC.saved;
+      errors = statsN.errors + statsC.errors;
     } else {
       // Caso genérico: usar motor genérico
       const stats = await saveDeduplicatedRecords(typeConfig.entity, toSave);
@@ -380,7 +456,9 @@ export default function ImportarDocumento() {
       setSaveProgress('Verificando duplicatas no banco...');
       const entidadesAfetadas = selectedType === 'fatura_cartao'
         ? ['FaturaCartao', 'LancamentoCartao']
-        : [typeConfig.entity];
+        : selectedType === 'relatorio_vendas_detalhado'
+          ? ['NotaFiscal', 'TituloCobranca']
+          : [typeConfig.entity];
       let removidos = 0;
       try {
         const dedupRes = await deduplicarImportacoes({ only: entidadesAfetadas });
