@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 export default function ExtratoBancario() {
   const [lancamentos, setLancamentos] = useState([]);
@@ -24,7 +25,7 @@ export default function ExtratoBancario() {
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [editingCategoria, setEditingCategoria] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [deduping, setDeduping] = useState(false);
   const [dedupResult, setDedupResult] = useState(null);

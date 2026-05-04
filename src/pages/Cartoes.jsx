@@ -13,6 +13,7 @@ import StatusBadge from '../components/shared/StatusBadge';
 import ConciliacaoCartoes from '../components/cartoes/ConciliacaoCartoes';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { seedSicoobFatura } from '../lib/seedData';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 const SEED_CARDS = [
   { nome: 'Acentra — Luiz Carlos', bandeira: 'Acentra', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
@@ -79,7 +80,7 @@ export default function Cartoes() {
   const [faturas, setFaturas] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedMonth, setSelectedMonth] = useState('2026-04');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [expandedCard, setExpandedCard] = useState(null);
   const [expandedFatura, setExpandedFatura] = useState(null);

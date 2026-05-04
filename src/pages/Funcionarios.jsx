@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency, formatDate } from '../lib/formatters';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 const SETORES = ['vendas', 'assistencia', 'financeiro', 'compras', 'administrativo', 'telemarketing'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -161,7 +162,7 @@ export default function Funcionarios() {
   const [showFuncForm, setShowFuncForm] = useState(false);
   const [showFolhaForm, setShowFolhaForm] = useState(false);
   const [selectedFunc, setSelectedFunc] = useState(null);
-  const [competencia, setCompetencia] = useState('2026-02');
+  const [competencia, setCompetencia] = useState(getCurrentMonth());
   const [funcForm, setFuncForm] = useState({
     nome: '', cpf: '', cargo: '', setor: '', data_admissao: '', status: 'ativo', salario_base: '', tipo_contrato: 'CLT', empresa: 'NeuralTec'
   });

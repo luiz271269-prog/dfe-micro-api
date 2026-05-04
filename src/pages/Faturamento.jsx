@@ -12,13 +12,14 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import ConciliacaoRelatorio from '../components/faturamento/ConciliacaoRelatorio';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 export default function Faturamento() {
   const [notas, setNotas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [detalhes, setDetalhes] = useState(null);
-  const [selectedMonth, setSelectedMonth] = useState('2026-04');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [filterVendedor, setFilterVendedor] = useState('all');
   const [filterTipo, setFilterTipo] = useState('all');

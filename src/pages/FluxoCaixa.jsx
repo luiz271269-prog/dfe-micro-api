@@ -12,6 +12,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '../lib/formatters';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 const CATEGORIAS = ['recebimento_vendas', 'recebimento_cobranca', 'pagamento_fornecedor', 'pagamento_tributo', 'folha_pagamento', 'aluguel', 'despesa_fixa', 'despesa_variavel', 'investimento', 'emprestimo', 'outro'];
 
@@ -19,7 +20,7 @@ export default function FluxoCaixa() {
   const [fluxos, setFluxos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [filterTipo, setFilterTipo] = useState('');
   const [filterStatus, setFilterStatus] = useState('');

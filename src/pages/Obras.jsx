@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency, formatDate } from '../lib/formatters';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 const LOCAIS = [
   { value: 'pavilhao', label: 'Pavilhão', color: 'blue' },
@@ -108,7 +109,7 @@ export default function Obras() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [filterLocal, setFilterLocal] = useState('all');
   const [filterProf, setFilterProf] = useState('all');

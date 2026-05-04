@@ -8,8 +8,9 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../lib/formatters';
 import DASAlertBadge from '../components/dashboard/DASAlertBadge';
+import { getCurrentMonth } from '../lib/currentMonth';
 
-const ALL_MONTHS = ['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04'];
+const ALL_MONTHS = ['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
 
 function fmtMes(m) {
   const [y, mo] = m.split('-');
@@ -127,7 +128,7 @@ function SectionMetric({ title, value, sub, icon: Icon, valueColor, href }) {
 }
 
 export default function Dashboard() {
-  const [selectedMonth, setSelectedMonth] = useState('2026-04');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [rawData, setRawData] = useState({ lanc:[], nfs:[], tit:[], comp:[], obras:[], trib:[], func:[], folhas:[], faturas:[] });
   const [data, setData] = useState({

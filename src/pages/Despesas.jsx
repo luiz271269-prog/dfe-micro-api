@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '../lib/formatters';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 const CATEGORIAS = ['aluguel','energia','agua','internet','telefone','manutencao','limpeza','marketing','contabilidade','juridico','seguro','transporte','alimentacao','material_escritorio','outro'];
 const FORMAS_PAG = ['pix','boleto','cartao','debito_automatico','dinheiro','transferencia'];
@@ -37,7 +38,7 @@ export default function Despesas() {
   const [despesas, setDespesas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState('2026-04');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');

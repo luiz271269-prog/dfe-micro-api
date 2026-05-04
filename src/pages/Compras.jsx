@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 // ── Compras config ────────────────────────────────────────────────────────────
 const fornecedorOptions = ['COMPRAS A VISTA', 'MERCADO LIVRE', 'PAUTA DISTRIBUIÇÃO'];
@@ -48,7 +49,7 @@ const TABS = [
 
 export default function Compras() {
   const [activeTab, setActiveTab] = useState('compras');
-  const [selectedMonth, setSelectedMonth] = useState('2026-04');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
 
   // ── Compras state ─────────────────────────────────────────────────────────

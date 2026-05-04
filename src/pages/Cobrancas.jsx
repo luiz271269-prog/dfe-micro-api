@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '../lib/formatters';
+import { getCurrentMonth } from '../lib/currentMonth';
 
 const statusRowColors = {
   em_aberto: 'bg-orange-50/50',
@@ -23,7 +24,7 @@ export default function Cobrancas() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [quickFilter, setQuickFilter] = useState('todos');
-  const [selectedMonth, setSelectedMonth] = useState('2026-03');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [baixaId, setBaixaId] = useState(null);
