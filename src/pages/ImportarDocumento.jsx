@@ -57,18 +57,16 @@ Retorne APENAS um objeto JSON:
 Onde: saidas=vendas Tiago (V-01), servicos=vendas Thais (V-05), outros=faturamento direto, total=soma geral.`,
 
   relatorio_vendas_detalhado: `Você é um sistema de extração do RELATÓRIO DE VENDAS DIÁRIO (NeuralTec — sistema Fabris/Ellitte).
-O relatório lista cada NOTA FISCAL e suas PARCELAS de cobrança, em ordem de número de nota e por duplicatas.
+O relatório lista NOTAS FISCAIS (NF-XXX) e CONTRATOS DE INTERMEDIAÇÃO (CI-XXXXXX), com suas PARCELAS de cobrança.
 
-CABEÇALHO DO RELATÓRIO contém o período: "Período: DD/MM/AAAA até DD/MM/AAAA". Use esse período para validar a data_emissao das NFs.
+CABEÇALHO DO RELATÓRIO contém o período: "Período: DD/MM/AAAA até DD/MM/AAAA".
 
-ESTRUTURA TÍPICA DE CADA NOTA (linha de cabeçalho da NF + linhas de parcelas indentadas):
-NF-180         6.040,00                          22855 - SEPE GERACAO DE ENERGIA LTDA      95 - TIAGO -V 01
-   180/1       3.020,00     21    27/04/2026     SICREDI                       27/04/2026  3.020,00
-   180/2       3.020,00     42    18/05/2026     SICREDI                                            (vazio = NÃO PAGA)
+ESTRUTURA — duas variantes:
+A) Linha de cabeçalho (NF ou CI): "NF- 180   6.040,00   22855 - SEPE GERACAO DE ENERGIA LTDA   95 - TIAGO - V 01"
+   ou: "CI- 100084  2.799,00  22791 - INC INDUSTRIA NAVAL CATARINENSE  8 - THAIS -V-05"
+B) Linhas de parcelas indentadas: "180/1   3.020,00   21   27/04/2026   SICREDI   27/04/2026   3.020,00"
 
-COLUNAS (da esquerda para direita): DP (nº da nota ou parcela) | Valor | Prazo Dias | Venc. | Tipo Cobran. | Pagto. (data) | Valor Pago
-
-A linha do cabeçalho da NF traz: "NF-XXX" + valor total + "código - NOME DO CLIENTE" + vendedor ("95 - TIAGO -V 01"→Tiago / "8 - THAIS -V-05"→Thais / "FAT.DIRETO"→Fat.Direto).
+COLUNAS: DP (nº doc ou parcela) | Valor | Prazo Dias | Venc. | Tipo Cobran. | Pagto. (data) | Valor Pago
 
 Retorne APENAS um objeto JSON válido com DUAS LISTAS:
 {
@@ -82,50 +80,78 @@ Retorne APENAS um objeto JSON válido com DUAS LISTAS:
 }
 
 REGRAS CRÍTICAS:
-1. EXTRAIA TODAS AS NFs E TODAS AS PARCELAS sem exceção, mesmo as que ainda não venceram ou estão sem pagamento. NÃO PULE NENHUMA LINHA.
 
-2. VENDEDOR: identifique pela coluna final do cabeçalho da NF:
-   - "V 01" ou "V-01" ou "95 - TIAGO" → "Tiago"
-   - "V-05" ou "V 05" ou "8 - THAIS" → "Thais"
-   - "FAT.DIRETO" ou "Fat.Direto" → "Fat.Direto"
+1. EXTRAIA ABSOLUTAMENTE TODOS OS DOCUMENTOS — TODAS as NFs e TODOS os CIs do relatório, sem exceção. Conte antes e depois para garantir.
 
-3. CANAL DE COBRANÇA: SEMPRE minúsculas — "sicredi" / "carteira" / "magalu" / "fat_direto". A coluna "Tipo Cobran." traz isso para cada parcela.
+2. TIPO DO DOCUMENTO:
+   - "NF- XXX" → tipo="NF", numero="XXX" (ex: "180")
+   - "CI- XXXXXX" → tipo="CI", numero="XXXXXX" (ex: "100084")
 
-4. DATA DE EMISSÃO da NF (formato YYYY-MM-DD):
-   - Calcule: data_vencimento da 1ª parcela MENOS o prazo em dias (coluna "Prazo Dias").
-   - Exemplo: parcela 21 dias com venc 27/04/2026 → emissão = 06/04/2026.
-   - VALIDE: a data calculada DEVE estar dentro do período do cabeçalho. Se sair fora, use o último dia do período.
+3. VENDEDOR — identifique pelo final do cabeçalho:
+   - "95 - TIAGO" ou "V 01" ou "V-01" → "Tiago"
+   - "8 - THAIS" ou "V-05" ou "V 05" → "Thais"
+   - "1306 - MATHEUS" → "Matheus"
+   - "138 - BALCAO" → "Balcao"
+   - "2 - FATURAMENTO DIRETO" ou "FAT.DIRETO" → "Fat.Direto"
+   - Se não conseguir identificar, use "Fat.Direto".
 
-5. PAGAMENTO DE PARCELA — leia COM CUIDADO:
-   - Se a coluna "Pagto." E "Valor Pago" estão PREENCHIDAS → status="pago", data_pagamento=data, valor_pago=valor.
-   - Se a coluna "Pagto." está VAZIA → valor_pago=0, NÃO inclua data_pagamento (omita o campo), status="em_aberto" ou "vencido".
-   - NUNCA invente data_pagamento. Só preencha se aparecer explicitamente no relatório.
+4. CLIENTE — extraia APENAS o nome após "código - ". 
+   ATENÇÃO À QUEBRA DE LINHA: às vezes o nome do cliente fica grudado no código do vendedor (ex: "PORTONAVE TERMINAIS PORTUÁRIOS DE NAVEGANTE8 - THAIS -V-05\nS SA" → cliente real é "PORTONAVE TERMINAIS PORTUÁRIOS DE NAVEGANTES SA"). Reconstrua o nome juntando as quebras quando o nome do cliente continua na linha seguinte.
+   Casos especiais: "1 - VENDA A VISTA" → cliente="VENDA A VISTA".
 
-6. STATUS DA COBRANÇA (data de hoje será passada dinamicamente — use a data atual do contexto):
+5. CANAL DE COBRANÇA (campo "Tipo Cobran." de cada parcela) — SEMPRE minúsculas:
+   - "SICREDI" → "sicredi"
+   - "CARTEIRA" → "carteira"
+   - "MAGALU" → "magalu"
+   - VAZIO/em branco → "sicredi" (padrão quando o campo aparece vazio em parcelas com prazo)
+   - Para vendas à vista (CI-100088, 100090, 100095): use "carteira".
+
+6. DATA DE EMISSÃO da NF/CI (YYYY-MM-DD):
+   - Se há prazo: data_emissao = data_vencimento_1ª_parcela − prazo_dias.
+   - Exemplo: parcela 21 dias com venc 27/04/2026 → emissão 06/04/2026.
+   - Se SEM prazo (venda à vista): use a data de pagamento como data_emissao, ou a data do vencimento.
+   - VALIDE contra o período do cabeçalho — se sair fora, ajuste para o último dia do período.
+
+7. PAGAMENTO DE PARCELA — REGRA CRÍTICA, LEIA COM ATENÇÃO:
+   - Coluna "Pagto." PREENCHIDA + "Valor Pago" PREENCHIDO → status="pago", data_pagamento=data, valor_pago=valor.
+   - Coluna "Pagto." VAZIA → valor_pago=0, OMITA o campo data_pagamento (não inclua no JSON), status conforme regra 9.
+   - NUNCA invente data_pagamento. NUNCA copie data de vencimento como pagamento.
+
+8. PARCELA SEM PRAZO/VENCIMENTO (vendas à vista — ex: NF-198/1, CI-100088/1, CI-100090/1, CI-100095/1, CI-100092/X com pagto antecipado):
+   - parcela_numero=1, parcela_total=1
+   - Se há data de pagamento → use data_pagamento como data_vencimento E como data_pagamento, status="pago".
+   - canal_cobranca="carteira".
+
+9. STATUS DA COBRANÇA (use a DATA DE REFERÊNCIA fornecida no final deste prompt):
    - "pago" se valor_pago > 0
    - "em_aberto" se valor_pago = 0 E data_vencimento >= hoje
    - "vencido" se valor_pago = 0 E data_vencimento < hoje
 
-7. STATUS DA NF:
-   - "pago" se TODAS parcelas pagas
-   - "parcial" se algumas pagas (≥1 paga e ≥1 não paga)
-   - "a_vencer" se nenhuma paga e nenhuma vencida
-   - "vencido" se há ≥1 parcela vencida sem pagamento
+10. STATUS DA NF/CI (cabeçalho):
+    - "pago" se TODAS parcelas pagas (valor_recebido = valor_total, tolerância de R$ 0,02)
+    - "parcial" se ≥1 paga e ≥1 não paga
+    - "a_vencer" se nenhuma paga e nenhuma vencida
+    - "vencido" se há ≥1 parcela vencida sem pagamento
 
-8. CÁLCULOS DA NF:
-   - valor_recebido = SOMA dos valor_pago de todas as parcelas
-   - valor_aberto = valor_total − valor_recebido
-   - data_vencimento_proxima = MENOR data_vencimento entre parcelas com status != "pago"
-   - canal_cobranca da NF = canal mais frequente entre as parcelas (geralmente todas iguais)
+11. CÁLCULOS DO CABEÇALHO:
+    - valor_recebido = SOMA dos valor_pago das parcelas (zero se nenhuma paga)
+    - valor_aberto = valor_total − valor_recebido
+    - data_vencimento_proxima = MENOR data_vencimento entre parcelas NÃO pagas; se todas pagas, omita o campo.
+    - canal_cobranca = canal mais frequente entre as parcelas; "sicredi" como padrão.
 
-9. CLIENTE: extraia APENAS o nome (após o "código - "). Ex: "22855 - SEPE GERACAO DE ENERGIA LTDA" → cliente="SEPE GERACAO DE ENERGIA LTDA".
-
-10. VALORES — formato decimal com PONTO:
+12. VALORES — formato decimal com PONTO, PRESERVE centavos exatos:
     - "3.020,00" → 3020.00
-    - "1.301,34" → 1301.34 (PRESERVE os centavos exatos, NÃO arredonde)
-    - Para parcelas com valores diferentes (ex: 1.301,34 / 1.301,33 / 1.301,33), mantenha cada valor exato como aparece.
+    - "1.301,34" → 1301.34
+    - "1.301,33" → 1301.33 (NÃO arredondar para 1301.34)
+    - Em parcelas desiguais (ex: 1.301,34 / 1.301,33 / 1.301,33), mantenha cada valor EXATO.
 
-11. parcela_numero e parcela_total: extraídos de "180/1" → numero=1, total=ver quantas parcelas a NF tem (180/1, 180/2 → total=2).`,
+13. parcela_numero e parcela_total — extraídos de "180/1":
+    - "180/1" → parcela_numero=1
+    - parcela_total = quantidade de linhas indentadas para essa NF (180/1 + 180/2 → total=2; 200/1 + 200/2 + 200/3 → total=3).
+
+14. seu_numero da cobrança = "NF-XXX" ou "CI-XXXXXX" (com hífen, conforme tipo).
+
+15. CONFERÊNCIA FINAL: o relatório possui rodapé com totais ("Faturado", "Recebido", "Aberto"). Sua extração deve bater com esses totais (tolerância R$ 1,00). Se não bater, revise antes de retornar.`,
 
   compras_fornecedor: `Analise este relatório de compras e extraia todos os itens em JSON.
 Retorne APENAS array JSON:
