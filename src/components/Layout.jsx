@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart, 
   Hammer, CreditCard, Map, ChevronLeft, ChevronRight, LogOut,
-  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload, Menu, X, Scale, Package, GitCompare, Wallet, FolderOpen, Target, Repeat, Bot, FileCode, Calculator, FlaskConical, Activity, Link2
+  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload, Menu, X, Scale, Package, GitCompare, Wallet, FolderOpen, Target, Repeat, Bot, FileCode, Calculator, FlaskConical, Activity, Link2, MessageCircle
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -186,6 +186,18 @@ export default function Layout() {
           <span>Sicredi Conta 36092-2 · Cooperativa 2604 · {today.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
         </div>
       </div>
+
+      {/* Botão flutuante de WhatsApp — Consultor Financeiro IA */}
+      <a
+        href={base44.agents.getWhatsAppConnectURL('financial_health_advisor')}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Conversar com o Consultor Financeiro no WhatsApp"
+        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105"
+      >
+        <MessageCircle className="w-5 h-5" />
+        <span className="text-sm font-semibold hidden sm:inline">Consultor Financeiro</span>
+      </a>
     </div>
   );
 }
