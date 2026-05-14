@@ -129,3 +129,123 @@ export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias =
 
   return candidatos[0]?.item || null;
 }
+
+/**
+ * Baixa automática a partir do extrato bancário.
+ * Para cada lançamento de débito (saída) ainda não conciliado, procura uma conta a pagar
+ * compatível e atualiza a entidade-origem para status 'pago' + cria VinculoExtrato.
+ *
+ * Retorna: { conciliados, totalLancamentos, totalContas, baixas: [...] }
+ */
+export async function executarBaixaAutomatica(base44, { despesas, tributos, folhas, faturas, cartoes }) {
+  const itens = consolidarContasPagar({ despesas, tributos, folhas, faturas, cartoes });
+
+  // Buscar débitos do extrato não conciliados (valor negativo)
+  // Limitar aos últimos 90 dias para performance
+  const todosLancamentos = await base44.entities.LancamentoBancario.list('-data', 2000);
+  const lancamentosDebito = todosLancamentos.filter(l =>
+    l.valor < 0 &&
+    l.status_conciliacao !== 'conciliado' &&
+    l.categoria !== 'transferencia' &&
+    l.categoria !== 'interno'
+  );
+
+  // Buscar vínculos existentes para evitar dupla baixa
+  const vinculosExistentes = await base44.entities.VinculoExtrato.list('-created_date', 5000);
+  const lancsJaVinculados = new Set(vinculosExistentes.map(v => v.lancamento_bancario_id));
+  const contasJaVinculadas = new Set(
+    vinculosExistentes.map(v => `${v.entidade_tipo}-${v.entidade_id}`)
+  );
+
+  const contasDisponiveis = itens.filter(i => {
+    const tipoEntidade = mapearTipoEntidade(i.origem_tipo);
+    return !contasJaVinculadas.has(`${tipoEntidade}-${i.origem_id}`);
+  });
+
+  const baixas = [];
+  const usadas = new Set();
+
+  for (const lanc of lancamentosDebito) {
+    if (lancsJaVinculados.has(lanc.id)) continue;
+
+    const candidatos = contasDisponiveis.filter(c => !usadas.has(c.id));
+    const match = acharContaPagarPorLancamento(lanc, candidatos);
+    if (!match) continue;
+
+    usadas.add(match.id);
+    baixas.push({ lanc, conta: match });
+  }
+
+  // Aplicar baixas em paralelo (lotes de 5)
+  let aplicadas = 0;
+  for (let i = 0; i < baixas.length; i += 5) {
+    const chunk = baixas.slice(i, i + 5);
+    await Promise.all(chunk.map(({ lanc, conta }) => aplicarBaixa(base44, lanc, conta)));
+    aplicadas += chunk.length;
+  }
+
+  return {
+    conciliados: aplicadas,
+    totalLancamentos: lancamentosDebito.length,
+    totalContas: itens.length,
+    baixas,
+  };
+}
+
+function mapearTipoEntidade(origem_tipo) {
+  return {
+    despesa: 'DespesaOperacional',
+    tributo: 'Tributo',
+    folha: 'FolhaPagamento',
+    fatura: 'FaturaCartao',
+  }[origem_tipo];
+}
+
+async function aplicarBaixa(base44, lanc, conta) {
+  const entidadeTipo = mapearTipoEntidade(conta.origem_tipo);
+  const valorAlocado = Math.abs(lanc.valor);
+
+  // 1. Atualiza a entidade-origem para status 'pago'
+  if (conta.origem_tipo === 'despesa') {
+    await base44.entities.DespesaOperacional.update(conta.origem_id, {
+      status: 'pago',
+      data: lanc.data,
+    });
+  } else if (conta.origem_tipo === 'tributo') {
+    await base44.entities.Tributo.update(conta.origem_id, {
+      status: 'pago',
+      data_pagamento: lanc.data,
+      valor_pago: valorAlocado,
+    });
+  } else if (conta.origem_tipo === 'folha') {
+    await base44.entities.FolhaPagamento.update(conta.origem_id, {
+      status: 'pago',
+      data_pagamento: lanc.data,
+    });
+  } else if (conta.origem_tipo === 'fatura') {
+    await base44.entities.FaturaCartao.update(conta.origem_id, {
+      status: 'paga_total',
+      data_pagamento: lanc.data,
+      valor_pago: valorAlocado,
+    });
+  }
+
+  // 2. Cria o VinculoExtrato (rastreabilidade — evita dupla baixa)
+  await base44.entities.VinculoExtrato.create({
+    lancamento_bancario_id: lanc.id,
+    entidade_tipo: entidadeTipo,
+    entidade_id: conta.origem_id,
+    valor_alocado: valorAlocado,
+    tipo_vinculo: 'pagamento_integral',
+    conciliado_por: 'auto',
+    confianca: 95,
+    observacao: `Baixa automática · ${conta.descricao}`,
+  });
+
+  // 3. Atualiza o lançamento para conciliado
+  await base44.entities.LancamentoBancario.update(lanc.id, {
+    status_conciliacao: 'conciliado',
+    vinculos_count: (lanc.vinculos_count || 0) + 1,
+    valor_conciliado: (lanc.valor_conciliado || 0) + valorAlocado,
+  });
+}

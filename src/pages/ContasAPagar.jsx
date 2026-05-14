@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Wallet, Landmark, Users, CreditCard, AlertTriangle, CheckCircle, Calendar, ArrowRight } from 'lucide-react';
+import { Wallet, Landmark, Users, CreditCard, AlertTriangle, CheckCircle, Calendar, ArrowRight, Zap } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency, formatDate } from '../lib/formatters';
-import { consolidarContasPagar, calcularAging } from '../lib/contasPagarEngine';
+import { consolidarContasPagar, calcularAging, executarBaixaAutomatica } from '../lib/contasPagarEngine';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Despesa', href: '/despesas' },
@@ -26,9 +26,26 @@ const BUCKETS = [
 
 export default function ContasAPagar() {
   const [loading, setLoading] = useState(true);
+  const [conciliando, setConciliando] = useState(false);
+  const [resultadoBaixa, setResultadoBaixa] = useState(null);
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [] });
+
+  async function executarBaixa() {
+    if (conciliando) return;
+    setConciliando(true);
+    setResultadoBaixa(null);
+    try {
+      const res = await executarBaixaAutomatica(base44, dados);
+      setResultadoBaixa(res);
+      await load();
+      window.dispatchEvent(new Event('neuralfinRefresh'));
+    } catch (err) {
+      setResultadoBaixa({ erro: err.message });
+    }
+    setConciliando(false);
+  }
 
   async function load() {
     setLoading(true);
@@ -89,8 +106,34 @@ export default function ContasAPagar() {
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto">
       <PageHeader title="Contas a Pagar" subtitle="Visão consolidada: despesas, tributos, folha e faturas de cartão">
+        <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+          {conciliando ? (
+            <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Conciliando...</>
+          ) : (
+            <><Zap className="w-3.5 h-3.5" /> Baixa Automática</>
+          )}
+        </Button>
         <Button variant="outline" onClick={load} size="sm">Atualizar</Button>
       </PageHeader>
+
+      {resultadoBaixa && (
+        <div className={`rounded-xl p-3 mb-4 border ${resultadoBaixa.erro ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
+          {resultadoBaixa.erro ? (
+            <div className="flex items-center gap-2 text-sm">
+              <AlertTriangle className="w-4 h-4" /> Erro: {resultadoBaixa.erro}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm">
+                <CheckCircle className="w-4 h-4" />
+                <span className="font-semibold">{resultadoBaixa.conciliados} conta(s) baixada(s) automaticamente</span>
+                <span className="text-xs opacity-80">· {resultadoBaixa.totalLancamentos} débitos analisados · {resultadoBaixa.totalContas} contas em aberto</span>
+              </div>
+              <button onClick={() => setResultadoBaixa(null)} className="text-xs opacity-70 hover:opacity-100">×</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Totais principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
