@@ -13,7 +13,7 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
-import ContasAPagarPanel from '../components/contas-pagar/ContasAPagarPanel';
+import ConciliacaoDDAvsContas from '../components/contas-pagar/ConciliacaoDDAvsContas';
 
 // ── Compras config ────────────────────────────────────────────────────────────
 const fornecedorOptions = ['COMPRAS A VISTA', 'MERCADO LIVRE', 'PAUTA DISTRIBUIÇÃO'];
@@ -45,8 +45,7 @@ const EMPTY_DESP = { data:'',descricao:'',fornecedor:'',categoria:'aluguel',valo
 const TABS = [
   { key: 'compras', label: 'Compras', icon: ShoppingCart },
   { key: 'despesas', label: 'Despesas', icon: Receipt },
-  { key: 'dda', label: 'DDA / Boletos a Vencer', icon: FileText },
-  { key: 'contas_pagar', label: 'Contas a Pagar', icon: Wallet },
+  { key: 'conciliacao', label: 'DDA × Contas a Pagar', icon: Wallet },
 ];
 
 export default function Compras() {
@@ -373,59 +372,10 @@ export default function Compras() {
         </>
       )}
 
-      {/* ── ABA DDA / BOLETOS A VENCER ───────────────────────────────────── */}
-      {activeTab === 'dda' && (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-            <GradientCard title="Total a Vencer" value={formatCurrency(Math.abs(totalDDA))} sub={`${ddaItems.length} boletos`} icon={FileText} gradient="orange" />
-            <GradientCard title="Fornecedores" value={formatCurrency(Math.abs(ddaItems.filter(l=>l.categoria==='fornecedor').reduce((s,l)=>s+(l.valor||0),0)))} sub="pagamentos a fornecedores" icon={ShoppingCart} gradient="blue" />
-            <GradientCard title="Despesas" value={formatCurrency(Math.abs(ddaItems.filter(l=>l.categoria==='despesa_operacional').reduce((s,l)=>s+(l.valor||0),0)))} sub="despesas operacionais" icon={Receipt} gradient="purple" />
-          </div>
-          <div className="flex flex-wrap gap-3 mb-6">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar descrição..." value={searchDDA} onChange={e => setSearchDDA(e.target.value)} className="pl-9" />
-            </div>
-          </div>
-          <div className="bg-card rounded-xl border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Vencimento</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Detalhe</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
-                </tr></thead>
-                <tbody>
-                  {loadingL ? <tr><td colSpan={5} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
-                  : ddaItems.length===0 ? <tr><td colSpan={5} className="text-center py-12 text-muted-foreground">Nenhum boleto a vencer no período selecionado</td></tr>
-                  : ddaItems.sort((a,b)=>new Date(a.data)-new Date(b.data)).map(l => (
-                    <tr key={l.id} className="border-b hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap font-medium">{formatDate(l.data)}</td>
-                      <td className="px-4 py-3"><p className="font-medium">{l.descricao}</p></td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{l.detalhe||'—'}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
-                          {categoriaLabels[l.categoria] || l.categoria}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(l.valor)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                {ddaItems.length > 0 && <tfoot><tr className="border-t-2 bg-muted/30">
-                  <td colSpan={4} className="px-4 py-3 font-semibold">Total ({ddaItems.length} boletos)</td>
-                  <td className="px-4 py-3 text-right font-bold text-red-600">{formatCurrency(Math.abs(totalDDA))}</td>
-                </tr></tfoot>}
-              </table>
-            </div>
-          </div>
-        </>
+      {/* ── ABA DDA × CONTAS A PAGAR (conciliação) ───────────────────────── */}
+      {activeTab === 'conciliacao' && (
+        <ConciliacaoDDAvsContas selectedMonth={selectedMonth} isAnnual={isAnnual} />
       )}
-
-      {/* ── ABA CONTAS A PAGAR ───────────────────────────────────────────── */}
-      {activeTab === 'contas_pagar' && <ContasAPagarPanel />}
 
       {/* ── FORM COMPRAS ─────────────────────────────────────────────────── */}
       <Dialog open={showFormC} onOpenChange={setShowFormC}>
