@@ -420,7 +420,22 @@ export default function ImportarDocumento() {
       setRecords(enriched);
       setStep(3);
     } catch (err) {
-      showToast(`Erro ao processar: ${err.message}`, 'error');
+      const msg = String(err?.message || err);
+      const isPdfProtegido = /password protected|password.protected|encrypted pdf|criptografad/i.test(msg);
+      if (isPdfProtegido) {
+        setRawText(
+          '⚠️ PDF PROTEGIDO POR SENHA\n\n' +
+          'O arquivo enviado está criptografado e não pode ser lido pela IA.\n\n' +
+          'Como resolver:\n' +
+          '1) Abra o PDF no navegador (Chrome/Edge) ou Adobe Reader com a senha.\n' +
+          '2) Use "Imprimir → Salvar como PDF" para gerar uma cópia SEM senha.\n' +
+          '3) Faça upload da cópia sem senha aqui.\n\n' +
+          'Alternativa: tire prints (PNG/JPG) das páginas da fatura e envie as imagens — a IA também extrai a partir delas.'
+        );
+        showToast('PDF protegido por senha. Veja as instruções abaixo para remover a senha.', 'error');
+      } else {
+        showToast(`Erro ao processar: ${msg}`, 'error');
+      }
     }
     setProcessing(false);
   }
