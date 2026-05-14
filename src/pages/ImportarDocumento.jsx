@@ -43,9 +43,34 @@ Retorne APENAS um array JSON válido, sem texto adicional, no formato:
 [{"data":"YYYY-MM-DD","descricao":"descrição exata do extrato","valor":numero_positivo_ou_negativo,"categoria":"recebimento ou fornecedor ou pessoal ou tributo ou despesa_operacional ou financeiro ou saque ou transferencia ou interno","saldo_apos":numero,"conta_bancaria":"NeuralTec 36092-2","detalhe":"documento ex: COB000001 ou PIX_DEB ou FITID ou vazio"}]
 Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lançamentos, ignorar apenas "SALDO ANTERIOR" e linhas de saldo consolidado.`,
 
-  boletos_liquidados: `Analise este comprovante de boletos liquidados e extraia os pagamentos em JSON.
-Retorne APENAS array JSON:
-[{"nosso_numero":"26/100XXX-X","seu_numero":"NF-XXX","cliente":"NOME DO CLIENTE","data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","valor_titulo":numero,"valor_pago":numero,"status":"pago","canal_cobranca":"sicredi"}]`,
+  boletos_liquidados: `Analise este relatório/comprovante de BOLETOS LIQUIDADOS (Sicredi/Banco) e extraia TODOS os pagamentos em JSON.
+
+Retorne APENAS um array JSON válido (sem texto adicional, sem markdown):
+[{"nosso_numero":"26/100XXX-X","seu_numero":"NF-XXX","cliente":"NOME DO CLIENTE","data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","valor_titulo":numero,"valor_pago":numero,"status":"pago","canal_cobranca":"sicredi"}]
+
+REGRAS CRÍTICAS:
+
+1. nosso_numero — OBRIGATÓRIO. É o identificador do título no banco (Sicredi). Procure por:
+   - "Nosso Número", "Nosso Nº", "NN", "Nro Título", "Documento" ou similar.
+   - Formato típico Sicredi: "26/100XXX-X", "26/100123-4", "100123-4" ou apenas dígitos longos (8+ caracteres).
+   - Se o relatório só listar "Seu Número" + data + valor (sem Nosso Número explícito), use a coluna que identifica unicamente o boleto no banco — geralmente é um código numérico longo. NUNCA retorne vazio para nosso_numero.
+   - Se realmente não houver Nosso Número, construa um identificador único: "BOL-{seu_numero}-{data_pagamento}" (ex: "BOL-NF-180-2026-05-13").
+
+2. seu_numero — referência interna (NF, CI, número do pedido). Ex: "NF-180", "180", "CI-100084". Pode ficar vazio se não houver.
+
+3. cliente — nome do sacado/pagador exatamente como aparece no relatório.
+
+4. data_vencimento e data_pagamento — formato YYYY-MM-DD. Se só houver uma data, use a mesma para ambas.
+
+5. valor_titulo — valor original do boleto (use valor_pago se valor_titulo não estiver explícito).
+   valor_pago — valor efetivamente recebido.
+   Formato decimal com PONTO: "3.850,00" → 3850.00.
+
+6. status — "pago" para todos os boletos liquidados (este relatório lista apenas pagos).
+
+7. canal_cobranca — "sicredi" (padrão para este tipo de relatório).
+
+8. EXTRAIA TODOS os boletos do relatório, sem exceção. Conte antes e depois.`,
 
   relatorio_nfs: `Analise este relatório/XML/PDF de notas fiscais emitidas (sistema fiscal, SEFAZ ou contabilidade) e extraia TODAS as NFs em JSON.
 Retorne APENAS array JSON:
@@ -401,7 +426,9 @@ export default function ImportarDocumento() {
   }
 
   async function confirmSave() {
-    const toSave = records.filter(r => r.selected && r.status !== 'erro');
+    // Respeita seleção explícita do usuário — se marcou um registro com status 'erro',
+    // ele será salvo mesmo assim (usuário viu que os dados estão corretos)
+    const toSave = records.filter(r => r.selected);
     if (toSave.length === 0) return showToast('Nenhum registro selecionado para salvar.', 'error');
     setSaving(true);
     try {

@@ -161,7 +161,8 @@ export async function saveDeduplicatedRecords(entityType, recordsWithStatus) {
   }
 
   const { entity } = config;
-  const toSave = recordsWithStatus.filter(r => r.selected && r.status !== 'erro');
+  // Respeita seleção explícita do usuário — salva tudo que está marcado (inclusive 'erro' se usuário confirmou)
+  const toSave = recordsWithStatus.filter(r => r.selected);
 
   // Salvar em paralelo (lotes de 5) para maior velocidade
   let saved = 0;
