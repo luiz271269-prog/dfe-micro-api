@@ -27,7 +27,7 @@ import Despesas from './pages/Despesas';
 import AuditoriaArquivos from './pages/AuditoriaArquivos';
 import Conciliacao360 from './pages/Conciliacao360';
 import Recorrentes from './pages/Recorrentes';
-import ContasAPagar from './pages/ContasAPagar.jsx';
+import ContasAPagar from './pages/ContasAPagar';
 import ControleProdutos from './pages/ControleProdutos';
 import AnaliseNFe from './pages/AnaliseNFe';
 import DRETributario from './pages/DRETributario';
