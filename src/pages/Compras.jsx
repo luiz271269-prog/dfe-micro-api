@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, ShoppingCart, TrendingDown, Building2, Receipt, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
+import { Plus, Search, ShoppingCart, TrendingDown, Building2, Receipt, AlertTriangle, CheckCircle, FileText, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
@@ -13,6 +13,7 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import ContasAPagarPanel from '../components/contas-pagar/ContasAPagarPanel';
 
 // ── Compras config ────────────────────────────────────────────────────────────
 const fornecedorOptions = ['COMPRAS A VISTA', 'MERCADO LIVRE', 'PAUTA DISTRIBUIÇÃO'];
@@ -45,6 +46,7 @@ const TABS = [
   { key: 'compras', label: 'Compras', icon: ShoppingCart },
   { key: 'despesas', label: 'Despesas', icon: Receipt },
   { key: 'dda', label: 'DDA / Boletos a Vencer', icon: FileText },
+  { key: 'contas_pagar', label: 'Contas a Pagar', icon: Wallet },
 ];
 
 export default function Compras() {
@@ -421,6 +423,9 @@ export default function Compras() {
           </div>
         </>
       )}
+
+      {/* ── ABA CONTAS A PAGAR ───────────────────────────────────────────── */}
+      {activeTab === 'contas_pagar' && <ContasAPagarPanel />}
 
       {/* ── FORM COMPRAS ─────────────────────────────────────────────────── */}
       <Dialog open={showFormC} onOpenChange={setShowFormC}>

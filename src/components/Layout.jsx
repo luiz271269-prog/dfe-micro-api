@@ -18,7 +18,6 @@ const navItems = [
   { path: '/cartoes', label: 'Cartões de Crédito', icon: CreditCard },
   { path: '/tributos', label: 'Tributos', icon: DollarSign },
   { path: '/funcionarios', label: 'Pessoal', icon: Users },
-  { path: '/contas-a-pagar', label: 'Contas a Pagar', icon: Wallet },
   { path: '/fluxocaixa', label: 'Fluxo de Caixa', icon: BarChart3 },
   { path: '/mapa', label: 'Mapa Geral', icon: Map },
   { path: '/importar', label: 'Importar Documento', icon: CloudUpload },
