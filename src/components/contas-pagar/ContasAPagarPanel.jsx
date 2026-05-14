@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Wallet, Landmark, Users, CreditCard, AlertTriangle, CheckCircle, Calendar, ArrowRight, Zap, Link2 } from 'lucide-react';
-import { formatCurrency, formatDate } from '../../lib/formatters';
+import { Wallet, Landmark, Users, CreditCard, AlertTriangle, CheckCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatCurrency } from '../../lib/formatters';
 import { consolidarContasPagar, calcularAging, executarBaixaAutomatica } from '../../lib/contasPagarEngine';
+import CalendarioSemanal from './CalendarioSemanal';
+import PainelDDA from './PainelDDA';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Despesa', href: '/despesas' },
@@ -13,15 +14,19 @@ const ORIGEM_CONFIG = {
   fatura:  { icon: CreditCard, color: 'bg-purple-100 text-purple-700 border-purple-200',   label: 'Cartão',  href: '/cartoes' },
 };
 
-const BUCKETS = [
-  { key: 'vencidos', label: 'Vencidos', color: 'bg-red-50 border-red-300 text-red-700', icon: AlertTriangle },
-  { key: 'hoje',     label: 'Hoje',     color: 'bg-amber-50 border-amber-300 text-amber-700', icon: Calendar },
-  { key: 'semana',   label: 'Próximos 7 dias', color: 'bg-orange-50 border-orange-200 text-orange-700', icon: Calendar },
-  { key: 'ate15',    label: '8 a 15 dias',  color: 'bg-yellow-50 border-yellow-200 text-yellow-700', icon: Calendar },
-  { key: 'ate30',    label: '16 a 30 dias', color: 'bg-blue-50 border-blue-200 text-blue-700', icon: Calendar },
-  { key: 'acima30',  label: 'Acima de 30 dias', color: 'bg-slate-50 border-slate-200 text-slate-700', icon: Calendar },
-  { key: 'semData',  label: 'Sem vencimento', color: 'bg-muted border-border text-muted-foreground', icon: Calendar },
-];
+function mesAtualISO() {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+function deslocarMes(mesIso, delta) {
+  const [y, m] = mesIso.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+function rotuloMes(mesIso) {
+  const [y, m] = mesIso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
 
 export default function ContasAPagarPanel() {
   const [loading, setLoading] = useState(true);
@@ -29,8 +34,10 @@ export default function ContasAPagarPanel() {
   const [resultadoBaixa, setResultadoBaixa] = useState(null);
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
+  const [mesReferencia, setMesReferencia] = useState(mesAtualISO());
   const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [] });
   const [vinculos, setVinculos] = useState([]);
+  const [lancamentos, setLancamentos] = useState([]);
 
   async function executarBaixa() {
     if (conciliando) return;
@@ -49,16 +56,18 @@ export default function ContasAPagarPanel() {
 
   async function load() {
     setLoading(true);
-    const [despesas, tributos, folhas, faturas, cartoes, vincs] = await Promise.all([
+    const [despesas, tributos, folhas, faturas, cartoes, vincs, lancs] = await Promise.all([
       base44.entities.DespesaOperacional.list('-data_vencimento', 500),
       base44.entities.Tributo.list('-data_vencimento', 200),
       base44.entities.FolhaPagamento.list('-competencia', 500),
       base44.entities.FaturaCartao.list('-data_vencimento', 200),
       base44.entities.ContaCartao.filter({ is_ativo: true }),
       base44.entities.VinculoExtrato.list('-created_date', 5000),
+      base44.entities.LancamentoBancario.list('-data', 1000),
     ]);
     setDados({ despesas, tributos, folhas, faturas, cartoes });
     setVinculos(vincs);
+    setLancamentos(lancs);
     setLoading(false);
   }
   useEffect(() => {
@@ -203,87 +212,30 @@ export default function ContasAPagarPanel() {
         ))}
       </div>
 
-      {/* Buckets de aging */}
-      {BUCKETS.map(b => {
-        const lista = aging[b.key] || [];
-        if (lista.length === 0) return null;
-        const totalBucket = lista.reduce((a, i) => a + (i.valor || 0), 0);
-        const Icon = b.icon;
-        return (
-          <div key={b.key} className={`rounded-xl border mb-3 overflow-hidden ${b.color}`}>
-            <div className="px-4 py-2 flex items-center justify-between border-b border-current/20">
-              <div className="flex items-center gap-2">
-                <Icon className="w-4 h-4" />
-                <h3 className="font-bold text-sm uppercase tracking-wide">{b.label}</h3>
-                <span className="text-[10px] bg-white/60 rounded-full px-2 py-0.5 font-bold">{lista.length}</span>
-              </div>
-              <p className="font-bold">{formatCurrency(totalBucket)}</p>
-            </div>
-            <div className="bg-white">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b bg-muted/30 text-muted-foreground">
-                    <th className="text-left px-3 py-1.5 font-semibold">Vencimento</th>
-                    <th className="text-left px-3 py-1.5 font-semibold">Origem</th>
-                    <th className="text-left px-3 py-1.5 font-semibold">Descrição</th>
-                    <th className="text-left px-3 py-1.5 font-semibold">Fornecedor</th>
-                    <th className="text-left px-3 py-1.5 font-semibold">Empresa</th>
-                    <th className="text-right px-3 py-1.5 font-semibold">Valor</th>
-                    <th className="text-center px-3 py-1.5 font-semibold">Extrato</th>
-                    <th className="text-center px-3 py-1.5 font-semibold">Ver</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lista.sort((a,b)=>(a.data_vencimento||'').localeCompare(b.data_vencimento||'')).map(i => {
-                    const cfg = ORIGEM_CONFIG[i.origem_tipo];
-                    const OIcon = cfg.icon;
-                    return (
-                      <tr key={i.id} className="border-b hover:bg-muted/20">
-                        <td className="px-3 py-1.5 whitespace-nowrap text-muted-foreground font-medium">
-                          {i.data_vencimento ? formatDate(i.data_vencimento) : '—'}
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-semibold ${cfg.color}`}>
-                            <OIcon className="w-3 h-3" /> {cfg.label}
-                          </span>
-                        </td>
-                        <td className="px-3 py-1.5 font-medium max-w-[280px] truncate">{i.descricao}</td>
-                        <td className="px-3 py-1.5 text-muted-foreground max-w-[180px] truncate">{i.fornecedor}</td>
-                        <td className="px-3 py-1.5 text-muted-foreground">{i.empresa || '—'}</td>
-                        <td className="px-3 py-1.5 text-right font-bold tabular-nums text-rose-600">{formatCurrency(i.valor)}</td>
-                        <td className="px-3 py-1.5 text-center">
-                          {conciliadosSet.has(i) ? (
-                            <span title="Vinculado a um lançamento do extrato" className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">
-                              <Link2 className="w-3 h-3" /> OK
-                            </span>
-                          ) : (
-                            <span title="Sem vínculo com extrato" className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
-                              <AlertTriangle className="w-3 h-3" /> Pendente
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-1.5 text-center">
-                          <Link to={cfg.href}>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><ArrowRight className="w-3 h-3" /></Button>
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })}
+      {/* Seletor de mês para o calendário */}
+      <div className="flex items-center justify-between gap-2 mb-3 bg-card border rounded-xl px-3 py-2">
+        <Button variant="ghost" size="sm" className="gap-1" onClick={() => setMesReferencia(deslocarMes(mesReferencia, -1))}>
+          <ChevronLeft className="w-4 h-4" /> Mês anterior
+        </Button>
+        <span className="font-bold text-sm capitalize">{rotuloMes(mesReferencia)}</span>
+        <Button variant="ghost" size="sm" className="gap-1" onClick={() => setMesReferencia(deslocarMes(mesReferencia, 1))}>
+          Próximo mês <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
 
-      {itens.length === 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-8 text-center">
-          <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
-          <p className="text-sm font-bold text-emerald-800">Tudo em dia!</p>
-          <p className="text-xs text-emerald-700">Nenhuma conta a pagar pendente no filtro atual.</p>
-        </div>
-      )}
+      {/* Duas colunas: Calendário (sistema) × DDA (banco) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <CalendarioSemanal
+          itens={itens}
+          conciliadosSet={conciliadosSet}
+          mesReferencia={mesReferencia}
+        />
+        <PainelDDA
+          lancamentos={lancamentos}
+          contasPagar={itensRaw}
+          mesReferencia={mesReferencia}
+        />
+      </div>
     </>
   );
 }
