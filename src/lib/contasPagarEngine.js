@@ -105,9 +105,65 @@ export function calcularAging(itens, hoje = new Date()) {
 }
 
 /**
+ * Normaliza string para matching (remove acentos, lowercase, trim).
+ */
+function norm(s) {
+  return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+/**
+ * Calcula afinidade textual entre descrição/detalhe do extrato e a conta a pagar.
+ * Retorna bônus de score (negativo = melhor) baseado no tipo de origem:
+ *  - folha: PIX no nome do funcionário (procura primeiro nome na descrição/detalhe)
+ *  - cartao: descrição menciona "cartao", "fatura" ou o nome do cartão
+ *  - tributo: descrição menciona DAS, DARF, GPS, ICMS, ISS, FGTS, INSS, tributo, gov
+ *  - despesa: nome do fornecedor aparece na descrição
+ */
+function bonusAfinidade(lanc, conta) {
+  const texto = norm(`${lanc.descricao || ''} ${lanc.detalhe || ''}`);
+  if (!texto) return 0;
+
+  if (conta.origem_tipo === 'folha') {
+    const nome = norm(conta.fornecedor);
+    if (!nome) return 0;
+    const primeiroNome = nome.split(' ')[0];
+    // PIX a funcionário tipicamente tem o nome no detalhe
+    if (primeiroNome.length >= 3 && texto.includes(primeiroNome)) return -50;
+    return 0;
+  }
+
+  if (conta.origem_tipo === 'fatura') {
+    // Faturas: débito automático ou pagamento de cartão
+    const palavras = ['cartao', 'fatura', 'credito'];
+    if (palavras.some(p => texto.includes(p))) return -30;
+    const nomeCartao = norm(conta.fornecedor); // ex: "Sicoob - Luiz Carlos"
+    const partes = nomeCartao.split(/[\s\-—–]+/).filter(p => p.length >= 4);
+    if (partes.some(p => texto.includes(p))) return -40;
+    return 0;
+  }
+
+  if (conta.origem_tipo === 'tributo') {
+    const tags = ['das', 'darf', 'gps', 'icms', 'iss', 'inss', 'fgts', 'simples', 'tributo', 'gov', 'receita', 'federal'];
+    if (tags.some(t => texto.includes(t))) return -40;
+    return 0;
+  }
+
+  if (conta.origem_tipo === 'despesa') {
+    const fornecedor = norm(conta.fornecedor);
+    if (fornecedor && fornecedor.length >= 4 && texto.includes(fornecedor)) return -40;
+    // tenta palavras significativas do fornecedor
+    const partes = fornecedor.split(/\s+/).filter(p => p.length >= 5);
+    if (partes.some(p => texto.includes(p))) return -25;
+    return 0;
+  }
+
+  return 0;
+}
+
+/**
  * Dado um débito do extrato bancário, procura o item de conta a pagar compatível.
- * Match por valor (±0.50) + data_vencimento próxima (±15 dias).
- * Usa scoring: prioriza match de data exata, depois menor diferença de valor/data.
+ * Match por valor (±0.50) + data_vencimento próxima (±15 dias) + afinidade textual por tipo.
+ * Cartão e folha aceitam janela maior (±20 dias) pois costumam variar de data.
  */
 export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias = 15, toleranciaValor = 0.5) {
   const valor = Math.abs(lanc.valor);
@@ -117,11 +173,14 @@ export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias =
     .map(c => {
       if (Math.abs(c.valor - valor) > toleranciaValor) return null;
       if (!c.data_vencimento) return null;
+      // Folha e cartão podem ter variação maior de data
+      const janela = (c.origem_tipo === 'folha' || c.origem_tipo === 'fatura') ? 20 : toleranciaDias;
       const diffDias = Math.abs((new Date(c.data_vencimento) - dataLanc) / 86400000);
-      if (diffDias > toleranciaDias) return null;
+      if (diffDias > janela) return null;
       const diffValor = Math.abs(c.valor - valor);
-      // score: menor é melhor. Prioriza data exata + valor exato.
-      const score = diffDias * 10 + diffValor;
+      const bonus = bonusAfinidade(lanc, c);
+      // score: menor é melhor. Afinidade textual reduz drasticamente o score.
+      const score = diffDias * 10 + diffValor + bonus;
       return { item: c, score };
     })
     .filter(Boolean)

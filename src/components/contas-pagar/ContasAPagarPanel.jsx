@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Wallet, Landmark, Users, CreditCard, AlertTriangle, CheckCircle, Calendar, ArrowRight, Zap } from 'lucide-react';
+import { Wallet, Landmark, Users, CreditCard, AlertTriangle, CheckCircle, Calendar, ArrowRight, Zap, Link2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import { consolidarContasPagar, calcularAging, executarBaixaAutomatica } from '../../lib/contasPagarEngine';
 
@@ -30,6 +30,7 @@ export default function ContasAPagarPanel() {
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [] });
+  const [vinculos, setVinculos] = useState([]);
 
   async function executarBaixa() {
     if (conciliando) return;
@@ -48,14 +49,16 @@ export default function ContasAPagarPanel() {
 
   async function load() {
     setLoading(true);
-    const [despesas, tributos, folhas, faturas, cartoes] = await Promise.all([
+    const [despesas, tributos, folhas, faturas, cartoes, vincs] = await Promise.all([
       base44.entities.DespesaOperacional.list('-data_vencimento', 500),
       base44.entities.Tributo.list('-data_vencimento', 200),
       base44.entities.FolhaPagamento.list('-competencia', 500),
       base44.entities.FaturaCartao.list('-data_vencimento', 200),
       base44.entities.ContaCartao.filter({ is_ativo: true }),
+      base44.entities.VinculoExtrato.list('-created_date', 5000),
     ]);
     setDados({ despesas, tributos, folhas, faturas, cartoes });
+    setVinculos(vincs);
     setLoading(false);
   }
   useEffect(() => {
@@ -88,6 +91,14 @@ export default function ContasAPagarPanel() {
   }, [itensRaw, filtroOrigem, filtroEmpresa]);
 
   const aging = useMemo(() => calcularAging(itens), [itens]);
+
+  // Set de itens já conciliados (têm VinculoExtrato apontando)
+  const conciliadosSet = useMemo(() => {
+    const m = { despesa: 'DespesaOperacional', tributo: 'Tributo', folha: 'FolhaPagamento', fatura: 'FaturaCartao' };
+    const s = new Set();
+    vinculos.forEach(v => s.add(`${v.entidade_tipo}-${v.entidade_id}`));
+    return { has: (item) => s.has(`${m[item.origem_tipo]}-${item.origem_id}`) };
+  }, [vinculos]);
 
   const total = itens.reduce((a, i) => a + (i.valor || 0), 0);
   const totalVencido = aging.vencidos.reduce((a, i) => a + (i.valor || 0), 0);
@@ -218,6 +229,7 @@ export default function ContasAPagarPanel() {
                     <th className="text-left px-3 py-1.5 font-semibold">Fornecedor</th>
                     <th className="text-left px-3 py-1.5 font-semibold">Empresa</th>
                     <th className="text-right px-3 py-1.5 font-semibold">Valor</th>
+                    <th className="text-center px-3 py-1.5 font-semibold">Extrato</th>
                     <th className="text-center px-3 py-1.5 font-semibold">Ver</th>
                   </tr>
                 </thead>
@@ -239,6 +251,17 @@ export default function ContasAPagarPanel() {
                         <td className="px-3 py-1.5 text-muted-foreground max-w-[180px] truncate">{i.fornecedor}</td>
                         <td className="px-3 py-1.5 text-muted-foreground">{i.empresa || '—'}</td>
                         <td className="px-3 py-1.5 text-right font-bold tabular-nums text-rose-600">{formatCurrency(i.valor)}</td>
+                        <td className="px-3 py-1.5 text-center">
+                          {conciliadosSet.has(i) ? (
+                            <span title="Vinculado a um lançamento do extrato" className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">
+                              <Link2 className="w-3 h-3" /> OK
+                            </span>
+                          ) : (
+                            <span title="Sem vínculo com extrato" className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                              <AlertTriangle className="w-3 h-3" /> Pendente
+                            </span>
+                          )}
+                        </td>
                         <td className="px-3 py-1.5 text-center">
                           <Link to={cfg.href}>
                             <Button variant="ghost" size="sm" className="h-6 w-6 p-0"><ArrowRight className="w-3 h-3" /></Button>
