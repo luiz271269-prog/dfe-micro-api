@@ -13,7 +13,7 @@ const navItems = [
   { path: '/extrato', label: 'Extrato Bancário', icon: Landmark },
   { path: '/faturamento', label: 'Faturamento', icon: FileText },
   { path: '/cobrancas', label: 'Cobranças Sicredi', icon: Receipt },
-  { path: '/compras', label: 'Compras', icon: ShoppingCart },
+  { path: '/compras', label: 'Compras & Despesas', icon: ShoppingCart },
   { path: '/obras', label: 'Obras e Reformas', icon: Hammer },
   { path: '/cartoes', label: 'Cartões de Crédito', icon: CreditCard },
   { path: '/tributos', label: 'Tributos', icon: DollarSign },
@@ -32,7 +32,6 @@ const navItems = [
   { path: '/simulacao-custo', label: 'Simulação de Custo', icon: Calculator },
   { path: '/produtos', label: 'Produtos & Fornecedores', icon: Package },
   { path: '/cruzamento-compras', label: 'Compras × Pagamentos', icon: GitCompare },
-  { path: '/despesas', label: 'Despesas Operacionais', icon: Wallet },
   { path: '/recorrentes', label: 'Despesas Recorrentes', icon: Repeat },
   { path: '/auditoria', label: 'Auditoria de Arquivos', icon: FolderOpen },
 ];
