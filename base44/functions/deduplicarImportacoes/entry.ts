@@ -2,8 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-// Deduplica registros mantendo o mais antigo
-function dedup(records, keyFn) {
+// Deduplica registros mantendo o mais antigo.
+// Se preferKeepFn for fornecido, mantém o registro que ele indicar como "melhor" (mais completo).
+function dedup(records, keyFn, preferKeepFn) {
   const seen = new Map();
   const toDelete = [];
   const sorted = [...records].sort((a, b) => (a.created_date || '').localeCompare(b.created_date || ''));
@@ -11,12 +12,29 @@ function dedup(records, keyFn) {
     const key = keyFn(r);
     if (!key) continue;
     if (seen.has(key)) {
-      toDelete.push(r.id);
+      const prev = seen.get(key);
+      if (preferKeepFn && preferKeepFn(r, prev.record) > 0) {
+        // r é melhor → descarta o anterior, mantém r
+        toDelete.push(prev.id);
+        seen.set(key, { id: r.id, record: r });
+      } else {
+        toDelete.push(r.id);
+      }
     } else {
-      seen.set(key, r.id);
+      seen.set(key, { id: r.id, record: r });
     }
   }
   return toDelete;
+}
+
+// Score de completude para NotaFiscal: prioriza registros com vendedor real, canal e status preenchidos
+function scoreNotaFiscal(r) {
+  let s = 0;
+  if (r.vendedor && r.vendedor !== 'Fat.Direto' && r.vendedor !== 'Fat. Direto') s += 10;
+  if (r.canal_cobranca) s += 5;
+  if (r.data_vencimento_proxima) s += 3;
+  if (r.status && r.status !== 'aberto') s += 2;
+  return s;
 }
 
 // Deleta IDs em lotes pequenos com delay e retry para evitar rate limit
@@ -48,7 +66,13 @@ async function deleteWithThrottle(entityClient, ids) {
 const ENTITIES_CONFIG = [
   {
     name: 'NotaFiscal',
-    keyFn: r => r.tipo && r.numero ? `${r.tipo}|${String(r.numero).trim()}` : null,
+    // Normaliza tipo: NFe ≡ NF (ambos são nota fiscal)
+    keyFn: r => {
+      if (!r.numero) return null;
+      const tipoNorm = (r.tipo === 'NFe' || r.tipo === 'NF') ? 'NF' : (r.tipo || '');
+      return `${tipoNorm}|${String(r.numero).trim()}`;
+    },
+    preferKeepFn: (a, b) => scoreNotaFiscal(a) - scoreNotaFiscal(b),
   },
   {
     name: 'LancamentoBancario',
@@ -133,7 +157,7 @@ Deno.serve(async (req) => {
       try {
         const records = await svc[cfg.name].list('-created_date', 10000);
         await sleep(300);
-        const dups = dedup(records, cfg.keyFn);
+        const dups = dedup(records, cfg.keyFn, cfg.preferKeepFn);
         results[cfg.name] = await deleteWithThrottle(svc[cfg.name], dups);
         await sleep(400);
       } catch (e) {
