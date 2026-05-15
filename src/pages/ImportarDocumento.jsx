@@ -176,7 +176,22 @@ REGRAS CRÍTICAS:
 
 14. seu_numero da cobrança = "NF-XXX" ou "CI-XXXXXX" (com hífen, conforme tipo).
 
-15. CONFERÊNCIA FINAL: o relatório possui rodapé com totais ("Faturado", "Recebido", "Aberto"). Sua extração deve bater com esses totais (tolerância R$ 1,00). Se não bater, revise antes de retornar.`,
+15. CONFERÊNCIA FINAL: o relatório possui rodapé com totais ("Faturado", "Recebido", "Aberto"). Sua extração deve bater com esses totais (tolerância R$ 1,00). Se não bater, revise antes de retornar.
+
+16. ⚠️ IGNORAR COMPLETAMENTE O RODAPÉ — REGRA CRÍTICA:
+    Após a última linha de parcela do último documento, o PDF contém um BLOCO DE TOTAIS E RESUMOS que NÃO deve gerar registros. Identifique e PARE de extrair quando encontrar QUALQUER uma destas palavras-chave/padrões:
+    - "Saldo Ant.", "Saldo Atual", "Totais", "Recebido", "Aberto", "Faturado"
+    - "Notas", "C.I." (em linhas de totalização, isoladas com valores)
+    - "04-Liesch", "06-NeuralTec" (linhas de resumo por empresa)
+    - "Carteira", "LISTO-Credito", "SICREDI-NeuralTec" (linhas de resumo por canal de cobrança, com valores totalizados)
+    - Tabela com colunas "F | J | Total de CI | Total de NF | Total"
+    
+    Essas linhas contêm apenas SOMATÓRIOS — não são NFs nem cobranças individuais. NÃO crie registros a partir delas.
+
+17. ⚠️ DESCARTAR PARCELAS ÓRFÃS — REGRA CRÍTICA:
+    Toda parcela (linha indentada tipo "180/1", "100084/2") DEVE ter um cabeçalho NF-XXX ou CI-XXXXXX EXPLÍCITO acima dela na mesma página ou na imediatamente anterior.
+    Se encontrar uma linha que parece ser parcela mas NÃO consegue identificar com certeza o número da NF/CI pai (formato "NF- XXX" ou "CI- XXXXXX"), DESCARTE essa linha. NÃO invente número, NÃO crie cobrança sem seu_numero válido.
+    Toda TituloCobranca retornada DEVE ter: nosso_numero (preenchido), seu_numero (NF-XXX ou CI-XXXXXX), cliente (não vazio), valor_titulo > 0.`,
 
   compras_fornecedor: `Analise este relatório de compras e extraia todos os itens em JSON.
 Retorne APENAS array JSON:
