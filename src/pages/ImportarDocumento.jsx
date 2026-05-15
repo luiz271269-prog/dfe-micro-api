@@ -394,10 +394,13 @@ export default function ImportarDocumento() {
         // 2. Extrair com InvokeLLM nativo Base44 — injeta data atual no prompt
         const hojeISO = new Date().toISOString().split('T')[0];
         const promptComContexto = PROMPTS[selectedType].replace(/\{\{HOJE\}\}/g, hojeISO) + `\n\nDATA DE REFERÊNCIA (hoje): ${hojeISO}`;
+        // Modelo: relatorio_vendas_detalhado exige raciocínio robusto (17 regras + cabeçalho+parcelas)
+        // → usa claude_sonnet_4_6. Demais tipos usam gemini_3_flash (rápido e barato).
+        const modeloIA = selectedType === 'relatorio_vendas_detalhado' ? 'claude_sonnet_4_6' : 'gemini_3_flash';
         const result = await InvokeLLM({
           prompt: promptComContexto,
           file_urls: [file_url],
-          model: 'gemini_3_flash',
+          model: modeloIA,
         });
 
         rawStr = typeof result === 'string' ? result.trim() : JSON.stringify(result);
