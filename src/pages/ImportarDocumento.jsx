@@ -8,6 +8,7 @@ import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplication
 import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
+import TabelaRevisaoVendasDetalhado from '../components/importar/TabelaRevisaoVendasDetalhado';
 
 const DOC_TYPES = [
   { id: 'extrato_bancario',   label: 'Extrato Bancário Sicredi',  icon: Landmark,     color: 'blue',   entity: 'LancamentoBancario', dedup: ['data','valor'] },
@@ -1021,38 +1022,42 @@ export default function ImportarDocumento() {
               </Button>
             </div>
           </div>
-          <div className="bg-card rounded-xl border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="px-3 py-2 w-8">
-                      <input type="checkbox" checked={records.every(r => r.selected)}
-                        onChange={e => setRecords(r => r.map(rec => ({ ...rec, selected: e.target.checked })))} />
-                    </th>
-                    <th className="px-2 py-2 text-left font-semibold text-muted-foreground w-24">Status</th>
-                    {recordKeys.map(k => <th key={k} className="px-2 py-2 text-left font-semibold text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((rec, i) => (
-                    <tr key={i} className={`border-b transition-colors ${rec.selected ? 'bg-card' : 'bg-muted/20 opacity-60'} hover:bg-muted/30`}>
-                      <td className="px-3 py-2">
-                        <input type="checkbox" checked={rec.selected}
-                          onChange={e => setRecords(r => r.map((x, j) => j === i ? { ...x, selected: e.target.checked } : x))} />
-                      </td>
-                      <td className="px-2 py-2"><StatusBadge status={rec.status} /></td>
-                      {recordKeys.map(k => (
-                        <td key={k} className="px-2 py-2 max-w-[180px]">
-                          <FieldValue value={rec.data[k]} />
-                        </td>
-                      ))}
+          {selectedType === 'relatorio_vendas_detalhado' ? (
+            <TabelaRevisaoVendasDetalhado records={records} setRecords={setRecords} />
+          ) : (
+            <div className="bg-card rounded-xl border overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="px-3 py-2 w-8">
+                        <input type="checkbox" checked={records.every(r => r.selected)}
+                          onChange={e => setRecords(r => r.map(rec => ({ ...rec, selected: e.target.checked })))} />
+                      </th>
+                      <th className="px-2 py-2 text-left font-semibold text-muted-foreground w-24">Status</th>
+                      {recordKeys.map(k => <th key={k} className="px-2 py-2 text-left font-semibold text-muted-foreground capitalize">{k.replace(/_/g, ' ')}</th>)}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {records.map((rec, i) => (
+                      <tr key={i} className={`border-b transition-colors ${rec.selected ? 'bg-card' : 'bg-muted/20 opacity-60'} hover:bg-muted/30`}>
+                        <td className="px-3 py-2">
+                          <input type="checkbox" checked={rec.selected}
+                            onChange={e => setRecords(r => r.map((x, j) => j === i ? { ...x, selected: e.target.checked } : x))} />
+                        </td>
+                        <td className="px-2 py-2"><StatusBadge status={rec.status} /></td>
+                        {recordKeys.map(k => (
+                          <td key={k} className="px-2 py-2 max-w-[180px]">
+                            <FieldValue value={rec.data[k]} />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
