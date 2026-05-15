@@ -36,10 +36,13 @@ function chavesNome(nomeCompleto) {
 }
 
 function competenciaParaJanela(competencia) {
-  // Janela: dia 20 do mês de competência até dia 20 do mês seguinte (cobre 5º dia útil + comissão dia 10+)
+  // Janela ampla: do dia 15 do mês de competência até o último dia do mês seguinte.
+  // Cobre: adiantamento (fim do mês de competência) + salário (5º dia útil do mês seguinte)
+  // + comissão (dia 10+ do mês seguinte) + atrasos até fim do mês seguinte.
+  // Ex: competência abr → janela 15/abr → 31/mai.
   const [ano, mes] = competencia.split('-').map(Number);
-  const inicio = new Date(ano, mes - 1, 20);
-  const fim = new Date(ano, mes, 20);
+  const inicio = new Date(ano, mes - 1, 15);
+  const fim = new Date(ano, mes + 1, 0); // dia 0 do mês+2 = último dia do mês+1
   return { inicio: inicio.toISOString().split('T')[0], fim: fim.toISOString().split('T')[0] };
 }
 
