@@ -1,0 +1,92 @@
+{
+  "name": "NotaFiscal",
+  "type": "object",
+  "properties": {
+    "numero": {
+      "type": "string",
+      "title": "N\u00famero"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "NF",
+        "CI"
+      ],
+      "title": "Tipo"
+    },
+    "data_emissao": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Emiss\u00e3o"
+    },
+    "cliente": {
+      "type": "string",
+      "title": "Cliente"
+    },
+    "vendedor": {
+      "type": "string",
+      "enum": [
+        "Tiago",
+        "Thais",
+        "Fat.Direto"
+      ],
+      "title": "Vendedor"
+    },
+    "valor_total": {
+      "type": "number",
+      "title": "Valor Total"
+    },
+    "valor_recebido": {
+      "type": "number",
+      "title": "Valor Recebido",
+      "default": 0
+    },
+    "valor_aberto": {
+      "type": "number",
+      "title": "Valor em Aberto"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pago",
+        "parcial",
+        "a_vencer",
+        "vencido"
+      ],
+      "title": "Status"
+    },
+    "canal_cobranca": {
+      "type": "string",
+      "enum": [
+        "sicredi",
+        "magalu",
+        "carteira",
+        "fat_direto"
+      ],
+      "title": "Canal de Cobran\u00e7a"
+    },
+    "data_vencimento_proxima": {
+      "type": "string",
+      "format": "date",
+      "title": "Pr\u00f3ximo Vencimento"
+    },
+    "is_espelho_ci": {
+      "type": "boolean",
+      "title": "\u00c9 NF-espelho de um CI (documento fiscal de venda j\u00e1 contabilizada no CI)",
+      "default": false
+    },
+    "ci_referencia": {
+      "type": "string",
+      "title": "N\u00famero do CI referenciado (quando \u00e9 NF-espelho)"
+    }
+  },
+  "required": [
+    "numero",
+    "tipo",
+    "data_emissao",
+    "cliente",
+    "vendedor",
+    "valor_total",
+    "status"
+  ]
+}
