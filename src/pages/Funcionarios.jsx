@@ -179,21 +179,24 @@ export default function Funcionarios() {
     setConciliando(true);
     try {
       const res = await conciliarFolhaExtrato({});
-      const { conciliadas = 0, sem_match = 0, total_pendentes = 0 } = res?.data || {};
+      const { conciliadas = 0, parciais = 0, adiantamentos_detectados = 0, sem_match = 0, total_pendentes = 0 } = res?.data || {};
+      const partes = [];
+      if (conciliadas > 0) partes.push(`✓ ${conciliadas} folha(s) baixada(s)`);
+      if (parciais > 0) partes.push(`⚠️ ${parciais} parcial(is) (aguardando comissão)`);
+      if (adiantamentos_detectados > 0) partes.push(`💰 ${adiantamentos_detectados} adiantamento(s) detectado(s)`);
+      if (sem_match > 0) partes.push(`${sem_match} sem PIX correspondente`);
       setToastFolha({
-        type: conciliadas > 0 ? 'success' : 'info',
-        msg: conciliadas > 0
-          ? `✓ ${conciliadas} folha(s) baixada(s) automaticamente via PIX do extrato${sem_match > 0 ? ` · ${sem_match} sem match` : ''}`
-          : total_pendentes === 0
-            ? 'Nenhuma folha pendente — tudo conciliado!'
-            : `Nenhum PIX correspondente encontrado no extrato (${sem_match} folha(s) pendente(s))`,
+        type: conciliadas > 0 || parciais > 0 ? 'success' : 'info',
+        msg: partes.length > 0
+          ? partes.join(' · ')
+          : total_pendentes === 0 ? 'Nenhuma folha pendente — tudo conciliado!' : 'Nenhum PIX correspondente encontrado no extrato',
       });
       loadData();
     } catch (err) {
       setToastFolha({ type: 'error', msg: `Erro: ${err.message}` });
     }
     setConciliando(false);
-    setTimeout(() => setToastFolha(null), 6000);
+    setTimeout(() => setToastFolha(null), 8000);
   }
 
   async function loadData() {
