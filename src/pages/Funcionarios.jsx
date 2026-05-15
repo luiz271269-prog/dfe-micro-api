@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock } from 'lucide-react';
+import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
 
 const SETORES = ['vendas', 'assistencia', 'financeiro', 'compras', 'administrativo', 'telemarketing'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -171,6 +172,29 @@ export default function Funcionarios() {
     desconto_vt: '0', desconto_vr: '0', outros_descontos: '0', horas_extras: '0', comissao: '0',
     data_pagamento: '', status: 'pendente', fgts_valor: '0', empresa: 'NeuralTec'
   });
+  const [conciliando, setConciliando] = useState(false);
+  const [toastFolha, setToastFolha] = useState(null);
+
+  async function handleConciliarPIX() {
+    setConciliando(true);
+    try {
+      const res = await conciliarFolhaExtrato({});
+      const { conciliadas = 0, sem_match = 0, total_pendentes = 0 } = res?.data || {};
+      setToastFolha({
+        type: conciliadas > 0 ? 'success' : 'info',
+        msg: conciliadas > 0
+          ? `✓ ${conciliadas} folha(s) baixada(s) automaticamente via PIX do extrato${sem_match > 0 ? ` · ${sem_match} sem match` : ''}`
+          : total_pendentes === 0
+            ? 'Nenhuma folha pendente — tudo conciliado!'
+            : `Nenhum PIX correspondente encontrado no extrato (${sem_match} folha(s) pendente(s))`,
+      });
+      loadData();
+    } catch (err) {
+      setToastFolha({ type: 'error', msg: `Erro: ${err.message}` });
+    }
+    setConciliando(false);
+    setTimeout(() => setToastFolha(null), 6000);
+  }
 
   async function loadData() {
     const [funcs, fols] = await Promise.all([
@@ -292,12 +316,30 @@ export default function Funcionarios() {
           <Button onClick={() => setShowFuncForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Funcionário</Button>
         )}
         {activeTab === 'folha' && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={handleConciliarPIX} disabled={conciliando} className="gap-2">
+              {conciliando ? (
+                <><div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /> Conciliando...</>
+              ) : (
+                <><Sparkles className="w-4 h-4" /> Conciliar PIX do Extrato</>
+              )}
+            </Button>
             <Button variant="outline" onClick={exportar} className="gap-2"><Download className="w-4 h-4" /> Exportar</Button>
             <Button onClick={() => setShowFolhaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Lançar Folha</Button>
           </div>
         )}
       </PageHeader>
+
+      {toastFolha && activeTab === 'folha' && (
+        <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 ${
+          toastFolha.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
+          toastFolha.type === 'info' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+          'bg-green-50 text-green-700 border border-green-200'
+        }`}>
+          {toastFolha.type === 'success' && <CheckCircle2 className="w-4 h-4" />}
+          {toastFolha.msg}
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
