@@ -159,6 +159,7 @@ export default function Funcionarios() {
   const [activeTab, setActiveTab] = useState('funcionarios');
   const [funcionarios, setFuncionarios] = useState([]);
   const [folhas, setFolhas] = useState([]);
+  const [vinculosFolha, setVinculosFolha] = useState({}); // { folhaId: somaAlocada }
   const [loading, setLoading] = useState(true);
   const [showFuncForm, setShowFuncForm] = useState(false);
   const [showFolhaForm, setShowFolhaForm] = useState(false);
@@ -200,12 +201,20 @@ export default function Funcionarios() {
   }
 
   async function loadData() {
-    const [funcs, fols] = await Promise.all([
+    const [funcs, fols, vincs] = await Promise.all([
       base44.entities.Funcionario.list('-data_admissao', 500),
       base44.entities.FolhaPagamento.list('-competencia', 500),
+      base44.entities.VinculoExtrato.filter({ entidade_tipo: 'FolhaPagamento' }, '-created_date', 2000),
     ]);
     setFuncionarios(funcs);
     setFolhas(fols);
+    // Soma valor_alocado por folhaId (exclui adiantamentos para não inflar)
+    const somaPorFolha = {};
+    vincs.forEach(v => {
+      if (v.tipo_vinculo === 'adiantamento') return;
+      somaPorFolha[v.entidade_id] = (somaPorFolha[v.entidade_id] || 0) + (v.valor_alocado || 0);
+    });
+    setVinculosFolha(somaPorFolha);
     setLoading(false);
   }
 
@@ -258,8 +267,12 @@ export default function Funcionarios() {
   const totalBruto   = folhasMes.reduce((s,f)=>s+(f.salario_bruto||0),0);
   const totalLiquido = folhasMes.reduce((s,f)=>s+(f.salario_liquido||0),0);
   const totalComissao= folhasMes.reduce((s,f)=>s+(f.comissao||0),0);
-  const totalPago    = folhasMes.filter(f=>f.status==='pago').reduce((s,f)=>s+(f.salario_liquido||0),0);
-  const totalSaldo   = totalLiquido - totalPago;
+  // Pago = se status='pago' usa líquido total, senão usa soma dos vínculos (parciais)
+  const totalPago = folhasMes.reduce((s,f) => {
+    if (f.status === 'pago') return s + (f.salario_liquido || 0);
+    return s + (vinculosFolha[f.id] || 0);
+  }, 0);
+  const totalSaldo = totalLiquido - totalPago;
 
   // Agrupar funcionários por setor
   const gruposFunc = useMemo(() => {
@@ -461,7 +474,7 @@ export default function Funcionarios() {
                 const setorBruto  = itens.reduce((s,f)=>s+(f.salario_bruto||0),0);
                 const setorLiq    = itens.reduce((s,f)=>s+(f.salario_liquido||0),0);
                 const setorComiss = itens.reduce((s,f)=>s+(f.comissao||0),0);
-                const setorPago   = itens.filter(f=>f.status==='pago').reduce((s,f)=>s+(f.salario_liquido||0),0);
+                const setorPago   = itens.reduce((s,f) => f.status==='pago' ? s+(f.salario_liquido||0) : s+(vinculosFolha[f.id]||0), 0);
                 return (
                   <div key={setor}>
                     <div className="flex items-center gap-2 mb-2">
@@ -486,9 +499,13 @@ export default function Funcionarios() {
                           <tbody>
                             {itens.map(f => {
                               const desc = (f.desconto_inss||0)+(f.desconto_irrf||0)+(f.desconto_vt||0)+(f.desconto_vr||0)+(f.outros_descontos||0);
-                              const pago = f.status === 'pago' ? f.salario_liquido : 0;
+                              const pagoVinculos = vinculosFolha[f.id] || 0;
+                              const pago = f.status === 'pago' ? f.salario_liquido : pagoVinculos;
                               const saldo = (f.salario_liquido||0) - pago;
-                              const sc2 = FOLHA_STATUS[f.status] || FOLHA_STATUS.pendente;
+                              const isParcial = f.status !== 'pago' && pagoVinculos > 0;
+                              const sc2 = isParcial
+                                ? { label: 'Parcial', color: 'bg-yellow-100 text-yellow-700' }
+                                : (FOLHA_STATUS[f.status] || FOLHA_STATUS.pendente);
                               return (
                                 <tr key={f.id} className="border-b hover:bg-muted/20 transition-colors">
                                   <td className="px-4 py-2.5 font-semibold">{f.funcionario_nome}</td>
