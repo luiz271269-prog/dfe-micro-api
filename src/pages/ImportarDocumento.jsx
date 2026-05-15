@@ -346,44 +346,48 @@ export default function ImportarDocumento() {
       console.log('[CACHE] Batches anteriores deste tipo:', todosBatchesDoTipo?.length || 0);
 
       // Match 1: hash idêntico (mesmo arquivo byte-a-byte)
-      const hitHash = todosBatchesDoTipo?.find(b => b.file_hash === hashCalculado && b.ai_extraction);
-      if (hitHash) {
-        rawStr = hitHash.ai_extraction;
-        cacheSource = 'hash-exato';
-        console.log('[CACHE] ✓ HIT por hash exato — batch:', hitHash.id);
-      }
+      let hitBatch = todosBatchesDoTipo?.find(b => b.file_hash === hashCalculado && b.ai_extraction);
+      if (hitBatch) { cacheSource = 'hash-exato'; console.log('[CACHE] ✓ HIT por hash exato — batch:', hitBatch.id); }
 
-      // Match 2: mesmo nome de arquivo + tamanho próximo (±5%) — captura "mesmo relatório, mesma data"
-      if (!rawStr && file?.name) {
+      // Match 2: mesmo nome de arquivo
+      if (!hitBatch && file?.name) {
         const nomeAlvo = file.name.toLowerCase().trim();
-        const tamAlvo = file.size;
-        const hitNome = todosBatchesDoTipo?.find(b => {
+        hitBatch = todosBatchesDoTipo?.find(b => {
           if (!b.ai_extraction || !b.file_name) return false;
           if (b.file_name.toLowerCase().trim() !== nomeAlvo) return false;
-          // Se há hash registrado e é diferente, pula (arquivo diferente apesar do nome igual)
           if (b.file_hash && b.file_hash !== hashCalculado) return false;
           return true;
         });
-        if (hitNome) {
-          rawStr = hitNome.ai_extraction;
-          cacheSource = 'nome-arquivo';
-          console.log('[CACHE] ✓ HIT por nome de arquivo — batch:', hitNome.id);
+        if (hitBatch) { cacheSource = 'nome-arquivo'; console.log('[CACHE] ✓ HIT por nome de arquivo — batch:', hitBatch.id); }
+      }
+
+      if (hitBatch) {
+        // ai_extraction pode ser: (a) o JSON inline (legado) ou (b) uma URL para o JSON salvo no storage
+        const ext = hitBatch.ai_extraction;
+        if (ext.startsWith('http')) {
+          // Baixa o JSON salvo no storage
+          try {
+            const resp = await fetch(ext);
+            rawStr = await resp.text();
+          } catch (e) {
+            console.warn('[CACHE] Falha ao baixar extração do storage, vai reprocessar:', e);
+          }
+        } else {
+          rawStr = ext;
+        }
+        if (rawStr) {
+          try {
+            const parsed = JSON.parse(hitBatch.notes || '{}');
+            cachedFileUrl = parsed.file_url || (hitBatch.notes?.startsWith('http') ? hitBatch.notes : null);
+          } catch {
+            cachedFileUrl = hitBatch.notes?.startsWith('http') ? hitBatch.notes : null;
+          }
+          showToast(`✓ Cache acionado (${cacheSource}) — reusando extração anterior sem chamar IA.`, 'success');
+          if (cachedFileUrl) setFileUrl(cachedFileUrl);
         }
       }
 
-      if (rawStr) {
-        // recupera file_url do notes
-        const hit = hitHash || todosBatchesDoTipo?.find(b => b.ai_extraction === rawStr);
-        try {
-          const parsed = JSON.parse(hit?.notes || '{}');
-          cachedFileUrl = parsed.file_url || (hit?.notes?.startsWith('http') ? hit.notes : null);
-        } catch {
-          cachedFileUrl = hit?.notes?.startsWith('http') ? hit.notes : null;
-        }
-        // CACHE HIT — pula upload e IA
-        showToast(`✓ Cache acionado (${cacheSource}) — reusando extração anterior sem chamar IA.`, 'success');
-        if (cachedFileUrl) setFileUrl(cachedFileUrl);
-      } else {
+      if (!rawStr) {
         console.log('[CACHE] ✗ MISS — nenhum batch anterior com mesmo arquivo. Processando com IA...');
         // 1. Upload via integração nativa Base44
         setProcessingStage('upload');
@@ -630,12 +634,25 @@ export default function ImportarDocumento() {
       });
     }
 
+    // Salvar extração da IA como arquivo no storage (evita estourar limite do campo)
+    let aiExtractionUrl = '';
+    if (rawText) {
+      try {
+        const jsonBlob = new Blob([rawText], { type: 'application/json' });
+        const jsonFile = new File([jsonBlob], `extracao_${selectedType}_${Date.now()}.json`, { type: 'application/json' });
+        const { file_url: jsonUrl } = await UploadFile({ file: jsonFile });
+        aiExtractionUrl = jsonUrl;
+      } catch (e) {
+        console.warn('Falha ao salvar extração no storage:', e);
+      }
+    }
+
     await base44.entities.ImportBatch.create({
       title: `${typeConfig?.label} — ${file?.name || 'arquivo'}`,
       batch_type: selectedType,
       file_name: file?.name || '',
       file_hash: fileHash || '',
-      ai_extraction: rawText || '',
+      ai_extraction: aiExtractionUrl,
       total_records: records.length,
       success_count: saved,
       duplicate_count: dupes,
