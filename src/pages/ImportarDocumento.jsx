@@ -372,7 +372,7 @@ export default function ImportarDocumento() {
         const result = await InvokeLLM({
           prompt: promptComContexto,
           file_urls: [file_url],
-          model: 'claude_sonnet_4_6',
+          model: 'gemini_3_flash',
         });
 
         rawStr = typeof result === 'string' ? result.trim() : JSON.stringify(result);
