@@ -330,36 +330,61 @@ export default function ImportarDocumento() {
     setRawText(null);
     setFileUrl(null);
     try {
-      // 0. Calcular hash SHA-256 do arquivo para checar cache
-      const fileHash = await sha256OfFile(file);
+      // 0. Calcular hash SHA-256 do arquivo (cache exato)
+      const hashCalculado = await sha256OfFile(file);
+      console.log('[CACHE] Hash do arquivo:', hashCalculado.substring(0, 16) + '...', 'tipo:', selectedType);
 
-      // 0.1 Buscar extração anterior do MESMO arquivo + MESMO tipo
+      // 0.1 Buscar extração anterior — busca AMPLA (todos batches concluídos do mesmo tipo) para garantir match
       let rawStr = null;
       let cachedFileUrl = null;
-      try {
-        const cached = await base44.entities.ImportBatch.filter({
-          file_hash: fileHash,
-          batch_type: selectedType,
-          status: 'completed',
+      let cacheSource = null;
+
+      const todosBatchesDoTipo = await base44.entities.ImportBatch.filter({
+        batch_type: selectedType,
+        status: 'completed',
+      });
+      console.log('[CACHE] Batches anteriores deste tipo:', todosBatchesDoTipo?.length || 0);
+
+      // Match 1: hash idêntico (mesmo arquivo byte-a-byte)
+      const hitHash = todosBatchesDoTipo?.find(b => b.file_hash === hashCalculado && b.ai_extraction);
+      if (hitHash) {
+        rawStr = hitHash.ai_extraction;
+        cacheSource = 'hash-exato';
+        console.log('[CACHE] ✓ HIT por hash exato — batch:', hitHash.id);
+      }
+
+      // Match 2: mesmo nome de arquivo + tamanho próximo (±5%) — captura "mesmo relatório, mesma data"
+      if (!rawStr && file?.name) {
+        const nomeAlvo = file.name.toLowerCase().trim();
+        const tamAlvo = file.size;
+        const hitNome = todosBatchesDoTipo?.find(b => {
+          if (!b.ai_extraction || !b.file_name) return false;
+          if (b.file_name.toLowerCase().trim() !== nomeAlvo) return false;
+          // Se há hash registrado e é diferente, pula (arquivo diferente apesar do nome igual)
+          if (b.file_hash && b.file_hash !== hashCalculado) return false;
+          return true;
         });
-        const hit = cached?.find(c => c.ai_extraction);
-        if (hit) {
-          rawStr = hit.ai_extraction;
-          // recupera file_url do notes (se houver)
-          try {
-            const parsed = JSON.parse(hit.notes || '{}');
-            cachedFileUrl = parsed.file_url || (hit.notes?.startsWith('http') ? hit.notes : null);
-          } catch {
-            cachedFileUrl = hit.notes?.startsWith('http') ? hit.notes : null;
-          }
+        if (hitNome) {
+          rawStr = hitNome.ai_extraction;
+          cacheSource = 'nome-arquivo';
+          console.log('[CACHE] ✓ HIT por nome de arquivo — batch:', hitNome.id);
         }
-      } catch { /* sem cache, segue fluxo normal */ }
+      }
 
       if (rawStr) {
+        // recupera file_url do notes
+        const hit = hitHash || todosBatchesDoTipo?.find(b => b.ai_extraction === rawStr);
+        try {
+          const parsed = JSON.parse(hit?.notes || '{}');
+          cachedFileUrl = parsed.file_url || (hit?.notes?.startsWith('http') ? hit.notes : null);
+        } catch {
+          cachedFileUrl = hit?.notes?.startsWith('http') ? hit.notes : null;
+        }
         // CACHE HIT — pula upload e IA
-        showToast('✓ Arquivo já processado anteriormente — reusando extração (sem custo de IA).', 'success');
+        showToast(`✓ Cache acionado (${cacheSource}) — reusando extração anterior sem chamar IA.`, 'success');
         if (cachedFileUrl) setFileUrl(cachedFileUrl);
       } else {
+        console.log('[CACHE] ✗ MISS — nenhum batch anterior com mesmo arquivo. Processando com IA...');
         // 1. Upload via integração nativa Base44
         setProcessingStage('upload');
         const { file_url } = await UploadFile({ file });
@@ -377,7 +402,7 @@ export default function ImportarDocumento() {
 
         rawStr = typeof result === 'string' ? result.trim() : JSON.stringify(result);
       }
-      setFileHash(fileHash);
+      setFileHash(hashCalculado);
       setRawText(rawStr);
 
       // 3. Parse robusto
