@@ -14,6 +14,14 @@
       "type": "string",
       "title": "Nome do Arquivo"
     },
+    "file_hash": {
+      "type": "string",
+      "title": "Hash SHA-256 do arquivo (cache de extra\u00e7\u00e3o)"
+    },
+    "ai_extraction": {
+      "type": "string",
+      "title": "JSON bruto da extra\u00e7\u00e3o IA (cache)"
+    },
     "total_records": {
       "type": "number",
       "title": "Total de Registros",

@@ -230,6 +230,12 @@ function StatusBadge({ status }) {
   return <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${map[status] || 'bg-slate-100 text-slate-600'}`}>{labels[status] || status}</span>;
 }
 
+async function sha256OfFile(file) {
+  const buf = await file.arrayBuffer();
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 function FieldValue({ value }) {
   if (value === null || value === undefined) return <span className="text-muted-foreground">—</span>;
   if (typeof value === 'number') return <span className="tabular-nums">{Math.abs(value) > 100 ? formatCurrency(value) : value}</span>;
@@ -257,6 +263,7 @@ export default function ImportarDocumento() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [lastImports, setLastImports] = useState({});
   const [fileUrl, setFileUrl] = useState(null);
+  const [fileHash, setFileHash] = useState(null);
   const [step, setStep] = useState(1);
   const fileInputRef = useRef();
   const queryClient = useQueryClient();
@@ -318,26 +325,59 @@ export default function ImportarDocumento() {
     if (!selectedType || !file) return showToast('Selecione o tipo de documento e faça upload do arquivo.', 'error');
     // selectedCartaoId é opcional para fatura_cartao — a IA tentará identificar automaticamente
     setProcessing(true);
-    setProcessingStage('upload');
+    setProcessingStage('hash');
     setRecords([]);
     setRawText(null);
     setFileUrl(null);
     try {
-      // 1. Upload via integração nativa Base44
-      const { file_url } = await UploadFile({ file });
-      setFileUrl(file_url);
-      setProcessingStage('ai');
+      // 0. Calcular hash SHA-256 do arquivo para checar cache
+      const fileHash = await sha256OfFile(file);
 
-      // 2. Extrair com InvokeLLM nativo Base44 — injeta data atual no prompt
-      const hojeISO = new Date().toISOString().split('T')[0];
-      const promptComContexto = PROMPTS[selectedType].replace(/\{\{HOJE\}\}/g, hojeISO) + `\n\nDATA DE REFERÊNCIA (hoje): ${hojeISO}`;
-      const result = await InvokeLLM({
-        prompt: promptComContexto,
-        file_urls: [file_url],
-        model: 'claude_sonnet_4_6',
-      });
+      // 0.1 Buscar extração anterior do MESMO arquivo + MESMO tipo
+      let rawStr = null;
+      let cachedFileUrl = null;
+      try {
+        const cached = await base44.entities.ImportBatch.filter({
+          file_hash: fileHash,
+          batch_type: selectedType,
+          status: 'completed',
+        });
+        const hit = cached?.find(c => c.ai_extraction);
+        if (hit) {
+          rawStr = hit.ai_extraction;
+          // recupera file_url do notes (se houver)
+          try {
+            const parsed = JSON.parse(hit.notes || '{}');
+            cachedFileUrl = parsed.file_url || (hit.notes?.startsWith('http') ? hit.notes : null);
+          } catch {
+            cachedFileUrl = hit.notes?.startsWith('http') ? hit.notes : null;
+          }
+        }
+      } catch { /* sem cache, segue fluxo normal */ }
 
-      const rawStr = typeof result === 'string' ? result.trim() : JSON.stringify(result);
+      if (rawStr) {
+        // CACHE HIT — pula upload e IA
+        showToast('✓ Arquivo já processado anteriormente — reusando extração (sem custo de IA).', 'success');
+        if (cachedFileUrl) setFileUrl(cachedFileUrl);
+      } else {
+        // 1. Upload via integração nativa Base44
+        setProcessingStage('upload');
+        const { file_url } = await UploadFile({ file });
+        setFileUrl(file_url);
+        setProcessingStage('ai');
+
+        // 2. Extrair com InvokeLLM nativo Base44 — injeta data atual no prompt
+        const hojeISO = new Date().toISOString().split('T')[0];
+        const promptComContexto = PROMPTS[selectedType].replace(/\{\{HOJE\}\}/g, hojeISO) + `\n\nDATA DE REFERÊNCIA (hoje): ${hojeISO}`;
+        const result = await InvokeLLM({
+          prompt: promptComContexto,
+          file_urls: [file_url],
+          model: 'claude_sonnet_4_6',
+        });
+
+        rawStr = typeof result === 'string' ? result.trim() : JSON.stringify(result);
+      }
+      setFileHash(fileHash);
       setRawText(rawStr);
 
       // 3. Parse robusto
@@ -566,6 +606,8 @@ export default function ImportarDocumento() {
       title: `${typeConfig?.label} — ${file?.name || 'arquivo'}`,
       batch_type: selectedType,
       file_name: file?.name || '',
+      file_hash: fileHash || '',
+      ai_extraction: rawText || '',
       total_records: records.length,
       success_count: saved,
       duplicate_count: dupes,
@@ -607,6 +649,7 @@ export default function ImportarDocumento() {
     setSelectedType(preselected || null);
     setFile(null);
     setFileUrl(null);
+    setFileHash(null);
     setRecords([]); setRawText(null); setStep(1);
   }
 
@@ -767,7 +810,7 @@ export default function ImportarDocumento() {
               <Button onClick={processWithAI} disabled={processing} className="w-full mt-4 gap-2 h-11">
                 {processing ? (
                   <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {processingStage === 'upload' ? 'Enviando arquivo...' : 'Analisando com IA (pode levar ~30s)...'}
+                    {processingStage === 'hash' ? 'Verificando cache...' : processingStage === 'upload' ? 'Enviando arquivo...' : 'Analisando com IA (pode levar ~30s)...'}
                   </>
                 ) : <>✨ Processar com IA</>}
               </Button>
