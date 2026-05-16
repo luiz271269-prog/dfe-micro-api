@@ -3,12 +3,14 @@ import { base44 } from '@/api/base44Client';
 import { Sparkles, Check, X, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import ResolverManualDialog from './ResolverManualDialog';
 
 export default function SugestoesConciliacaoBanner() {
   const [sugestoes, setSugestoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [processandoId, setProcessandoId] = useState(null);
+  const [resolverManual, setResolverManual] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -60,14 +62,9 @@ export default function SugestoesConciliacaoBanner() {
     setProcessandoId(null);
   }
 
-  async function rejeitar(s) {
-    setProcessandoId(s.id);
-    try {
-      await base44.entities.SugestaoConciliacao.update(s.id, { status: 'rejeitada', resolvida_em: new Date().toISOString() });
-    } catch (err) {
-      alert(`Erro: ${err.message}`);
-    }
-    setProcessandoId(null);
+  // Rejeitar agora abre o diálogo para o usuário escolher a conta correta
+  function rejeitar(s) {
+    setResolverManual(s);
   }
 
   if (loading || sugestoes.length === 0) return null;
@@ -129,12 +126,18 @@ export default function SugestoesConciliacaoBanner() {
                 disabled={processandoId === s.id}
                 className="gap-1 h-8 border-red-300 text-red-700 hover:bg-red-50"
               >
-                <X className="w-3.5 h-3.5" /> Rejeitar
+                <X className="w-3.5 h-3.5" /> Não é essa
               </Button>
             </div>
           </div>
         ))}
       </div>
+
+      <ResolverManualDialog
+        sugestao={resolverManual}
+        onClose={() => setResolverManual(null)}
+        onResolved={() => { setResolverManual(null); window.dispatchEvent(new Event('neuralfinRefresh')); }}
+      />
     </div>
   );
 }
