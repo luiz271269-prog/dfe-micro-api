@@ -1,0 +1,90 @@
+{
+  "name": "SugestaoConciliacao",
+  "type": "object",
+  "description": "Fila de sugest\u00f5es de concilia\u00e7\u00e3o autom\u00e1tica (m\u00e9dia confian\u00e7a) aguardando confirma\u00e7\u00e3o do usu\u00e1rio. Quando confirmada, vira VinculoExtrato + baixa da entidade origem. Quando rejeitada, fica marcada como descartada para n\u00e3o reaparecer.",
+  "properties": {
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario sugerido"
+    },
+    "entidade_tipo": {
+      "type": "string",
+      "enum": [
+        "DespesaOperacional",
+        "Tributo",
+        "FolhaPagamento",
+        "FaturaCartao"
+      ],
+      "title": "Tipo da entidade de controle"
+    },
+    "entidade_id": {
+      "type": "string",
+      "title": "ID do registro origem"
+    },
+    "descricao_conta": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o amig\u00e1vel da conta (cache p/ exibir no banner)"
+    },
+    "fornecedor": {
+      "type": "string",
+      "title": "Fornecedor / Benefici\u00e1rio"
+    },
+    "valor_esperado": {
+      "type": "number",
+      "title": "Valor da conta a pagar"
+    },
+    "valor_extrato": {
+      "type": "number",
+      "title": "Valor do d\u00e9bito no extrato"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "title": "Vencimento da conta"
+    },
+    "data_extrato": {
+      "type": "string",
+      "format": "date",
+      "title": "Data do d\u00e9bito"
+    },
+    "descricao_extrato": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o do lan\u00e7amento banc\u00e1rio"
+    },
+    "diff_dias": {
+      "type": "number",
+      "title": "Diferen\u00e7a em dias entre vencimento e d\u00e9bito"
+    },
+    "confianca": {
+      "type": "number",
+      "title": "Confian\u00e7a 0-100",
+      "default": 70
+    },
+    "motivo": {
+      "type": "string",
+      "title": "Por que virou sugest\u00e3o (n\u00e3o match perfeito)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "confirmada",
+        "rejeitada"
+      ],
+      "default": "pendente",
+      "title": "Status da sugest\u00e3o"
+    },
+    "resolvida_em": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Quando foi confirmada/rejeitada"
+    }
+  },
+  "required": [
+    "lancamento_bancario_id",
+    "entidade_tipo",
+    "entidade_id",
+    "valor_esperado",
+    "valor_extrato"
+  ]
+}
