@@ -250,10 +250,12 @@ export default function Dashboard() {
         d.pagYTD = lancF.filter(l=>l.categoria!=='recebimento').reduce((s,l)=>s+Math.abs(l.valor||0),0);
       }
       if (nfs.length) {
-        d.totalFat = nfsF.reduce((s,n)=>s+(n.valor_total||0),0);
-        d.aReceber = nfsF.reduce((s,n)=>s+(n.valor_aberto||0),0);
-        d.tiago = nfsF.filter(n=>n.vendedor==='Tiago').reduce((s,n)=>s+(n.valor_total||0),0);
-        d.thais = nfsF.filter(n=>n.vendedor==='Thais').reduce((s,n)=>s+(n.valor_total||0),0);
+        // Exclui NFs-espelho de CI (já contabilizadas no CI — evita dupla contagem)
+        const nfsValidas = nfsF.filter(n => !n.is_espelho_ci);
+        d.totalFat = nfsValidas.reduce((s,n)=>s+(n.valor_total||0),0);
+        d.aReceber = nfsValidas.reduce((s,n)=>s+(n.valor_aberto||0),0);
+        d.tiago = nfsValidas.filter(n=>n.vendedor==='Tiago').reduce((s,n)=>s+(n.valor_total||0),0);
+        d.thais = nfsValidas.filter(n=>n.vendedor==='Thais').reduce((s,n)=>s+(n.valor_total||0),0);
       }
       if (tit.length) {
         d.emitido = titF.reduce((s,t)=>s+(t.valor_titulo||0),0);
