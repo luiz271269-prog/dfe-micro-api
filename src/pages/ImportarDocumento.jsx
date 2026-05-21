@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { InvokeLLM, UploadFile } from '@/integrations/Core';
 import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Calendar, Wallet, Trash2 } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
+import { conciliarNFsTitulosSicredi } from '@/functions/conciliarNFsTitulosSicredi';
 import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
 import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
@@ -685,11 +686,24 @@ export default function ImportarDocumento() {
         removidos = dedupRes?.data?.total || 0;
       } catch { /* falha silenciosa — importação já foi salva */ }
 
+      // Conciliação NF ↔ Títulos Sicredi — após importar relatório do Elite ou boletos liquidados
+      let nfsConciliadas = 0;
+      let titulosVinc = 0;
+      if (selectedType === 'relatorio_vendas_detalhado' || selectedType === 'boletos_liquidados') {
+        setSaveProgress('Conciliando NFs × títulos Sicredi...');
+        try {
+          const conc = await conciliarNFsTitulosSicredi({});
+          nfsConciliadas = conc?.data?.notas_atualizadas || 0;
+          titulosVinc = conc?.data?.titulos_vinculados || 0;
+        } catch { /* falha silenciosa */ }
+      }
+
       setSaving(false);
       setSaveProgress('');
       setStep(4);
       const dedupMsg = removidos > 0 ? ` · 🧹 ${removidos} duplicatas removidas do banco` : '';
-      showToast(`✓ ${saved} novos registros salvos · ${dupes} ignoradas na importação${dedupMsg}`);
+      const concMsg = nfsConciliadas > 0 || titulosVinc > 0 ? ` · 🔗 ${nfsConciliadas} NF(s) conciliadas com ${titulosVinc} título(s) Sicredi` : '';
+      showToast(`✓ ${saved} novos registros salvos · ${dupes} ignoradas na importação${dedupMsg}${concMsg}`);
       loadHistory();
       window.dispatchEvent(new Event('neuralfinRefresh'));
       localStorage.setItem('neuralfinPendingRefresh', Date.now().toString());
