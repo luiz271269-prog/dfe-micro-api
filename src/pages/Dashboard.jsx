@@ -259,9 +259,15 @@ export default function Dashboard() {
         d.thais = nfsValidas.filter(n=>n.vendedor==='Thais').reduce((s,n)=>s+(n.valor_total||0),0);
       }
       if (tit.length) {
+        // Emitido: títulos com vencimento no mês selecionado
         d.emitido = titF.reduce((s,t)=>s+(t.valor_titulo||0),0);
-        d.recebido = titF.filter(t=>t.status==='pago').reduce((s,t)=>s+(t.valor_pago||0),0);
-        d.emAberto = titF.filter(t=>t.status!=='pago').reduce((s,t)=>s+(t.valor_titulo||0),0);
+        // Recebido: títulos pagos no mês selecionado (filtra por data_pagamento, não por vencimento)
+        const recebidosNoMes = isAnnual
+          ? tit.filter(t => t.status === 'pago')
+          : tit.filter(t => t.status === 'pago' && (t.data_pagamento || '').startsWith(selectedMonth));
+        d.recebido = recebidosNoMes.reduce((s,t)=>s+(t.valor_pago||0),0);
+        // Em Aberto: TOTAL GERAL de títulos em aberto (independente do mês — controle por dia do vencimento)
+        d.emAberto = tit.filter(t=>t.status!=='pago').reduce((s,t)=>s+(t.valor_titulo||0),0);
       }
       if (comp.length) d.totalCompras = compF.reduce((s,c)=>s+(c.valor_total||0),0);
       if (obras.length) d.totalObras = obrasF.reduce((s,o)=>s+(o.valor||0),0);
@@ -405,7 +411,7 @@ export default function Dashboard() {
       <Section icon={Receipt} label="Cobranças Sicredi" gradient="teal" cols={3}>
         <SectionMetric title="Total Emitido" value={formatCurrency(data.emitido)} sub="Boletos gerados" icon={Receipt} valueColor="blue" href="/cobrancas" />
         <SectionMetric title="Recebido" value={formatCurrency(data.recebido)} sub={`${percCob}% de taxa de recebimento`} icon={TrendingUp} valueColor="green" href="/cobrancas" />
-        <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Aguardando pagamento" icon={AlertTriangle} valueColor="orange" href="/cobrancas" />
+        <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Total geral — todos os vencimentos" icon={AlertTriangle} valueColor="orange" href="/cobrancas" />
       </Section>
 
       {/* ─── GRUPO 4: OPERACIONAL (Compras + Obras) ─── */}
