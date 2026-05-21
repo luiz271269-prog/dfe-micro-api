@@ -63,7 +63,9 @@ export default function Faturamento() {
     return notas.filter(n => {
       if (ocultarEspelhos && n.is_espelho_ci) return false;
       if (!isAnnual && !n.data_emissao?.startsWith(selectedMonth)) return false;
-      if (filterVendedor !== 'all' && n.vendedor !== filterVendedor) return false;
+      if (filterVendedor === '__sem__') {
+        if (n.vendedor === 'Tiago' || n.vendedor === 'Thais' || n.vendedor === 'Fat.Direto') return false;
+      } else if (filterVendedor !== 'all' && n.vendedor !== filterVendedor) return false;
       if (filterTipo !== 'all' && n.tipo !== filterTipo) return false;
       if (filterStatus !== 'all' && n.status !== filterStatus) return false;
       if (searchTerm && !n.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) && !n.numero?.includes(searchTerm)) return false;
@@ -100,12 +102,24 @@ export default function Faturamento() {
   const totalAberto = filtered.reduce((s, n) => s + (n.valor_aberto || 0), 0);
 
   // Por vendedor — respeita filtro de mês/anual
-  const tiagototal = filtered.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_total || 0), 0);
-  const tiagoAberto = filtered.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_aberto || 0), 0);
-  const tiagoRecebido = filtered.filter(n => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_recebido || 0), 0);
-  const thaisTotal = filtered.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_total || 0), 0);
-  const thaisAberto = filtered.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_aberto || 0), 0);
-  const thaisRecebido = filtered.filter(n => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_recebido || 0), 0);
+  const tiagoNFs = filtered.filter(n => n.vendedor === 'Tiago');
+  const thaisNFs = filtered.filter(n => n.vendedor === 'Thais');
+  const fatDiretoNFs = filtered.filter(n => n.vendedor === 'Fat.Direto');
+  const semVendedorNFs = filtered.filter(n => !n.vendedor || (n.vendedor !== 'Tiago' && n.vendedor !== 'Thais' && n.vendedor !== 'Fat.Direto'));
+
+  const tiagototal = tiagoNFs.reduce((s, n) => s + (n.valor_total || 0), 0);
+  const tiagoAberto = tiagoNFs.reduce((s, n) => s + (n.valor_aberto || 0), 0);
+  const tiagoRecebido = tiagoNFs.reduce((s, n) => s + (n.valor_recebido || 0), 0);
+  const thaisTotal = thaisNFs.reduce((s, n) => s + (n.valor_total || 0), 0);
+  const thaisAberto = thaisNFs.reduce((s, n) => s + (n.valor_aberto || 0), 0);
+  const thaisRecebido = thaisNFs.reduce((s, n) => s + (n.valor_recebido || 0), 0);
+  const fatDiretoTotal = fatDiretoNFs.reduce((s, n) => s + (n.valor_total || 0), 0);
+  const fatDiretoAberto = fatDiretoNFs.reduce((s, n) => s + (n.valor_aberto || 0), 0);
+  const fatDiretoRecebido = fatDiretoNFs.reduce((s, n) => s + (n.valor_recebido || 0), 0);
+  const semVendedorTotal = semVendedorNFs.reduce((s, n) => s + (n.valor_total || 0), 0);
+
+  // Diferença entre Total Geral e soma dos cards (deveria ser zero)
+  const somaCards = tiagototal + thaisTotal + fatDiretoTotal + semVendedorTotal;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -174,12 +188,22 @@ export default function Faturamento() {
       {/* Conciliação NFs × Relatório */}
       <ConciliacaoRelatorio selectedMonth={selectedMonth} nfsMes={notas.filter(n => n.data_emissao?.startsWith(selectedMonth))} />
 
+      {/* Alerta de divergência (se houver NFs sem vendedor) */}
+      {semVendedorNFs.length > 0 && (
+        <div className="mb-4 px-4 py-3 rounded-lg bg-orange-50 border border-orange-200 text-sm text-orange-900">
+          <strong>{semVendedorNFs.length} NF(s)</strong> sem vendedor atribuído somando <strong>{formatCurrency(semVendedorTotal)}</strong> — não aparecem nos cards de vendedor mas entram no Total Geral.
+          <button onClick={() => setFilterVendedor(filterVendedor === '__sem__' ? 'all' : '__sem__')} className="ml-2 underline font-semibold hover:text-orange-700">
+            {filterVendedor === '__sem__' ? 'Limpar filtro' : 'Ver essas NFs'}
+          </button>
+        </div>
+      )}
+
       {/* Cards por vendedor */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <GradientCard
           title="Tiago (V-01)"
           value={formatCurrency(tiagototal)}
-          sub={`✓ ${formatCurrency(tiagoRecebido)} · ⏳ ${formatCurrency(tiagoAberto)} · ${filtered.filter(n=>n.vendedor==='Tiago').length} NFs`}
+          sub={`✓ ${formatCurrency(tiagoRecebido)} · ⏳ ${formatCurrency(tiagoAberto)} · ${tiagoNFs.length} NFs`}
           icon={FileText}
           gradient="blue"
           active={filterVendedor === 'Tiago'}
@@ -188,11 +212,20 @@ export default function Faturamento() {
         <GradientCard
           title="Thais (V-05)"
           value={formatCurrency(thaisTotal)}
-          sub={`✓ ${formatCurrency(thaisRecebido)} · ⏳ ${formatCurrency(thaisAberto)} · ${filtered.filter(n=>n.vendedor==='Thais').length} NFs`}
+          sub={`✓ ${formatCurrency(thaisRecebido)} · ⏳ ${formatCurrency(thaisAberto)} · ${thaisNFs.length} NFs`}
           icon={FileText}
           gradient="purple"
           active={filterVendedor === 'Thais'}
           onClick={() => setFilterVendedor(filterVendedor === 'Thais' ? 'all' : 'Thais')}
+        />
+        <GradientCard
+          title="Fat. Direto"
+          value={formatCurrency(fatDiretoTotal)}
+          sub={`✓ ${formatCurrency(fatDiretoRecebido)} · ⏳ ${formatCurrency(fatDiretoAberto)} · ${fatDiretoNFs.length} NFs`}
+          icon={FileText}
+          gradient="orange"
+          active={filterVendedor === 'Fat.Direto'}
+          onClick={() => setFilterVendedor(filterVendedor === 'Fat.Direto' ? 'all' : 'Fat.Direto')}
         />
         <GradientCard
           title="Total Geral"
