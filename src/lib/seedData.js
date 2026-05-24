@@ -219,20 +219,26 @@ export async function seedSicoobFatura() {
 }
 
 export async function runSeedIfNeeded() {
-  // Use ContaCartao as the seed flag — if it has data, seed already ran
-  const existing = await base44.entities.ContaCartao.list();
-  if (existing.length > 0) {
-    // Run incremental seeds separately
-    await Promise.all([
-      seedSicoobFatura(),
-      seedTitulosIfNeeded(),
-      seedComprasIfNeeded(),
-      seedLancamentosIfNeeded(),
-      seedNotasFiscalMarco(),
-      patchFaturasSicrediNT(),
-    ]);
-    return;
-  }
+  // Skip se o seed já rodou hoje (evita rate limit em refreshes consecutivos)
+  const today = new Date().toISOString().slice(0, 10);
+  if (localStorage.getItem('neuralfinSeedLastRun') === today) return;
+
+  try {
+    // Use ContaCartao as the seed flag — if it has data, seed already ran
+    const existing = await base44.entities.ContaCartao.list();
+    if (existing.length > 0) {
+      // Run incremental seeds separately
+      await Promise.all([
+        seedSicoobFatura(),
+        seedTitulosIfNeeded(),
+        seedComprasIfNeeded(),
+        seedLancamentosIfNeeded(),
+        seedNotasFiscalMarco(),
+        patchFaturasSicrediNT(),
+      ]);
+      localStorage.setItem('neuralfinSeedLastRun', today);
+      return;
+    }
 
   // 1. Seed ContaCartao
   await base44.entities.ContaCartao.bulkCreate(SEED_CARTOES);
@@ -262,6 +268,14 @@ export async function runSeedIfNeeded() {
     base44.entities.ItemCompra.bulkCreate(SEED_COMPRAS),
     base44.entities.LancamentoBancario.bulkCreate(SEED_LANCAMENTOS),
   ]);
+    localStorage.setItem('neuralfinSeedLastRun', today);
+  } catch (err) {
+    // Rate limit ou outro erro — marca como rodado pra não insistir na mesma sessão
+    if (String(err?.message || '').includes('Rate limit')) {
+      localStorage.setItem('neuralfinSeedLastRun', today);
+    }
+    console.warn('[seed] skip:', err?.message);
+  }
 }
 
 async function seedTitulosIfNeeded() {
