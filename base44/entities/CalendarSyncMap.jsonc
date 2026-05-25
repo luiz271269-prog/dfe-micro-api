@@ -1,0 +1,53 @@
+{
+  "name": "CalendarSyncMap",
+  "type": "object",
+  "description": "Mapeia obriga\u00e7\u00f5es de contas a pagar (Tributo, DespesaOperacional, FaturaCartao, FolhaPagamento, ObraReforma) para eventos do Google Calendar, evitando duplica\u00e7\u00e3o em sincroniza\u00e7\u00f5es repetidas.",
+  "properties": {
+    "entidade_tipo": {
+      "type": "string",
+      "enum": [
+        "Tributo",
+        "DespesaOperacional",
+        "FaturaCartao",
+        "FolhaPagamento",
+        "ObraReforma"
+      ],
+      "title": "Tipo da entidade"
+    },
+    "entidade_id": {
+      "type": "string",
+      "title": "ID do registro origem"
+    },
+    "google_event_id": {
+      "type": "string",
+      "title": "ID do evento no Google Calendar"
+    },
+    "google_calendar_id": {
+      "type": "string",
+      "title": "ID do calend\u00e1rio Google"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data do vencimento sincronizado (cache)"
+    },
+    "valor": {
+      "type": "number",
+      "title": "Valor sincronizado (cache para detectar mudan\u00e7as)"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status sincronizado (cache)"
+    },
+    "ultima_sync": {
+      "type": "string",
+      "format": "date-time",
+      "title": "\u00daltima sincroniza\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "entidade_tipo",
+    "entidade_id",
+    "google_event_id"
+  ]
+}

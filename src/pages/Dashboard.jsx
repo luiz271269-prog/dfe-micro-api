@@ -10,6 +10,7 @@ import { formatCurrency } from '../lib/formatters';
 import DASAlertBadge from '../components/dashboard/DASAlertBadge';
 import { getCurrentMonth } from '../lib/currentMonth';
 import DedupButton from '../components/shared/DedupButton';
+import SyncCalendarButton from '../components/shared/SyncCalendarButton';
 
 const ALL_MONTHS = ['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
 
@@ -332,6 +333,7 @@ export default function Dashboard() {
             Anual
           </button>
           <DedupButton autoOncePerDay />
+          <SyncCalendarButton />
         </div>
       </div>
 
