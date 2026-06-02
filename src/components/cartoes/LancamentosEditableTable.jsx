@@ -67,9 +67,12 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
             return (
               <tr key={l.id} className={`border-b last:border-b-0 ${isExcluded ? 'opacity-40' : ''}`}>
                 <td className="py-1.5 whitespace-nowrap">{formatDate(l.data_lancamento)}</td>
-                <td className="py-1.5 max-w-[180px] truncate" title={l.estabelecimento}>
-                  {l.estabelecimento}
-                  {isExcluded && <span className="ml-1 text-[9px] text-red-500 font-semibold">(não contabilizado)</span>}
+                <td className="py-1.5 pr-2 min-w-[220px] max-w-[340px]" title={`${l.estabelecimento}${l.observacao ? ' — ' + l.observacao : ''}`}>
+                  <div className="leading-tight break-words whitespace-normal">{l.estabelecimento}</div>
+                  {l.observacao && !isExcluded && (
+                    <div className="text-[10px] text-muted-foreground italic leading-tight mt-0.5 break-words">{l.observacao}</div>
+                  )}
+                  {isExcluded && <span className="text-[9px] text-red-500 font-semibold">(não contabilizado)</span>}
                 </td>
                 <td className="py-1.5">
                   {editingCat ? (

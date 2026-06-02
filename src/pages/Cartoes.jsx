@@ -185,7 +185,18 @@ export default function Cartoes() {
   }
 
   function getFaturaLancamentos(faturaId) {
-    return lancamentos.filter(l => l.fatura_id === faturaId).sort((a, b) => new Date(a.data_lancamento) - new Date(b.data_lancamento));
+    // Filtra + dedup por (data + estabelecimento normalizado + valor arredondado) para o total bater com a fatura
+    const raw = lancamentos.filter(l => l.fatura_id === faturaId);
+    const seen = new Set();
+    const dedup = [];
+    for (const l of raw) {
+      const norm = (l.estabelecimento || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
+      const key = `${l.data_lancamento}|${norm}|${Math.round((l.valor || 0) * 100)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(l);
+    }
+    return dedup.sort((a, b) => new Date(a.data_lancamento) - new Date(b.data_lancamento));
   }
 
   // Localiza o arquivo PDF/imagem importado para uma fatura específica
