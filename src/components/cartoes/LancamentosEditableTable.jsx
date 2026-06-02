@@ -68,6 +68,11 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
               <tr key={l.id} className={`border-b last:border-b-0 ${isExcluded ? 'opacity-40' : ''}`}>
                 <td className="py-1.5 whitespace-nowrap">{formatDate(l.data_lancamento)}</td>
                 <td className="py-1.5 pr-2 min-w-[220px] max-w-[340px]" title={`${l.estabelecimento}${l.observacao ? ' — ' + l.observacao : ''}`}>
+                  {l._cartaoInfo && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 mr-1 mb-0.5">
+                      {l._cartaoInfo.bandeira} · dia {l._cartaoInfo.dia}
+                    </span>
+                  )}
                   <div className="leading-tight break-words whitespace-normal">{l.estabelecimento}</div>
                   {l.observacao && !isExcluded && (
                     <div className="text-[10px] text-muted-foreground italic leading-tight mt-0.5 break-words">{l.observacao}</div>

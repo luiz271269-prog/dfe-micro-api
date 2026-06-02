@@ -20,17 +20,30 @@ function formatMesLabel(m) {
 export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnual, totalFaturas }) {
   const [obras, setObras] = useState([]);
   const [despesas, setDespesas] = useState([]);
+  const [cartoes, setCartoes] = useState([]);
+  const [faturas, setFaturas] = useState([]);
   const [activeKey, setActiveKey] = useState(null);
 
   useEffect(() => {
     Promise.all([
       base44.entities.ObraReforma.list(),
       base44.entities.DespesaOperacional.list(),
-    ]).then(([obrasData, despesasData]) => {
+      base44.entities.ContaCartao.list(),
+      base44.entities.FaturaCartao.list('-data_vencimento', 300),
+    ]).then(([obrasData, despesasData, cartoesData, faturasData]) => {
       setObras(obrasData);
       setDespesas(despesasData);
+      setCartoes(cartoesData);
+      setFaturas(faturasData);
     });
   }, []);
+
+  // Mapa fatura_id -> { bandeira, dia, label } para anotar cada lançamento
+  const cartaoPorFatura = {};
+  for (const f of faturas) {
+    const c = cartoes.find(x => x.id === f.conta_cartao_id);
+    if (c) cartaoPorFatura[f.id] = { bandeira: c.bandeira || '—', dia: c.dia_vencimento, titular: (c.titular || '').split(' ')[0] };
+  }
 
   // Classificar cada lançamento individualmente (para filtro por categoria)
   function classificarLanc(lanc) {
@@ -61,7 +74,11 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
 
   // Exclui pagamentos da fatura anterior — não são despesas reais
   const lancsValidos = lancamentos.filter(l => !isPagamentoFatura(l));
-  const lancComClasse = lancsValidos.map(l => ({ ...l, _classe: classificarLanc(l) }));
+  const lancComClasse = lancsValidos.map(l => ({
+    ...l,
+    _classe: classificarLanc(l),
+    _cartaoInfo: cartaoPorFatura[l.fatura_id] || null,
+  }));
 
   const classificacao = lancComClasse.reduce((acc, l) => {
     acc[l._classe] = (acc[l._classe] || 0) + Math.abs(l.valor || 0);
