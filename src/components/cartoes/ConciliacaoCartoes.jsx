@@ -16,7 +16,7 @@ function formatMesLabel(m) {
   return `${nomes[parseInt(mo)-1]}/${y}`;
 }
 
-export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnual }) {
+export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnual, totalFaturas }) {
   const [obras, setObras] = useState([]);
   const [despesas, setDespesas] = useState([]);
   const [activeKey, setActiveKey] = useState(null);
@@ -67,7 +67,10 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
     return acc;
   }, {});
 
-  const total = Object.values(classificacao).reduce((s, v) => s + v, 0);
+  const totalClassificado = Object.values(classificacao).reduce((s, v) => s + v, 0);
+  // Total Geral = soma real das faturas do mês (mesmo valor do card "Total Faturas")
+  const total = totalFaturas != null ? totalFaturas : totalClassificado;
+  const diferenca = total - totalClassificado;
 
   const items = [
     { label: '🏗️ Obra e Reforma',       key: 'obra',             bg: 'bg-orange-50',  border: 'border-orange-300', text: 'text-orange-700', activeBg: 'bg-orange-100' },
@@ -122,11 +125,19 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
       </div>
 
       {/* Total */}
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-3 space-y-2">
         <div className="rounded-lg border-2 border-primary bg-primary/5 px-3 py-2 flex items-center justify-between">
-          <span className="text-xs font-semibold text-foreground">Total Geral</span>
+          <span className="text-xs font-semibold text-foreground">Total Geral (soma das faturas)</span>
           <p className="text-base font-bold text-primary">{formatCurrency(total)}</p>
         </div>
+        {Math.abs(diferenca) > 0.5 && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 flex items-center justify-between text-xs">
+            <span className="font-semibold text-amber-800">
+              {diferenca > 0 ? 'Faltam classificar' : 'Excedente sobre o total da fatura'}
+            </span>
+            <span className="font-bold text-amber-900">{formatCurrency(Math.abs(diferenca))}</span>
+          </div>
+        )}
       </div>
 
       {/* Listagem filtrada ao clicar */}

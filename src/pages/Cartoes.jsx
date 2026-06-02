@@ -231,6 +231,7 @@ export default function Cartoes() {
           )} 
           selectedMonth={selectedMonth}
           isAnnual={isAnnual}
+          totalFaturas={totalMes}
         />
       )}
 
