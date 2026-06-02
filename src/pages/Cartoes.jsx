@@ -222,19 +222,6 @@ export default function Cartoes() {
         <GradientCard title="Cartões Ativos" value={cartoes.filter(c=>c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
       </div>
 
-      {/* Conciliação */}
-      {filteredFaturas.length > 0 && (
-        <ConciliacaoCartoes 
-          lancamentos={lancamentos.filter(l => 
-            l.fatura_id && 
-            faturas.find(f => f.id === l.fatura_id && (isAnnual || f.mes_referencia === selectedMonth))
-          )} 
-          selectedMonth={selectedMonth}
-          isAnnual={isAnnual}
-          totalFaturas={totalMes}
-        />
-      )}
-
       {/* Timeline de vencimentos */}
       <div className="bg-card rounded-xl border p-5 mb-6">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -265,6 +252,19 @@ export default function Cartoes() {
           })}
         </div>
       </div>
+
+      {/* Conciliação */}
+      {filteredFaturas.length > 0 && (
+        <ConciliacaoCartoes 
+          lancamentos={lancamentos.filter(l => 
+            l.fatura_id && 
+            faturas.find(f => f.id === l.fatura_id && (isAnnual || f.mes_referencia === selectedMonth))
+          )} 
+          selectedMonth={selectedMonth}
+          isAnnual={isAnnual}
+          totalFaturas={totalMes}
+        />
+      )}
 
       {/* Cards list */}
       <div className="space-y-3">
