@@ -199,10 +199,50 @@ REGRAS CRÍTICAS:
 Retorne APENAS array JSON:
 [{"fornecedor":"NOME","numero_nota":"XXXXX","data_emissao":"YYYY-MM-DD","descricao_produto":"NOME DO PRODUTO","categoria_produto":"notebook ou tablet ou componente ou periferico ou software ou outro","quantidade":numero,"valor_unitario":numero,"valor_total":numero}]`,
 
-  fatura_cartao: `Analise esta fatura de cartão de crédito e extraia as informações em JSON.
-Retorne APENAS um objeto JSON válido:
-{"fatura":{"mes_referencia":"YYYY-MM","data_vencimento":"YYYY-MM-DD","valor_total":numero},"lancamentos":[{"data_lancamento":"YYYY-MM-DD","estabelecimento":"NOME","descricao":"descrição completa","valor":numero,"parcela_numero":1,"parcela_total":1,"natureza":"empresarial ou pessoal","categoria":"outro"}]}
-Incluir TODOS os lançamentos. Valor sempre positivo (estornos negativos).`,
+  fatura_cartao: `Você é um sistema de extração FISCAL de fatura de cartão de crédito. PRECISÃO ABSOLUTA é mandatória.
+
+Retorne APENAS um objeto JSON válido (sem markdown, sem texto extra):
+{
+  "fatura":{"mes_referencia":"YYYY-MM","data_vencimento":"YYYY-MM-DD","valor_total":numero},
+  "lancamentos":[
+    {"data_lancamento":"YYYY-MM-DD","estabelecimento":"TEXTO LITERAL EXATAMENTE COMO IMPRESSO","descricao":"observação adicional (parcelamento, cidade) — vazio se nenhuma","valor":numero,"parcela_numero":1,"parcela_total":1,"natureza":"empresarial ou pessoal","categoria":"outro"}
+  ]
+}
+
+REGRAS CRÍTICAS — LEIA TODAS:
+
+1. FIDELIDADE LITERAL — o campo "estabelecimento" DEVE ser copiado EXATAMENTE como impresso na fatura.
+   - NÃO traduzir, NÃO normalizar, NÃO abreviar, NÃO completar, NÃO corrigir grafia, NÃO trocar maiúsculas/minúsculas.
+   - Manter acentos, asteriscos, números, sufixos de cidade/UF, IDs de transação, espaços e pontuação.
+   - Exemplos: "MERCPAGO*MERCADOLIVRE" permanece "MERCPAGO*MERCADOLIVRE" (NÃO virar "Mercado Livre");
+     "AMZN*Mktp BR" permanece "AMZN*Mktp BR" (NÃO virar "Amazon");
+     "UBER *TRIP HELP.UBER.COM" permanece tal qual.
+
+2. UM LANÇAMENTO POR LINHA IMPRESSA — cada linha do extrato detalhado da fatura = um item no array.
+   - NÃO consolidar várias linhas em uma só.
+   - NÃO incluir o mesmo lançamento duas vezes. Se a mesma compra aparece em dois lugares (ex: resumo + detalhe), inclua APENAS UMA VEZ — prefira o bloco "lançamentos detalhados/transações".
+   - Parcelamento: se a linha indica "PARC 03/10" ou "3/10", use parcela_numero=3 e parcela_total=10, mantendo o estabelecimento original.
+
+3. SOMA DEVE BATER COM O TOTAL — a soma de TODOS os "valor" dos lançamentos DEVE ser igual ao "valor_total" da fatura (tolerância R$ 0,02).
+   - ANTES de retornar, CALCULE a soma e CONFIRA contra o total impresso.
+   - Se não bater: você esqueceu lançamentos OU duplicou alguns. REVISE até bater.
+   - Estornos/créditos a favor entram com valor NEGATIVO (e somam negativamente).
+   - IGNORE COMPLETAMENTE: "Pagamento da fatura anterior", "Saldo anterior", "Limite disponível", "Juros sobre saldo", linhas de resumo/totalizador, encargos de mora calculados.
+
+4. VALOR — decimal com PONTO, preserve centavos EXATOS.
+   - "1.234,56" → 1234.56 · "89,00" → 89.00
+   - Despesa: valor POSITIVO · Estorno/crédito a favor: valor NEGATIVO.
+
+5. data_lancamento — formato YYYY-MM-DD, usar a data IMPRESSA da transação (não a data de vencimento da fatura).
+
+6. mes_referencia — inferir do cabeçalho. Ex: "FATURA MARÇO/2026" → "2026-03"; "Vencimento 11/03/2026" → "2026-03".
+
+7. natureza — empresarial para fornecedores B2B/hospedagem/SaaS/distribuidores; pessoal para varejo/alimentação/lazer/serviços pessoais. Em dúvida → "pessoal".
+
+8. CONFERÊNCIA FINAL OBRIGATÓRIA antes de retornar o JSON:
+   ✓ Soma dos lançamentos == valor_total (tolerância R$ 0,02)? Se não → REVISE.
+   ✓ Há linhas com mesma data + mesmo estabelecimento + mesmo valor? Se sim → REMOVA as cópias duplicadas.
+   ✓ Todos os estabelecimentos estão LITERAIS como impresso? Se traduziu algum → RESTAURE o texto original.`,
 
   obra_reforma: `Analise este comprovante de pagamento de obra/reforma e extraia em JSON.
 Retorne APENAS objeto JSON:
@@ -417,7 +457,7 @@ export default function ImportarDocumento() {
         const promptComContexto = PROMPTS[selectedType].replace(/\{\{HOJE\}\}/g, hojeISO) + `\n\nDATA DE REFERÊNCIA (hoje): ${hojeISO}`;
         // Modelo: relatorio_vendas_detalhado exige raciocínio robusto (17 regras + cabeçalho+parcelas)
         // → usa claude_sonnet_4_6. Demais tipos usam gemini_3_flash (rápido e barato).
-        const modeloIA = selectedType === 'relatorio_vendas_detalhado' ? 'claude_sonnet_4_6' : 'gemini_3_flash';
+        const modeloIA = (selectedType === 'relatorio_vendas_detalhado' || selectedType === 'fatura_cartao') ? 'claude_sonnet_4_6' : 'gemini_3_flash';
         const result = await InvokeLLM({
           prompt: promptComContexto,
           file_urls: [file_url],
@@ -468,7 +508,31 @@ export default function ImportarDocumento() {
           }
         }
         const fatData = { ...parsed.fatura, __type: 'FaturaCartao', conta_cartao_id: cartaoIdFinal };
-        const lancs = (parsed.lancamentos || []).map(l => ({ ...l, __type: 'LancamentoCartao' }));
+        const lancsRaw = (parsed.lancamentos || []).map(l => ({ ...l, __type: 'LancamentoCartao' }));
+
+        // Fidelidade: remove duplicatas internas da própria fatura (mesma data + estabelecimento normalizado + valor)
+        const seenInternal = new Set();
+        let dupsInternas = 0;
+        const lancs = [];
+        for (const l of lancsRaw) {
+          const norm = (l.estabelecimento || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
+          const key = `${l.data_lancamento}|${norm}|${Math.round((l.valor || 0) * 100)}`;
+          if (seenInternal.has(key)) { dupsInternas++; continue; }
+          seenInternal.add(key);
+          lancs.push(l);
+        }
+
+        // Conferência fiscal: soma dos lançamentos deve bater com o valor_total impresso
+        const totalFat = Number(parsed.fatura?.valor_total || 0);
+        const somaLancs = lancs.reduce((s, l) => s + Number(l.valor || 0), 0);
+        const diffSoma = Math.abs(totalFat - somaLancs);
+        if (diffSoma > 0.02 || dupsInternas > 0) {
+          const msgs = [];
+          if (diffSoma > 0.02) msgs.push(`⚠️ Soma ${formatCurrency(somaLancs)} ≠ total impresso ${formatCurrency(totalFat)} (dif. ${formatCurrency(diffSoma)})`);
+          if (dupsInternas > 0) msgs.push(`🧹 ${dupsInternas} duplicata(s) interna(s) removida(s)`);
+          showToast(msgs.join(' · '), diffSoma > 0.02 ? 'error' : 'success');
+        }
+
         items = [fatData, ...lancs];
       } else if (selectedType === 'relatorio_vendas_detalhado') {
         // Caso especial: 2 entidades — NotaFiscal + TituloCobranca
