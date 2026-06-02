@@ -129,11 +129,20 @@ export default function Cartoes() {
 
   useEffect(() => {
     loadData();
-    const handler = () => loadData();
-    window.addEventListener('neuralfinRefresh', handler);
-    const unsubFat = base44.entities.FaturaCartao.subscribe(() => loadData());
-    const unsubLanc = base44.entities.LancamentoCartao.subscribe(() => loadData());
-    return () => { window.removeEventListener('neuralfinRefresh', handler); unsubFat(); unsubLanc(); };
+    let timer = null;
+    const debouncedLoad = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => loadData(), 600);
+    };
+    window.addEventListener('neuralfinRefresh', debouncedLoad);
+    const unsubFat = base44.entities.FaturaCartao.subscribe(debouncedLoad);
+    const unsubLanc = base44.entities.LancamentoCartao.subscribe(debouncedLoad);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('neuralfinRefresh', debouncedLoad);
+      unsubFat();
+      unsubLanc();
+    };
   }, []);
 
   async function handleFaturaSubmit(e) {
