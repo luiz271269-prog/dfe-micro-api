@@ -57,6 +57,15 @@ const categoriaColors = {
   outro: 'bg-amber-100 text-amber-700',
 };
 
+// Estilo por bandeira/banco — cor própria de cada instituição
+const BANDEIRAS = {
+  Sicoob:  { bar: 'bg-teal-700',    icon: 'bg-teal-700 text-white',    badge: 'bg-teal-100 text-teal-800',     nameText: 'text-teal-800' },
+  Sicredi: { bar: 'bg-green-600',   icon: 'bg-green-600 text-white',   badge: 'bg-green-100 text-green-800',   nameText: 'text-green-700' },
+  Acentra: { bar: 'bg-orange-500',  icon: 'bg-orange-500 text-white',  badge: 'bg-orange-100 text-orange-800', nameText: 'text-orange-700' },
+  Magalu:  { bar: 'bg-blue-600',    icon: 'bg-blue-600 text-white',    badge: 'bg-blue-100 text-blue-800',     nameText: 'text-blue-700' },
+  default: { bar: 'bg-slate-500',   icon: 'bg-slate-600 text-white',   badge: 'bg-slate-100 text-slate-700',   nameText: 'text-slate-800' },
+};
+
 function CategoriaBreakdown({ lancamentos }) {
   const validos = lancamentos.filter(l => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
   const cats = {};
@@ -284,6 +293,7 @@ export default function Cartoes() {
           const isExpanded = expandedCard === c.id;
           const cardFaturas = getCardFaturas(c.id);
           const latestFat = cardFaturas[0];
+          const bStyle = BANDEIRAS[c.bandeira] || BANDEIRAS.default;
           const url = latestFat ? getFaturaFileUrl(latestFat) : null;
           const isImg = url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
 
@@ -302,12 +312,15 @@ export default function Cartoes() {
               }}
               className={`group relative bg-gradient-to-br from-card to-muted/20 rounded-xl border p-2.5 hover:shadow-md hover:border-primary/40 transition-all text-left overflow-hidden ${isExpanded ? 'ring-2 ring-primary border-primary shadow-md' : ''}`}
             >
-              <div className={`absolute top-0 left-0 right-0 h-0.5 ${c.tipo === 'empresarial' ? 'bg-blue-500' : 'bg-purple-500'}`} />
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${c.tipo === 'empresarial' ? 'bg-blue-500/10 text-blue-600' : 'bg-purple-500/10 text-purple-600'}`}>
-                  <CreditCard className="w-3 h-3" />
+              <div className={`absolute top-0 left-0 right-0 h-1 ${bStyle.bar}`} />
+              <div className="flex items-center gap-1.5 mb-1.5 mt-0.5">
+                <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 shadow-sm ${bStyle.icon}`}>
+                  <CreditCard className="w-3.5 h-3.5" />
                 </div>
-                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${bStyle.badge}`}>
+                  {c.bandeira || '—'}
+                </span>
+                <span className={`text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded ml-auto ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                   {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
                 </span>
                 {url && (
@@ -315,29 +328,25 @@ export default function Cartoes() {
                     role="button"
                     tabIndex={0}
                     onClick={(e) => { e.stopPropagation(); setViewerFile({ url, titulo: `${c.nome} — ${latestFat.mes_referencia}` }); }}
-                    className="ml-auto w-5 h-5 rounded border border-blue-200 bg-blue-50 overflow-hidden flex items-center justify-center hover:border-blue-400"
+                    className="w-5 h-5 rounded border border-blue-200 bg-blue-50 overflow-hidden flex items-center justify-center hover:border-blue-400"
                     title="Ver fatura original"
                   >
                     {isImg ? <img src={url} alt="" className="w-full h-full object-cover" /> : <FileImage className="w-2.5 h-2.5 text-blue-600" />}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] font-bold leading-tight truncate text-foreground" title={c.nome}>{c.nome}</p>
-              <div className="flex items-center gap-1 mt-0.5 mb-1.5">
-                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Venc.</span>
-                <span className="text-[10px] font-bold text-foreground">dia {c.dia_vencimento}</span>
-                <span className="text-[9px] text-muted-foreground ml-auto">{cardFaturas.length} fat.</span>
-              </div>
+              <p className={`text-[11px] font-bold leading-tight truncate ${bStyle.nameText}`} title={c.nome}>{c.nome}</p>
               {latestFat ? (
-                <div className="pt-1.5 border-t border-dashed">
+                <div className="pt-1.5 mt-1.5 border-t border-dashed">
                   <p className="text-sm font-extrabold tracking-tight tabular-nums truncate text-foreground">{formatCurrency(latestFat.valor_total)}</p>
                   <div className="flex items-center justify-between gap-1 mt-0.5">
-                    <span className="text-[10px] text-muted-foreground tabular-nums">{formatDate(latestFat.data_vencimento)}</span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">Venc. {formatDate(latestFat.data_vencimento)}</span>
                     <StatusBadge status={latestFat.status} />
                   </div>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">{cardFaturas.length} fatura(s)</p>
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground pt-1.5 border-t border-dashed italic">Sem fatura</p>
+                <p className="text-[10px] text-muted-foreground pt-1.5 mt-1.5 border-t border-dashed italic">Sem fatura · vence dia {c.dia_vencimento}</p>
               )}
             </button>
           );
