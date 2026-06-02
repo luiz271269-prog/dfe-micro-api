@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertCircle, HelpCircle, X } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
+import LancamentosEditableTable from './LancamentosEditableTable';
 
 function isPagamentoFatura(l) {
   if ((l.valor || 0) < 0) return true;
@@ -128,7 +129,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
 
       {/* Listagem filtrada ao clicar */}
       {activeKey && filteredLancs.length > 0 && (
-        <div className="border-t px-4 pb-4">
+        <div className="border-t px-4 pb-4 bg-background">
           <div className="flex items-center justify-between py-2 mb-2">
             <p className={`text-xs font-bold ${activeItem?.text}`}>
               {activeItem?.label} — {filteredLancs.length} lançamento(s)
@@ -137,28 +138,10 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b bg-muted/20">
-                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground">Data</th>
-                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground">Estabelecimento</th>
-                  <th className="text-left px-2 py-1.5 font-semibold text-muted-foreground">Natureza</th>
-                  <th className="text-right px-2 py-1.5 font-semibold text-muted-foreground">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLancs.map((l, i) => (
-                  <tr key={i} className="border-b hover:bg-muted/10">
-                    <td className="px-2 py-1.5 text-muted-foreground whitespace-nowrap">{l.data_lancamento || '—'}</td>
-                    <td className="px-2 py-1.5 max-w-[180px] truncate">{l.estabelecimento || '—'}</td>
-                    <td className="px-2 py-1.5 text-muted-foreground capitalize">{l.natureza || '—'}</td>
-                    <td className="px-2 py-1.5 text-right font-semibold">{formatCurrency(Math.abs(l.valor || 0))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LancamentosEditableTable
+            lancamentos={filteredLancs}
+            onReload={() => window.dispatchEvent(new Event('neuralfinRefresh'))}
+          />
         </div>
       )}
 
