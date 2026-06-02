@@ -69,57 +69,91 @@ Deno.serve(async (req) => {
         return true;
       });
 
-      // Best match: valor mais próximo do valor_total da fatura (tolerância 5% / mín R$ 10)
-      let melhor = null;
+      const valorFat = fat.valor_total || 0;
+      const tol = Math.max(10, valorFat * 0.05);
+
+      // Best match individual
+      let melhores = null;
       let melhorDiff = Infinity;
       for (const c of candidatos) {
-        const absV = Math.abs(c.valor || 0);
-        const diff = Math.abs(absV - (fat.valor_total || 0));
-        const tol = Math.max(10, (fat.valor_total || 0) * 0.05);
+        const diff = Math.abs(Math.abs(c.valor || 0) - valorFat);
         if (diff <= tol && diff < melhorDiff) {
-          melhor = c;
+          melhores = [c];
           melhorDiff = diff;
         }
       }
 
-      // Segunda passada: também aceita match por nome do cartão (sem checar conta)
-      if (!melhor) {
+      // Segunda passada individual: match por nome do cartão (sem checar conta)
+      if (!melhores) {
         for (const c of saidas) {
           if (lancVinculados.has(c.id)) continue;
           if (!nomeCartaoBate(c.descricao, cartao)) continue;
           if (!dentroDaJanela(c.data, fat.data_vencimento, 14)) continue;
-          const absV = Math.abs(c.valor || 0);
-          const diff = Math.abs(absV - (fat.valor_total || 0));
-          const tol = Math.max(10, (fat.valor_total || 0) * 0.05);
+          const diff = Math.abs(Math.abs(c.valor || 0) - valorFat);
           if (diff <= tol && diff < melhorDiff) {
-            melhor = c;
+            melhores = [c];
             melhorDiff = diff;
           }
         }
       }
 
-      if (!melhor) { naoConciliados++; continue; }
+      // Combinações de 2 ou 3 débitos que somam o valor da fatura (pagamento parcelado)
+      if (!melhores) {
+        const pool = candidatos.length > 0
+          ? candidatos
+          : saidas.filter(c => !lancVinculados.has(c.id) && nomeCartaoBate(c.descricao, cartao) && dentroDaJanela(c.data, fat.data_vencimento, 14));
+        // Limita combinatória
+        const lim = pool.slice(0, 25);
+        // Pares
+        outer2: for (let i = 0; i < lim.length && !melhores; i++) {
+          for (let j = i + 1; j < lim.length; j++) {
+            const soma = Math.abs(lim[i].valor || 0) + Math.abs(lim[j].valor || 0);
+            const diff = Math.abs(soma - valorFat);
+            if (diff <= tol) { melhores = [lim[i], lim[j]]; melhorDiff = diff; break outer2; }
+          }
+        }
+        // Trios
+        if (!melhores) {
+          outer3: for (let i = 0; i < lim.length && !melhores; i++) {
+            for (let j = i + 1; j < lim.length; j++) {
+              for (let k = j + 1; k < lim.length; k++) {
+                const soma = Math.abs(lim[i].valor || 0) + Math.abs(lim[j].valor || 0) + Math.abs(lim[k].valor || 0);
+                const diff = Math.abs(soma - valorFat);
+                if (diff <= tol) { melhores = [lim[i], lim[j], lim[k]]; melhorDiff = diff; break outer3; }
+              }
+            }
+          }
+        }
+      }
 
-      const valorPago = Math.abs(melhor.valor || 0);
-      const integral = Math.abs(valorPago - (fat.valor_total || 0)) <= Math.max(1, (fat.valor_total || 0) * 0.01);
+      if (!melhores || melhores.length === 0) { naoConciliados++; continue; }
 
-      // Cria vínculo
-      await base44.asServiceRole.entities.VinculoExtrato.create({
-        lancamento_bancario_id: melhor.id,
-        entidade_tipo: 'FaturaCartao',
-        entidade_id: fat.id,
-        valor_alocado: valorPago,
-        tipo_vinculo: integral ? 'pagamento_integral' : 'pagamento_parcial',
-        conciliado_por: 'auto',
-        confianca: integral ? 95 : 80,
-      });
-      lancVinculados.add(melhor.id);
+      const valorPagoTotal = melhores.reduce((s, m) => s + Math.abs(m.valor || 0), 0);
+      const integral = Math.abs(valorPagoTotal - valorFat) <= Math.max(1, valorFat * 0.01);
+      const dataUltima = melhores.map(m => m.data).sort().slice(-1)[0];
+      const isMulti = melhores.length > 1;
+
+      // Cria vínculos (um por lançamento)
+      for (const m of melhores) {
+        const valorM = Math.abs(m.valor || 0);
+        await base44.asServiceRole.entities.VinculoExtrato.create({
+          lancamento_bancario_id: m.id,
+          entidade_tipo: 'FaturaCartao',
+          entidade_id: fat.id,
+          valor_alocado: valorM,
+          tipo_vinculo: (isMulti || !integral) ? 'pagamento_parcial' : 'pagamento_integral',
+          conciliado_por: 'auto',
+          confianca: integral ? (isMulti ? 90 : 95) : 80,
+          observacao: isMulti ? `Parte ${melhores.indexOf(m) + 1}/${melhores.length} do pagamento da fatura` : undefined,
+        });
+        lancVinculados.add(m.id);
+      }
 
       // Atualiza fatura
       await base44.asServiceRole.entities.FaturaCartao.update(fat.id, {
         status: integral ? 'paga_total' : 'aberta',
-        data_pagamento: melhor.data,
-        valor_pago: valorPago,
+        data_pagamento: dataUltima,
+        valor_pago: valorPagoTotal,
       });
 
       conciliados++;
@@ -127,11 +161,11 @@ Deno.serve(async (req) => {
       detalhes.push({
         cartao: cartao.nome,
         mes: fat.mes_referencia,
-        valor_fatura: fat.valor_total,
-        valor_pago: valorPago,
-        data_pagamento: melhor.data,
-        descricao_extrato: melhor.descricao,
-        tipo: integral ? 'integral' : 'parcial',
+        valor_fatura: valorFat,
+        valor_pago: valorPagoTotal,
+        data_pagamento: dataUltima,
+        descricao_extrato: melhores.map(m => m.descricao).join(' + '),
+        tipo: integral ? (isMulti ? `integral (${melhores.length} débitos)` : 'integral') : 'parcial',
       });
     }
 
