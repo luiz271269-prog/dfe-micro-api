@@ -29,6 +29,11 @@ const DEDUP_CONFIG = {
   LancamentoCartao: {
     entity: 'LancamentoCartao',
     keys: ['fatura_id', 'data_lancamento', 'estabelecimento', 'valor'],
+    // Normaliza estabelecimento de forma agressiva (uppercase + sem pontuação) para tolerar
+    // variações de extração ("MP*UBER", "MP *UBER", "mp*uber") como o mesmo lançamento.
+    normalizers: {
+      estabelecimento: v => (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30),
+    },
   },
   ObraReforma: {
     entity: 'ObraReforma',
@@ -68,11 +73,13 @@ function normalizeValue(value) {
 
 /**
  * Cria uma chave de deduplicação para um registro
+ * normalizers (opcional): { campo: fn(valor) => string } — sobrescreve normalizeValue para o campo
  */
-function createDedupKey(record, keys) {
+function createDedupKey(record, keys, normalizers) {
   return keys
     .map(k => {
       const val = record[k];
+      if (normalizers && normalizers[k]) return normalizers[k](val);
       return normalizeValue(val);
     })
     .join('|');
@@ -97,7 +104,7 @@ export async function deduplicateRecords(records, entityType) {
     throw new Error(`Configuração de deduplicação não encontrada para ${entityType}`);
   }
 
-  const { entity, keys } = config;
+  const { entity, keys, normalizers } = config;
   const seenInBatch = new Set();
   const enriched = [];
 
@@ -114,7 +121,7 @@ export async function deduplicateRecords(records, entityType) {
   const existingKeys = new Set(
     existingRecords
       .filter(r => isValidRecord(r, keys))
-      .map(r => createDedupKey(r, keys))
+      .map(r => createDedupKey(r, keys, normalizers))
   );
 
   // Processar cada registro
@@ -125,7 +132,7 @@ export async function deduplicateRecords(records, entityType) {
     if (!isValidRecord(record, keys)) {
       status = 'erro';
     } else {
-      const batchKey = createDedupKey(record, keys);
+      const batchKey = createDedupKey(record, keys, normalizers);
 
       // Verificar se já foi visto neste batch
       if (seenInBatch.has(batchKey)) {

@@ -671,11 +671,25 @@ export default function ImportarDocumento() {
       }
 
       if (faturaId) {
+        // Dedup contra o banco — usa a MESMA normalização do prompt/deduplicarCartoes
+        // (data + estabelecimento normalizado + valor em centavos) para impedir reimportação duplicar
+        const existentes = await base44.entities.LancamentoCartao.filter({ fatura_id: faturaId });
+        const norm = s => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
+        const chavesExistentes = new Set(
+          (existentes || []).map(e => `${e.data_lancamento}|${norm(e.estabelecimento)}|${Math.round((e.valor || 0) * 100)}`)
+        );
+        let pulados = 0;
         for (let i = 0; i < lancRecs.length; i++) {
           setSaveProgress(`Salvando lançamento ${i + 1} de ${lancRecs.length}...`);
           const { __type, ...lancData } = lancRecs[i].data;
+          const chave = `${lancData.data_lancamento}|${norm(lancData.estabelecimento)}|${Math.round((lancData.valor || 0) * 100)}`;
+          if (chavesExistentes.has(chave)) { pulados++; continue; }
+          chavesExistentes.add(chave);
           await base44.entities.LancamentoCartao.create({ ...lancData, fatura_id: faturaId });
           saved++;
+        }
+        if (pulados > 0) {
+          console.log(`[FaturaCartao] ${pulados} lançamento(s) já existentes na fatura — pulados.`);
         }
       } else if (lancRecs.length > 0) {
         showToast('⚠️ Selecione um cartão no calendário — não foi possível identificar a fatura para vincular os lançamentos.', 'error');
