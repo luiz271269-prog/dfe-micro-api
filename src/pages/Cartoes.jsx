@@ -266,274 +266,287 @@ export default function Cartoes() {
         />
       )}
 
-      {/* Cards list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      {/* Cards list — grid compacto */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
         {cartoes.map(c => {
           const isExpanded = expandedCard === c.id;
           const cardFaturas = getCardFaturas(c.id);
           const latestFat = cardFaturas[0];
+          const url = latestFat ? getFaturaFileUrl(latestFat) : null;
+          const isImg = url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
 
           return (
-            <div key={c.id} className="bg-card rounded-xl border overflow-hidden">
-              <button
-                onClick={() => {
-                  if (isExpanded) {
-                    setExpandedCard(null);
-                    setExpandedFatura(null);
-                  } else {
-                    setExpandedCard(c.id);
-                    const firstFat = getCardFaturas(c.id)[0];
-                    if (firstFat) setExpandedFatura(firstFat.id);
-                  }
-                }}
-                className="w-full flex items-center gap-2 p-2 hover:bg-muted/30 transition-colors text-left"
-              >
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <CreditCard className="w-3.5 h-3.5 text-primary" />
+            <button
+              key={c.id}
+              onClick={() => {
+                if (isExpanded) {
+                  setExpandedCard(null);
+                  setExpandedFatura(null);
+                } else {
+                  setExpandedCard(c.id);
+                  const firstFat = getCardFaturas(c.id)[0];
+                  if (firstFat) setExpandedFatura(firstFat.id);
+                }
+              }}
+              className={`bg-card rounded-xl border p-2 hover:bg-muted/30 transition-all text-left ${isExpanded ? 'ring-2 ring-primary border-primary' : ''}`}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                  <CreditCard className="w-3 h-3 text-primary" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-semibold truncate">{c.nome}</span>
-                    <span className={`text-[9px] font-semibold px-1.5 py-0 rounded-full ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                      {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
-                    </span>
-                    {latestFat && <StatusBadge status={latestFat.status} />}
+                <span className={`text-[9px] font-semibold px-1.5 py-0 rounded-full ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                  {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
+                </span>
+                {url && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); setViewerFile({ url, titulo: `${c.nome} — ${latestFat.mes_referencia}` }); }}
+                    className="ml-auto w-5 h-5 rounded border border-blue-200 bg-blue-50 overflow-hidden flex items-center justify-center hover:border-blue-400"
+                    title="Ver fatura original"
+                  >
+                    {isImg ? <img src={url} alt="" className="w-full h-full object-cover" /> : <FileImage className="w-2.5 h-2.5 text-blue-600" />}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs font-semibold truncate" title={c.nome}>{c.nome}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{c.bandeira} · dia {c.dia_vencimento}</p>
+              {latestFat ? (
+                <div className="mt-1 pt-1 border-t flex items-end justify-between gap-1">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate">{formatCurrency(latestFat.valor_total)}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatDate(latestFat.data_vencimento)}</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground truncate">{c.bandeira} · dia {c.dia_vencimento} · {c.conta_bancaria_pagamento}</p>
+                  <StatusBadge status={latestFat.status} />
                 </div>
-                {(() => {
-                  const url = latestFat ? getFaturaFileUrl(latestFat) : null;
-                  if (!url) return null;
-                  const isImg = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
-                  return (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setViewerFile({ url, titulo: `${c.nome} — ${latestFat.mes_referencia}` }); }}
-                      className="shrink-0 w-8 h-9 rounded-md border border-blue-200 bg-blue-50 hover:border-blue-400 hover:shadow-md overflow-hidden flex items-center justify-center transition-all"
-                      title="Ver fatura original importada"
-                    >
-                      {isImg ? (
-                        <img src={url} alt="fatura" className="w-full h-full object-cover" />
-                      ) : (
-                        <FileImage className="w-3.5 h-3.5 text-blue-600" />
-                      )}
-                    </button>
-                  );
-                })()}
-                <div className="text-right shrink-0">
-                  {latestFat && (
-                    <>
-                      <p className="text-xs font-bold leading-tight">{formatCurrency(latestFat.valor_total)}</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight">{formatDate(latestFat.data_vencimento)}</p>
-                    </>
-                  )}
-                  <p className="text-[10px] text-muted-foreground leading-tight">{cardFaturas.length} fat.</p>
-                </div>
-                {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-              </button>
-
-              {isExpanded && (
-                <div className="border-t bg-muted/20">
-                  {cardFaturas.length === 0 ? (
-                    <p className="px-6 py-4 text-sm text-muted-foreground">Nenhuma fatura cadastrada</p>
-                  ) : (
-                    cardFaturas.map(fat => {
-                      const fatLancs = getFaturaLancamentos(fat.id);
-                      const isFatExpanded = expandedFatura === fat.id;
-                      const pagamentos = fatLancs.filter(l => isPagamentoFatura(l));
-                      const validos = fatLancs.filter(l => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
-                      const despesasParaTabela = fatLancs.filter(l => !isPagamentoFatura(l));
-                      const totalEmp = validos.filter(l => l.natureza === 'empresarial').reduce((s, l) => s + (l.valor || 0), 0);
-                      const totalPes = validos.filter(l => l.natureza === 'pessoal').reduce((s, l) => s + (l.valor || 0), 0);
-                      const totalPagamentos = pagamentos.reduce((s, l) => s + (l.valor || 0), 0);
-
-                      return (
-                        <div key={fat.id} className="border-b last:border-b-0">
-                          <button
-                            onClick={() => setExpandedFatura(isFatExpanded ? null : fat.id)}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 text-left transition-colors"
-                          >
-                            <div className="flex-1 flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs font-semibold">{fat.mes_referencia}</span>
-                              <StatusBadge status={fat.status} />
-                              <span className="text-[10px] text-muted-foreground">Venc. {formatDate(fat.data_vencimento)}</span>
-                              {fatLancs.length > 0 && <span className="text-[10px] text-muted-foreground">{fatLancs.length} lanç.</span>}
-                              {(() => {
-                                const url = getFaturaFileUrl(fat);
-                                if (!url) return null;
-                                return (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); setViewerFile({ url, titulo: `${c.nome} — ${fat.mes_referencia}` }); }}
-                                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
-                                    title="Ver fatura original importada"
-                                  >
-                                    <FileImage className="w-3 h-3" /> Ver original
-                                  </button>
-                                );
-                              })()}
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xs font-bold">{formatCurrency(fat.valor_total)}</span>
-                              {fat.valor_pago > 0 && <p className="text-[10px] text-green-600 leading-tight">Pago: {formatCurrency(fat.valor_pago)}</p>}
-                            </div>
-                            {isFatExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
-                          </button>
-
-                          {isFatExpanded && (
-                            <div className="px-3 pb-3 bg-background">
-                              {fatLancs.length === 0 ? (
-                                <p className="text-xs text-muted-foreground py-2">Nenhum lançamento cadastrado</p>
-                              ) : (
-                                <>
-                                  <div className="flex gap-1.5 mt-2 mb-2">
-                                    <div className="bg-blue-50 border border-blue-100 rounded px-2 py-1 text-[10px] flex-1">
-                                      <p className="text-blue-600 font-semibold">Empresarial</p>
-                                      <p className="font-bold text-blue-800 text-xs">{formatCurrency(totalEmp)}</p>
-                                    </div>
-                                    <div className="bg-purple-50 border border-purple-100 rounded px-2 py-1 text-[10px] flex-1">
-                                      <p className="text-purple-600 font-semibold">Pessoal</p>
-                                      <p className="font-bold text-purple-800 text-xs">{formatCurrency(totalPes)}</p>
-                                    </div>
-                                    <div className="bg-muted border rounded px-2 py-1 text-[10px] flex-1">
-                                      <p className="text-muted-foreground font-semibold">Total</p>
-                                      <p className="font-bold text-xs">{formatCurrency(fat.valor_total)}</p>
-                                    </div>
-                                  </div>
-
-                                  <CategoriaBreakdown lancamentos={validos} />
-
-                                  <div className="mt-4 overflow-x-auto">
-                                    <table className="w-full text-xs">
-                                      <thead>
-                                        <tr className="border-b">
-                                          <th className="text-left py-2 font-semibold text-muted-foreground">Data</th>
-                                          <th className="text-left py-2 font-semibold text-muted-foreground">Estabelecimento</th>
-                                          <th className="text-left py-2 font-semibold text-muted-foreground">Categoria</th>
-                                          <th className="text-left py-2 font-semibold text-muted-foreground">Natureza</th>
-                                          <th className="text-right py-2 font-semibold text-muted-foreground">Valor</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {despesasParaTabela.map(l => {
-                                          const isExcluded = l.observacao?.includes('Não faz parte');
-                                          const editingCat = editingLanc?.id === l.id && editingLanc?.field === 'categoria';
-                                          const editingNat = editingLanc?.id === l.id && editingLanc?.field === 'natureza';
-                                          return (
-                                            <tr key={l.id} className={`border-b last:border-b-0 ${isExcluded ? 'opacity-40' : ''}`}>
-                                              <td className="py-1.5 whitespace-nowrap">{formatDate(l.data_lancamento)}</td>
-                                              <td className="py-1.5 max-w-[180px] truncate" title={l.estabelecimento}>
-                                                {l.estabelecimento}
-                                                {isExcluded && <span className="ml-1 text-[9px] text-red-500 font-semibold">(não contabilizado)</span>}
-                                              </td>
-                                              <td className="py-1.5">
-                                                {editingCat ? (
-                                                  <Select
-                                                    value={l.categoria || ''}
-                                                    onValueChange={async v => {
-                                                      await base44.entities.LancamentoCartao.update(l.id, { categoria: v });
-                                                      setEditingLanc(null);
-                                                      loadData();
-                                                    }}
-                                                    open
-                                                    onOpenChange={open => { if (!open) setEditingLanc(null); }}
-                                                  >
-                                                    <SelectTrigger className="h-6 text-[10px] px-1.5 w-[130px]">
-                                                      <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                      {Object.entries(categoriaLabels).map(([k, v]) => (
-                                                        <SelectItem key={k} value={k}>{v}</SelectItem>
-                                                      ))}
-                                                    </SelectContent>
-                                                  </Select>
-                                                ) : (
-                                                  <span
-                                                    onClick={() => setEditingLanc({ id: l.id, field: 'categoria' })}
-                                                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${categoriaColors[l.categoria] || 'bg-slate-100 text-slate-700'}`}
-                                                    title="Clique para editar"
-                                                  >
-                                                    {categoriaLabels[l.categoria] || l.categoria || '—'}
-                                                  </span>
-                                                )}
-                                              </td>
-                                              <td className="py-1.5">
-                                                {editingNat ? (
-                                                  <Select
-                                                    value={l.natureza || ''}
-                                                    onValueChange={async v => {
-                                                      await base44.entities.LancamentoCartao.update(l.id, { natureza: v });
-                                                      setEditingLanc(null);
-                                                      loadData();
-                                                    }}
-                                                    open
-                                                    onOpenChange={open => { if (!open) setEditingLanc(null); }}
-                                                  >
-                                                    <SelectTrigger className="h-6 text-[10px] px-1.5 w-[110px]">
-                                                      <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                      <SelectItem value="empresarial">empresarial</SelectItem>
-                                                      <SelectItem value="pessoal">pessoal</SelectItem>
-                                                      <SelectItem value="reembolso">reembolso</SelectItem>
-                                                    </SelectContent>
-                                                  </Select>
-                                                ) : (
-                                                  <span
-                                                    onClick={() => setEditingLanc({ id: l.id, field: 'natureza' })}
-                                                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${l.natureza === 'empresarial' ? 'bg-blue-100 text-blue-700' : l.natureza === 'reembolso' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}
-                                                    title="Clique para editar"
-                                                  >
-                                                    {l.natureza || '—'}
-                                                  </span>
-                                                )}
-                                              </td>
-                                              <td className={`py-1.5 text-right font-medium ${l.valor < 0 ? 'text-green-600' : ''}`}>
-                                                {formatCurrency(l.valor)}
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
-                                  </div>
-
-                                  {pagamentos.length > 0 && (
-                                    <div className="mt-4 pt-3 border-t border-dashed">
-                                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                        Pagamentos da fatura anterior · não contabilizados
-                                      </p>
-                                      <table className="w-full text-xs text-muted-foreground/70">
-                                        <tbody>
-                                          {pagamentos.map(l => (
-                                            <tr key={l.id} className="border-b last:border-b-0">
-                                              <td className="py-1 whitespace-nowrap w-24">{formatDate(l.data_lancamento)}</td>
-                                              <td className="py-1 italic" title={l.estabelecimento}>{l.estabelecimento}</td>
-                                              <td className="py-1 text-right tabular-nums">{formatCurrency(l.valor)}</td>
-                                            </tr>
-                                          ))}
-                                          <tr>
-                                            <td colSpan={2} className="py-1.5 text-right font-semibold uppercase text-[10px] tracking-wider">Total pagamentos</td>
-                                            <td className="py-1.5 text-right font-bold tabular-nums">{formatCurrency(totalPagamentos)}</td>
-                                          </tr>
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+              ) : (
+                <p className="text-[10px] text-muted-foreground mt-1 pt-1 border-t">Sem fatura</p>
               )}
-            </div>
+              <p className="text-[9px] text-muted-foreground mt-0.5">{cardFaturas.length} fat.</p>
+            </button>
           );
         })}
       </div>
+
+      {/* Painel expandido — largura total na quebra abaixo */}
+      {expandedCard && (() => {
+        const c = cartoes.find(x => x.id === expandedCard);
+        if (!c) return null;
+        const cardFaturas = getCardFaturas(c.id);
+        return (
+          <div className="mt-4 bg-card rounded-xl border overflow-hidden">
+            <div className="px-4 py-2.5 border-b bg-muted/20 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0">
+                <CreditCard className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-sm font-bold truncate">{c.nome}</span>
+                <span className="text-[10px] text-muted-foreground truncate">{c.bandeira} · dia {c.dia_vencimento} · {c.conta_bancaria_pagamento}</span>
+              </div>
+              <button
+                onClick={() => { setExpandedCard(null); setExpandedFatura(null); }}
+                className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted"
+              >
+                Fechar ✕
+              </button>
+            </div>
+            <div className="bg-muted/10">
+              {cardFaturas.length === 0 ? (
+                <p className="px-6 py-4 text-sm text-muted-foreground">Nenhuma fatura cadastrada</p>
+              ) : (
+                cardFaturas.map(fat => {
+                  const fatLancs = getFaturaLancamentos(fat.id);
+                  const isFatExpanded = expandedFatura === fat.id;
+                  const pagamentos = fatLancs.filter(l => isPagamentoFatura(l));
+                  const validos = fatLancs.filter(l => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
+                  const despesasParaTabela = fatLancs.filter(l => !isPagamentoFatura(l));
+                  const totalEmp = validos.filter(l => l.natureza === 'empresarial').reduce((s, l) => s + (l.valor || 0), 0);
+                  const totalPes = validos.filter(l => l.natureza === 'pessoal').reduce((s, l) => s + (l.valor || 0), 0);
+                  const totalPagamentos = pagamentos.reduce((s, l) => s + (l.valor || 0), 0);
+
+                  return (
+                    <div key={fat.id} className="border-b last:border-b-0">
+                      <button
+                        onClick={() => setExpandedFatura(isFatExpanded ? null : fat.id)}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 text-left transition-colors"
+                      >
+                        <div className="flex-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-semibold">{fat.mes_referencia}</span>
+                          <StatusBadge status={fat.status} />
+                          <span className="text-[10px] text-muted-foreground">Venc. {formatDate(fat.data_vencimento)}</span>
+                          {fatLancs.length > 0 && <span className="text-[10px] text-muted-foreground">{fatLancs.length} lanç.</span>}
+                          {(() => {
+                            const url2 = getFaturaFileUrl(fat);
+                            if (!url2) return null;
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setViewerFile({ url: url2, titulo: `${c.nome} — ${fat.mes_referencia}` }); }}
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                title="Ver fatura original importada"
+                              >
+                                <FileImage className="w-3 h-3" /> Ver original
+                              </button>
+                            );
+                          })()}
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold">{formatCurrency(fat.valor_total)}</span>
+                          {fat.valor_pago > 0 && <p className="text-[10px] text-green-600 leading-tight">Pago: {formatCurrency(fat.valor_pago)}</p>}
+                        </div>
+                        {isFatExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+                      </button>
+
+                      {isFatExpanded && (
+                        <div className="px-3 pb-3 bg-background">
+                          {fatLancs.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-2">Nenhum lançamento cadastrado</p>
+                          ) : (
+                            <>
+                              <div className="flex gap-1.5 mt-2 mb-2">
+                                <div className="bg-blue-50 border border-blue-100 rounded px-2 py-1 text-[10px] flex-1">
+                                  <p className="text-blue-600 font-semibold">Empresarial</p>
+                                  <p className="font-bold text-blue-800 text-xs">{formatCurrency(totalEmp)}</p>
+                                </div>
+                                <div className="bg-purple-50 border border-purple-100 rounded px-2 py-1 text-[10px] flex-1">
+                                  <p className="text-purple-600 font-semibold">Pessoal</p>
+                                  <p className="font-bold text-purple-800 text-xs">{formatCurrency(totalPes)}</p>
+                                </div>
+                                <div className="bg-muted border rounded px-2 py-1 text-[10px] flex-1">
+                                  <p className="text-muted-foreground font-semibold">Total</p>
+                                  <p className="font-bold text-xs">{formatCurrency(fat.valor_total)}</p>
+                                </div>
+                              </div>
+
+                              <CategoriaBreakdown lancamentos={validos} />
+
+                              <div className="mt-4 overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b">
+                                      <th className="text-left py-2 font-semibold text-muted-foreground">Data</th>
+                                      <th className="text-left py-2 font-semibold text-muted-foreground">Estabelecimento</th>
+                                      <th className="text-left py-2 font-semibold text-muted-foreground">Categoria</th>
+                                      <th className="text-left py-2 font-semibold text-muted-foreground">Natureza</th>
+                                      <th className="text-right py-2 font-semibold text-muted-foreground">Valor</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {despesasParaTabela.map(l => {
+                                      const isExcluded = l.observacao?.includes('Não faz parte');
+                                      const editingCat = editingLanc?.id === l.id && editingLanc?.field === 'categoria';
+                                      const editingNat = editingLanc?.id === l.id && editingLanc?.field === 'natureza';
+                                      return (
+                                        <tr key={l.id} className={`border-b last:border-b-0 ${isExcluded ? 'opacity-40' : ''}`}>
+                                          <td className="py-1.5 whitespace-nowrap">{formatDate(l.data_lancamento)}</td>
+                                          <td className="py-1.5 max-w-[180px] truncate" title={l.estabelecimento}>
+                                            {l.estabelecimento}
+                                            {isExcluded && <span className="ml-1 text-[9px] text-red-500 font-semibold">(não contabilizado)</span>}
+                                          </td>
+                                          <td className="py-1.5">
+                                            {editingCat ? (
+                                              <Select
+                                                value={l.categoria || ''}
+                                                onValueChange={async v => {
+                                                  await base44.entities.LancamentoCartao.update(l.id, { categoria: v });
+                                                  setEditingLanc(null);
+                                                  loadData();
+                                                }}
+                                                open
+                                                onOpenChange={open => { if (!open) setEditingLanc(null); }}
+                                              >
+                                                <SelectTrigger className="h-6 text-[10px] px-1.5 w-[130px]">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  {Object.entries(categoriaLabels).map(([k, v]) => (
+                                                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                                                  ))}
+                                                </SelectContent>
+                                              </Select>
+                                            ) : (
+                                              <span
+                                                onClick={() => setEditingLanc({ id: l.id, field: 'categoria' })}
+                                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${categoriaColors[l.categoria] || 'bg-slate-100 text-slate-700'}`}
+                                                title="Clique para editar"
+                                              >
+                                                {categoriaLabels[l.categoria] || l.categoria || '—'}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="py-1.5">
+                                            {editingNat ? (
+                                              <Select
+                                                value={l.natureza || ''}
+                                                onValueChange={async v => {
+                                                  await base44.entities.LancamentoCartao.update(l.id, { natureza: v });
+                                                  setEditingLanc(null);
+                                                  loadData();
+                                                }}
+                                                open
+                                                onOpenChange={open => { if (!open) setEditingLanc(null); }}
+                                              >
+                                                <SelectTrigger className="h-6 text-[10px] px-1.5 w-[110px]">
+                                                  <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="empresarial">empresarial</SelectItem>
+                                                  <SelectItem value="pessoal">pessoal</SelectItem>
+                                                  <SelectItem value="reembolso">reembolso</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            ) : (
+                                              <span
+                                                onClick={() => setEditingLanc({ id: l.id, field: 'natureza' })}
+                                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${l.natureza === 'empresarial' ? 'bg-blue-100 text-blue-700' : l.natureza === 'reembolso' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}
+                                                title="Clique para editar"
+                                              >
+                                                {l.natureza || '—'}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className={`py-1.5 text-right font-medium ${l.valor < 0 ? 'text-green-600' : ''}`}>
+                                            {formatCurrency(l.valor)}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {pagamentos.length > 0 && (
+                                <div className="mt-4 pt-3 border-t border-dashed">
+                                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                    Pagamentos da fatura anterior · não contabilizados
+                                  </p>
+                                  <table className="w-full text-xs text-muted-foreground/70">
+                                    <tbody>
+                                      {pagamentos.map(l => (
+                                        <tr key={l.id} className="border-b last:border-b-0">
+                                          <td className="py-1 whitespace-nowrap w-24">{formatDate(l.data_lancamento)}</td>
+                                          <td className="py-1 italic" title={l.estabelecimento}>{l.estabelecimento}</td>
+                                          <td className="py-1 text-right tabular-nums">{formatCurrency(l.valor)}</td>
+                                        </tr>
+                                      ))}
+                                      <tr>
+                                        <td colSpan={2} className="py-1.5 text-right font-semibold uppercase text-[10px] tracking-wider">Total pagamentos</td>
+                                        <td className="py-1.5 text-right font-bold tabular-nums">{formatCurrency(totalPagamentos)}</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <FaturaImageViewer
         open={!!viewerFile}
