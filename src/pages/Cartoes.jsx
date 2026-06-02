@@ -289,13 +289,14 @@ export default function Cartoes() {
                   if (firstFat) setExpandedFatura(firstFat.id);
                 }
               }}
-              className={`bg-card rounded-xl border p-2 hover:bg-muted/30 transition-all text-left ${isExpanded ? 'ring-2 ring-primary border-primary' : ''}`}
+              className={`group relative bg-gradient-to-br from-card to-muted/20 rounded-xl border p-2.5 hover:shadow-md hover:border-primary/40 transition-all text-left overflow-hidden ${isExpanded ? 'ring-2 ring-primary border-primary shadow-md' : ''}`}
             >
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                  <CreditCard className="w-3 h-3 text-primary" />
+              <div className={`absolute top-0 left-0 right-0 h-0.5 ${c.tipo === 'empresarial' ? 'bg-blue-500' : 'bg-purple-500'}`} />
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${c.tipo === 'empresarial' ? 'bg-blue-500/10 text-blue-600' : 'bg-purple-500/10 text-purple-600'}`}>
+                  <CreditCard className="w-3 h-3" />
                 </div>
-                <span className={`text-[9px] font-semibold px-1.5 py-0 rounded-full ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                   {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
                 </span>
                 {url && (
@@ -310,20 +311,23 @@ export default function Cartoes() {
                   </span>
                 )}
               </div>
-              <p className="text-xs font-semibold truncate" title={c.nome}>{c.nome}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{c.bandeira} · dia {c.dia_vencimento}</p>
+              <p className="text-[11px] font-bold leading-tight truncate text-foreground" title={c.nome}>{c.nome}</p>
+              <div className="flex items-center gap-1 mt-0.5 mb-1.5">
+                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">Venc.</span>
+                <span className="text-[10px] font-bold text-foreground">dia {c.dia_vencimento}</span>
+                <span className="text-[9px] text-muted-foreground ml-auto">{cardFaturas.length} fat.</span>
+              </div>
               {latestFat ? (
-                <div className="mt-1 pt-1 border-t flex items-end justify-between gap-1">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold truncate">{formatCurrency(latestFat.valor_total)}</p>
-                    <p className="text-[10px] text-muted-foreground">{formatDate(latestFat.data_vencimento)}</p>
+                <div className="pt-1.5 border-t border-dashed">
+                  <p className="text-sm font-extrabold tracking-tight tabular-nums truncate text-foreground">{formatCurrency(latestFat.valor_total)}</p>
+                  <div className="flex items-center justify-between gap-1 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground tabular-nums">{formatDate(latestFat.data_vencimento)}</span>
+                    <StatusBadge status={latestFat.status} />
                   </div>
-                  <StatusBadge status={latestFat.status} />
                 </div>
               ) : (
-                <p className="text-[10px] text-muted-foreground mt-1 pt-1 border-t">Sem fatura</p>
+                <p className="text-[10px] text-muted-foreground pt-1.5 border-t border-dashed italic">Sem fatura</p>
               )}
-              <p className="text-[9px] text-muted-foreground mt-0.5">{cardFaturas.length} fat.</p>
             </button>
           );
         })}
