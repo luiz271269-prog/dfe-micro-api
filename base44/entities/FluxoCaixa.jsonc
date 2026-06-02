@@ -1,0 +1,116 @@
+{
+  "name": "FluxoCaixa",
+  "type": "object",
+  "properties": {
+    "data_prevista": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Prevista"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "entrada",
+        "saida"
+      ],
+      "title": "Tipo"
+    },
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "recebimento_vendas",
+        "recebimento_cobranca",
+        "pagamento_fornecedor",
+        "pagamento_tributo",
+        "folha_pagamento",
+        "aluguel",
+        "despesa_fixa",
+        "despesa_variavel",
+        "investimento",
+        "emprestimo",
+        "outro"
+      ],
+      "title": "Categoria"
+    },
+    "descricao": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o"
+    },
+    "valor_previsto": {
+      "type": "number",
+      "title": "Valor Previsto"
+    },
+    "valor_realizado": {
+      "type": "number",
+      "title": "Valor Realizado",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "previsto",
+        "confirmado",
+        "realizado",
+        "cancelado"
+      ],
+      "title": "Status",
+      "default": "previsto"
+    },
+    "recorrente": {
+      "type": "boolean",
+      "title": "Recorrente",
+      "default": false
+    },
+    "frequencia": {
+      "type": "string",
+      "enum": [
+        "unico",
+        "semanal",
+        "mensal",
+        "trimestral",
+        "anual"
+      ],
+      "title": "Frequ\u00eancia",
+      "default": "unico"
+    },
+    "conta_bancaria": {
+      "type": "string",
+      "title": "Conta Banc\u00e1ria"
+    },
+    "origem_id": {
+      "type": "string",
+      "title": "ID Origem (NF, T\u00edtulo, Tributo, etc)"
+    },
+    "origem_tipo": {
+      "type": "string",
+      "enum": [
+        "nota_fiscal",
+        "titulo_cobranca",
+        "tributo",
+        "folha",
+        "manual"
+      ],
+      "title": "Tipo Origem"
+    },
+    "mes_referencia": {
+      "type": "string",
+      "title": "M\u00eas Refer\u00eancia"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    }
+  },
+  "required": [
+    "data_prevista",
+    "tipo",
+    "categoria",
+    "descricao",
+    "valor_previsto",
+    "status"
+  ]
+}

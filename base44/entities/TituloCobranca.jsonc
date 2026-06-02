@@ -1,0 +1,69 @@
+{
+  "name": "TituloCobranca",
+  "type": "object",
+  "properties": {
+    "nosso_numero": {
+      "type": "string",
+      "title": "Nosso N\u00famero"
+    },
+    "seu_numero": {
+      "type": "string",
+      "title": "Seu N\u00famero"
+    },
+    "cliente": {
+      "type": "string",
+      "title": "Cliente"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Vencimento"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Pagamento"
+    },
+    "valor_titulo": {
+      "type": "number",
+      "title": "Valor T\u00edtulo"
+    },
+    "valor_pago": {
+      "type": "number",
+      "title": "Valor Pago",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_aberto",
+        "pago",
+        "vencido"
+      ],
+      "title": "Status"
+    },
+    "canal_cobranca": {
+      "type": "string",
+      "title": "Canal Cobran\u00e7a"
+    },
+    "nota_fiscal_id": {
+      "type": "string",
+      "title": "ID Nota Fiscal"
+    },
+    "parcela_numero": {
+      "type": "number",
+      "title": "Parcela N\u00ba"
+    },
+    "parcela_total": {
+      "type": "number",
+      "title": "Total Parcelas"
+    }
+  },
+  "required": [
+    "nosso_numero",
+    "cliente",
+    "data_vencimento",
+    "valor_titulo",
+    "status"
+  ]
+}

@@ -11,6 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import ConciliacaoCartoes from '../components/cartoes/ConciliacaoCartoes';
+import ConciliarFaturasButton from '../components/cartoes/ConciliarFaturasButton';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
@@ -173,6 +174,7 @@ export default function Cartoes() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
+        <ConciliarFaturasButton onDone={loadData} />
         <Button onClick={() => setShowFaturaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Fatura</Button>
       </PageHeader>
 

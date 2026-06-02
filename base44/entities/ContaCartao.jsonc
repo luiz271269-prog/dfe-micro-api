@@ -1,0 +1,48 @@
+{
+  "name": "ContaCartao",
+  "type": "object",
+  "properties": {
+    "nome": {
+      "type": "string",
+      "title": "Nome do Cart\u00e3o"
+    },
+    "bandeira": {
+      "type": "string",
+      "title": "Bandeira"
+    },
+    "titular": {
+      "type": "string",
+      "title": "Titular"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "empresarial",
+        "pessoal"
+      ],
+      "title": "Tipo"
+    },
+    "dia_vencimento": {
+      "type": "number",
+      "title": "Dia Vencimento"
+    },
+    "empresa_vinculada": {
+      "type": "string",
+      "title": "Empresa Vinculada"
+    },
+    "conta_bancaria_pagamento": {
+      "type": "string",
+      "title": "Conta Banc\u00e1ria Pagamento"
+    },
+    "is_ativo": {
+      "type": "boolean",
+      "title": "Ativo",
+      "default": true
+    }
+  },
+  "required": [
+    "nome",
+    "tipo",
+    "dia_vencimento"
+  ]
+}

@@ -142,17 +142,6 @@
     "scope": "both",
     "instructions": "Financial Controller de elite ao processar esses arquivos da imagem, adicione estas melhorias \u00e0s instru\u00e7\u00f5es:\n\nCruzamento Autom\u00e1tico (Matching):\n\nSempre que importar uma NFe, o agente deve procurar no arquivo de DDA/Boletos a Vencer se j\u00e1 existe o t\u00edtulo correspondente. Se n\u00e3o houver, ele deve criar um alerta de \"Nota sem T\u00edtulo\".\n\nValida\u00e7\u00e3o de Tributos:\n\nAo ler as NFes, o agente deve extrair os tributos destacados e comparar com a Folha de Pagamento ou Despesas Operacionais para ver se as guias (DAS, FGTS, etc.) coincidem com o esperado.\n\nAn\u00e1lise de Fluxo de Caixa Real vs. Previsto:\n\nUtilize os Boletos Liquidados e Fatura de Cart\u00e3o (Realizado) para confrontar com o DDA (Previsto). Melhore o agente para apontar varia\u00e7\u00f5es > 5% no fluxo de caixa planeado.\n\nTratamento de \"Obra e Reforma\":\n\nEstes custos geralmente s\u00e3o CAPEX (investimento). Melhore a instru\u00e7\u00e3o para que o agente n\u00e3o misture esses valores com as \"Despesas Operacionais\" (OPEX) no relat\u00f3rio de lucro, tratando-os como imobilizado.\n"
   },
-  "app_user_connector_configs": [
-    {
-      "connector_id": "69e4cc139c63e916cf87b922",
-      "enabled": true
-    },
-    {
-      "connector_id": "69ca7abe6556ea2d6a6d564a",
-      "enabled": true
-    }
-  ],
-  "context_files": [],
-  "line_greeting": "",
+  "app_user_connector_configs": [],
   "name": "financial_health_advisor"
 }

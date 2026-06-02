@@ -1,0 +1,57 @@
+{
+  "name": "RelatorioFaturamento",
+  "type": "object",
+  "properties": {
+    "mes": {
+      "type": "string",
+      "description": "M\u00eas refer\u00eancia ex: 2025-11"
+    },
+    "ano": {
+      "type": "number"
+    },
+    "mes_nome": {
+      "type": "string"
+    },
+    "saidas": {
+      "type": "number",
+      "description": "Valor total de sa\u00eddas/vendas"
+    },
+    "servicos": {
+      "type": "number",
+      "default": 0,
+      "description": "Valor de servi\u00e7os"
+    },
+    "outros": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "description": "Total geral do m\u00eas"
+    },
+    "das_competencia": {
+      "type": "number",
+      "description": "DAS pago referente a este m\u00eas"
+    },
+    "das_data_pagamento": {
+      "type": "string",
+      "format": "date"
+    },
+    "aliquota_efetiva": {
+      "type": "number",
+      "description": "Al\u00edquota efetiva DAS/Total"
+    },
+    "fonte": {
+      "type": "string",
+      "description": "Origem do dado: contabilidade/fabris/estimado"
+    },
+    "observacoes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "mes",
+    "total",
+    "fonte"
+  ]
+}

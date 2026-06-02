@@ -1,0 +1,81 @@
+{
+  "name": "ConciliacaoItem",
+  "type": "object",
+  "properties": {
+    "mes_referencia": {
+      "type": "string",
+      "description": "M\u00eas de refer\u00eancia YYYY-MM"
+    },
+    "data_extrato": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da entrada no extrato"
+    },
+    "doc_extrato": {
+      "type": "string",
+      "description": "Documento no extrato (PIX_CRED, COB000001, TED...)"
+    },
+    "desc_extrato": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o da entrada no extrato"
+    },
+    "valor_extrato": {
+      "type": "number",
+      "description": "Valor da entrada no extrato"
+    },
+    "saldo_apos": {
+      "type": "number",
+      "description": "Saldo ap\u00f3s o lan\u00e7amento"
+    },
+    "nf_referencia": {
+      "type": "string",
+      "description": "NF(s) correspondente(s) ex: NF-7 ou NF-12+NF-13"
+    },
+    "cliente_nf": {
+      "type": "string",
+      "description": "Cliente conforme sistema"
+    },
+    "valor_nf": {
+      "type": "number",
+      "description": "Valor da(s) NF(s) correspondente(s)"
+    },
+    "emissao_nf": {
+      "type": "string",
+      "description": "Data de emiss\u00e3o da NF (ex: 06/11)"
+    },
+    "status_conciliacao": {
+      "type": "string",
+      "enum": [
+        "conciliado",
+        "soma_nfs",
+        "cob_lote",
+        "externo",
+        "emprestimo",
+        "nao_identificado"
+      ],
+      "description": "Status da concilia\u00e7\u00e3o"
+    },
+    "observacao": {
+      "type": "string",
+      "description": "Observa\u00e7\u00e3o / detalhe da concilia\u00e7\u00e3o"
+    },
+    "lancamento_bancario_id": {
+      "type": "string",
+      "description": "Ref ao LancamentoBancario"
+    },
+    "nota_fiscal_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Refs \u00e0s NotaFiscal"
+    }
+  },
+  "required": [
+    "mes_referencia",
+    "data_extrato",
+    "desc_extrato",
+    "valor_extrato",
+    "status_conciliacao"
+  ]
+}

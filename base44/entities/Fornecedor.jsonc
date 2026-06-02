@@ -1,0 +1,49 @@
+{
+  "name": "Fornecedor",
+  "type": "object",
+  "properties": {
+    "nome": {
+      "type": "string",
+      "description": "Nome do fornecedor"
+    },
+    "cnpj": {
+      "type": "string",
+      "description": "CNPJ do fornecedor"
+    },
+    "categoria": {
+      "type": "string",
+      "enum": [
+        "distribuidor",
+        "marketplace",
+        "transportadora",
+        "servico",
+        "material",
+        "outro"
+      ],
+      "description": "Tipo de fornecedor"
+    },
+    "contato": {
+      "type": "string",
+      "description": "Telefone ou email"
+    },
+    "prazo_medio_entrega": {
+      "type": "number",
+      "description": "Prazo m\u00e9dio de entrega em dias"
+    },
+    "condicao_pagamento": {
+      "type": "string",
+      "description": "Ex: 30 dias, \u00e0 vista, boleto"
+    },
+    "is_ativo": {
+      "type": "boolean",
+      "default": true
+    },
+    "observacoes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nome",
+    "categoria"
+  ]
+}

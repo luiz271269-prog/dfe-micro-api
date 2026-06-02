@@ -1,0 +1,96 @@
+{
+  "name": "FolhaPagamento",
+  "type": "object",
+  "properties": {
+    "funcionario_id": {
+      "type": "string",
+      "title": "ID Funcion\u00e1rio"
+    },
+    "funcionario_nome": {
+      "type": "string",
+      "title": "Nome"
+    },
+    "competencia": {
+      "type": "string",
+      "title": "Compet\u00eancia (YYYY-MM)"
+    },
+    "salario_bruto": {
+      "type": "number",
+      "title": "Sal\u00e1rio Bruto"
+    },
+    "desconto_inss": {
+      "type": "number",
+      "title": "Desconto INSS",
+      "default": 0
+    },
+    "desconto_irrf": {
+      "type": "number",
+      "title": "Desconto IRRF",
+      "default": 0
+    },
+    "desconto_vt": {
+      "type": "number",
+      "title": "Desconto VT",
+      "default": 0
+    },
+    "desconto_vr": {
+      "type": "number",
+      "title": "Desconto VR",
+      "default": 0
+    },
+    "outros_descontos": {
+      "type": "number",
+      "title": "Outros Descontos",
+      "default": 0
+    },
+    "horas_extras": {
+      "type": "number",
+      "title": "Horas Extras (R$)",
+      "default": 0
+    },
+    "comissao": {
+      "type": "number",
+      "title": "Comiss\u00e3o",
+      "default": 0
+    },
+    "salario_liquido": {
+      "type": "number",
+      "title": "Sal\u00e1rio L\u00edquido"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Pagamento"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "pago",
+        "adiantamento"
+      ],
+      "title": "Status",
+      "default": "pendente"
+    },
+    "fgts_valor": {
+      "type": "number",
+      "title": "FGTS Valor",
+      "default": 0
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    }
+  },
+  "required": [
+    "funcionario_nome",
+    "competencia",
+    "salario_bruto",
+    "salario_liquido",
+    "status"
+  ]
+}

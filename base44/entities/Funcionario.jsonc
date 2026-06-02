@@ -1,0 +1,89 @@
+{
+  "name": "Funcionario",
+  "type": "object",
+  "properties": {
+    "nome": {
+      "type": "string",
+      "title": "Nome Completo"
+    },
+    "cpf": {
+      "type": "string",
+      "title": "CPF"
+    },
+    "cargo": {
+      "type": "string",
+      "title": "Cargo"
+    },
+    "setor": {
+      "type": "string",
+      "enum": [
+        "vendas",
+        "assistencia",
+        "financeiro",
+        "compras",
+        "administrativo",
+        "telemarketing"
+      ],
+      "title": "Setor"
+    },
+    "data_admissao": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Admiss\u00e3o"
+    },
+    "data_demissao": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Demiss\u00e3o"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "ferias",
+        "afastado",
+        "desligado"
+      ],
+      "title": "Status",
+      "default": "ativo"
+    },
+    "salario_base": {
+      "type": "number",
+      "title": "Sal\u00e1rio Base"
+    },
+    "tipo_contrato": {
+      "type": "string",
+      "enum": [
+        "CLT",
+        "PJ",
+        "estagiario",
+        "temporario"
+      ],
+      "title": "Tipo Contrato"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    },
+    "conta_deposito": {
+      "type": "string",
+      "title": "Conta Dep\u00f3sito Sal\u00e1rio"
+    },
+    "observacoes": {
+      "type": "string",
+      "title": "Observa\u00e7\u00f5es"
+    }
+  },
+  "required": [
+    "nome",
+    "cargo",
+    "setor",
+    "status",
+    "tipo_contrato",
+    "empresa"
+  ]
+}

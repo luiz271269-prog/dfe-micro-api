@@ -1,0 +1,103 @@
+{
+  "name": "Tributo",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "DAS",
+        "ICMS",
+        "ISS",
+        "PIS",
+        "COFINS",
+        "IRPJ",
+        "CSLL",
+        "INSS",
+        "FGTS",
+        "GPS",
+        "DARF",
+        "IPTU",
+        "ALVARA",
+        "TAXA_BOMBEIRO",
+        "OUTRO"
+      ],
+      "title": "Tipo de Tributo"
+    },
+    "descricao": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o"
+    },
+    "competencia": {
+      "type": "string",
+      "title": "Compet\u00eancia (YYYY-MM)"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Vencimento"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Pagamento"
+    },
+    "valor_original": {
+      "type": "number",
+      "title": "Valor Original"
+    },
+    "valor_pago": {
+      "type": "number",
+      "title": "Valor Pago",
+      "default": 0
+    },
+    "juros_multa": {
+      "type": "number",
+      "title": "Juros/Multa",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "a_vencer",
+        "pago",
+        "vencido",
+        "parcelado"
+      ],
+      "title": "Status",
+      "default": "a_vencer"
+    },
+    "codigo_barras": {
+      "type": "string",
+      "title": "C\u00f3digo de Barras/Linha Digit\u00e1vel"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    },
+    "conta_pagamento": {
+      "type": "string",
+      "title": "Conta de Pagamento"
+    },
+    "observacoes": {
+      "type": "string",
+      "title": "Observa\u00e7\u00f5es"
+    },
+    "alerta_valor": {
+      "type": "boolean",
+      "title": "Alerta de Valor Elevado",
+      "default": false
+    }
+  },
+  "required": [
+    "tipo",
+    "competencia",
+    "data_vencimento",
+    "valor_original",
+    "status",
+    "empresa"
+  ]
+}

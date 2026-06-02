@@ -1,0 +1,49 @@
+{
+  "name": "FaturaCartao",
+  "type": "object",
+  "properties": {
+    "conta_cartao_id": {
+      "type": "string",
+      "title": "Cart\u00e3o"
+    },
+    "mes_referencia": {
+      "type": "string",
+      "title": "M\u00eas Refer\u00eancia"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Vencimento"
+    },
+    "valor_total": {
+      "type": "number",
+      "title": "Valor Total"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "aberta",
+        "paga_total",
+        "vencida"
+      ],
+      "title": "Status"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data Pagamento"
+    },
+    "valor_pago": {
+      "type": "number",
+      "title": "Valor Pago",
+      "default": 0
+    }
+  },
+  "required": [
+    "conta_cartao_id",
+    "mes_referencia",
+    "data_vencimento",
+    "valor_total",
+    "status"
+  ]
+}
