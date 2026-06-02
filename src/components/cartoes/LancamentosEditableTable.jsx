@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { formatCurrency, formatDate } from '../../lib/formatters';
@@ -25,14 +25,25 @@ export const categoriaColors = {
 
 export default function LancamentosEditableTable({ lancamentos, onReload }) {
   const [editing, setEditing] = useState(null);
+  const [localRows, setLocalRows] = useState(lancamentos || []);
+
+  // Sincroniza com props quando lista externa muda (carregamento silencioso, novo mês, etc.)
+  useEffect(() => { setLocalRows(lancamentos || []); }, [lancamentos]);
 
   async function update(id, field, value) {
-    await base44.entities.LancamentoCartao.update(id, { [field]: value });
+    // Otimista: atualiza local imediatamente sem fechar painel
+    setLocalRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
     setEditing(null);
-    onReload?.();
+    try {
+      await base44.entities.LancamentoCartao.update(id, { [field]: value });
+    } catch (e) {
+      // Rollback em caso de erro
+      setLocalRows(lancamentos || []);
+      console.error('Erro ao salvar', e);
+    }
   }
 
-  if (!lancamentos || lancamentos.length === 0) {
+  if (!localRows || localRows.length === 0) {
     return <p className="text-xs text-muted-foreground py-2">Nenhum lançamento</p>;
   }
 
@@ -49,7 +60,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
           </tr>
         </thead>
         <tbody>
-          {lancamentos.map(l => {
+          {localRows.map(l => {
             const isExcluded = l.observacao?.includes('Não faz parte');
             const editingCat = editing?.id === l.id && editing?.field === 'categoria';
             const editingNat = editing?.id === l.id && editing?.field === 'natureza';

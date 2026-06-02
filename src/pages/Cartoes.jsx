@@ -118,8 +118,8 @@ export default function Cartoes() {
     valor_total: '', status: 'aberta', data_pagamento: '', valor_pago: '0'
   });
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(silent = false) {
+    if (!silent) setLoading(true);
     let cards = await base44.entities.ContaCartao.list();
     if (cards.length === 0) {
       await base44.entities.ContaCartao.bulkCreate(SEED_CARDS);
@@ -134,7 +134,7 @@ export default function Cartoes() {
     setFaturas(fats);
     setLancamentos(lancs);
     setImportBatches(batches || []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   }
 
   useEffect(() => {
@@ -142,7 +142,7 @@ export default function Cartoes() {
     let timer = null;
     const debouncedLoad = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => loadData(), 600);
+      timer = setTimeout(() => loadData(true), 600);
     };
     window.addEventListener('neuralfinRefresh', debouncedLoad);
     const unsubFat = base44.entities.FaturaCartao.subscribe(debouncedLoad);
