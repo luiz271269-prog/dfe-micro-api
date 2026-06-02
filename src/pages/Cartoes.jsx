@@ -12,6 +12,8 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import ConciliacaoCartoes from '../components/cartoes/ConciliacaoCartoes';
 import ConciliarFaturasButton from '../components/cartoes/ConciliarFaturasButton';
+import FaturaImageViewer from '../components/cartoes/FaturaImageViewer';
+import { FileImage } from 'lucide-react';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
@@ -80,6 +82,8 @@ export default function Cartoes() {
   const [cartoes, setCartoes] = useState([]);
   const [faturas, setFaturas] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
+  const [importBatches, setImportBatches] = useState([]);
+  const [viewerFile, setViewerFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
@@ -99,13 +103,15 @@ export default function Cartoes() {
       await base44.entities.ContaCartao.bulkCreate(SEED_CARDS);
       cards = await base44.entities.ContaCartao.list();
     }
-    const [fats, lancs] = await Promise.all([
+    const [fats, lancs, batches] = await Promise.all([
       base44.entities.FaturaCartao.list('-data_vencimento', 200),
       base44.entities.LancamentoCartao.list('-data_lancamento', 1000),
+      base44.entities.ImportBatch.filter({ batch_type: 'fatura_cartao', status: 'completed' }, '-created_date', 200).catch(() => []),
     ]);
     setCartoes(cards.sort((a, b) => (a.dia_vencimento || 0) - (b.dia_vencimento || 0)));
     setFaturas(fats);
     setLancamentos(lancs);
+    setImportBatches(batches || []);
     setLoading(false);
   }
 
@@ -149,6 +155,25 @@ export default function Cartoes() {
 
   function getFaturaLancamentos(faturaId) {
     return lancamentos.filter(l => l.fatura_id === faturaId).sort((a, b) => new Date(a.data_lancamento) - new Date(b.data_lancamento));
+  }
+
+  // Localiza o arquivo PDF/imagem importado para uma fatura específica
+  function getFaturaFileUrl(fat) {
+    const cartao = cartoes.find(c => c.id === fat.conta_cartao_id);
+    const nomeCart = (cartao?.nome || '').split('—')[0].trim().toLowerCase();
+    for (const b of importBatches) {
+      if (!b.notes) continue;
+      let n;
+      try { n = JSON.parse(b.notes); } catch { continue; }
+      if (!n?.file_url) continue;
+      const matchValor = n.valor_total != null && Math.abs(n.valor_total - (fat.valor_total || 0)) < 1;
+      const matchVenc = n.data_vencimento && n.data_vencimento === fat.data_vencimento;
+      const matchCart = nomeCart && n.nome_cartao && n.nome_cartao.toLowerCase().includes(nomeCart);
+      if ((matchValor && matchVenc) || (matchCart && matchVenc) || (matchCart && matchValor)) {
+        return n.file_url;
+      }
+    }
+    return null;
   }
 
   function getLatestFatura(cardId) {
@@ -298,6 +323,20 @@ export default function Cartoes() {
                               <StatusBadge status={fat.status} />
                               <span className="text-xs text-muted-foreground">Venc. {formatDate(fat.data_vencimento)}</span>
                               {fatLancs.length > 0 && <span className="text-xs text-muted-foreground">{fatLancs.length} lançamentos</span>}
+                              {(() => {
+                                const url = getFaturaFileUrl(fat);
+                                if (!url) return null;
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setViewerFile({ url, titulo: `${c.nome} — ${fat.mes_referencia}` }); }}
+                                    className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                                    title="Ver fatura original importada"
+                                  >
+                                    <FileImage className="w-3 h-3" /> Ver original
+                                  </button>
+                                );
+                              })()}
                             </div>
                             <div className="text-right">
                               <span className="text-sm font-bold">{formatCurrency(fat.valor_total)}</span>
@@ -437,6 +476,13 @@ export default function Cartoes() {
           );
         })}
       </div>
+
+      <FaturaImageViewer
+        open={!!viewerFile}
+        onOpenChange={(v) => { if (!v) setViewerFile(null); }}
+        fileUrl={viewerFile?.url}
+        titulo={viewerFile?.titulo}
+      />
 
       {/* Fatura Form */}
       <Dialog open={showFaturaForm} onOpenChange={setShowFaturaForm}>
