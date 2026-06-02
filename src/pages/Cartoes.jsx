@@ -142,7 +142,7 @@ export default function Cartoes() {
     let timer = null;
     const debouncedLoad = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => loadData(true), 600);
+      timer = setTimeout(() => loadData(true), 3000);
     };
     window.addEventListener('neuralfinRefresh', debouncedLoad);
     const unsubFat = base44.entities.FaturaCartao.subscribe(debouncedLoad);
