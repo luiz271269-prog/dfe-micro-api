@@ -301,6 +301,25 @@ export default function Cartoes() {
                   </div>
                   <p className="text-xs text-muted-foreground">{c.bandeira} · Vence dia {c.dia_vencimento} · {c.conta_bancaria_pagamento}</p>
                 </div>
+                {(() => {
+                  const url = latestFat ? getFaturaFileUrl(latestFat) : null;
+                  if (!url) return null;
+                  const isImg = /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
+                  return (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setViewerFile({ url, titulo: `${c.nome} — ${latestFat.mes_referencia}` }); }}
+                      className="shrink-0 w-12 h-14 rounded-lg border-2 border-blue-200 bg-blue-50 hover:border-blue-400 hover:shadow-md overflow-hidden flex items-center justify-center transition-all"
+                      title="Ver fatura original importada"
+                    >
+                      {isImg ? (
+                        <img src={url} alt="fatura" className="w-full h-full object-cover" />
+                      ) : (
+                        <FileImage className="w-5 h-5 text-blue-600" />
+                      )}
+                    </button>
+                  );
+                })()}
                 <div className="text-right shrink-0">
                   {latestFat && (
                     <>
