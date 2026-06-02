@@ -351,13 +351,13 @@ export default function Cartoes() {
                         <div key={fat.id} className="border-b last:border-b-0">
                           <button
                             onClick={() => setExpandedFatura(isFatExpanded ? null : fat.id)}
-                            className="w-full flex items-center gap-4 px-6 py-3 hover:bg-muted/40 text-left transition-colors"
+                            className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 text-left transition-colors"
                           >
-                            <div className="flex-1 flex items-center gap-3 flex-wrap">
-                              <span className="text-sm font-semibold">{fat.mes_referencia}</span>
+                            <div className="flex-1 flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-semibold">{fat.mes_referencia}</span>
                               <StatusBadge status={fat.status} />
-                              <span className="text-xs text-muted-foreground">Venc. {formatDate(fat.data_vencimento)}</span>
-                              {fatLancs.length > 0 && <span className="text-xs text-muted-foreground">{fatLancs.length} lançamentos</span>}
+                              <span className="text-[10px] text-muted-foreground">Venc. {formatDate(fat.data_vencimento)}</span>
+                              {fatLancs.length > 0 && <span className="text-[10px] text-muted-foreground">{fatLancs.length} lanç.</span>}
                               {(() => {
                                 const url = getFaturaFileUrl(fat);
                                 if (!url) return null;
@@ -374,30 +374,30 @@ export default function Cartoes() {
                               })()}
                             </div>
                             <div className="text-right">
-                              <span className="text-sm font-bold">{formatCurrency(fat.valor_total)}</span>
-                              {fat.valor_pago > 0 && <p className="text-xs text-green-600">Pago: {formatCurrency(fat.valor_pago)}</p>}
+                              <span className="text-xs font-bold">{formatCurrency(fat.valor_total)}</span>
+                              {fat.valor_pago > 0 && <p className="text-[10px] text-green-600 leading-tight">Pago: {formatCurrency(fat.valor_pago)}</p>}
                             </div>
-                            {isFatExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                            {isFatExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
                           </button>
 
                           {isFatExpanded && (
-                            <div className="px-6 pb-5 bg-background">
+                            <div className="px-3 pb-3 bg-background">
                               {fatLancs.length === 0 ? (
-                                <p className="text-sm text-muted-foreground py-3">Nenhum lançamento cadastrado</p>
+                                <p className="text-xs text-muted-foreground py-2">Nenhum lançamento cadastrado</p>
                               ) : (
                                 <>
-                                  <div className="flex gap-3 mt-3 mb-3">
-                                    <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-xs">
+                                  <div className="flex gap-1.5 mt-2 mb-2">
+                                    <div className="bg-blue-50 border border-blue-100 rounded px-2 py-1 text-[10px] flex-1">
                                       <p className="text-blue-600 font-semibold">Empresarial</p>
-                                      <p className="font-bold text-blue-800 text-sm">{formatCurrency(totalEmp)}</p>
+                                      <p className="font-bold text-blue-800 text-xs">{formatCurrency(totalEmp)}</p>
                                     </div>
-                                    <div className="bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 text-xs">
+                                    <div className="bg-purple-50 border border-purple-100 rounded px-2 py-1 text-[10px] flex-1">
                                       <p className="text-purple-600 font-semibold">Pessoal</p>
-                                      <p className="font-bold text-purple-800 text-sm">{formatCurrency(totalPes)}</p>
+                                      <p className="font-bold text-purple-800 text-xs">{formatCurrency(totalPes)}</p>
                                     </div>
-                                    <div className="bg-muted border rounded-lg px-3 py-2 text-xs">
-                                      <p className="text-muted-foreground font-semibold">Total Fatura</p>
-                                      <p className="font-bold text-sm">{formatCurrency(fat.valor_total)}</p>
+                                    <div className="bg-muted border rounded px-2 py-1 text-[10px] flex-1">
+                                      <p className="text-muted-foreground font-semibold">Total</p>
+                                      <p className="font-bold text-xs">{formatCurrency(fat.valor_total)}</p>
                                     </div>
                                   </div>
 
