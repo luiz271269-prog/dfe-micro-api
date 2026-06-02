@@ -286,20 +286,20 @@ export default function Cartoes() {
                     if (firstFat) setExpandedFatura(firstFat.id);
                   }
                 }}
-                className="w-full flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors text-left"
+                className="w-full flex items-center gap-2 p-2 hover:bg-muted/30 transition-colors text-left"
               >
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <CreditCard className="w-5 h-5 text-primary" />
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <CreditCard className="w-3.5 h-3.5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold">{c.nome}</span>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                      {c.tipo === 'empresarial' ? 'Empresarial' : 'Pessoal'}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-semibold truncate">{c.nome}</span>
+                    <span className={`text-[9px] font-semibold px-1.5 py-0 rounded-full ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
                     </span>
                     {latestFat && <StatusBadge status={latestFat.status} />}
                   </div>
-                  <p className="text-xs text-muted-foreground">{c.bandeira} · Vence dia {c.dia_vencimento} · {c.conta_bancaria_pagamento}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{c.bandeira} · dia {c.dia_vencimento} · {c.conta_bancaria_pagamento}</p>
                 </div>
                 {(() => {
                   const url = latestFat ? getFaturaFileUrl(latestFat) : null;
@@ -309,13 +309,13 @@ export default function Cartoes() {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setViewerFile({ url, titulo: `${c.nome} — ${latestFat.mes_referencia}` }); }}
-                      className="shrink-0 w-12 h-14 rounded-lg border-2 border-blue-200 bg-blue-50 hover:border-blue-400 hover:shadow-md overflow-hidden flex items-center justify-center transition-all"
+                      className="shrink-0 w-8 h-9 rounded-md border border-blue-200 bg-blue-50 hover:border-blue-400 hover:shadow-md overflow-hidden flex items-center justify-center transition-all"
                       title="Ver fatura original importada"
                     >
                       {isImg ? (
                         <img src={url} alt="fatura" className="w-full h-full object-cover" />
                       ) : (
-                        <FileImage className="w-5 h-5 text-blue-600" />
+                        <FileImage className="w-3.5 h-3.5 text-blue-600" />
                       )}
                     </button>
                   );
@@ -323,13 +323,13 @@ export default function Cartoes() {
                 <div className="text-right shrink-0">
                   {latestFat && (
                     <>
-                      <p className="text-sm font-bold">{formatCurrency(latestFat.valor_total)}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(latestFat.data_vencimento)}</p>
+                      <p className="text-xs font-bold leading-tight">{formatCurrency(latestFat.valor_total)}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight">{formatDate(latestFat.data_vencimento)}</p>
                     </>
                   )}
-                  <p className="text-xs text-muted-foreground">{cardFaturas.length} fatura(s)</p>
+                  <p className="text-[10px] text-muted-foreground leading-tight">{cardFaturas.length} fat.</p>
                 </div>
-                {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />}
+                {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
               </button>
 
               {isExpanded && (
