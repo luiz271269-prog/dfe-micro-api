@@ -308,6 +308,7 @@ export default function ImportarDocumento() {
   const [fileHash, setFileHash] = useState(null);
   const [step, setStep] = useState(1);
   const [dedupRunning, setDedupRunning] = useState(false);
+  const [faturaValidacao, setFaturaValidacao] = useState(null);
   const fileInputRef = useRef();
   const queryClient = useQueryClient();
 
@@ -386,6 +387,7 @@ export default function ImportarDocumento() {
     setRecords([]);
     setRawText(null);
     setFileUrl(null);
+    setFaturaValidacao(null);
     try {
       // 0. Calcular hash SHA-256 do arquivo (cache exato)
       const hashCalculado = await sha256OfFile(file);
@@ -526,6 +528,20 @@ export default function ImportarDocumento() {
         const totalFat = Number(parsed.fatura?.valor_total || 0);
         const somaLancs = lancs.reduce((s, l) => s + Number(l.valor || 0), 0);
         const diffSoma = Math.abs(totalFat - somaLancs);
+        const somaIaInformada = Number(parsed.fatura?.soma_lancamentos || 0);
+        const totalIaInformado = Number(parsed.fatura?.total_lancamentos_pdf || 0);
+
+        setFaturaValidacao({
+          totalFat,
+          somaLancs,
+          diffSoma,
+          qtdLancs: lancs.length,
+          qtdLancsIa: totalIaInformado,
+          somaIaInformada,
+          dupsInternas,
+          ok: diffSoma <= 0.02,
+        });
+
         if (diffSoma > 0.02 || dupsInternas > 0) {
           const msgs = [];
           if (diffSoma > 0.02) msgs.push(`⚠️ Soma ${formatCurrency(somaLancs)} ≠ total impresso ${formatCurrency(totalFat)} (dif. ${formatCurrency(diffSoma)})`);
@@ -784,6 +800,7 @@ export default function ImportarDocumento() {
     setFileUrl(null);
     setFileHash(null);
     setRecords([]); setRawText(null); setStep(1);
+    setFaturaValidacao(null);
   }
 
   const selectedCount = records.filter(r => r.selected).length;
@@ -1100,6 +1117,53 @@ export default function ImportarDocumento() {
               </Button>
             </div>
           </div>
+          {selectedType === 'fatura_cartao' && faturaValidacao && (
+            <div className={`mb-3 rounded-xl border p-3 ${faturaValidacao.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-start gap-2">
+                {faturaValidacao.ok
+                  ? <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  : <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />}
+                <div className="flex-1 text-xs">
+                  <p className={`font-bold ${faturaValidacao.ok ? 'text-emerald-800' : 'text-red-800'}`}>
+                    {faturaValidacao.ok
+                      ? '✓ Extração fiel — soma dos lançamentos bate com o total impresso'
+                      : '⚠️ Divergência detectada — soma não bate com o total impresso da fatura'}
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-[11px]">
+                    <div className="bg-white/60 rounded px-2 py-1">
+                      <p className="text-muted-foreground">Total impresso</p>
+                      <p className="font-bold tabular-nums">{formatCurrency(faturaValidacao.totalFat)}</p>
+                    </div>
+                    <div className="bg-white/60 rounded px-2 py-1">
+                      <p className="text-muted-foreground">Soma extraída</p>
+                      <p className="font-bold tabular-nums">{formatCurrency(faturaValidacao.somaLancs)}</p>
+                    </div>
+                    <div className="bg-white/60 rounded px-2 py-1">
+                      <p className="text-muted-foreground">Diferença</p>
+                      <p className={`font-bold tabular-nums ${faturaValidacao.ok ? 'text-emerald-700' : 'text-red-700'}`}>{formatCurrency(faturaValidacao.diffSoma)}</p>
+                    </div>
+                    <div className="bg-white/60 rounded px-2 py-1">
+                      <p className="text-muted-foreground">Lançamentos</p>
+                      <p className="font-bold tabular-nums">
+                        {faturaValidacao.qtdLancs}
+                        {faturaValidacao.qtdLancsIa > 0 && faturaValidacao.qtdLancsIa !== (faturaValidacao.qtdLancs + faturaValidacao.dupsInternas) && (
+                          <span className="text-[10px] text-amber-600 ml-1">(IA contou {faturaValidacao.qtdLancsIa})</span>
+                        )}
+                        {faturaValidacao.dupsInternas > 0 && (
+                          <span className="text-[10px] text-purple-600 ml-1 block">🧹 {faturaValidacao.dupsInternas} dup removidas</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  {!faturaValidacao.ok && (
+                    <p className="text-[11px] text-red-700 mt-2">
+                      Sugestão: tente reenviar o arquivo (a IA pode ter pulado lançamentos) ou verifique se o PDF está completo. Não salve até a soma bater.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {selectedType === 'relatorio_vendas_detalhado' ? (
             <TabelaRevisaoVendasDetalhado records={records} setRecords={setRecords} />
           ) : (
