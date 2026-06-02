@@ -3,7 +3,20 @@ import { base44 } from '@/api/base44Client';
 import { AlertCircle, HelpCircle, X } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 
-export default function ConciliacaoCartoes({ lancamentos, selectedMonth }) {
+function isPagamentoFatura(l) {
+  if ((l.valor || 0) < 0) return true;
+  const desc = `${l.estabelecimento || ''} ${l.observacao || ''}`.toLowerCase();
+  return /pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento/.test(desc);
+}
+
+function formatMesLabel(m) {
+  if (!m) return '';
+  const [y, mo] = m.split('-');
+  const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  return `${nomes[parseInt(mo)-1]}/${y}`;
+}
+
+export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnual }) {
   const [obras, setObras] = useState([]);
   const [despesas, setDespesas] = useState([]);
   const [activeKey, setActiveKey] = useState(null);
@@ -45,7 +58,9 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth }) {
     return 'nao_classificado';
   }
 
-  const lancComClasse = lancamentos.map(l => ({ ...l, _classe: classificarLanc(l) }));
+  // Exclui pagamentos da fatura anterior — não são despesas reais
+  const lancsValidos = lancamentos.filter(l => !isPagamentoFatura(l));
+  const lancComClasse = lancsValidos.map(l => ({ ...l, _classe: classificarLanc(l) }));
 
   const classificacao = lancComClasse.reduce((acc, l) => {
     acc[l._classe] = (acc[l._classe] || 0) + Math.abs(l.valor || 0);
@@ -74,6 +89,9 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth }) {
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-5 py-3 flex items-center gap-2.5">
         <AlertCircle className="w-5 h-5 text-white" />
         <h3 className="text-sm font-bold text-white uppercase tracking-widest">Conciliação de Cartões</h3>
+        <span className="ml-auto text-[11px] font-semibold text-white/90 bg-white/15 px-2 py-0.5 rounded-full">
+          {isAnnual ? 'Anual' : formatMesLabel(selectedMonth)}
+        </span>
       </div>
 
       {/* Grid de cards lado a lado */}

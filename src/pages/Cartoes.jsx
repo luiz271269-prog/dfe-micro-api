@@ -230,6 +230,7 @@ export default function Cartoes() {
             faturas.find(f => f.id === l.fatura_id && (isAnnual || f.mes_referencia === selectedMonth))
           )} 
           selectedMonth={selectedMonth}
+          isAnnual={isAnnual}
         />
       )}
 
