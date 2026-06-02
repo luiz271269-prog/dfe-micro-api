@@ -267,7 +267,7 @@ export default function Cartoes() {
       )}
 
       {/* Cards list */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {cartoes.map(c => {
           const isExpanded = expandedCard === c.id;
           const cardFaturas = getCardFaturas(c.id);
