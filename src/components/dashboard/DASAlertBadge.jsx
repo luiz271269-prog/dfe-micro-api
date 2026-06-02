@@ -11,19 +11,23 @@ export default function DASAlertBadge({ selectedMonth }) {
 
   useEffect(() => {
     if (!selectedMonth) return;
+    let cancelled = false;
     async function calc() {
-      const [nfs, tributos] = await Promise.all([
-        base44.entities.NotaFiscal.list(),
-        base44.entities.Tributo.list(),
-      ]);
+      let nfs, tributos;
+      try {
+        [nfs, tributos] = await Promise.all([
+          base44.entities.NotaFiscal.list(),
+          base44.entities.Tributo.list(),
+        ]);
+      } catch (e) {
+        // Rate limit ou erro de rede — silencia e não exibe badge
+        return;
+      }
+      if (cancelled) return;
 
       // Filtra NFs do mês selecionado
       const nfsMes = nfs.filter(n => (n.data_emissao || '').startsWith(selectedMonth));
 
-      // Calcula faturamento tributável:
-      // - Exclui ANULADAS (valor_total=0 ou cliente='ANULADA')
-      // - Notas com valor_total negativo = estorno/recuso → subtraem
-      // - NF e CI são tributáveis pelo Simples
       const faturamento = nfsMes.reduce((sum, n) => {
         if (!n.valor_total || n.cliente === 'ANULADA') return sum;
         return sum + (n.valor_total || 0);
@@ -31,7 +35,6 @@ export default function DASAlertBadge({ selectedMonth }) {
 
       const dasEstimado = faturamento * ALIQUOTA_ESTIMADA;
 
-      // DAS registrado para a competência
       const dasRegistrado = tributos.find(
         t => t.tipo === 'DAS' && t.competencia === selectedMonth
       );
@@ -58,7 +61,9 @@ export default function DASAlertBadge({ selectedMonth }) {
         nfsMes: nfsMes.length,
       });
     }
-    calc();
+    // Debounce para evitar disparos múltiplos em rajada
+    const t = setTimeout(calc, 400);
+    return () => { cancelled = true; clearTimeout(t); };
   }, [selectedMonth]);
 
   if (!info) return null;
