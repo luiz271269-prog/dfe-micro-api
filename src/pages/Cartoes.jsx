@@ -32,8 +32,17 @@ const categoriaLabels = {
   alimentacao: 'Alimentação', combustivel: 'Combustível', lazer: 'Lazer',
   tecnologia: 'Tecnologia', servico_pessoal: 'Serviço Pessoal', saude_bem_estar: 'Saúde/Bem-Estar',
   beleza: 'Beleza', farmacia: 'Farmácia', transporte: 'Transporte',
-  financeiro: 'Financeiro', seguro: 'Seguro', outro: 'Outro',
+  financeiro: 'Financeiro', seguro: 'Seguro',
+  produtos: 'Produtos', estoque: 'Estoque',
+  outro: 'Outro',
 };
+
+// Pagamento da fatura do mês anterior (crédito no cartão) — não é despesa real, não deve entrar em totais
+function isPagamentoFatura(l) {
+  if ((l.valor || 0) < 0) return true;
+  const desc = `${l.estabelecimento || ''} ${l.observacao || ''}`.toLowerCase();
+  return /pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento/.test(desc);
+}
 
 const categoriaColors = {
   alimentacao: 'bg-green-100 text-green-700', combustivel: 'bg-orange-100 text-orange-700',
@@ -41,11 +50,13 @@ const categoriaColors = {
   servico_pessoal: 'bg-pink-100 text-pink-700', saude_bem_estar: 'bg-teal-100 text-teal-700',
   beleza: 'bg-rose-100 text-rose-700', farmacia: 'bg-cyan-100 text-cyan-700',
   transporte: 'bg-slate-100 text-slate-700', financeiro: 'bg-red-100 text-red-700',
-  seguro: 'bg-gray-100 text-gray-700', outro: 'bg-amber-100 text-amber-700',
+  seguro: 'bg-gray-100 text-gray-700',
+  produtos: 'bg-indigo-100 text-indigo-700', estoque: 'bg-emerald-100 text-emerald-700',
+  outro: 'bg-amber-100 text-amber-700',
 };
 
 function CategoriaBreakdown({ lancamentos }) {
-  const validos = lancamentos.filter(l => !l.observacao?.includes('Não faz parte'));
+  const validos = lancamentos.filter(l => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
   const cats = {};
   validos.forEach(l => {
     const cat = l.categoria || 'outro';
@@ -308,9 +319,12 @@ export default function Cartoes() {
                     cardFaturas.map(fat => {
                       const fatLancs = getFaturaLancamentos(fat.id);
                       const isFatExpanded = expandedFatura === fat.id;
-                      const validos = fatLancs.filter(l => !l.observacao?.includes('Não faz parte'));
+                      const pagamentos = fatLancs.filter(l => isPagamentoFatura(l));
+                      const validos = fatLancs.filter(l => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
+                      const despesasParaTabela = fatLancs.filter(l => !isPagamentoFatura(l));
                       const totalEmp = validos.filter(l => l.natureza === 'empresarial').reduce((s, l) => s + (l.valor || 0), 0);
                       const totalPes = validos.filter(l => l.natureza === 'pessoal').reduce((s, l) => s + (l.valor || 0), 0);
+                      const totalPagamentos = pagamentos.reduce((s, l) => s + (l.valor || 0), 0);
 
                       return (
                         <div key={fat.id} className="border-b last:border-b-0">
@@ -380,7 +394,7 @@ export default function Cartoes() {
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {fatLancs.map(l => {
+                                        {despesasParaTabela.map(l => {
                                           const isExcluded = l.observacao?.includes('Não faz parte');
                                           const editingCat = editingLanc?.id === l.id && editingLanc?.field === 'categoria';
                                           const editingNat = editingLanc?.id === l.id && editingLanc?.field === 'natureza';
@@ -462,6 +476,29 @@ export default function Cartoes() {
                                       </tbody>
                                     </table>
                                   </div>
+
+                                  {pagamentos.length > 0 && (
+                                    <div className="mt-4 pt-3 border-t border-dashed">
+                                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                        Pagamentos da fatura anterior · não contabilizados
+                                      </p>
+                                      <table className="w-full text-xs text-muted-foreground/70">
+                                        <tbody>
+                                          {pagamentos.map(l => (
+                                            <tr key={l.id} className="border-b last:border-b-0">
+                                              <td className="py-1 whitespace-nowrap w-24">{formatDate(l.data_lancamento)}</td>
+                                              <td className="py-1 italic" title={l.estabelecimento}>{l.estabelecimento}</td>
+                                              <td className="py-1 text-right tabular-nums">{formatCurrency(l.valor)}</td>
+                                            </tr>
+                                          ))}
+                                          <tr>
+                                            <td colSpan={2} className="py-1.5 text-right font-semibold uppercase text-[10px] tracking-wider">Total pagamentos</td>
+                                            <td className="py-1.5 text-right font-bold tabular-nums">{formatCurrency(totalPagamentos)}</td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
                                 </>
                               )}
                             </div>
