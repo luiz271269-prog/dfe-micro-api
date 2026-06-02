@@ -41,7 +41,9 @@ Deno.serve(async (req) => {
     ]);
 
     const cartaoPorId = new Map(cartoes.map(c => [c.id, c]));
-    const faturasAbertas = faturas.filter(f => f.status !== 'paga_total');
+    // Reconcilia TODAS as faturas que ainda não têm vínculo (mesmo as marcadas como pagas sem vínculo)
+    const fatComVinculo = new Set(vinculos.map(v => v.entidade_id));
+    const faturasAbertas = faturas.filter(f => !fatComVinculo.has(f.id));
     // lançamentos de saída (valor negativo) — pagamentos
     const saidas = lancamentos.filter(l => (l.valor || 0) < 0);
     const lancVinculados = new Set(vinculos.map(v => v.lancamento_bancario_id));
@@ -63,17 +65,17 @@ Deno.serve(async (req) => {
           // fallback: tenta bater por nome do cartão na descrição
           if (!nomeCartaoBate(l.descricao, cartao)) return false;
         }
-        if (!dentroDaJanela(l.data, fat.data_vencimento, 7)) return false;
+        if (!dentroDaJanela(l.data, fat.data_vencimento, 14)) return false;
         return true;
       });
 
-      // Best match: valor mais próximo do valor_total da fatura (tolerância 2%)
+      // Best match: valor mais próximo do valor_total da fatura (tolerância 5% / mín R$ 10)
       let melhor = null;
       let melhorDiff = Infinity;
       for (const c of candidatos) {
         const absV = Math.abs(c.valor || 0);
         const diff = Math.abs(absV - (fat.valor_total || 0));
-        const tol = Math.max(5, (fat.valor_total || 0) * 0.02);
+        const tol = Math.max(10, (fat.valor_total || 0) * 0.05);
         if (diff <= tol && diff < melhorDiff) {
           melhor = c;
           melhorDiff = diff;
@@ -85,10 +87,10 @@ Deno.serve(async (req) => {
         for (const c of saidas) {
           if (lancVinculados.has(c.id)) continue;
           if (!nomeCartaoBate(c.descricao, cartao)) continue;
-          if (!dentroDaJanela(c.data, fat.data_vencimento, 7)) continue;
+          if (!dentroDaJanela(c.data, fat.data_vencimento, 14)) continue;
           const absV = Math.abs(c.valor || 0);
           const diff = Math.abs(absV - (fat.valor_total || 0));
-          const tol = Math.max(5, (fat.valor_total || 0) * 0.02);
+          const tol = Math.max(10, (fat.valor_total || 0) * 0.05);
           if (diff <= tol && diff < melhorDiff) {
             melhor = c;
             melhorDiff = diff;

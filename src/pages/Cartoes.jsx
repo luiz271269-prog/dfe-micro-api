@@ -12,6 +12,7 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import ConciliacaoCartoes from '../components/cartoes/ConciliacaoCartoes';
 import ConciliarFaturasButton from '../components/cartoes/ConciliarFaturasButton';
+import DeduplicarCartoesButton from '../components/cartoes/DeduplicarCartoesButton';
 import FaturaImageViewer from '../components/cartoes/FaturaImageViewer';
 import LancamentosEditableTable from '../components/cartoes/LancamentosEditableTable';
 import { FileImage } from 'lucide-react';
@@ -220,6 +221,7 @@ export default function Cartoes() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
+        <DeduplicarCartoesButton onDone={loadData} />
         <ConciliarFaturasButton onDone={loadData} />
         <Button onClick={() => setShowFaturaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Fatura</Button>
       </PageHeader>
