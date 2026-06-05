@@ -1,0 +1,102 @@
+{
+  "name": "LogSyncSEFAZ",
+  "type": "object",
+  "description": "Auditoria de cada chamada a SEFAZ (valida\u00e7\u00e3o de cert, POC, sync NFe). Permite troubleshooting e rastreabilidade fiscal.",
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "title": "Request ID (UUID)"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    },
+    "cnpj_sem_mascara": {
+      "type": "string",
+      "title": "CNPJ mascarado nos logs"
+    },
+    "data_execucao": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Data execu\u00e7\u00e3o"
+    },
+    "duracao_ms": {
+      "type": "number",
+      "title": "Dura\u00e7\u00e3o (ms)"
+    },
+    "nsu_inicial": {
+      "type": "string",
+      "title": "NSU inicial"
+    },
+    "nsu_final": {
+      "type": "string",
+      "title": "NSU final"
+    },
+    "max_nsu_servidor": {
+      "type": "string",
+      "title": "Max NSU servidor"
+    },
+    "documentos_baixados": {
+      "type": "number",
+      "default": 0,
+      "title": "Docs baixados"
+    },
+    "novos": {
+      "type": "number",
+      "default": 0,
+      "title": "Novos"
+    },
+    "duplicados": {
+      "type": "number",
+      "default": 0,
+      "title": "Duplicados"
+    },
+    "erros": {
+      "type": "number",
+      "default": 0,
+      "title": "Erros"
+    },
+    "cstat": {
+      "type": "number",
+      "title": "cStat SEFAZ"
+    },
+    "status_final": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "sem_novos",
+        "erro",
+        "bloqueado_consumo",
+        "poc"
+      ],
+      "default": "ok",
+      "title": "Status final"
+    },
+    "mensagem": {
+      "type": "string",
+      "title": "Mensagem / xMotivo"
+    },
+    "detalhes": {
+      "type": "string",
+      "title": "Detalhes (XML preview, mascarado)"
+    },
+    "tipo_operacao": {
+      "type": "string",
+      "enum": [
+        "validacao_cert",
+        "poc_conexao",
+        "sync_nfe"
+      ],
+      "default": "sync_nfe",
+      "title": "Tipo de opera\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "empresa",
+    "data_execucao"
+  ]
+}

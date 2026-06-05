@@ -1,0 +1,85 @@
+{
+  "name": "CertificadoDigitalNFe",
+  "type": "object",
+  "properties": {
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    },
+    "cnpj": {
+      "type": "string",
+      "title": "CNPJ formatado"
+    },
+    "cnpj_sem_mascara": {
+      "type": "string",
+      "title": "CNPJ s\u00f3 d\u00edgitos"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "A1",
+        "A3"
+      ],
+      "default": "A1",
+      "title": "Tipo"
+    },
+    "file_uri": {
+      "type": "string",
+      "title": "URI do .pfx no storage privado"
+    },
+    "senha_secret_name": {
+      "type": "string",
+      "title": "Nome do secret da senha"
+    },
+    "validade": {
+      "type": "string",
+      "format": "date",
+      "title": "Validade"
+    },
+    "titular": {
+      "type": "string",
+      "title": "Titular (CN)"
+    },
+    "ambiente": {
+      "type": "string",
+      "enum": [
+        "producao",
+        "homologacao"
+      ],
+      "default": "producao",
+      "title": "Ambiente"
+    },
+    "is_ativo": {
+      "type": "boolean",
+      "default": true,
+      "title": "Ativo"
+    },
+    "status_validacao": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "valido",
+        "invalido",
+        "expirado",
+        "erro"
+      ],
+      "default": "pendente",
+      "title": "Status"
+    },
+    "ultimo_erro": {
+      "type": "string",
+      "title": "\u00daltimo erro"
+    }
+  },
+  "required": [
+    "empresa",
+    "cnpj",
+    "file_uri",
+    "senha_secret_name",
+    "ambiente"
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "name": "ControleNSU",
+  "type": "object",
+  "description": "Cursor incremental de consulta NFeDistribuicaoDFe por empresa. Garante consumo respeitoso da SEFAZ (cooldown de 1h em cStat 137/656).",
+  "properties": {
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    },
+    "cnpj_sem_mascara": {
+      "type": "string",
+      "title": "CNPJ s\u00f3 d\u00edgitos"
+    },
+    "ultimo_nsu": {
+      "type": "string",
+      "default": "000000000000000",
+      "title": "\u00daltimo NSU processado"
+    },
+    "max_nsu_servidor": {
+      "type": "string",
+      "default": "000000000000000",
+      "title": "Maior NSU dispon\u00edvel na SEFAZ"
+    },
+    "ultima_consulta": {
+      "type": "string",
+      "format": "date-time",
+      "title": "\u00daltima consulta"
+    },
+    "ultimo_status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "vazio",
+        "erro",
+        "rate_limit"
+      ],
+      "default": "ok",
+      "title": "Status \u00faltima consulta"
+    },
+    "ultimo_cstat": {
+      "type": "number",
+      "title": "\u00daltimo cStat retornado"
+    },
+    "ultimo_erro": {
+      "type": "string",
+      "title": "\u00daltimo erro"
+    },
+    "tentativas_consecutivas_erro": {
+      "type": "number",
+      "default": 0,
+      "title": "Erros consecutivos"
+    },
+    "bloqueado_ate": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Bloqueado at\u00e9 (cooldown)"
+    }
+  },
+  "required": [
+    "empresa",
+    "cnpj_sem_mascara"
+  ]
+}
