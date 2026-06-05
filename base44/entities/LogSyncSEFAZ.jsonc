@@ -1,68 +1,58 @@
 {
   "name": "LogSyncSEFAZ",
   "type": "object",
-  "description": "Auditoria de cada chamada a SEFAZ (valida\u00e7\u00e3o de cert, POC, sync NFe). Permite troubleshooting e rastreabilidade fiscal.",
+  "description": "Trilha de auditoria de cada execu\u00e7\u00e3o do sync NFe (manual ou agendada).",
   "properties": {
     "request_id": {
-      "type": "string",
-      "title": "Request ID (UUID)"
+      "type": "string"
     },
     "empresa": {
       "type": "string",
       "enum": [
         "NeuralTec",
         "Liesch"
-      ],
-      "title": "Empresa"
+      ]
     },
     "cnpj_sem_mascara": {
-      "type": "string",
-      "title": "CNPJ mascarado nos logs"
+      "type": "string"
     },
     "data_execucao": {
       "type": "string",
-      "format": "date-time",
-      "title": "Data execu\u00e7\u00e3o"
+      "format": "date-time"
     },
     "duracao_ms": {
-      "type": "number",
-      "title": "Dura\u00e7\u00e3o (ms)"
+      "type": "number"
     },
     "nsu_inicial": {
-      "type": "string",
-      "title": "NSU inicial"
+      "type": "string"
     },
     "nsu_final": {
-      "type": "string",
-      "title": "NSU final"
+      "type": "string"
     },
     "max_nsu_servidor": {
-      "type": "string",
-      "title": "Max NSU servidor"
+      "type": "string"
     },
     "documentos_baixados": {
       "type": "number",
-      "default": 0,
-      "title": "Docs baixados"
+      "default": 0
     },
     "novos": {
       "type": "number",
-      "default": 0,
-      "title": "Novos"
+      "default": 0
     },
     "duplicados": {
       "type": "number",
-      "default": 0,
-      "title": "Duplicados"
+      "default": 0
     },
     "erros": {
       "type": "number",
-      "default": 0,
-      "title": "Erros"
+      "default": 0
     },
     "cstat": {
-      "type": "number",
-      "title": "cStat SEFAZ"
+      "type": "number"
+    },
+    "x_motivo": {
+      "type": "string"
     },
     "status_final": {
       "type": "string",
@@ -72,31 +62,18 @@
         "erro",
         "bloqueado_consumo",
         "poc"
-      ],
-      "default": "ok",
-      "title": "Status final"
+      ]
     },
     "mensagem": {
-      "type": "string",
-      "title": "Mensagem / xMotivo"
+      "type": "string"
     },
-    "detalhes": {
-      "type": "string",
-      "title": "Detalhes (XML preview, mascarado)"
-    },
-    "tipo_operacao": {
-      "type": "string",
-      "enum": [
-        "validacao_cert",
-        "poc_conexao",
-        "sync_nfe"
-      ],
-      "default": "sync_nfe",
-      "title": "Tipo de opera\u00e7\u00e3o"
+    "endpoint": {
+      "type": "string"
     }
   },
   "required": [
     "empresa",
-    "data_execucao"
+    "data_execucao",
+    "status_final"
   ]
 }

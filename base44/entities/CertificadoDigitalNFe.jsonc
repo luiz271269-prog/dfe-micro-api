@@ -12,11 +12,11 @@
     },
     "cnpj": {
       "type": "string",
-      "title": "CNPJ formatado"
+      "title": "CNPJ (com m\u00e1scara)"
     },
     "cnpj_sem_mascara": {
       "type": "string",
-      "title": "CNPJ s\u00f3 d\u00edgitos"
+      "title": "CNPJ (somente d\u00edgitos, 14)"
     },
     "tipo": {
       "type": "string",
@@ -25,24 +25,20 @@
         "A3"
       ],
       "default": "A1",
-      "title": "Tipo"
+      "title": "Tipo do certificado"
     },
     "file_uri": {
       "type": "string",
-      "title": "URI do .pfx no storage privado"
+      "title": "URI do arquivo .pfx no storage privado"
     },
     "senha_secret_name": {
       "type": "string",
-      "title": "Nome do secret da senha"
+      "title": "Nome do secret onde a senha est\u00e1 guardada (nunca a senha em si)"
     },
     "validade": {
       "type": "string",
       "format": "date",
-      "title": "Validade"
-    },
-    "titular": {
-      "type": "string",
-      "title": "Titular (CN)"
+      "title": "Validade do certificado"
     },
     "ambiente": {
       "type": "string",
@@ -68,11 +64,20 @@
         "erro"
       ],
       "default": "pendente",
-      "title": "Status"
+      "title": "Status da valida\u00e7\u00e3o"
+    },
+    "titular": {
+      "type": "string",
+      "title": "Titular (subject CN do certificado)"
     },
     "ultimo_erro": {
       "type": "string",
-      "title": "\u00daltimo erro"
+      "title": "\u00daltima mensagem de erro"
+    },
+    "ultima_validacao": {
+      "type": "string",
+      "format": "date-time",
+      "title": "\u00daltima valida\u00e7\u00e3o"
     }
   },
   "required": [
