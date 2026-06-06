@@ -46,27 +46,56 @@ export default function UploadCertificadoForm({ onSaved }) {
     setTrace(prev => [...prev, entry]);
   }
 
+  function isErroInfraBase44(msg) {
+    const m = String(msg || '').toLowerCase();
+    return m.includes('memory_limit_exceeded')
+        || m.includes('clickhouse')
+        || m.includes('code: 241')
+        || m.includes('code 241')
+        || m.includes('db::exception')
+        || m.includes('overcommittracker');
+  }
+
   async function uploadArquivo() {
     if (!file) { setError('Selecione o arquivo .pfx'); return null; }
     const safeName = `cert_${empresa}_${Date.now()}.pfx`;
     const safeFile = new File([file], safeName, { type: file.type || 'application/x-pkcs12' });
     logStep('arquivo_selecionado', true, { nome_original: file.name, bytes: file.size, safeName });
 
-    let file_uri;
-    try {
-      logStep('upload_privado_iniciou', true);
-      const uploadRes = await base44.integrations.Core.UploadPrivateFile({ file: safeFile });
-      file_uri = uploadRes?.file_uri;
-      if (!file_uri) {
-        logStep('upload_privado_terminou', false, { resposta: uploadRes });
-        throw new Error('UploadPrivateFile retornou sem file_uri');
+    // Retry com backoff curto — cobre falha transitória do storage/ClickHouse
+    const MAX_TENTATIVAS = 3;
+    let ultimoErro = null;
+    for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+      try {
+        logStep(`upload_privado_iniciou${tentativa > 1 ? `_retry${tentativa}` : ''}`, true);
+        const uploadRes = await base44.integrations.Core.UploadPrivateFile({ file: safeFile });
+        const file_uri = uploadRes?.file_uri;
+        if (!file_uri) {
+          logStep('upload_privado_terminou', false, { resposta: uploadRes });
+          throw new Error('UploadPrivateFile retornou sem file_uri');
+        }
+        logStep('upload_privado_terminou', true, { file_uri, tentativas: tentativa });
+        return file_uri;
+      } catch (upErr) {
+        ultimoErro = upErr;
+        const rawMsg = upErr?.message || String(upErr);
+        logStep('upload_privado_terminou', false, { tentativa, erro: rawMsg.slice(0, 200) });
+        if (tentativa < MAX_TENTATIVAS) {
+          await new Promise(r => setTimeout(r, 1500 * tentativa));
+        }
       }
-      logStep('upload_privado_terminou', true, { file_uri });
-      return file_uri;
-    } catch (upErr) {
-      logStep('upload_privado_terminou', false, { erro: upErr?.message || String(upErr) });
-      throw new Error(`Upload do .pfx falhou: ${upErr?.message || upErr}`);
     }
+
+    // Esgotou retries — classifica o erro
+    const rawMsg = ultimoErro?.message || String(ultimoErro);
+    if (isErroInfraBase44(rawMsg)) {
+      throw new Error(
+        '⚠️ Falha temporária no storage da Base44 (ClickHouse / MEMORY_LIMIT_EXCEEDED). ' +
+        'O arquivo NÃO chegou ao backend — o certificado ainda não foi validado. ' +
+        'Aguarde 2–5 minutos e tente novamente. Se persistir, acione o suporte Base44.'
+      );
+    }
+    throw new Error(`Upload do .pfx falhou após ${MAX_TENTATIVAS} tentativas: ${rawMsg}`);
   }
 
   async function handleDiagnostico() {
@@ -100,7 +129,11 @@ export default function UploadCertificadoForm({ onSaved }) {
     setUploading(true);
     try {
       const file_uri = await uploadArquivo();
-      if (!file_uri) return;
+      if (!file_uri) {
+        // Guarda extra: nunca chamar validarCertificadoNFe sem file_uri
+        logStep('validacao_abortada', false, { motivo: 'sem file_uri — falha no upload, não no PFX' });
+        return;
+      }
       setUploading(false);
       setValidando(true);
 
