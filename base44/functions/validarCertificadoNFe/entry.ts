@@ -37,12 +37,32 @@ Deno.serve(async (req) => {
     }
 
     // 1. Baixar PFX via signed URL (escopo do usuário — o arquivo privado pertence a ele)
+    console.log('[validarCertificadoNFe] gerando signed_url para', file_uri);
     const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri, expires_in: 60 });
+    if (!signed_url) {
+      return Response.json({ ok: false, etapa: 'signed_url', motivo: 'CreateFileSignedUrl retornou vazio' }, { status: 500 });
+    }
     const pfxResp = await fetch(signed_url);
     if (!pfxResp.ok) {
-      return Response.json({ ok: false, motivo: `Falha ao baixar PFX: HTTP ${pfxResp.status}` }, { status: 500 });
+      return Response.json({ ok: false, etapa: 'download_pfx', motivo: `Falha ao baixar PFX: HTTP ${pfxResp.status}` }, { status: 500 });
     }
     const pfxBuffer = new Uint8Array(await pfxResp.arrayBuffer());
+    console.log('[validarCertificadoNFe] PFX baixado', { file_uri, bytes: pfxBuffer.length, primeiro_byte: pfxBuffer[0]?.toString(16) });
+
+    if (pfxBuffer.length === 0) {
+      return Response.json({ ok: false, etapa: 'download_pfx', motivo: 'PFX baixado mas veio vazio (0 bytes). O upload provavelmente falhou no front.' }, { status: 400 });
+    }
+    if (pfxBuffer[0] !== 0x30) {
+      return Response.json({
+        ok: false,
+        etapa: 'inspecao_pfx',
+        motivo: `Arquivo não tem assinatura ASN.1 (primeiro byte: 0x${pfxBuffer[0]?.toString(16)}). Pode não ser um .pfx/.p12 binário válido — talvez seja PEM/texto ou arquivo corrompido.`,
+        bytes: pfxBuffer.length,
+      }, { status: 400 });
+    }
+    if (pfxBuffer.length < 2500) {
+      console.warn('[validarCertificadoNFe] PFX pequeno', { bytes: pfxBuffer.length });
+    }
 
     // 2. Decodificar PFX com node-forge
     let p12;

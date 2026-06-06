@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Upload, ShieldCheck, AlertTriangle, Loader2 } from 'lucide-react';
+import { Upload, ShieldCheck, AlertTriangle, Loader2, Stethoscope } from 'lucide-react';
 import { validarCertificadoNFe } from '@/functions/validarCertificadoNFe';
+import { diagnosticarUploadPFX } from '@/functions/diagnosticarUploadPFX';
 
 const SECRETS_MAP = {
   NeuralTec: 'CERT_PFX_NEURALTEC',
@@ -36,31 +37,74 @@ export default function UploadCertificadoForm({ onSaved }) {
   const [validando, setValidando] = useState(false);
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState(null);
+  const [trace, setTrace] = useState([]);
+  const [diagResult, setDiagResult] = useState(null);
+
+  function logStep(label, ok, detail) {
+    const entry = { t: new Date().toISOString().slice(11, 23), label, ok, detail };
+    console.log('[UploadCertificado]', entry);
+    setTrace(prev => [...prev, entry]);
+  }
+
+  async function uploadArquivo() {
+    if (!file) { setError('Selecione o arquivo .pfx'); return null; }
+    const safeName = `cert_${empresa}_${Date.now()}.pfx`;
+    const safeFile = new File([file], safeName, { type: file.type || 'application/x-pkcs12' });
+    logStep('arquivo_selecionado', true, { nome_original: file.name, bytes: file.size, safeName });
+
+    let file_uri;
+    try {
+      logStep('upload_privado_iniciou', true);
+      const uploadRes = await base44.integrations.Core.UploadPrivateFile({ file: safeFile });
+      file_uri = uploadRes?.file_uri;
+      if (!file_uri) {
+        logStep('upload_privado_terminou', false, { resposta: uploadRes });
+        throw new Error('UploadPrivateFile retornou sem file_uri');
+      }
+      logStep('upload_privado_terminou', true, { file_uri });
+      return file_uri;
+    } catch (upErr) {
+      logStep('upload_privado_terminou', false, { erro: upErr?.message || String(upErr) });
+      throw new Error(`Upload do .pfx falhou: ${upErr?.message || upErr}`);
+    }
+  }
+
+  async function handleDiagnostico() {
+    setError(null); setResultado(null); setDiagResult(null); setTrace([]);
+    if (!cnpj || cnpj.replace(/\D/g, '').length !== 14) return setError('CNPJ inválido (precisa de 14 dígitos)');
+    setUploading(true);
+    try {
+      const file_uri = await uploadArquivo();
+      if (!file_uri) return;
+      setUploading(false);
+      setValidando(true);
+      logStep('chamando_diagnosticarUploadPFX', true);
+      const res = await diagnosticarUploadPFX({ file_uri });
+      const data = res?.data || res;
+      logStep('diagnostico_resposta', !!data?.ok, data);
+      setDiagResult(data);
+    } catch (err) {
+      setError(err?.response?.data?.motivo || err?.message || String(err));
+    } finally {
+      setUploading(false);
+      setValidando(false);
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError(null); setResultado(null);
+    setError(null); setResultado(null); setDiagResult(null); setTrace([]);
 
-    if (!file) return setError('Selecione o arquivo .pfx');
     if (!cnpj || cnpj.replace(/\D/g, '').length !== 14) return setError('CNPJ inválido (precisa de 14 dígitos)');
-
-    // Sanitiza nome do arquivo (remove espaços e caracteres especiais que quebram multipart)
-    const safeName = `cert_${empresa}_${Date.now()}.pfx`;
-    const safeFile = new File([file], safeName, { type: file.type || 'application/x-pkcs12' });
 
     setUploading(true);
     try {
-      let file_uri;
-      try {
-        const uploadRes = await base44.integrations.Core.UploadPrivateFile({ file: safeFile });
-        file_uri = uploadRes?.file_uri;
-        if (!file_uri) throw new Error('Upload retornou sem file_uri');
-      } catch (upErr) {
-        throw new Error(`Upload do .pfx falhou: ${upErr?.message || upErr}. Verifique sua conexão e o tamanho do arquivo (3.9 KB parece pequeno demais para um PFX — tem certeza que é o arquivo certo?)`);
-      }
+      const file_uri = await uploadArquivo();
+      if (!file_uri) return;
       setUploading(false);
       setValidando(true);
 
+      logStep('chamando_validarCertificadoNFe', true);
       const res = await validarCertificadoNFe({
         empresa,
         cnpj,
@@ -70,6 +114,7 @@ export default function UploadCertificadoForm({ onSaved }) {
       });
 
       const data = res?.data || res;
+      logStep('validacao_resposta', !!data?.ok, data);
       setResultado(data);
       if (onSaved) onSaved(data);
     } catch (err) {
@@ -130,11 +175,44 @@ export default function UploadCertificadoForm({ onSaved }) {
           🔐 Senha do PFX deve estar configurada como secret <strong>{SECRETS_MAP[empresa]}</strong> no Base44 (Settings → Secrets).
         </div>
 
-        <Button type="submit" disabled={uploading || validando} className="w-full gap-2">
-          {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Subindo PFX em storage privado...</>
-            : validando ? <><Loader2 className="w-4 h-4 animate-spin" /> Validando certificado...</>
-            : <><Upload className="w-4 h-4" /> Validar e Salvar</>}
-        </Button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button type="submit" disabled={uploading || validando} className="gap-2">
+            {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Subindo PFX...</>
+              : validando ? <><Loader2 className="w-4 h-4 animate-spin" /> Validando...</>
+              : <><Upload className="w-4 h-4" /> Validar e Salvar</>}
+          </Button>
+          <Button type="button" variant="outline" disabled={uploading || validando} onClick={handleDiagnostico} className="gap-2">
+            <Stethoscope className="w-4 h-4" /> Só diagnosticar (não abre PFX)
+          </Button>
+        </div>
+
+        {trace.length > 0 && (
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-[10px] font-mono space-y-0.5">
+            <p className="text-xs font-bold text-slate-700 mb-1 font-sans">🔍 Trace do fluxo</p>
+            {trace.map((s, i) => (
+              <div key={i} className={s.ok === false ? 'text-red-700' : 'text-slate-700'}>
+                <span className="text-slate-400">{s.t}</span>{' '}
+                {s.ok === false ? '❌' : s.ok === true ? '✅' : '•'} {s.label}
+                {s.detail && <span className="text-slate-500"> · {typeof s.detail === 'object' ? JSON.stringify(s.detail).slice(0, 140) : String(s.detail).slice(0, 140)}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {diagResult && (
+          <div className={`rounded-lg border p-4 text-xs ${diagResult.ok ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-red-50 border-red-200 text-red-900'}`}>
+            <p className="font-bold mb-2">🩺 Diagnóstico do upload</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div><span className="text-muted-foreground">Bytes baixados:</span><br /><span className="font-semibold">{diagResult.diagnostico?.bytes_baixados ?? '—'}</span></div>
+              <div><span className="text-muted-foreground">Tamanho:</span><br /><span className="font-semibold">{diagResult.diagnostico?.tamanho_kb ?? '—'}</span></div>
+              <div><span className="text-muted-foreground">Primeiro byte:</span><br /><span className="font-semibold">{diagResult.diagnostico?.primeiro_byte ?? '—'}</span></div>
+              <div><span className="text-muted-foreground">Parece PFX válido:</span><br /><span className="font-semibold">{diagResult.diagnostico?.parece_pfx_valido ? '✅ Sim' : '❌ Não'}</span></div>
+            </div>
+            {diagResult.diagnostico?.alerta_tamanho && <p className="mt-2 text-amber-700">⚠️ {diagResult.diagnostico.alerta_tamanho}</p>}
+            {diagResult.diagnostico?.alerta_estrutura && <p className="mt-2 text-red-700">⚠️ {diagResult.diagnostico.alerta_estrutura}</p>}
+            {diagResult.motivo && <p className="mt-2 text-red-700">Erro: {diagResult.motivo}</p>}
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-800 flex items-start gap-2">
