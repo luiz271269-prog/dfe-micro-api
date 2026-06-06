@@ -44,9 +44,20 @@ export default function UploadCertificadoForm({ onSaved }) {
     if (!file) return setError('Selecione o arquivo .pfx');
     if (!cnpj || cnpj.replace(/\D/g, '').length !== 14) return setError('CNPJ inválido (precisa de 14 dígitos)');
 
+    // Sanitiza nome do arquivo (remove espaços e caracteres especiais que quebram multipart)
+    const safeName = `cert_${empresa}_${Date.now()}.pfx`;
+    const safeFile = new File([file], safeName, { type: file.type || 'application/x-pkcs12' });
+
     setUploading(true);
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
+      let file_uri;
+      try {
+        const uploadRes = await base44.integrations.Core.UploadPrivateFile({ file: safeFile });
+        file_uri = uploadRes?.file_uri;
+        if (!file_uri) throw new Error('Upload retornou sem file_uri');
+      } catch (upErr) {
+        throw new Error(`Upload do .pfx falhou: ${upErr?.message || upErr}. Verifique sua conexão e o tamanho do arquivo (3.9 KB parece pequeno demais para um PFX — tem certeza que é o arquivo certo?)`);
+      }
       setUploading(false);
       setValidando(true);
 
