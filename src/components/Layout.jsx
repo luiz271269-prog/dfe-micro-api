@@ -34,6 +34,7 @@ const navItems = [
   { path: '/recorrentes', label: 'Despesas Recorrentes', icon: Repeat },
   { path: '/auditoria', label: 'Auditoria de Arquivos', icon: FolderOpen },
   { path: '/certificado-nfe', label: 'Certificado NF-e (SEFAZ)', icon: ShieldCheck },
+  { path: '/nfe-recebidas', label: 'NFes Recebidas (AN)', icon: FileText },
 ];
 
 function AlertBar() {

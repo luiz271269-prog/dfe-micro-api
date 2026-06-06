@@ -1,0 +1,129 @@
+{
+  "name": "NFeRecebida",
+  "type": "object",
+  "description": "Documento fiscal eletr\u00f4nico recebido do Ambiente Nacional via NFeDistribuicaoDFe. Chave de acesso \u00fanica.",
+  "properties": {
+    "chave_acesso": {
+      "type": "string",
+      "title": "Chave de acesso (44 d\u00edgitos) \u2014 chave de deduplica\u00e7\u00e3o"
+    },
+    "nsu": {
+      "type": "string",
+      "title": "NSU atribu\u00eddo pelo AN"
+    },
+    "tipo_documento": {
+      "type": "string",
+      "enum": [
+        "nfe",
+        "nfe_resumo",
+        "cte",
+        "nfce",
+        "evento",
+        "outro"
+      ],
+      "default": "outro"
+    },
+    "empresa_destinataria": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ]
+    },
+    "cnpj_destinatario": {
+      "type": "string"
+    },
+    "cnpj_emitente": {
+      "type": "string"
+    },
+    "nome_emitente": {
+      "type": "string"
+    },
+    "uf_emitente": {
+      "type": "string"
+    },
+    "numero_nota": {
+      "type": "string"
+    },
+    "serie": {
+      "type": "string"
+    },
+    "data_emissao": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "valor_total": {
+      "type": "number"
+    },
+    "valor_produtos": {
+      "type": "number"
+    },
+    "valor_icms": {
+      "type": "number"
+    },
+    "valor_icms_st": {
+      "type": "number"
+    },
+    "valor_ipi": {
+      "type": "number"
+    },
+    "natureza_operacao": {
+      "type": "string"
+    },
+    "xml_file_uri": {
+      "type": "string",
+      "title": "URI privado do XML no storage (gera signed URL on-demand)"
+    },
+    "schema_documento": {
+      "type": "string",
+      "title": "Schema retornado pelo AN (ex: procNFe_v4.00.xsd)"
+    },
+    "status_manifestacao": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "ciencia",
+        "confirmada",
+        "desconhecida",
+        "nao_realizada"
+      ],
+      "default": "pendente"
+    },
+    "status_processamento": {
+      "type": "string",
+      "enum": [
+        "novo",
+        "analisado",
+        "vinculado",
+        "ignorado",
+        "erro"
+      ],
+      "default": "novo"
+    },
+    "item_compra_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "IDs de ItemCompra vinculados manualmente"
+    },
+    "nfe_analise_id": {
+      "type": "string",
+      "title": "ID em NFeAnalise quando processada"
+    },
+    "divergencias": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "erro_processamento": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "chave_acesso",
+    "nsu",
+    "empresa_destinataria"
+  ]
+}
