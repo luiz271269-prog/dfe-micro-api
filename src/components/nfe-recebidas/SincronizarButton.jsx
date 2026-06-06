@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Loader2, AlertTriangle, CheckCircle, Clock, X } from 'lucide-react';
+import { RefreshCw, Loader2, AlertTriangle, CheckCircle, Clock, X, FlaskConical, Zap } from 'lucide-react';
 import { sincronizarNFeAN } from '@/functions/sincronizarNFeAN';
 
 export default function SincronizarButton({ empresa = 'NeuralTec', onDone }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
 
-  async function rodar() {
+  async function rodar(opts = {}) {
     setBusy(true); setResult(null);
     try {
-      const res = await sincronizarNFeAN({ empresa });
+      const res = await sincronizarNFeAN({ empresa, ...opts });
       const data = res?.data || res;
       setResult(data);
       if (onDone) await onDone();
@@ -22,10 +22,16 @@ export default function SincronizarButton({ empresa = 'NeuralTec', onDone }) {
   }
 
   return (
-    <div className="relative">
-      <Button onClick={rodar} disabled={busy} className="gap-2">
+    <div className="relative flex items-center gap-1.5">
+      <Button onClick={() => rodar()} disabled={busy} className="gap-2">
         {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Sincronizando...</>
               : <><RefreshCw className="w-4 h-4" /> Sincronizar {empresa}</>}
+      </Button>
+      <Button onClick={() => rodar({ force: true })} disabled={busy} size="sm" variant="outline" className="gap-1 text-xs" title="Ignora cooldown de 1h">
+        <Zap className="w-3 h-3" /> Forçar
+      </Button>
+      <Button onClick={() => rodar({ mock: '138' })} disabled={busy} size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" title="Testa pipeline com NF sintética (sem chamar SEFAZ)">
+        <FlaskConical className="w-3 h-3" /> Mock
       </Button>
 
       {result && (

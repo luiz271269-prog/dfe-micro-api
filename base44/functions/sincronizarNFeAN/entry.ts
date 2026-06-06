@@ -9,18 +9,31 @@ const COOLDOWN_MS = 60 * 60 * 1000; // 1 hora
 const MAX_LOOPS_POR_EXECUCAO = 5; // máx 5 batches por chamada (até 250 docs)
 
 // ============================================================
-// ADAPTER FISCAL — Plano A (Base44/Deno mTLS direto).
-// Para trocar para Plano B (micro-API externa), substitua APENAS este bloco
-// mantendo a MESMA assinatura de entrada e o MESMO shape de retorno.
+// ADAPTER FISCAL — CONTRATO ÚNICO consumido pelo core.
 //
-// Contract:
+// Qualquer implementação deve respeitar:
 //   IN:  { certPem, keyPem, ambiente, cnpj, ultNSU }
 //   OUT: {
-//     ok, cstat, xMotivo, ultNSU, maxNSU, docZips:[{nsu,schema,data}],
-//     endpoint, http_status, response_xml, plano_b_necessario?, motivo?
+//     ok: boolean,
+//     cstat: number|null,
+//     xMotivo: string|null,
+//     ultNSU: string|null,
+//     maxNSU: string|null,
+//     docZips: [{ nsu, schema, data /* base64+gzip */ }],
+//     endpoint?: string,
+//     http_status?: number,
+//     response_xml?: string,
+//     plano_b_necessario?: boolean,
+//     motivo?: string,
 //   }
+//
+// Implementações disponíveis:
+//   - consultarDistribuicaoDFeBase44  → Plano A: mTLS direto em Deno
+//   - consultarDistribuicaoDFeMock    → Plano TESTE: simula 137/138 sem rede
+//   - (futuro) consultarDistribuicaoDFeMicroApi → Plano B: micro-API externa
+//
 // ============================================================
-async function consultarDistribuicaoDFe({ certPem, keyPem, ambiente, cnpj, ultNSU }) {
+async function consultarDistribuicaoDFeBase44({ certPem, keyPem, ambiente, cnpj, ultNSU }) {
   if (typeof Deno.createHttpClient !== 'function') {
     return { ok: false, plano_b_necessario: true, motivo: 'Deno.createHttpClient indisponível no runtime.' };
   }
@@ -95,6 +108,48 @@ async function consultarDistribuicaoDFe({ certPem, keyPem, ambiente, cnpj, ultNS
 }
 
 // ============================================================
+// ADAPTER MOCK — testa pipeline (parse + gunzip + dedup + UI)
+// sem depender de certificado válido nem da conectividade SEFAZ.
+// Ativar via payload { mock: "137" } ou { mock: "138" }.
+// ============================================================
+async function gzipBase64(text) {
+  const stream = new Response(text).body.pipeThrough(new CompressionStream('gzip'));
+  const buf = await new Response(stream).arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+async function consultarDistribuicaoDFeMock({ cnpj, ultNSU }, kind = '137') {
+  const proxNsu = String(parseInt(ultNSU || '0') + 1).padStart(15, '0');
+  if (kind === '138') {
+    const chave = Date.now().toString().padEnd(44, '0').slice(0, 44);
+    const fakeXml = `<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00">
+  <NFe><infNFe Id="NFe${chave}">
+    <ide><nNF>${Math.floor(Math.random()*999999)}</nNF><serie>1</serie><dhEmi>${new Date().toISOString()}</dhEmi><natOp>MOCK - VENDA TESTE</natOp></ide>
+    <emit><CNPJ>11222333000181</CNPJ><xNome>FORNECEDOR MOCK LTDA</xNome><enderEmit><UF>SC</UF></enderEmit></emit>
+    <dest><CNPJ>${cnpj}</CNPJ></dest>
+    <total><ICMSTot><vNF>1234.56</vNF><vProd>1000.00</vProd><vICMS>120.00</vICMS><vST>0.00</vST><vIPI>0.00</vIPI></ICMSTot></total>
+  </infNFe></NFe>
+</nfeProc>`;
+    const data = await gzipBase64(fakeXml);
+    return {
+      ok: true, cstat: 138, xMotivo: 'MOCK — Documentos localizados',
+      ultNSU: proxNsu, maxNSU: proxNsu,
+      docZips: [{ nsu: proxNsu, schema: 'procNFe_v4.00.xsd', data }],
+      endpoint: 'mock://an',
+    };
+  }
+  return {
+    ok: true, cstat: 137, xMotivo: 'MOCK — Nenhum documento localizado',
+    ultNSU, maxNSU: ultNSU, docZips: [],
+    endpoint: 'mock://an',
+  };
+}
+
+// ============================================================
 // HELPERS — independentes do adapter
 // ============================================================
 
@@ -158,7 +213,13 @@ Deno.serve(async (req) => {
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const { empresa = 'NeuralTec' } = body || {};
+    const { empresa = 'NeuralTec', force = false, mock = null } = body || {};
+
+    // Seleciona adapter: mock para testes, Base44 para produção real.
+    // Para Plano B no futuro: troque por consultarDistribuicaoDFeMicroApi.
+    const adapter = mock
+      ? (r) => consultarDistribuicaoDFeMock(r, mock)
+      : consultarDistribuicaoDFeBase44;
 
     // 1. Certificado ativo + válido
     const certs = await base44.asServiceRole.entities.CertificadoDigitalNFe.filter({
@@ -182,14 +243,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. Cooldown
-    if (controle.bloqueado_ate) {
+    // 3. Cooldown (bypass se force=true)
+    if (controle.bloqueado_ate && !force) {
       const blocked = new Date(controle.bloqueado_ate);
       if (blocked > new Date()) {
         const min = Math.ceil((blocked.getTime() - Date.now()) / 60000);
         return Response.json({
           ok: false, bloqueado: true,
-          motivo: `Sync bloqueado por cooldown (cStat 137/656). Liberação em ${min}min (${blocked.toLocaleString('pt-BR')})`,
+          motivo: `Sync bloqueado por cooldown (cStat 137/656). Liberação em ${min}min (${blocked.toLocaleString('pt-BR')}). Use force=true para ignorar.`,
         });
       }
     }
@@ -198,9 +259,9 @@ Deno.serve(async (req) => {
     const senha = Deno.env.get(cdoc.senha_secret_name);
     if (!senha) return Response.json({ ok: false, motivo: `Secret ${cdoc.senha_secret_name} não configurado` }, { status: 400 });
 
-    // 5. PFX → PEM
-    let certPem, keyPem;
-    try {
+    // 5. PFX → PEM (pulado no modo mock — não precisa de certificado)
+    let certPem = null, keyPem = null;
+    if (!mock) try {
       const { signed_url } = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({ file_uri: cdoc.file_uri, expires_in: 60 });
       const pfxResp = await fetch(signed_url);
       const pfxBuffer = new Uint8Array(await pfxResp.arrayBuffer());
@@ -226,7 +287,7 @@ Deno.serve(async (req) => {
 
     while (loops < MAX_LOOPS_POR_EXECUCAO) {
       loops++;
-      const result = await consultarDistribuicaoDFe({
+      const result = await adapter({
         certPem, keyPem, ambiente: cdoc.ambiente,
         cnpj: cdoc.cnpj_sem_mascara, ultNSU: nsuAtual,
       });
@@ -354,12 +415,15 @@ Deno.serve(async (req) => {
     if (loops >= MAX_LOOPS_POR_EXECUCAO && !break_reason) break_reason = 'limite_loops';
 
     // 7. Atualizar ControleNSU
+    const houveAlgumProgresso = novos > 0 || duplicados > 0 || lastResult?.cstat === 137;
     const updateControle = {
       ultima_consulta: new Date().toISOString(),
       ultimo_cstat: lastResult?.cstat || null,
       ultimo_nsu: nsuAtual,
       max_nsu_servidor: lastResult?.maxNSU || controle.max_nsu_servidor,
-      tentativas_consecutivas_erro: 0,
+      tentativas_consecutivas_erro: houveAlgumProgresso
+        ? 0
+        : (controle.tentativas_consecutivas_erro || 0) + 1,
     };
     if (lastResult?.cstat === 137) {
       updateControle.ultimo_status = 'vazio';
