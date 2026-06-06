@@ -12,9 +12,24 @@ const SECRETS_MAP = {
   Liesch: 'CERT_PFX_LIESCH',
 };
 
+const CNPJ_MAP = {
+  NeuralTec: '62.982.374/0001-07',
+  Liesch: '',
+};
+
+const RAZAO_SOCIAL_MAP = {
+  NeuralTec: 'NEURALTEC DISTRIBUICAO E TECNOLOGIA LTDA',
+  Liesch: '',
+};
+
 export default function UploadCertificadoForm({ onSaved }) {
   const [empresa, setEmpresa] = useState('NeuralTec');
-  const [cnpj, setCnpj] = useState('');
+  const [cnpj, setCnpj] = useState(CNPJ_MAP.NeuralTec);
+
+  function handleEmpresaChange(v) {
+    setEmpresa(v);
+    setCnpj(CNPJ_MAP[v] || '');
+  }
   const [ambiente, setAmbiente] = useState('producao');
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -66,7 +81,7 @@ export default function UploadCertificadoForm({ onSaved }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>Empresa</Label>
-            <Select value={empresa} onValueChange={setEmpresa}>
+            <Select value={empresa} onValueChange={handleEmpresaChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="NeuralTec">NeuralTec</SelectItem>
@@ -89,6 +104,9 @@ export default function UploadCertificadoForm({ onSaved }) {
         <div>
           <Label>CNPJ da empresa</Label>
           <Input value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+          {RAZAO_SOCIAL_MAP[empresa] && (
+            <p className="text-[10px] text-muted-foreground mt-1">{RAZAO_SOCIAL_MAP[empresa]}</p>
+          )}
         </div>
 
         <div>
