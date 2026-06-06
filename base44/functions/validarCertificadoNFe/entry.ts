@@ -36,8 +36,8 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // 1. Baixar PFX via signed URL
-    const { signed_url } = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({ file_uri, expires_in: 60 });
+    // 1. Baixar PFX via signed URL (escopo do usuário — o arquivo privado pertence a ele)
+    const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri, expires_in: 60 });
     const pfxResp = await fetch(signed_url);
     if (!pfxResp.ok) {
       return Response.json({ ok: false, motivo: `Falha ao baixar PFX: HTTP ${pfxResp.status}` }, { status: 500 });
