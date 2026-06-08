@@ -63,8 +63,17 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    const senha = Deno.env.get(cdoc.senha_secret_name);
-    if (!senha) return Response.json({ ok: false, motivo: `Secret ${cdoc.senha_secret_name} não configurado` }, { status: 400 });
+    // Normaliza nome do secret (remove whitespace/chars invisíveis que podem ter sido persistidos)
+    const secretNameNormalizado = String(cdoc.senha_secret_name || '').trim().replace(/[^A-Z0-9_]/gi, '');
+    const senha = Deno.env.get(secretNameNormalizado);
+    if (!senha) {
+      const envKeys = Object.keys(Deno.env.toObject()).filter(k => /CERT|PFX|NEURAL|LIESCH/i.test(k));
+      return Response.json({
+        ok: false,
+        motivo: `Secret "${secretNameNormalizado}" não configurado no runtime`,
+        debug: { secret_no_registro: cdoc.senha_secret_name, secret_normalizado: secretNameNormalizado, secrets_relacionados_disponiveis: envKeys }
+      }, { status: 400 });
+    }
 
     const endpoint = cdoc.ambiente === 'producao' ? ENDPOINT_PROD : ENDPOINT_HOM;
     const tpAmb = cdoc.ambiente === 'producao' ? '1' : '2';
