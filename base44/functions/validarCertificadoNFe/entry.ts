@@ -72,20 +72,32 @@ Deno.serve(async (req) => {
       p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, senha);
     } catch (e) {
       const msg = String(e?.message || e);
-      const senhaErrada = /mac|password|invalid/i.test(msg);
+      const stack = String(e?.stack || '').slice(0, 500);
+      console.error('[validarCertificadoNFe] forge falhou', { msg, stack });
+
+      // Classificação do erro real
+      const isAlgoritmoNaoSuportado = /unsupported|not supported|prf|pbe|algorithm|oid/i.test(msg);
+      const isSenhaErrada = !isAlgoritmoNaoSuportado && /mac|password|invalid/i.test(msg);
+
+      let motivo;
+      if (isAlgoritmoNaoSuportado) {
+        motivo = `❌ PFX usa algoritmo de criptografia que o node-forge não suporta (provável AES-256 / SHA-256). Erro técnico: "${msg}". Solução: reexportar o .pfx em modo de compatibilidade legacy (OpenSSL: openssl pkcs12 -in original.pfx -out temp.pem -nodes && openssl pkcs12 -export -in temp.pem -out legacy.pfx -legacy)`;
+      } else if (isSenhaErrada) {
+        motivo = `Senha do .pfx inválida (verifique o secret). Erro técnico: "${msg}"`;
+      } else {
+        motivo = `Erro ao decodificar PFX: ${msg}`;
+      }
+
       if (certificado_id) {
         try {
           await base44.asServiceRole.entities.CertificadoDigitalNFe.update(certificado_id, {
             status_validacao: 'invalido',
-            ultimo_erro: senhaErrada ? 'Senha do .pfx inválida' : `Erro ao abrir PFX: ${msg}`,
+            ultimo_erro: motivo.slice(0, 500),
             ultima_validacao: new Date().toISOString(),
           });
         } catch { /* segue */ }
       }
-      return Response.json({
-        ok: false,
-        motivo: senhaErrada ? 'Senha do .pfx inválida (verifique o secret)' : `Erro ao decodificar PFX: ${msg}`
-      }, { status: 400 });
+      return Response.json({ ok: false, motivo, erro_forge: msg, classificacao: isAlgoritmoNaoSuportado ? 'algoritmo_nao_suportado' : isSenhaErrada ? 'senha_errada' : 'desconhecido' }, { status: 400 });
     }
 
     // 3. Extrair certificado
