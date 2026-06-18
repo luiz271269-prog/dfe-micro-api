@@ -235,7 +235,13 @@ REGRAS CRÍTICAS — LEIA TODAS:
 
 5. data_lancamento — formato YYYY-MM-DD, usar a data IMPRESSA da transação (não a data de vencimento da fatura).
 
-6. mes_referencia — inferir do cabeçalho. Ex: "FATURA MARÇO/2026" → "2026-03"; "Vencimento 11/03/2026" → "2026-03".
+6. mes_referencia e data_vencimento — REGRA CRÍTICA. O "mes_referencia" é SEMPRE o mês do VENCIMENTO da fatura (não o mês dos lançamentos, não o mês de fechamento).
+   PRIORIDADE de inferência:
+   a) NOME DO ARQUIVO — quando o arquivo tem padrão "EMPRESA DIA-MES.pdf" (ex: "ACENTRA LIESCH 11-01.pdf" = venc. 11/01, "SICOOB KLI 22-06.pdf" = venc. 22/06), USE essa data como vencimento. O formato é SEMPRE DD-MM (dia-mês, padrão BR), NUNCA MM-DD.
+   b) CABEÇALHO impresso — "FATURA MARÇO/2026" → "2026-03"; "Vencimento 11/03/2026" → data_vencimento="2026-03-11", mes_referencia="2026-03".
+   c) Se só tiver o dia (ex: "Vencimento 11"), combine com o ano/mês do contexto dos lançamentos: pegue o mês MAIOR (mais recente) dos data_lancamento e some 1 mês para obter o vencimento.
+   FORMATO DE DATA — TODAS as datas no PDF estão em padrão BRASILEIRO (DD/MM/AAAA). "10/03/2026" = 10 de março de 2026, NÃO 3 de outubro. "10/12" = 10 de dezembro, NÃO 12 de outubro. JAMAIS inverta.
+   ANO — se o vencimento for inferido apenas do nome do arquivo (sem ano), use o ano em que esse mês cai LOGO APÓS o último data_lancamento dos lançamentos. Ex: lançamentos em dez/2025, venc. "11-01" → 2026-01-11.
 
 7. natureza — empresarial para fornecedores B2B/hospedagem/SaaS/distribuidores; pessoal para varejo/alimentação/lazer/serviços pessoais. Em dúvida → "pessoal".
 
@@ -456,7 +462,9 @@ export default function ImportarDocumento() {
 
         // 2. Extrair com InvokeLLM nativo Base44 — injeta data atual no prompt
         const hojeISO = new Date().toISOString().split('T')[0];
-        const promptComContexto = PROMPTS[selectedType].replace(/\{\{HOJE\}\}/g, hojeISO) + `\n\nDATA DE REFERÊNCIA (hoje): ${hojeISO}`;
+        const promptComContexto = PROMPTS[selectedType].replace(/\{\{HOJE\}\}/g, hojeISO)
+          + `\n\nDATA DE REFERÊNCIA (hoje): ${hojeISO}`
+          + `\nNOME DO ARQUIVO ENVIADO: "${file.name}"  ← USE como pista (padrão "EMPRESA DD-MM.pdf" = dia-mês BR, ex: "11-01" = 11 de janeiro)`;
         // Modelo: relatorio_vendas_detalhado exige raciocínio robusto (17 regras + cabeçalho+parcelas)
         // → usa claude_sonnet_4_6. Demais tipos usam gemini_3_flash (rápido e barato).
         const modeloIA = (selectedType === 'relatorio_vendas_detalhado' || selectedType === 'fatura_cartao') ? 'claude_sonnet_4_6' : 'gemini_3_flash';
