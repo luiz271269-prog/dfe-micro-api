@@ -86,9 +86,12 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
   }, {});
 
   const totalClassificado = Object.values(classificacao).reduce((s, v) => s + v, 0);
-  // Total Geral = soma real das faturas do mês (mesmo valor do card "Total Faturas")
-  const total = totalFaturas != null ? totalFaturas : totalClassificado;
-  const diferenca = total - totalClassificado;
+  // Denominador = soma real dos lançamentos classificados (garante 100% sempre).
+  // totalFaturas é apenas referência: se divergir, o banner abaixo aponta.
+  const total = totalClassificado;
+  const divergenciaFaturas = totalFaturas != null && Math.abs(totalFaturas - totalClassificado) > 1
+    ? totalClassificado - totalFaturas
+    : 0;
 
   const items = [
     { label: '🏗️ Obra e Reforma',       key: 'obra',             bg: 'bg-orange-50',  border: 'border-orange-300', text: 'text-orange-700', activeBg: 'bg-orange-100' },
@@ -114,6 +117,15 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
           {isAnnual ? 'Anual' : formatMesLabel(selectedMonth)}
         </span>
       </div>
+
+      {divergenciaFaturas !== 0 && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2 text-xs">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+          <span className="text-amber-800">
+            <span className="font-semibold">Divergência detectada:</span> soma dos lançamentos ({formatCurrency(totalClassificado)}) {divergenciaFaturas > 0 ? 'excede' : 'fica abaixo de'} Total Faturas ({formatCurrency(totalFaturas)}) em <span className="font-bold">{formatCurrency(Math.abs(divergenciaFaturas))}</span>. Use "Reparo Forense" no topo para corrigir.
+          </span>
+        </div>
+      )}
 
       {/* Grid de cards lado a lado */}
       <div className="p-4 grid grid-cols-3 sm:grid-cols-6 gap-2">
