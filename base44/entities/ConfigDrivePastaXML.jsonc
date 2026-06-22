@@ -1,0 +1,64 @@
+{
+  "name": "ConfigDrivePastaXML",
+  "type": "object",
+  "description": "Configura\u00e7\u00e3o da pasta do Google Drive monitorada para varredura autom\u00e1tica de XMLs de NF-e.",
+  "properties": {
+    "folder_id": {
+      "type": "string",
+      "title": "ID da pasta no Google Drive"
+    },
+    "folder_name": {
+      "type": "string",
+      "title": "Nome amig\u00e1vel da pasta (ex: Ellitte/XMLs/Retorno)"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "title": "Varredura autom\u00e1tica ativa"
+    },
+    "ultima_varredura": {
+      "type": "string",
+      "format": "date-time",
+      "title": "\u00daltima varredura executada"
+    },
+    "ultima_quantidade": {
+      "type": "number",
+      "default": 0,
+      "title": "Quantidade de arquivos da \u00faltima varredura"
+    },
+    "ultimo_processados": {
+      "type": "number",
+      "default": 0,
+      "title": "Quantos foram efetivamente processados na \u00faltima rodada"
+    },
+    "observacoes": {
+      "type": "string",
+      "title": "Observa\u00e7\u00f5es"
+    }
+  },
+  "required": [
+    "folder_id"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

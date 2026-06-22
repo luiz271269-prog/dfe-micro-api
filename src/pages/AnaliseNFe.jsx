@@ -4,6 +4,7 @@ import PageHeader from '../components/shared/PageHeader';
 import GoogleDrivePicker from '../components/nfe/GoogleDrivePicker';
 import ResultadoAnaliseNFe from '../components/nfe/ResultadoAnaliseNFe';
 import RelatorioConformidade from '../components/nfe/RelatorioConformidade';
+import VarreduraAutomaticaXML from '../components/nfe/VarreduraAutomaticaXML';
 import { analisarXMLNFe } from '@/functions/analisarXMLNFe';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -147,6 +148,9 @@ export default function AnaliseNFe() {
               <p className="text-xl font-bold text-purple-700">{stats.divergenciasFiscais}</p>
             </div>
           </div>
+
+          {/* Super-agente: varredura automática em loop */}
+          <VarreduraAutomaticaXML onConcluido={loadAnalises} />
 
           {/* Processando */}
           {processando && (
