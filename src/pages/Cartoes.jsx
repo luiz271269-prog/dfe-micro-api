@@ -181,8 +181,23 @@ export default function Cartoes() {
     return faturas.filter(f => f.mes_referencia === selectedMonth);
   }, [faturas, selectedMonth, isAnnual]);
 
-  function getCardFaturas(cardId) {
-    return filteredFaturas.filter(f => f.conta_cartao_id === cardId).sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento));
+  // Agrupa cartões duplicados (mesmo nome criado por usuários diferentes) — soma faturas de todos os ids
+  const cartoesAgrupados = useMemo(() => {
+    const map = new Map();
+    for (const c of cartoes) {
+      const key = (c.nome || '').trim();
+      if (!map.has(key)) {
+        map.set(key, { ...c, ids: [c.id] });
+      } else {
+        map.get(key).ids.push(c.id);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => (a.dia_vencimento || 0) - (b.dia_vencimento || 0));
+  }, [cartoes]);
+
+  function getCardFaturas(cardIdOrIds) {
+    const ids = Array.isArray(cardIdOrIds) ? cardIdOrIds : [cardIdOrIds];
+    return filteredFaturas.filter(f => ids.includes(f.conta_cartao_id)).sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento));
   }
 
   function getFaturaLancamentos(faturaId) {
@@ -219,8 +234,8 @@ export default function Cartoes() {
     return null;
   }
 
-  function getLatestFatura(cardId) {
-    return getCardFaturas(cardId)[0] || null;
+  function getLatestFatura(cardIdOrIds) {
+    return getCardFaturas(cardIdOrIds)[0] || null;
   }
 
   if (loading) return (
@@ -234,7 +249,7 @@ export default function Cartoes() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      <PageHeader title="Cartões de Crédito" subtitle={`${cartoes.length} cartões cadastrados`}>
+      <PageHeader title="Cartões de Crédito" subtitle={`${cartoesAgrupados.length} cartões cadastrados`}>
         <MonthNavigator
           selectedMonth={selectedMonth}
           onSelectMonth={setSelectedMonth}
@@ -262,8 +277,8 @@ export default function Cartoes() {
           <Calendar className="w-4 h-4" /> Calendário de Vencimentos
         </p>
         <div className="flex items-start gap-4 overflow-x-auto pb-2">
-          {cartoes.map(c => {
-            const latestFat = getLatestFatura(c.id);
+          {cartoesAgrupados.map(c => {
+            const latestFat = getLatestFatura(c.ids);
             const statusColors = {
               aberta: 'bg-amber-100 border-amber-300 text-amber-800',
               paga_total: 'bg-green-100 border-green-300 text-green-800',
@@ -302,9 +317,9 @@ export default function Cartoes() {
 
       {/* Cards list — grid compacto */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
-        {cartoes.map(c => {
+        {cartoesAgrupados.map(c => {
           const isExpanded = expandedCard === c.id;
-          const cardFaturas = getCardFaturas(c.id);
+          const cardFaturas = getCardFaturas(c.ids);
           const latestFat = cardFaturas[0];
           const bStyle = BANDEIRAS[c.bandeira] || BANDEIRAS.default;
           const url = latestFat ? getFaturaFileUrl(latestFat) : null;
@@ -319,7 +334,7 @@ export default function Cartoes() {
                   setExpandedFatura(null);
                 } else {
                   setExpandedCard(c.id);
-                  const firstFat = getCardFaturas(c.id)[0];
+                  const firstFat = getCardFaturas(c.ids)[0];
                   if (firstFat) setExpandedFatura(firstFat.id);
                 }
               }}
@@ -368,9 +383,9 @@ export default function Cartoes() {
 
       {/* Painel expandido — largura total na quebra abaixo */}
       {expandedCard && (() => {
-        const c = cartoes.find(x => x.id === expandedCard);
+        const c = cartoesAgrupados.find(x => x.id === expandedCard);
         if (!c) return null;
-        const cardFaturas = getCardFaturas(c.id);
+        const cardFaturas = getCardFaturas(c.ids);
         return (
           <div className="mt-4 bg-card rounded-xl border overflow-hidden">
             <div className="px-4 py-2.5 border-b bg-muted/20 flex items-center justify-between gap-3 flex-wrap">
