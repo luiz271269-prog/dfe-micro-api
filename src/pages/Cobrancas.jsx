@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import DedupTitulosButton from '../components/cobrancas/DedupTitulosButton';
+import ReconciliarOrfaosButton from '../components/cobrancas/ReconciliarOrfaosButton';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -177,6 +178,7 @@ export default function Cobrancas() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
+        <ReconciliarOrfaosButton onComplete={loadData} />
         <DedupTitulosButton onComplete={loadData} />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Título</Button>
       </PageHeader>

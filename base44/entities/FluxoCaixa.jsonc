@@ -103,6 +103,10 @@
         "Liesch"
       ],
       "title": "Empresa"
+    },
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario que realizou a previs\u00e3o (preenchido quando status=realizado)"
     }
   },
   "required": [

@@ -78,6 +78,14 @@
     "ci_referencia": {
       "type": "string",
       "title": "N\u00famero do CI referenciado (quando \u00e9 NF-espelho)"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa Emissora (essencial para DRE por CNPJ)"
     }
   },
   "required": [

@@ -57,6 +57,10 @@
     "parcela_total": {
       "type": "number",
       "title": "Total Parcelas"
+    },
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario que liquidou o t\u00edtulo (cr\u00e9dito no extrato)"
     }
   },
   "required": [
