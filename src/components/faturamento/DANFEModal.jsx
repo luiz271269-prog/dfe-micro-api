@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Printer, FileText, AlertTriangle, ExternalLink, Loader2 } from 'lucide-react';
+import { Printer, FileText, AlertTriangle, ExternalLink, Loader2, Zap } from 'lucide-react';
 import { gerarDANFEHtml } from '@/functions/gerarDANFEHtml';
 
 export default function DANFEModal({ nf, onClose }) {
@@ -62,13 +63,28 @@ export default function DANFEModal({ nf, onClose }) {
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-semibold text-amber-900 mb-1">XML não disponível</p>
-                <p className="text-amber-800">{error}</p>
-                <p className="text-xs text-amber-700 mt-2">
-                  Para gerar o DANFE, o XML desta NF-e precisa estar processado em <strong>Análise NF-e</strong>.
-                  Importe o XML da pasta sincronizada no Google Drive e tente novamente.
+              <div className="text-sm flex-1">
+                <p className="font-semibold text-amber-900 mb-1">XML da NF {nf?.numero} ainda não foi processado</p>
+                <p className="text-amber-800 mb-3">
+                  Para gerar o DANFE, o sistema precisa primeiro <strong>ler o XML</strong> desta NF-e do Google Drive.
+                  Como o XML ainda não foi importado, não há dados (produtos, impostos, chave de acesso) para imprimir.
                 </p>
+                <div className="bg-white rounded-md p-3 border border-amber-200 mb-3">
+                  <p className="font-semibold text-slate-800 text-xs mb-2">📋 Passo a passo:</p>
+                  <ol className="text-xs text-slate-700 space-y-1 list-decimal list-inside">
+                    <li>Abra <strong>Análise XML NF-e (Drive)</strong> no menu lateral</li>
+                    <li>Conecte sua conta Google Drive (se ainda não conectou)</li>
+                    <li>Na seção <strong>"Super Agente — Varredura Forense"</strong>, clique em <strong>Listar</strong></li>
+                    <li>Clique em <strong>"Processar XMLs em lote"</strong> — o sistema lê tudo automaticamente</li>
+                    <li>Volte aqui e clique <strong>Imprimir</strong> novamente</li>
+                  </ol>
+                </div>
+                <Link to="/analise-nfe">
+                  <Button size="sm" className="gap-2 bg-amber-600 hover:bg-amber-700">
+                    <Zap className="w-3.5 h-3.5" /> Ir para Análise NF-e agora
+                  </Button>
+                </Link>
+                <p className="text-[10px] text-amber-600 mt-2 font-mono">Detalhe técnico: {error}</p>
               </div>
             </div>
           </div>
