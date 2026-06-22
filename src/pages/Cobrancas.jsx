@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,8 @@ export default function Cobrancas() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('data_vencimento');
+  const [sortDir, setSortDir] = useState('asc');
   const [baixaId, setBaixaId] = useState(null);
   const [baixaValor, setBaixaValor] = useState('');
   const [form, setForm] = useState({
@@ -67,7 +69,7 @@ export default function Cobrancas() {
   };
 
   const filtered = useMemo(() => {
-    return titulos.filter(t => {
+    const arr = titulos.filter(t => {
       // Filtro "vencendo esta semana" ignora filtro de mês — mostra todos nos próximos 7 dias
       if (quickFilter === 'semana') {
         if (t.status === 'pago') return false;
@@ -82,19 +84,56 @@ export default function Cobrancas() {
       if (searchTerm && !t.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) && !t.nosso_numero?.includes(searchTerm)) return false;
       return true;
     });
-  }, [titulos, quickFilter, searchTerm, selectedMonth, isAnnual]);
+
+    // Ordenação dinâmica
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const getVal = (t) => {
+      if (sortBy === 'parcela') return (t.parcela_numero || 0) * 1000 + (t.parcela_total || 0);
+      return t[sortBy];
+    };
+    arr.sort((a, b) => {
+      const va = getVal(a);
+      const vb = getVal(b);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb), 'pt-BR', { numeric: true }) * dir;
+    });
+    return arr;
+  }, [titulos, quickFilter, searchTerm, selectedMonth, isAnnual, sortBy, sortDir]);
+
+  function toggleSort(field) {
+    if (sortBy === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortDir(field === 'data_vencimento' ? 'asc' : 'desc');
+    }
+  }
+
+  const SortIcon = ({ field }) => {
+    if (sortBy !== field) return <ChevronsUpDown className="w-3 h-3 inline-block opacity-30 ml-1" />;
+    return sortDir === 'asc'
+      ? <ChevronUp className="w-3 h-3 inline-block ml-1" />
+      : <ChevronDown className="w-3 h-3 inline-block ml-1" />;
+  };
 
   const totalEmitido = filtered.reduce((s, t) => s + (t.valor_titulo || 0), 0);
   const totalPago = filtered.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
   const totalAberto = filtered.filter(t => t.status !== 'pago').reduce((s, t) => s + (t.valor_titulo || 0), 0);
 
-  const today = new Date();
-  const in7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const alertas = titulos.filter(t => {
-    if (t.status === 'pago') return false;
-    const venc = new Date(t.data_vencimento + 'T00:00:00');
-    return venc >= today && venc <= in7Days;
-  });
+  // Alerta agora mostra APENAS títulos em atraso (vencidos não pagos).
+  // Vencimentos da semana já aparecem na listagem via filtro "Vencendo esta semana".
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const alertas = titulos
+    .filter(t => {
+      if (t.status === 'pago' || !t.data_vencimento) return false;
+      const venc = new Date(t.data_vencimento + 'T00:00:00');
+      return venc < today;
+    })
+    .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
+  const totalEmAtraso = alertas.reduce((s, a) => s + (a.valor_titulo || 0), 0);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -149,16 +188,23 @@ export default function Cobrancas() {
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Título</Button>
       </PageHeader>
 
-      {/* Alerta */}
+      {/* Alerta — APENAS títulos em atraso (vencidos não pagos) */}
       {alertas.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-amber-800">Vencimentos nos próximos 7 dias ({alertas.length})</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-800">
+              Títulos em atraso ({alertas.length}) — {formatCurrency(totalEmAtraso)}
+            </p>
             <div className="mt-1 flex flex-wrap gap-2">
-              {alertas.map(a => (
-                <span key={a.id} className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{a.cliente} — {formatCurrency(a.valor_titulo)} — {formatDate(a.data_vencimento)}</span>
-              ))}
+              {alertas.map(a => {
+                const dias = Math.abs(diasAteVenc(a.data_vencimento));
+                return (
+                  <span key={a.id} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                    {a.cliente} — {formatCurrency(a.valor_titulo)} — venc. {formatDate(a.data_vencimento)} <strong>({dias}d atraso)</strong>
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -210,13 +256,13 @@ export default function Cobrancas() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Nosso Nº</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Vencimento</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Parcela</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Pago</th>
-                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Status</th>
+                <th onClick={() => toggleSort('nosso_numero')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Nosso Nº<SortIcon field="nosso_numero" /></th>
+                <th onClick={() => toggleSort('cliente')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Cliente<SortIcon field="cliente" /></th>
+                <th onClick={() => toggleSort('data_vencimento')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Vencimento<SortIcon field="data_vencimento" /></th>
+                <th onClick={() => toggleSort('parcela')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Parcela<SortIcon field="parcela" /></th>
+                <th onClick={() => toggleSort('valor_titulo')} className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Valor<SortIcon field="valor_titulo" /></th>
+                <th onClick={() => toggleSort('valor_pago')} className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Pago<SortIcon field="valor_pago" /></th>
+                <th onClick={() => toggleSort('status')} className="text-center px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Status<SortIcon field="status" /></th>
                 <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Ação</th>
               </tr>
             </thead>
