@@ -5,6 +5,42 @@ import { base44 } from '@/api/base44Client';
  * Funciona como pilar mestre para QUALQUER tipo de importação
  */
 
+// ─────────────────────────────────────────────────────────────────────
+// Helpers para chave canônica de TituloCobranca.
+// Mesma lógica replicada em functions/deduplicarTitulosCobranca e
+// functions/deduplicarImportacoes — mantenha as três em sincronia.
+// ─────────────────────────────────────────────────────────────────────
+function extractNFCIRef(value) {
+  if (!value) return null;
+  const s = String(value).toUpperCase().trim();
+  const m = s.match(/(NF|CI)[\s\-]*0*(\d+)/);
+  if (m) return `${m[1]}-${m[2]}`;
+  const num = s.match(/^0*(\d+)(?:[\/\-]\d+)?$/);
+  if (num) return `NF-${num[1]}`;
+  return null;
+}
+
+function extractParcelaFromNosso(nossoNum) {
+  if (!nossoNum) return null;
+  const m = String(nossoNum).match(/[\/\-](\d+)$/);
+  return m ? parseInt(m[1]) : null;
+}
+
+function normalizeClienteTitulo(c) {
+  return (c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 25);
+}
+
+// Chave canônica: prioriza NF+parcela; fallback cliente+vencimento+valor
+function tituloCobrancaKey(r) {
+  const nfRef = extractNFCIRef(r.seu_numero) || extractNFCIRef(r.nosso_numero);
+  const parcela = r.parcela_numero || extractParcelaFromNosso(r.nosso_numero);
+  if (nfRef && parcela) return `nf:${nfRef}|p:${parcela}`;
+  if (r.cliente && r.data_vencimento && r.valor_titulo != null) {
+    return `cli:${normalizeClienteTitulo(r.cliente)}|v:${r.data_vencimento}|val:${Math.round(Number(r.valor_titulo) * 100)}`;
+  }
+  return null;
+}
+
 const DEDUP_CONFIG = {
   LancamentoBancario: {
     entity: 'LancamentoBancario',
@@ -16,7 +52,7 @@ const DEDUP_CONFIG = {
   },
   TituloCobranca: {
     entity: 'TituloCobranca',
-    keys: ['nosso_numero'],
+    keyBuilder: tituloCobrancaKey, // chave canônica (NF+parcela ou fallback cliente+venc+valor)
   },
   ItemCompra: {
     entity: 'ItemCompra',
@@ -75,7 +111,8 @@ function normalizeValue(value) {
  * Cria uma chave de deduplicação para um registro
  * normalizers (opcional): { campo: fn(valor) => string } — sobrescreve normalizeValue para o campo
  */
-function createDedupKey(record, keys, normalizers) {
+function createDedupKey(record, keys, normalizers, keyBuilder) {
+  if (keyBuilder) return keyBuilder(record) || '';
   return keys
     .map(k => {
       const val = record[k];
@@ -88,7 +125,8 @@ function createDedupKey(record, keys, normalizers) {
 /**
  * Valida se um registro é válido para deduplicação
  */
-function isValidRecord(record, keys) {
+function isValidRecord(record, keys, keyBuilder) {
+  if (keyBuilder) return !!keyBuilder(record);
   return keys.some(k => record[k] != null && record[k] !== '');
 }
 
@@ -104,7 +142,7 @@ export async function deduplicateRecords(records, entityType) {
     throw new Error(`Configuração de deduplicação não encontrada para ${entityType}`);
   }
 
-  const { entity, keys, normalizers } = config;
+  const { entity, keys, normalizers, keyBuilder } = config;
   const seenInBatch = new Set();
   const enriched = [];
 
@@ -120,8 +158,8 @@ export async function deduplicateRecords(records, entityType) {
   // Criar set de chaves existentes no banco
   const existingKeys = new Set(
     existingRecords
-      .filter(r => isValidRecord(r, keys))
-      .map(r => createDedupKey(r, keys, normalizers))
+      .filter(r => isValidRecord(r, keys, keyBuilder))
+      .map(r => createDedupKey(r, keys, normalizers, keyBuilder))
   );
 
   // Processar cada registro
@@ -129,10 +167,10 @@ export async function deduplicateRecords(records, entityType) {
     let status = 'novo';
 
     // Validação básica
-    if (!isValidRecord(record, keys)) {
+    if (!isValidRecord(record, keys, keyBuilder)) {
       status = 'erro';
     } else {
-      const batchKey = createDedupKey(record, keys, normalizers);
+      const batchKey = createDedupKey(record, keys, normalizers, keyBuilder);
 
       // Verificar se já foi visto neste batch
       if (seenInBatch.has(batchKey)) {

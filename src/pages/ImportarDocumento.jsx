@@ -56,9 +56,9 @@ REGRAS CRÍTICAS:
    - "Nosso Número", "Nosso Nº", "NN", "Nro Título", "Documento" ou similar.
    - Formato típico Sicredi: "26/100XXX-X", "26/100123-4", "100123-4" ou apenas dígitos longos (8+ caracteres).
    - Se o relatório só listar "Seu Número" + data + valor (sem Nosso Número explícito), use a coluna que identifica unicamente o boleto no banco — geralmente é um código numérico longo. NUNCA retorne vazio para nosso_numero.
-   - Se realmente não houver Nosso Número, construa um identificador único: "BOL-{seu_numero}-{data_pagamento}" (ex: "BOL-NF-180-2026-05-13").
+   - Se realmente não houver Nosso Número, construa um identificador DETERMINÍSTICO baseado em dados do PRÓPRIO boleto: "BOL-{primeiras_8_letras_alfanum_do_cliente}-{data_pagamento}-{valor_em_centavos}" (ex: "BOL-SAOJUDAS-2026-06-01-130133"). REGRA CRÍTICA: NÃO incluir seu_numero nem nenhum dado variável no BOL — assim duas importações do mesmo boleto geram o MESMO nosso_numero, garantindo deduplicação natural.
 
-2. seu_numero — referência interna (NF, CI, número do pedido). Ex: "NF-180", "180", "CI-100084". Pode ficar vazio se não houver.
+2. seu_numero — REFERÊNCIA À NF DE ORIGEM (campo crítico para conciliação). Procure ATIVAMENTE em TODOS os campos do boleto (descrição, histórico, sacado, observações, "Documento", "Referência") por padrões "NF-XXX", "NF XXX", "NFE-XXX", "CI-XXXXXX". Se encontrar, preencha como "NF-XXX" ou "CI-XXXXXX". Esse campo é OBRIGATÓRIO sempre que houver qualquer indício de número de nota fiscal — sem ele, o título não consegue ser conciliado com o relatório de vendas. Deixe vazio APENAS se realmente não houver nenhuma referência a NF/CI no boleto.
 
 3. cliente — nome do sacado/pagador exatamente como aparece no relatório.
 

@@ -88,7 +88,44 @@ const ENTITIES_CONFIG = [
   },
   {
     name: 'TituloCobranca',
-    keyFn: r => r.nosso_numero ? String(r.nosso_numero).trim() : null,
+    // Chave canônica idêntica à de lib/deduplicationEngine.js e functions/deduplicarTitulosCobranca
+    keyFn: r => {
+      const extractNFCI = (val) => {
+        if (!val) return null;
+        const s = String(val).toUpperCase().trim();
+        const m = s.match(/(NF|CI)[\s\-]*0*(\d+)/);
+        if (m) return `${m[1]}-${m[2]}`;
+        const num = s.match(/^0*(\d+)(?:[\/\-]\d+)?$/);
+        return num ? `NF-${num[1]}` : null;
+      };
+      const extractParcela = (nn) => {
+        if (!nn) return null;
+        const m = String(nn).match(/[\/\-](\d+)$/);
+        return m ? parseInt(m[1]) : null;
+      };
+      const nfRef = extractNFCI(r.seu_numero) || extractNFCI(r.nosso_numero);
+      const parcela = r.parcela_numero || extractParcela(r.nosso_numero);
+      if (nfRef && parcela) return `nf:${nfRef}|p:${parcela}`;
+      if (r.cliente && r.data_vencimento && r.valor_titulo != null) {
+        const cli = String(r.cliente).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 25);
+        const cents = Math.round(Number(r.valor_titulo) * 100);
+        return `cli:${cli}|v:${r.data_vencimento}|val:${cents}`;
+      }
+      return null;
+    },
+    // Preferir registro com mais info (seu_numero canônico, parcela, vinculado a NF, pago com valor)
+    preferKeepFn: (a, b) => {
+      const score = (r) => {
+        let s = 0;
+        if (r.seu_numero && /NF|CI/i.test(r.seu_numero)) s += 10;
+        if (r.parcela_numero && r.parcela_total) s += 8;
+        if (r.nota_fiscal_id) s += 6;
+        if (r.nosso_numero && !String(r.nosso_numero).startsWith('BOL-')) s += 4;
+        if (r.status === 'pago' && r.valor_pago > 0) s += 5;
+        return s;
+      };
+      return score(a) - score(b);
+    },
   },
   {
     name: 'RelatorioFaturamento',
