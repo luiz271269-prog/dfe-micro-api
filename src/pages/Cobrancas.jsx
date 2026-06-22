@@ -39,8 +39,17 @@ export default function Cobrancas() {
 
   async function loadData() {
     setLoading(true);
-    const data = await base44.entities.TituloCobranca.list('-data_vencimento', 500);
-    setTitulos(data);
+    // Carrega títulos + NFs em paralelo e enriquece títulos com data_emissao da NF vinculada
+    const [data, notas] = await Promise.all([
+      base44.entities.TituloCobranca.list('-data_vencimento', 500),
+      base44.entities.NotaFiscal.list('-data_emissao', 1000),
+    ]);
+    const notasMap = new Map(notas.map(n => [n.id, n]));
+    const enriched = data.map(t => ({
+      ...t,
+      data_emissao: t.nota_fiscal_id ? (notasMap.get(t.nota_fiscal_id)?.data_emissao || null) : null,
+    }));
+    setTitulos(enriched);
     setLoading(false);
   }
 
@@ -258,6 +267,7 @@ export default function Cobrancas() {
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                 <th onClick={() => toggleSort('nosso_numero')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Nosso Nº<SortIcon field="nosso_numero" /></th>
                 <th onClick={() => toggleSort('cliente')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Cliente<SortIcon field="cliente" /></th>
+                <th onClick={() => toggleSort('data_emissao')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Emissão<SortIcon field="data_emissao" /></th>
                 <th onClick={() => toggleSort('data_vencimento')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Vencimento<SortIcon field="data_vencimento" /></th>
                 <th onClick={() => toggleSort('parcela')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Parcela<SortIcon field="parcela" /></th>
                 <th onClick={() => toggleSort('valor_titulo')} className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Valor<SortIcon field="valor_titulo" /></th>
@@ -268,9 +278,9 @@ export default function Cobrancas() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhum título encontrado</td></tr>
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Nenhum título encontrado</td></tr>
               ) : (
                 filtered.map(t => {
                   const dias = diasAteVenc(t.data_vencimento);
@@ -282,6 +292,9 @@ export default function Cobrancas() {
                   <tr key={t.id} className={`border-b transition-colors ${rowClass}`}>
                     <td className={`px-4 py-3 font-medium ${vencendoCritico ? 'text-red-800' : ''}`}>{t.nosso_numero}</td>
                     <td className={`px-4 py-3 ${vencendoCritico ? 'text-red-800 font-semibold' : ''}`}>{t.cliente}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">
+                      {t.data_emissao ? formatDate(t.data_emissao) : '—'}
+                    </td>
                     <td className={`px-4 py-3 whitespace-nowrap ${vencendoCritico ? 'text-red-700 font-bold' : ''}`}>
                       {formatDate(t.data_vencimento)}
                       {vencendoCritico && (
@@ -311,7 +324,7 @@ export default function Cobrancas() {
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30">
-                  <td colSpan={4} className="px-4 py-3 font-semibold">Total ({filtered.length})</td>
+                  <td colSpan={5} className="px-4 py-3 font-semibold">Total ({filtered.length})</td>
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(totalEmitido)}</td>
                   <td className="px-4 py-3 text-right font-bold text-green-600">{formatCurrency(totalPago)}</td>
                   <td colSpan={2}></td>
