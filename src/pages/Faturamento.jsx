@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, FileText, TrendingUp, DollarSign, Link2, Sparkles } from 'lucide-react';
+import { Plus, Search, FileText, TrendingUp, DollarSign, Link2, Sparkles, Printer } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import ConciliacaoRelatorio from '../components/faturamento/ConciliacaoRelatorio';
+import DANFEModal from '../components/faturamento/DANFEModal';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { detectarNFsEspelhoCI } from '@/functions/detectarNFsEspelhoCI';
 
@@ -20,6 +21,7 @@ export default function Faturamento() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [detalhes, setDetalhes] = useState(null);
+  const [danfeNF, setDanfeNF] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [filterVendedor, setFilterVendedor] = useState('all');
@@ -286,13 +288,14 @@ export default function Faturamento() {
                 <th className="hidden sm:table-cell text-right px-4 py-3 font-semibold text-muted-foreground">Aberto</th>
                 <th className="hidden lg:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Próx. Venc.</th>
                 <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Status</th>
+                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">DANFE</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Nenhuma nota encontrada</td></tr>
+                <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Nenhuma nota encontrada</td></tr>
               ) : (
                 filtered.map(n => (
                   <tr key={n.id} className={`border-b hover:bg-muted/30 transition-colors cursor-pointer ${n.is_espelho_ci ? 'bg-blue-50/40 opacity-75' : ''}`} onClick={() => setDetalhes(n)}>
@@ -316,6 +319,17 @@ export default function Faturamento() {
                       <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-orange-600">{formatCurrency(n.valor_aberto)}</td>
                       <td className="hidden lg:table-cell px-4 py-3 whitespace-nowrap text-sm">{formatDate(n.data_vencimento_proxima)}</td>
                       <td className="px-4 py-3 text-center"><StatusBadge status={n.status} /></td>
+                      <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        {n.tipo === 'NF' && (
+                          <button
+                            onClick={() => setDanfeNF(n)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Gerar DANFE para envio ao cliente"
+                          >
+                            <Printer className="w-3.5 h-3.5" /> Imprimir
+                          </button>
+                        )}
+                      </td>
                   </tr>
                 ))
               )}
@@ -327,13 +341,16 @@ export default function Faturamento() {
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(totalFaturado)}</td>
                   <td className="px-4 py-3 text-right font-bold text-green-600">{formatCurrency(totalRecebido)}</td>
                   <td className="px-4 py-3 text-right font-bold text-orange-600">{formatCurrency(totalAberto)}</td>
-                  <td colSpan={2}></td>
+                  <td colSpan={3}></td>
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
       </div>
+
+      {/* DANFE Modal — gera modelo de impressão (XML → HTML/PDF) */}
+      {danfeNF && <DANFEModal nf={danfeNF} onClose={() => setDanfeNF(null)} />}
 
       {/* Detalhes/Baixa modal */}
       {detalhes && (
