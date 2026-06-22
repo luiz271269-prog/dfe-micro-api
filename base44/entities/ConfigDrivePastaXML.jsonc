@@ -1,7 +1,7 @@
 {
   "name": "ConfigDrivePastaXML",
   "type": "object",
-  "description": "Configura\u00e7\u00e3o da pasta do Google Drive monitorada para varredura autom\u00e1tica de XMLs de NF-e.",
+  "description": "Configura\u00e7\u00e3o da pasta monitorada para varredura autom\u00e1tica de XMLs de NF-e \u2014 Drive (nuvem) + caminho de rede local (WTS/UNC) como refer\u00eancia operacional.",
   "properties": {
     "folder_id": {
       "type": "string",
@@ -10,6 +10,25 @@
     "folder_name": {
       "type": "string",
       "title": "Nome amig\u00e1vel da pasta (ex: Ellitte/XMLs/Retorno)"
+    },
+    "caminho_rede": {
+      "type": "string",
+      "title": "Caminho de rede local (ex: E:\\Ellitte\\XMLs\\Retorno ou \\\\servidor\\xmls)"
+    },
+    "tipo_caminho": {
+      "type": "string",
+      "enum": [
+        "disco_local",
+        "unc_rede",
+        "drive_sincronizado",
+        "outro"
+      ],
+      "default": "drive_sincronizado",
+      "title": "Tipo do caminho"
+    },
+    "host_servidor": {
+      "type": "string",
+      "title": "Servidor/Host (quando UNC)"
     },
     "ativo": {
       "type": "boolean",
