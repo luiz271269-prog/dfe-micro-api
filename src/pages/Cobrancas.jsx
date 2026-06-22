@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,20 @@ export default function Cobrancas() {
   const [searchTerm, setSearchTerm] = useState('');
   const [baixaId, setBaixaId] = useState(null);
   const [baixaValor, setBaixaValor] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'data_vencimento', direction: 'asc' });
+
+  function handleSort(key) {
+    setSortConfig(prev => {
+      if (prev.key !== key) return { key, direction: 'asc' };
+      if (prev.direction === 'asc') return { key, direction: 'desc' };
+      return { key: 'data_vencimento', direction: 'asc' };
+    });
+  }
+
+  function SortIcon({ column }) {
+    if (sortConfig.key !== column) return <ArrowUpDown className="w-3 h-3 opacity-40" />;
+    return sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />;
+  }
   const [form, setForm] = useState({
     nosso_numero: '', seu_numero: '', cliente: '', data_vencimento: '',
     data_pagamento: '', valor_titulo: '', valor_pago: '0', status: 'em_aberto',
@@ -83,6 +97,22 @@ export default function Cobrancas() {
       return true;
     });
   }, [titulos, quickFilter, searchTerm, selectedMonth, isAnnual]);
+
+  const sorted = useMemo(() => {
+    const { key, direction } = sortConfig;
+    const dir = direction === 'asc' ? 1 : -1;
+    const numericKeys = new Set(['valor_titulo', 'valor_pago', 'parcela_numero']);
+    const dateKeys = new Set(['data_vencimento', 'data_pagamento']);
+    return [...filtered].sort((a, b) => {
+      let va = a[key], vb = b[key];
+      if (numericKeys.has(key)) { va = Number(va || 0); vb = Number(vb || 0); }
+      else if (dateKeys.has(key)) { va = va || ''; vb = vb || ''; }
+      else { va = String(va ?? '').toLowerCase(); vb = String(vb ?? '').toLowerCase(); }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }, [filtered, sortConfig]);
 
   const totalEmitido = filtered.reduce((s, t) => s + (t.valor_titulo || 0), 0);
   const totalPago = filtered.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
@@ -210,23 +240,37 @@ export default function Cobrancas() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Nosso Nº</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Vencimento</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Parcela</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Pago</th>
-                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
+                  <button onClick={() => handleSort('nosso_numero')} className="flex items-center gap-1 hover:text-foreground transition-colors">Nosso Nº <SortIcon column="nosso_numero" /></button>
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
+                  <button onClick={() => handleSort('cliente')} className="flex items-center gap-1 hover:text-foreground transition-colors">Cliente <SortIcon column="cliente" /></button>
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
+                  <button onClick={() => handleSort('data_vencimento')} className="flex items-center gap-1 hover:text-foreground transition-colors">Vencimento <SortIcon column="data_vencimento" /></button>
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
+                  <button onClick={() => handleSort('parcela_numero')} className="flex items-center gap-1 hover:text-foreground transition-colors">Parcela <SortIcon column="parcela_numero" /></button>
+                </th>
+                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">
+                  <button onClick={() => handleSort('valor_titulo')} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">Valor <SortIcon column="valor_titulo" /></button>
+                </th>
+                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">
+                  <button onClick={() => handleSort('valor_pago')} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">Pago <SortIcon column="valor_pago" /></button>
+                </th>
+                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">
+                  <button onClick={() => handleSort('status')} className="flex items-center gap-1 hover:text-foreground transition-colors mx-auto">Status <SortIcon column="status" /></button>
+                </th>
                 <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Ação</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
-              ) : filtered.length === 0 ? (
+              ) : sorted.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhum título encontrado</td></tr>
               ) : (
-                filtered.map(t => {
+                sorted.map(t => {
                   const dias = diasAteVenc(t.data_vencimento);
                   const vencendoCritico = t.status !== 'pago' && dias !== null && dias >= 0 && dias <= 3;
                   const rowClass = vencendoCritico
