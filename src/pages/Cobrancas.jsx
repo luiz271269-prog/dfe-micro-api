@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock, ChevronUp, ChevronDown, ChevronsUpDown, Trash2 } from 'lucide-react';
-import { deduplicarTitulosCobranca } from '@/functions/deduplicarTitulosCobranca';
+import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -28,9 +27,6 @@ export default function Cobrancas() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('data_vencimento');
-  const [sortDir, setSortDir] = useState('asc');
-  const [dedupRunning, setDedupRunning] = useState(false);
   const [baixaId, setBaixaId] = useState(null);
   const [baixaValor, setBaixaValor] = useState('');
   const [form, setForm] = useState({
@@ -41,17 +37,8 @@ export default function Cobrancas() {
 
   async function loadData() {
     setLoading(true);
-    // Carrega títulos + NFs em paralelo e enriquece títulos com data_emissao da NF vinculada
-    const [data, notas] = await Promise.all([
-      base44.entities.TituloCobranca.list('-data_vencimento', 500),
-      base44.entities.NotaFiscal.list('-data_emissao', 1000),
-    ]);
-    const notasMap = new Map(notas.map(n => [n.id, n]));
-    const enriched = data.map(t => ({
-      ...t,
-      data_emissao: t.nota_fiscal_id ? (notasMap.get(t.nota_fiscal_id)?.data_emissao || null) : null,
-    }));
-    setTitulos(enriched);
+    const data = await base44.entities.TituloCobranca.list('-data_vencimento', 500);
+    setTitulos(data);
     setLoading(false);
   }
 
@@ -80,7 +67,7 @@ export default function Cobrancas() {
   };
 
   const filtered = useMemo(() => {
-    const arr = titulos.filter(t => {
+    return titulos.filter(t => {
       // Filtro "vencendo esta semana" ignora filtro de mês — mostra todos nos próximos 7 dias
       if (quickFilter === 'semana') {
         if (t.status === 'pago') return false;
@@ -95,56 +82,19 @@ export default function Cobrancas() {
       if (searchTerm && !t.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) && !t.nosso_numero?.includes(searchTerm)) return false;
       return true;
     });
-
-    // Ordenação dinâmica
-    const dir = sortDir === 'asc' ? 1 : -1;
-    const getVal = (t) => {
-      if (sortBy === 'parcela') return (t.parcela_numero || 0) * 1000 + (t.parcela_total || 0);
-      return t[sortBy];
-    };
-    arr.sort((a, b) => {
-      const va = getVal(a);
-      const vb = getVal(b);
-      if (va == null && vb == null) return 0;
-      if (va == null) return 1;
-      if (vb == null) return -1;
-      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
-      return String(va).localeCompare(String(vb), 'pt-BR', { numeric: true }) * dir;
-    });
-    return arr;
-  }, [titulos, quickFilter, searchTerm, selectedMonth, isAnnual, sortBy, sortDir]);
-
-  function toggleSort(field) {
-    if (sortBy === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortDir(field === 'data_vencimento' ? 'asc' : 'desc');
-    }
-  }
-
-  const SortIcon = ({ field }) => {
-    if (sortBy !== field) return <ChevronsUpDown className="w-3 h-3 inline-block opacity-30 ml-1" />;
-    return sortDir === 'asc'
-      ? <ChevronUp className="w-3 h-3 inline-block ml-1" />
-      : <ChevronDown className="w-3 h-3 inline-block ml-1" />;
-  };
+  }, [titulos, quickFilter, searchTerm, selectedMonth, isAnnual]);
 
   const totalEmitido = filtered.reduce((s, t) => s + (t.valor_titulo || 0), 0);
   const totalPago = filtered.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
   const totalAberto = filtered.filter(t => t.status !== 'pago').reduce((s, t) => s + (t.valor_titulo || 0), 0);
 
-  // Alerta agora mostra APENAS títulos em atraso (vencidos não pagos).
-  // Vencimentos da semana já aparecem na listagem via filtro "Vencendo esta semana".
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const alertas = titulos
-    .filter(t => {
-      if (t.status === 'pago' || !t.data_vencimento) return false;
-      const venc = new Date(t.data_vencimento + 'T00:00:00');
-      return venc < today;
-    })
-    .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento));
-  const totalEmAtraso = alertas.reduce((s, a) => s + (a.valor_titulo || 0), 0);
+  const today = new Date();
+  const in7Days = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const alertas = titulos.filter(t => {
+    if (t.status === 'pago') return false;
+    const venc = new Date(t.data_vencimento + 'T00:00:00');
+    return venc >= today && venc <= in7Days;
+  });
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -158,34 +108,6 @@ export default function Cobrancas() {
     setShowForm(false);
     setForm({ nosso_numero: '', seu_numero: '', cliente: '', data_vencimento: '', data_pagamento: '', valor_titulo: '', valor_pago: '0', status: 'em_aberto', canal_cobranca: '', nota_fiscal_id: '', parcela_numero: '', parcela_total: '' });
     loadData();
-  }
-
-  async function handleDedup() {
-    if (dedupRunning) return;
-    // Dry run primeiro pra mostrar o que vai acontecer
-    setDedupRunning(true);
-    try {
-      const preview = await deduplicarTitulosCobranca({ dry_run: true });
-      const aDeletar = preview?.data?.duplicatas_a_deletar || 0;
-      const conflitos = preview?.data?.conflitos_valor || 0;
-      if (aDeletar === 0) {
-        alert('✓ Nenhuma duplicata encontrada — base limpa.');
-        setDedupRunning(false);
-        return;
-      }
-      const msg = `Encontradas ${aDeletar} duplicata(s) de títulos (mesma NF + parcela em registros diferentes).\n${conflitos > 0 ? `⚠️ ${conflitos} grupo(s) com valores divergentes — esses NÃO serão deletados.\n` : ''}\nDeletar agora? Será mantida a versão mais completa de cada grupo (preferindo títulos pagos, vinculados a NF e no formato Sicredi).`;
-      if (!confirm(msg)) {
-        setDedupRunning(false);
-        return;
-      }
-      const res = await deduplicarTitulosCobranca({ dry_run: false });
-      const del = res?.data?.duplicatas_deletadas || 0;
-      alert(`🧹 ${del} título(s) duplicado(s) removido(s).`);
-      loadData();
-    } catch (err) {
-      alert(`Erro ao deduplicar: ${err.message}`);
-    }
-    setDedupRunning(false);
   }
 
   async function darBaixa() {
@@ -224,33 +146,19 @@ export default function Cobrancas() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
-        <Button variant="outline" size="sm" onClick={handleDedup} disabled={dedupRunning} className="gap-2">
-          {dedupRunning ? (
-            <><div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /> Verificando…</>
-          ) : (
-            <><Trash2 className="w-3.5 h-3.5" /> Limpar duplicatas</>
-          )}
-        </Button>
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Título</Button>
       </PageHeader>
 
-      {/* Alerta — APENAS títulos em atraso (vencidos não pagos) */}
+      {/* Alerta */}
       {alertas.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-red-800">
-              Títulos em atraso ({alertas.length}) — {formatCurrency(totalEmAtraso)}
-            </p>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Vencimentos nos próximos 7 dias ({alertas.length})</p>
             <div className="mt-1 flex flex-wrap gap-2">
-              {alertas.map(a => {
-                const dias = Math.abs(diasAteVenc(a.data_vencimento));
-                return (
-                  <span key={a.id} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                    {a.cliente} — {formatCurrency(a.valor_titulo)} — venc. {formatDate(a.data_vencimento)} <strong>({dias}d atraso)</strong>
-                  </span>
-                );
-              })}
+              {alertas.map(a => (
+                <span key={a.id} className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{a.cliente} — {formatCurrency(a.valor_titulo)} — {formatDate(a.data_vencimento)}</span>
+              ))}
             </div>
           </div>
         </div>
@@ -302,22 +210,21 @@ export default function Cobrancas() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                <th onClick={() => toggleSort('nosso_numero')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Nosso Nº<SortIcon field="nosso_numero" /></th>
-                <th onClick={() => toggleSort('cliente')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Cliente<SortIcon field="cliente" /></th>
-                <th onClick={() => toggleSort('data_emissao')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Emissão<SortIcon field="data_emissao" /></th>
-                <th onClick={() => toggleSort('data_vencimento')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Vencimento<SortIcon field="data_vencimento" /></th>
-                <th onClick={() => toggleSort('parcela')} className="text-left px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Parcela<SortIcon field="parcela" /></th>
-                <th onClick={() => toggleSort('valor_titulo')} className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Valor<SortIcon field="valor_titulo" /></th>
-                <th onClick={() => toggleSort('valor_pago')} className="text-right px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Pago<SortIcon field="valor_pago" /></th>
-                <th onClick={() => toggleSort('status')} className="text-center px-4 py-3 font-semibold text-muted-foreground cursor-pointer hover:text-foreground select-none">Status<SortIcon field="status" /></th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Nosso Nº</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Vencimento</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Parcela</th>
+                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
+                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Pago</th>
+                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Status</th>
                 <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Ação</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Nenhum título encontrado</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhum título encontrado</td></tr>
               ) : (
                 filtered.map(t => {
                   const dias = diasAteVenc(t.data_vencimento);
@@ -329,9 +236,6 @@ export default function Cobrancas() {
                   <tr key={t.id} className={`border-b transition-colors ${rowClass}`}>
                     <td className={`px-4 py-3 font-medium ${vencendoCritico ? 'text-red-800' : ''}`}>{t.nosso_numero}</td>
                     <td className={`px-4 py-3 ${vencendoCritico ? 'text-red-800 font-semibold' : ''}`}>{t.cliente}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">
-                      {t.data_emissao ? formatDate(t.data_emissao) : '—'}
-                    </td>
                     <td className={`px-4 py-3 whitespace-nowrap ${vencendoCritico ? 'text-red-700 font-bold' : ''}`}>
                       {formatDate(t.data_vencimento)}
                       {vencendoCritico && (
@@ -361,7 +265,7 @@ export default function Cobrancas() {
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30">
-                  <td colSpan={5} className="px-4 py-3 font-semibold">Total ({filtered.length})</td>
+                  <td colSpan={4} className="px-4 py-3 font-semibold">Total ({filtered.length})</td>
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(totalEmitido)}</td>
                   <td className="px-4 py-3 text-right font-bold text-green-600">{formatCurrency(totalPago)}</td>
                   <td colSpan={2}></td>
