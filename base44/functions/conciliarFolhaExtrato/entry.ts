@@ -158,12 +158,14 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Atualiza folha
-      const primeiraData = pixClassificados.find(p => p.tipo !== 'adiantamento')?.pix.data;
+      // Atualiza folha — grava também FK direto para o PIX principal (granularidade total fica em VinculoExtrato)
+      const pixPrincipal = pixClassificados.find(p => p.tipo !== 'adiantamento');
+      const primeiraData = pixPrincipal?.pix.data;
       if (novoStatus === 'pago') {
         await svc.FolhaPagamento.update(folha.id, {
           status: 'pago',
           data_pagamento: primeiraData,
+          lancamento_bancario_id: pixPrincipal?.pix?.id || null,
         });
       }
 

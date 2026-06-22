@@ -90,6 +90,10 @@
       "type": "boolean",
       "title": "Alerta de Valor Elevado",
       "default": false
+    },
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario que confirmou o pagamento (FK direto)"
     }
   },
   "required": [

@@ -116,13 +116,13 @@ Deno.serve(async (req) => {
       const valorAlocado = valor;
 
       try {
-        // Atualiza entidade origem
+        // Atualiza entidade origem — match perfeito 1:1, grava o FK direto para o LancamentoBancario
         if (match.origem_tipo === 'despesa') {
-          await svc.DespesaOperacional.update(match.origem_id, { status: 'pago', data: lanc.data });
+          await svc.DespesaOperacional.update(match.origem_id, { status: 'pago', data: lanc.data, lancamento_bancario_id: lanc.id });
         } else if (match.origem_tipo === 'tributo') {
-          await svc.Tributo.update(match.origem_id, { status: 'pago', data_pagamento: lanc.data, valor_pago: valorAlocado });
+          await svc.Tributo.update(match.origem_id, { status: 'pago', data_pagamento: lanc.data, valor_pago: valorAlocado, lancamento_bancario_id: lanc.id });
         } else if (match.origem_tipo === 'fatura') {
-          await svc.FaturaCartao.update(match.origem_id, { status: 'paga_total', data_pagamento: lanc.data, valor_pago: valorAlocado });
+          await svc.FaturaCartao.update(match.origem_id, { status: 'paga_total', data_pagamento: lanc.data, valor_pago: valorAlocado, lancamento_bancario_id: lanc.id });
         }
         // Cria vínculo
         await svc.VinculoExtrato.create({

@@ -84,6 +84,10 @@
     "lancamento_cartao_id": {
       "type": "string",
       "title": "ID Lan\u00e7amento Cart\u00e3o (origem)"
+    },
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario que confirmou o pagamento (PIX / transfer\u00eancia)"
     }
   },
   "required": [

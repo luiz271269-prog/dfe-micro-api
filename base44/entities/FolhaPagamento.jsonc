@@ -84,6 +84,10 @@
         "Liesch"
       ],
       "title": "Empresa"
+    },
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario que confirmou o pagamento (FK direto \u2014 granularidade detalhada em VinculoExtrato)"
     }
   },
   "required": [

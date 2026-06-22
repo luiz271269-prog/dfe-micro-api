@@ -37,6 +37,10 @@
       "type": "number",
       "title": "Valor Pago",
       "default": 0
+    },
+    "lancamento_bancario_id": {
+      "type": "string",
+      "title": "ID do LancamentoBancario que pagou a fatura (preenchido em pagamento 1:1; em multi-d\u00e9bito a verdade fica em VinculoExtrato)"
     }
   },
   "required": [

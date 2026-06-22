@@ -149,11 +149,12 @@ Deno.serve(async (req) => {
         lancVinculados.add(m.id);
       }
 
-      // Atualiza fatura
+      // Atualiza fatura — FK direto só em pagamento 1:1; em multi-débito a verdade vive em VinculoExtrato
       await base44.asServiceRole.entities.FaturaCartao.update(fat.id, {
         status: integral ? 'paga_total' : 'aberta',
         data_pagamento: dataUltima,
         valor_pago: valorPagoTotal,
+        lancamento_bancario_id: !isMulti ? melhores[0].id : null,
       });
 
       conciliados++;
