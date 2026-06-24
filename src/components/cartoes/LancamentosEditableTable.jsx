@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { formatCurrency, formatDate } from '../../lib/formatters';
+import { aprenderEAplicarRegra } from '../../lib/autoCategorizacao';
 
 export const categoriaLabels = {
   alimentacao: 'Alimentação', combustivel: 'Combustível', lazer: 'Lazer',
@@ -31,11 +32,25 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
   useEffect(() => { setLocalRows(lancamentos || []); }, [lancamentos]);
 
   async function update(id, field, value) {
+    const original = (lancamentos || []).find(r => r.id === id);
     // Otimista: atualiza local imediatamente sem fechar painel
     setLocalRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
     setEditing(null);
     try {
       await base44.entities.LancamentoCartao.update(id, { [field]: value });
+
+      // Auto-classificação: ao mudar categoria manualmente, propaga para lançamentos semelhantes
+      if (field === 'categoria' && original?.estabelecimento && original.categoria !== value) {
+        try {
+          const { aplicados } = await aprenderEAplicarRegra({
+            escopo: 'cartao',
+            descricao: original.estabelecimento,
+            categoria: value,
+            categoriasPadraoSubstituiveis: [original.categoria],
+          });
+          if (aplicados > 0 && onReload) onReload();
+        } catch (e) { /* não bloqueia */ }
+      }
     } catch (e) {
       // Rollback em caso de erro
       setLocalRows(lancamentos || []);

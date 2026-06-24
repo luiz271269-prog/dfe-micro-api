@@ -1,0 +1,82 @@
+{
+  "name": "RegraCategorizacao",
+  "type": "object",
+  "description": "Regra de categoriza\u00e7\u00e3o aprendida a partir de classifica\u00e7\u00f5es manuais. Aplicada a futuros lan\u00e7amentos com descri\u00e7\u00e3o/estabelecimento semelhante.",
+  "properties": {
+    "escopo": {
+      "type": "string",
+      "enum": [
+        "extrato",
+        "cartao"
+      ],
+      "title": "Onde a regra se aplica"
+    },
+    "termo_chave": {
+      "type": "string",
+      "title": "Trecho normalizado (lowercase, sem acentos, sem n\u00fameros/c\u00f3digos) extra\u00eddo da descri\u00e7\u00e3o"
+    },
+    "categoria": {
+      "type": "string",
+      "title": "Categoria a aplicar"
+    },
+    "exemplo_descricao": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o original que originou a regra (refer\u00eancia)"
+    },
+    "vezes_aplicada": {
+      "type": "number",
+      "default": 1,
+      "title": "Quantas vezes a regra foi confirmada/usada"
+    },
+    "ultima_atualizacao": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "escopo",
+    "termo_chave",
+    "categoria"
+  ],
+  "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

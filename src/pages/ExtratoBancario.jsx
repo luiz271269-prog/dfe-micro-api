@@ -18,6 +18,7 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import { aprenderEAplicarRegra } from '../lib/autoCategorizacao';
 
 export default function ExtratoBancario() {
   const [lancamentos, setLancamentos] = useState([]);
@@ -88,8 +89,26 @@ export default function ExtratoBancario() {
   const totalGeral = filtered.reduce((s, l) => s + (l.valor || 0), 0);
 
   async function handleCategoriaChange(id, newCat) {
+    const lanc = lancamentos.find(l => l.id === id);
     await base44.entities.LancamentoBancario.update(id, { categoria: newCat });
     setEditingCategoria(null);
+
+    // Aprende regra e aplica a lançamentos semelhantes ainda na categoria antiga
+    if (lanc?.descricao && lanc.categoria !== newCat) {
+      try {
+        const { aplicados } = await aprenderEAplicarRegra({
+          escopo: 'extrato',
+          descricao: lanc.descricao,
+          categoria: newCat,
+          // só sobrescreve lançamentos que ainda estão na categoria que esse tinha antes
+          categoriasPadraoSubstituiveis: [lanc.categoria],
+        });
+        if (aplicados > 0) {
+          setReclassResult({ total: aplicados, auto: true });
+          setTimeout(() => setReclassResult(null), 5000);
+        }
+      } catch (e) { /* não bloqueia o update principal */ }
+    }
     loadData();
   }
 
@@ -186,7 +205,11 @@ export default function ExtratoBancario() {
 
       {reclassResult !== null && (
         <div className={`mb-4 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold ${reclassResult.total > 0 ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
-          {reclassResult.total > 0 ? `✓ ${reclassResult.total} lançamento(s) reclassificado(s) como Pessoal (Pró-labore / Folha)` : '✓ Nenhum lançamento pendente — classificações de Pessoal estão corretas'}
+          {reclassResult.auto
+            ? `✓ Regra aprendida: ${reclassResult.total} outro(s) lançamento(s) semelhante(s) foram reclassificado(s) automaticamente`
+            : reclassResult.total > 0
+              ? `✓ ${reclassResult.total} lançamento(s) reclassificado(s) como Pessoal (Pró-labore / Folha)`
+              : '✓ Nenhum lançamento pendente — classificações de Pessoal estão corretas'}
         </div>
       )}
 
