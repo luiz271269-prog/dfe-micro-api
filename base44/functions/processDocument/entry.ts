@@ -9,9 +9,9 @@ Regras:
 - Débitos (saídas): valor NEGATIVO
 - data no formato YYYY-MM-DD
 - valor como número (ex: -672.85 ou 45000.00)
-- categoria: recebimento para créditos; fornecedor para pagamentos a fornecedores; tributo para impostos/DAS/INSS/FGTS/IRRF/DARF/GPS; pessoal para SALÁRIOS, FOLHA DE PAGAMENTO, PRÓ-LABORE, PROLABORE, ADIANTAMENTO SALARIAL, VALE, comissão de funcionário, qualquer pagamento a colaborador/sócio; financeiro para tarifas/IOF/anuidade/juros bancários; transferencia para TEDs entre contas próprias; interno para estornos; despesa_operacional para demais débitos
-- ATENÇÃO PRÓ-LABORE: descrições contendo "PROLABORE", "PRÓ-LABORE", "PRO LABORE", "PRÓ LABORE", "RETIRADA SOCIO", "RETIRADA SÓCIO" → SEMPRE categoria="pessoal" (NUNCA financeiro nem despesa_operacional)
-- ATENÇÃO FOLHA: descrições contendo "FOLHA", "SALARIO", "SALÁRIO", "PAGTO FUNCIONARIO", "PGTO FUNC", "ADIANTAMENTO SALARIAL", "VALE FUNCIONARIO" → SEMPRE categoria="pessoal"
+- categoria: recebimento para créditos; fornecedor para pagamentos a fornecedores; tributo para impostos/DAS/INSS/FGTS/IRRF/DARF/GPS; pessoal para FOLHA DE PAGAMENTO / SALÁRIOS / adiantamento salarial / vale / comissão de funcionário CLT; pro_labore para PRÓ-LABORE / RETIRADA DE SÓCIO / distribuição de lucros; financeiro para tarifas/IOF/anuidade/juros bancários; transferencia para TEDs entre contas próprias; interno para estornos; despesa_operacional para demais débitos
+- ATENÇÃO PRÓ-LABORE (categoria SEPARADA): descrições contendo "PROLABORE", "PRÓ-LABORE", "PRO LABORE", "PRÓ LABORE", "RETIRADA SOCIO", "RETIRADA SÓCIO", "DISTRIB. LUCROS", "DIVIDENDOS" → SEMPRE categoria="pro_labore"
+- ATENÇÃO FOLHA: descrições contendo "FOLHA", "SALARIO", "SALÁRIO", "PAGTO FUNCIONARIO", "PGTO FUNC", "ADIANTAMENTO SALARIAL", "VALE FUNCIONARIO" → SEMPRE categoria="pessoal" (Folha Pgto)
 - Incluir TODOS os lançamentos, inclusive tarifas e pequenos valores
 - saldo_apos é o saldo após cada lançamento
 - Ignorar linha "SALDO ANTERIOR"`,

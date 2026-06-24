@@ -27,7 +27,8 @@ export function formatPercent(value) {
 export const categoriaLabels = {
   recebimento: 'Recebimento',
   fornecedor: 'Fornecedor',
-  pessoal: 'Pessoal',
+  pessoal: 'Folha Pgto',
+  pro_labore: 'Pró-labore',
   tributo: 'Tributo',
   despesa_operacional: 'Despesa Operacional',
   financeiro: 'Financeiro',
@@ -41,6 +42,7 @@ export const categoriaColors = {
   recebimento: 'green',
   fornecedor: 'red',
   pessoal: 'purple',
+  pro_labore: 'purple',
   tributo: 'orange',
   despesa_operacional: 'yellow',
   financeiro: 'blue',
