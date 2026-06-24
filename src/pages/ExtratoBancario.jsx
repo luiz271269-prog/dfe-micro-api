@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Filter, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, Trash2, UserCheck } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
+import { reclassificarPessoal } from '@/functions/reclassificarPessoal';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator from '../components/shared/MonthNavigator';
 import MobileKPICarousel from '../components/shared/MobileKPICarousel';
@@ -29,6 +30,8 @@ export default function ExtratoBancario() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [deduping, setDeduping] = useState(false);
   const [dedupResult, setDedupResult] = useState(null);
+  const [reclassificando, setReclassificando] = useState(false);
+  const [reclassResult, setReclassResult] = useState(null);
   const [form, setForm] = useState({
     data: '', descricao: '', valor: '', categoria: 'recebimento',
     saldo_apos: '', conta_bancaria: 'NeuralTec 36092-2', detalhe: '', mes_referencia: ''
@@ -90,6 +93,29 @@ export default function ExtratoBancario() {
     loadData();
   }
 
+  async function handleReclassificarPessoal() {
+    setReclassificando(true);
+    setReclassResult(null);
+    // Primeiro dry-run para mostrar o que vai mudar
+    const preview = await reclassificarPessoal({ dry_run: true });
+    const total = preview?.data?.total_encontrados || 0;
+    if (total === 0) {
+      setReclassResult({ total: 0 });
+      setReclassificando(false);
+      setTimeout(() => setReclassResult(null), 4000);
+      return;
+    }
+    if (!confirm(`Encontrados ${total} lançamento(s) que parecem ser Pró-labore ou Folha de Pagamento e estão classificados em outra categoria.\n\nReclassificar todos como "Pessoal"?`)) {
+      setReclassificando(false);
+      return;
+    }
+    const res = await reclassificarPessoal({});
+    setReclassResult({ total: res?.data?.total_reclassificados || 0 });
+    setReclassificando(false);
+    loadData();
+    setTimeout(() => setReclassResult(null), 5000);
+  }
+
   async function handleDedup() {
     if (!confirm('Remover lançamentos duplicados (mesma data + valor + conta)? Esta ação não pode ser desfeita.')) return;
     setDeduping(true);
@@ -132,6 +158,9 @@ export default function ExtratoBancario() {
           <Button onClick={() => setShowForm(true)} className="gap-2 flex-1 md:flex-none" size="sm">
             <Plus className="w-4 h-4" /> Novo
           </Button>
+          <Button variant="outline" onClick={handleReclassificarPessoal} disabled={reclassificando} className="gap-2 flex-1 md:flex-none" size="sm" title="Reclassificar Pró-labore e Folha como Pessoal">
+            <UserCheck className="w-4 h-4" /> {reclassificando ? '...' : 'Reclassif. Pessoal'}
+          </Button>
           <Button variant="outline" onClick={handleDedup} disabled={deduping} className="gap-2 flex-1 md:flex-none" size="sm">
             <Trash2 className="w-4 h-4" /> {deduping ? '...' : 'Deduplicar'}
           </Button>
@@ -152,6 +181,12 @@ export default function ExtratoBancario() {
       {dedupResult !== null && (
         <div className={`mb-4 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold ${dedupResult > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
           {dedupResult > 0 ? `✓ ${dedupResult} duplicata(s) removida(s)` : '✓ Banco já está limpo'}
+        </div>
+      )}
+
+      {reclassResult !== null && (
+        <div className={`mb-4 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold ${reclassResult.total > 0 ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
+          {reclassResult.total > 0 ? `✓ ${reclassResult.total} lançamento(s) reclassificado(s) como Pessoal (Pró-labore / Folha)` : '✓ Nenhum lançamento pendente — classificações de Pessoal estão corretas'}
         </div>
       )}
 
