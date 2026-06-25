@@ -1,85 +1,13 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart, 
-  Hammer, CreditCard, Map, ChevronLeft, ChevronRight, LogOut,
-  AlertTriangle, ChevronRight as BreadChevron, DollarSign, Users, BarChart3, CloudUpload, Menu, X, Scale, Package, GitCompare, Wallet, FolderOpen, Target, Repeat, Bot, FileCode, Calculator, FlaskConical, Activity, Link2, MessageCircle, ShieldCheck
+import {
+  LayoutDashboard, ChevronLeft, ChevronRight, LogOut,
+  AlertTriangle, ChevronRight as BreadChevron, Menu, MessageCircle
 } from 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import PainelNotificacoes from './notificacoes/PainelNotificacoes';
-
-// Menu agrupado pela lógica dos fluxos (espelha o Diagnóstico de Fluxos)
-const navGroups = [
-  {
-    label: 'Visão Geral',
-    items: [
-      { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-      { path: '/mapa', label: 'Mapa Geral', icon: Map },
-      { path: '/fluxocaixa', label: 'Fluxo de Caixa', icon: BarChart3 },
-      { path: '/extrato', label: 'Extrato Bancário', icon: Landmark },
-    ],
-  },
-  {
-    label: 'Receita',
-    items: [
-      { path: '/faturamento', label: 'Faturamento', icon: FileText },
-      { path: '/cobrancas', label: 'Cobranças Sicredi', icon: Receipt },
-    ],
-  },
-  {
-    label: 'Pagamentos',
-    items: [
-      { path: '/tributos', label: 'Tributos', icon: DollarSign },
-      { path: '/funcionarios', label: 'Pessoal', icon: Users },
-      { path: '/recorrentes', label: 'Despesas Recorrentes', icon: Repeat },
-      { path: '/obras', label: 'Obras e Reformas', icon: Hammer },
-    ],
-  },
-  {
-    label: 'Compras & Estoque',
-    items: [
-      { path: '/compras', label: 'Compras & Despesas', icon: ShoppingCart },
-      { path: '/produtos', label: 'Produtos & Fornecedores', icon: Package },
-      { path: '/cruzamento-compras', label: 'Compras × Pagamentos', icon: GitCompare },
-      { path: '/controle-produtos', label: 'Controle de Produtos (IA)', icon: Bot },
-    ],
-  },
-  {
-    label: 'Cartões',
-    items: [
-      { path: '/cartoes', label: 'Cartões de Crédito', icon: CreditCard },
-    ],
-  },
-  {
-    label: 'Fiscal & SEFAZ',
-    items: [
-      { path: '/analise-nfe', label: 'Análise XML NF-e (Drive)', icon: FileCode },
-      { path: '/nfe-recebidas', label: 'NFes Recebidas (AN)', icon: FileText },
-      { path: '/certificado-nfe', label: 'Certificado NF-e (SEFAZ)', icon: ShieldCheck },
-      { path: '/dre-tributario', label: 'DRE Tributário', icon: Scale },
-      { path: '/simulacao-custo', label: 'Simulação de Custo', icon: Calculator },
-    ],
-  },
-  {
-    label: 'Conciliação & Diagnóstico',
-    items: [
-      { path: '/conciliacao', label: 'Conciliação Mensal', icon: Scale },
-      { path: '/conciliacao360', label: 'Conciliação 360°', icon: Target },
-      { path: '/diagnostico-conciliacao', label: 'Diagnóstico de Fluxos', icon: Activity },
-      { path: '/cobertura-conciliacao', label: 'Cobertura Conciliação', icon: Link2 },
-    ],
-  },
-  {
-    label: 'Dados & Auditoria',
-    items: [
-      { path: '/importar', label: 'Importar Documento', icon: CloudUpload },
-      { path: '/auditoria', label: 'Auditoria de Arquivos', icon: FolderOpen },
-    ],
-  },
-];
-
-// Lista plana para o Breadcrumb encontrar o rótulo
-const navItems = navGroups.flatMap(g => g.items);
+import SidebarNav from './SidebarNav';
+import { navItems } from '@/lib/navConfig';
 
 function AlertBar() {
   // Alerta será alimentado dinamicamente por Tributo quando implementado
@@ -163,42 +91,12 @@ export default function Layout() {
           )}
         </div>
 
-        {/* Nav agrupada por fluxo */}
-        <nav className="flex-1 py-3 px-2 overflow-y-auto">
-          {navGroups.map((group, gi) => (
-            <div key={group.label} className={gi > 0 ? 'mt-4' : ''}>
-              {!collapsed && (
-                <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/50">
-                  {group.label}
-                </div>
-              )}
-              {collapsed && gi > 0 && (
-                <div className="mx-2 my-2 border-t border-sidebar-border/50" />
-              )}
-              <div className="space-y-0.5">
-                {group.items.map(item => {
-                  const isActive = location.pathname === item.path;
-                  return (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
-                        ${isActive
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md shadow-sidebar-primary/20'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                        }`}
-                      title={collapsed ? item.label : undefined}
-                    >
-                      <item.icon className="w-5 h-5 shrink-0" />
-                      {!collapsed && <span className="truncate">{item.label}</span>}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
+        {/* Nav agrupada por fluxo — arrastável */}
+        <SidebarNav
+          collapsed={collapsed}
+          currentPath={location.pathname}
+          onNavigate={() => setMobileOpen(false)}
+        />
 
         {/* Footer */}
         <div className="p-2 border-t border-sidebar-border space-y-0.5">
