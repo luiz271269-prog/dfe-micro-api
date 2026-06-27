@@ -1,6 +1,6 @@
 // Gera HTML imprimível (DANFE simplificado) de uma NF-e a partir do registro NFeAnalise.
 // Recebe { nfe_analise_id } OU { numero_nota } e retorna { html, nfe } pronto para o navegador imprimir/exportar PDF.
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 function fmtMoney(v) {
   const n = Number(v || 0);

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // Detecta NFs que são "espelho fiscal" de um CI já existente.
 // Critério: mesmo cliente + mesmo valor_total (tolerância R$ 1,00) + emissão dentro de ±60 dias do CI.

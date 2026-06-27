@@ -1,5 +1,5 @@
 // redeploy: 2026-06-06 (força re-injeção de secrets do runtime)
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 import forge from 'npm:node-forge@1.3.1';
 
 function maskCnpj(cnpj) {

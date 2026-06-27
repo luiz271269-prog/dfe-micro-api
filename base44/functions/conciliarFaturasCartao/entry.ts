@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // Concilia pagamentos de fatura de cartão no extrato bancário com as FaturaCartao abertas.
 // Match: conta bancária + janela de ±7 dias do vencimento + valor com tolerância 1%.

@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // Padrões para PRÓ-LABORE (categoria separada)
 const PADROES_PRO_LABORE = [

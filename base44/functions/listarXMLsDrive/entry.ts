@@ -1,7 +1,7 @@
 // Lista TODOS os arquivos XML de uma pasta do Google Drive (modo varredura forense).
 // Modo de uso: { folder_id: "..." } ou { folder_name_query: "Retorno" } para procurar pelo nome.
 // Retorna array de { id, name, modifiedTime, size } pronto para enfileirar no analisarXMLNFe.
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 const CONNECTOR_ID = '69e4cc139c63e916cf87b922'; // Drive "Financeiro"
 

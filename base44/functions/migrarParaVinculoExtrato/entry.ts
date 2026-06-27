@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 /**
  * Migração ONE-SHOT: converte vínculos legados em VinculoExtrato e recalcula

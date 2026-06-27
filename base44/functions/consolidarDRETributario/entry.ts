@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // Consolida impostos das NFeAnalise e calcula impacto no custo efetivo dos produtos
 // Para o DRE: separa ICMS-ST e IPI (que compõem custo de aquisição não recuperável)

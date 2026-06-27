@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // Deduplicação específica de cartões:
 // - FaturaCartao: mesma (conta_cartao_id + mes_referencia) — mantém a mais antiga

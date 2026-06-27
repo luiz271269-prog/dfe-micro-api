@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // P3 — Diagnostica LancamentoCartao órfãos (sem fatura_id válido).
 // Reassocia via mes_referencia inferido do data_lancamento (YYYY-MM).

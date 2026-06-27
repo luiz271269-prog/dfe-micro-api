@@ -1,6 +1,6 @@
 // Diagnóstico mínimo: só baixa o arquivo do storage privado e devolve metadados.
 // NÃO tenta abrir PFX, NÃO usa senha. Serve para isolar: o arquivo chegou ao backend?
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 function hex(bytes, n = 8) {
   return Array.from(bytes.slice(0, n)).map(b => b.toString(16).padStart(2, '0')).join(' ');

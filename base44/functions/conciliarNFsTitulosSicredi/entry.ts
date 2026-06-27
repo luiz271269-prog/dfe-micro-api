@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // Conciliação NF ↔ TituloCobranca (Sicredi) após importar o Relatório de Vendas Diário do Elite.
 //

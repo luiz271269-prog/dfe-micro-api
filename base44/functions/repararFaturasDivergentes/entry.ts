@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // P1 — Repara FaturaCartao.valor_total quando diverge da soma dos lançamentos positivos.
 // A soma real dos LancamentoCartao é a verdade fiscal (extraída do PDF original);

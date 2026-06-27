@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 const CONNECTOR_ID = '69e4cc139c63e916cf87b922'; // Google Drive "Financeiro"
 

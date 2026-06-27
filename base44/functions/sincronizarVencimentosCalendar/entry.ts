@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 const CAL_NAME = 'NeuralFin — Vencimentos';
 const CAL_DESC = 'Vencimentos de contas a pagar sincronizados automaticamente pelo NeuralFin';

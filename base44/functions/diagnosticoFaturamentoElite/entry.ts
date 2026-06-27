@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
 // Diagnóstico Faturamento × Relatório Elite
 // Payload: { mes: "YYYY-MM", total_elite_notas?: number, total_elite_ci?: number }
