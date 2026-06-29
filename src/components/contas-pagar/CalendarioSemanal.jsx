@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, Landmark, Users, CreditCard, Calendar, Link2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Calendar, Link2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 
 const ORIGEM_CONFIG = {
@@ -8,6 +8,7 @@ const ORIGEM_CONFIG = {
   tributo: { icon: Landmark,   color: 'bg-orange-100 text-orange-700',   label: 'Tributo', href: '/tributos' },
   folha:   { icon: Users,      color: 'bg-indigo-100 text-indigo-700',   label: 'Folha',   href: '/funcionarios' },
   fatura:  { icon: CreditCard, color: 'bg-purple-100 text-purple-700',   label: 'Cartão',  href: '/cartoes' },
+  compra:  { icon: ShoppingCart, color: 'bg-sky-100 text-sky-700',        label: 'Compra',  href: '/compras' },
 };
 
 // dado um YYYY-MM, retorna semanas do mês (cada uma com ISO start/end)

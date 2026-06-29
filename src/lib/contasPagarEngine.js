@@ -1,15 +1,16 @@
 /**
  * Motor de Contas a Pagar Unificado
- * Consolida 4 origens em uma única lista normalizada:
+ * Consolida 5 origens em uma única lista normalizada:
  *  - DespesaOperacional (status: pendente)
  *  - Tributo (status: a_vencer / vencido)
  *  - FolhaPagamento (status: pendente)
  *  - FaturaCartao (status: aberta / vencida)
+ *  - ItemCompra (status_pagamento: pendente / parcial / nao_identificado)
  *
  * Também faz o pareamento com débitos do extrato para baixa automática.
  */
 
-export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [] }) {
+export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [], compras = [] }) {
   const itens = [];
 
   despesas.filter(d => d.status === 'pendente').forEach(d => {
@@ -75,6 +76,27 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       forma_pagamento: 'debito_automatico',
     });
   });
+
+  // Compras (ItemCompra) ainda não pagas — compras a pagar
+  compras
+    .filter(c => c.status_pagamento === 'pendente' || c.status_pagamento === 'parcial' || c.status_pagamento === 'nao_identificado')
+    .forEach(c => {
+      const valorAberto = (c.valor_total || 0) - (c.valor_pago || 0);
+      if (valorAberto <= 0.01) return;
+      itens.push({
+        id: `compra-${c.id}`,
+        origem_id: c.id,
+        origem_tipo: 'compra',
+        descricao: c.descricao_produto || `Compra NF ${c.numero_nota || ''}`.trim(),
+        fornecedor: c.fornecedor || '—',
+        categoria: c.categoria_produto || 'compra',
+        valor: valorAberto,
+        // ItemCompra não tem vencimento próprio — usa a data de emissão como referência
+        data_vencimento: c.data_emissao,
+        empresa: c.empresa || '—',
+        forma_pagamento: c.forma_pagamento,
+      });
+    });
 
   return itens;
 }
@@ -148,7 +170,7 @@ function bonusAfinidade(lanc, conta) {
     return 0;
   }
 
-  if (conta.origem_tipo === 'despesa') {
+  if (conta.origem_tipo === 'despesa' || conta.origem_tipo === 'compra') {
     const fornecedor = norm(conta.fornecedor);
     if (fornecedor && fornecedor.length >= 4 && texto.includes(fornecedor)) return -40;
     // tenta palavras significativas do fornecedor
@@ -257,6 +279,7 @@ function mapearTipoEntidade(origem_tipo) {
     tributo: 'Tributo',
     folha: 'FolhaPagamento',
     fatura: 'FaturaCartao',
+    compra: 'ItemCompra',
   }[origem_tipo];
 }
 
@@ -285,6 +308,12 @@ async function aplicarBaixa(base44, lanc, conta) {
     await base44.entities.FaturaCartao.update(conta.origem_id, {
       status: 'paga_total',
       data_pagamento: lanc.data,
+      valor_pago: valorAlocado,
+    });
+  } else if (conta.origem_tipo === 'compra') {
+    await base44.entities.ItemCompra.update(conta.origem_id, {
+      status_pagamento: 'pago',
+      lancamento_bancario_id: lanc.id,
       valor_pago: valorAlocado,
     });
   }

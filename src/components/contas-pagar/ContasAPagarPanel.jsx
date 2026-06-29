@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Wallet, Landmark, Users, CreditCard, AlertTriangle, CheckCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Wallet, Landmark, Users, CreditCard, ShoppingCart, AlertTriangle, CheckCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import { consolidarContasPagar, calcularAging, executarBaixaAutomatica } from '../../lib/contasPagarEngine';
 import CalendarioSemanal from './CalendarioSemanal';
@@ -12,6 +12,7 @@ const ORIGEM_CONFIG = {
   tributo: { icon: Landmark,   color: 'bg-orange-100 text-orange-700 border-orange-200',   label: 'Tributo', href: '/tributos' },
   folha:   { icon: Users,      color: 'bg-indigo-100 text-indigo-700 border-indigo-200',   label: 'Folha',   href: '/funcionarios' },
   fatura:  { icon: CreditCard, color: 'bg-purple-100 text-purple-700 border-purple-200',   label: 'Cartão',  href: '/cartoes' },
+  compra:  { icon: ShoppingCart, color: 'bg-sky-100 text-sky-700 border-sky-200',          label: 'Compra',  href: '/compras' },
 };
 
 function mesAtualISO() {
@@ -35,7 +36,7 @@ export default function ContasAPagarPanel() {
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [mesReferencia, setMesReferencia] = useState(mesAtualISO());
-  const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [] });
+  const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [], compras: [] });
   const [vinculos, setVinculos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
 
@@ -56,16 +57,17 @@ export default function ContasAPagarPanel() {
 
   async function load() {
     setLoading(true);
-    const [despesas, tributos, folhas, faturas, cartoes, vincs, lancs] = await Promise.all([
+    const [despesas, tributos, folhas, faturas, cartoes, compras, vincs, lancs] = await Promise.all([
       base44.entities.DespesaOperacional.list('-data_vencimento', 500),
       base44.entities.Tributo.list('-data_vencimento', 200),
       base44.entities.FolhaPagamento.list('-competencia', 500),
       base44.entities.FaturaCartao.list('-data_vencimento', 200),
       base44.entities.ContaCartao.filter({ is_ativo: true }),
+      base44.entities.ItemCompra.list('-data_emissao', 1000),
       base44.entities.VinculoExtrato.list('-created_date', 5000),
       base44.entities.LancamentoBancario.list('-data', 1000),
     ]);
-    setDados({ despesas, tributos, folhas, faturas, cartoes });
+    setDados({ despesas, tributos, folhas, faturas, cartoes, compras });
     setVinculos(vincs);
     setLancamentos(lancs);
     setLoading(false);
@@ -103,7 +105,7 @@ export default function ContasAPagarPanel() {
 
   // Set de itens já conciliados (têm VinculoExtrato apontando)
   const conciliadosSet = useMemo(() => {
-    const m = { despesa: 'DespesaOperacional', tributo: 'Tributo', folha: 'FolhaPagamento', fatura: 'FaturaCartao' };
+    const m = { despesa: 'DespesaOperacional', tributo: 'Tributo', folha: 'FolhaPagamento', fatura: 'FaturaCartao', compra: 'ItemCompra' };
     const s = new Set();
     vinculos.forEach(v => s.add(`${v.entidade_tipo}-${v.entidade_id}`));
     return { has: (item) => s.has(`${m[item.origem_tipo]}-${item.origem_id}`) };
@@ -115,7 +117,7 @@ export default function ContasAPagarPanel() {
   const totalMes = [...aging.hoje, ...aging.semana, ...aging.ate15, ...aging.ate30].reduce((a, i) => a + (i.valor || 0), 0);
 
   const totaisPorOrigem = useMemo(() => {
-    const t = { despesa: 0, tributo: 0, folha: 0, fatura: 0 };
+    const t = { despesa: 0, tributo: 0, folha: 0, fatura: 0, compra: 0 };
     itensRaw.forEach(i => { t[i.origem_tipo] = (t[i.origem_tipo] || 0) + i.valor; });
     return t;
   }, [itensRaw]);
@@ -180,7 +182,7 @@ export default function ContasAPagarPanel() {
       </div>
 
       {/* Filtro por origem */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 mb-4">
         <button onClick={() => setFiltroOrigem('todos')}
           className={`rounded-xl border p-3 text-left transition-all ${filtroOrigem === 'todos' ? 'ring-2 ring-primary bg-primary/5' : 'bg-card hover:bg-muted/30'}`}>
           <p className="text-[10px] font-bold uppercase text-muted-foreground">Todas as origens</p>
