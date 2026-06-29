@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
+import ComprovantePicker from '../components/shared/ComprovantePicker';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -174,13 +175,14 @@ export default function Despesas() {
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden lg:table-cell">Forma Pag.</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Comprovante</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhuma despesa encontrada</td></tr>
+                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Nenhuma despesa encontrada</td></tr>
               ) : filtered.map(d => (
                 <tr key={d.id} className={`border-b hover:bg-muted/30 transition-colors ${d.status === 'vencido' ? 'bg-red-50' : ''}`}>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">{formatDate(d.data)}</td>
@@ -198,6 +200,7 @@ export default function Despesas() {
                   <td className="px-4 py-3 text-xs hidden lg:table-cell">{d.forma_pagamento || '—'}</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(d.valor)}</td>
                   <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
+                  <td className="px-4 py-3"><ComprovantePicker entityName="DespesaOperacional" record={d} onChange={loadData} /></td>
                 </tr>
               ))}
             </tbody>
@@ -206,7 +209,7 @@ export default function Despesas() {
                 <tr className="border-t-2 bg-muted/30">
                   <td colSpan={6} className="px-4 py-3 font-semibold">Total ({filtered.length} itens)</td>
                   <td className="px-4 py-3 text-right font-bold text-red-600">{formatCurrency(filtered.reduce((s,d)=>s+(d.valor||0),0))}</td>
-                  <td></td>
+                  <td colSpan={2}></td>
                 </tr>
               </tfoot>
             )}

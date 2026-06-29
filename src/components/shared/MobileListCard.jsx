@@ -15,6 +15,7 @@ export default function MobileListCard({
   subtitle,
   meta,
   badge,
+  footer,
   onClick,
 }) {
   return (
@@ -42,6 +43,7 @@ export default function MobileListCard({
           {badge && <div className="shrink-0">{badge}</div>}
         </div>
       )}
+      {footer && <div className="mt-2 pt-2 border-t">{footer}</div>}
     </div>
   );
 }

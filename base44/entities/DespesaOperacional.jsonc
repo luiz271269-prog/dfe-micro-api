@@ -91,6 +91,14 @@
     "lancamento_cartao_id": {
       "type": "string",
       "title": "ID do LancamentoCartao que originou a despesa (quando pago no cart\u00e3o)"
+    },
+    "comprovante_drive_url": {
+      "type": "string",
+      "title": "Link do comprovante no Google Drive"
+    },
+    "comprovante_nome": {
+      "type": "string",
+      "title": "Nome do arquivo de comprovante"
     }
   },
   "required": [

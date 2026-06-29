@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
+import ComprovantePicker from '../components/shared/ComprovantePicker';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { aprenderEAplicarRegra } from '../lib/autoCategorizacao';
@@ -285,6 +286,7 @@ export default function ExtratoBancario() {
             title={l.descricao}
             subtitle={l.detalhe}
             meta={l.saldo_apos != null ? `Saldo: ${formatCurrency(l.saldo_apos)}` : null}
+            footer={<ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} />}
             badge={
               <button
                 onClick={e => { e.stopPropagation(); setEditingCategoria(editingCategoria === l.id ? null : l.id); }}
@@ -329,13 +331,14 @@ export default function ExtratoBancario() {
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Saldo</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Comprovante</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-12 text-muted-foreground">Nenhum lançamento encontrado</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-muted-foreground">Nenhum lançamento encontrado</td></tr>
               ) : (
                 filtered.map(l => (
                   <tr key={l.id} className="border-b hover:bg-muted/30 transition-colors">
@@ -371,6 +374,7 @@ export default function ExtratoBancario() {
                       {formatCurrency(l.valor)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{l.saldo_apos != null ? formatCurrency(l.saldo_apos) : '—'}</td>
+                    <td className="px-4 py-3"><ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} /></td>
                   </tr>
                 ))
               )}
@@ -380,7 +384,7 @@ export default function ExtratoBancario() {
                 <tr className="border-t-2 bg-muted/30">
                   <td colSpan={3} className="px-4 py-3 font-semibold">Total ({filtered.length} lançamentos)</td>
                   <td className={`px-4 py-3 text-right font-bold ${totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totalGeral)}</td>
-                  <td></td>
+                  <td colSpan={2}></td>
                 </tr>
               </tfoot>
             )}

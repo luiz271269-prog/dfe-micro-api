@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import { aprenderEAplicarRegra } from '../../lib/autoCategorizacao';
+import ComprovantePicker from '../shared/ComprovantePicker';
 
 export const categoriaLabels = {
   alimentacao: 'Alimentação', combustivel: 'Combustível', lazer: 'Lazer',
@@ -72,6 +73,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
             <th className="text-left py-2 font-semibold text-muted-foreground">Categoria</th>
             <th className="text-left py-2 font-semibold text-muted-foreground">Natureza</th>
             <th className="text-right py-2 font-semibold text-muted-foreground">Valor</th>
+            <th className="text-left py-2 pl-3 font-semibold text-muted-foreground">Comprovante</th>
           </tr>
         </thead>
         <tbody>
@@ -146,6 +148,9 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
                 </td>
                 <td className={`py-1.5 text-right font-medium ${l.valor < 0 ? 'text-green-600' : ''}`}>
                   {formatCurrency(l.valor)}
+                </td>
+                <td className="py-1.5 pl-3">
+                  <ComprovantePicker entityName="LancamentoCartao" record={l} onChange={onReload} />
                 </td>
               </tr>
             );

@@ -81,6 +81,14 @@
       "type": "number",
       "default": 0,
       "title": "Cache: soma dos valor_alocado dos v\u00ednculos (R$)"
+    },
+    "comprovante_drive_url": {
+      "type": "string",
+      "title": "Link do comprovante no Google Drive"
+    },
+    "comprovante_nome": {
+      "type": "string",
+      "title": "Nome do arquivo de comprovante"
     }
   },
   "required": [

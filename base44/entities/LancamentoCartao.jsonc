@@ -43,6 +43,14 @@
     "item_compra_id": {
       "type": "string",
       "title": "ID ItemCompra vinculado (evita dupla contagem)"
+    },
+    "comprovante_drive_url": {
+      "type": "string",
+      "title": "Link do comprovante no Google Drive"
+    },
+    "comprovante_nome": {
+      "type": "string",
+      "title": "Nome do arquivo de comprovante"
     }
   },
   "required": [
