@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Loader2, FileText, ExternalLink } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import PastaMonitoradaCard from '@/components/drive/PastaMonitoradaCard';
+import AdicionarPastaCard from '@/components/drive/AdicionarPastaCard';
 import { varreduraDiariaDrive } from '@/functions/varreduraDiariaDrive';
 import { formatDate } from '@/lib/formatters';
 
@@ -27,8 +28,7 @@ export default function PastasMonitoradas() {
 
   useEffect(() => { load(); }, []);
 
-  const configXml = configs.find(c => c.tipo_pasta !== 'comprovante');
-  const configComprovante = configs.find(c => c.tipo_pasta === 'comprovante');
+  const tiposUsados = configs.map(c => c.tipo_pasta);
 
   async function rodarAgora() {
     setRodando(true);
@@ -75,8 +75,10 @@ export default function PastasMonitoradas() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <PastaMonitoradaCard tipo="xml" config={configXml} onChange={load} />
-        <PastaMonitoradaCard tipo="comprovante" config={configComprovante} onChange={load} />
+        {configs.map(cfg => (
+          <PastaMonitoradaCard key={cfg.id} config={cfg} onChange={load} />
+        ))}
+        <AdicionarPastaCard tiposUsados={tiposUsados} onChange={load} />
       </div>
 
       <div>

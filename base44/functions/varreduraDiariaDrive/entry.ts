@@ -109,6 +109,56 @@ async function processarPastaComprovante(base44, config, token) {
   return { tipo: 'comprovante', total_na_pasta: comprovantes.length, ja_processados: existentes.size, novos: novos.length, ok, erros };
 }
 
+// Tipos genéricos (extrato, fatura, boletos, folha, etc.): coleta arquivos novos
+// para o ArquivoImportInbox, já marcados com o tipo da pasta. A IA processa depois.
+const GENERICO_MIMES = [
+  'application/pdf',
+  'image/jpeg', 'image/jpg', 'image/png', 'image/heic', 'image/webp',
+  'text/csv', 'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/x-ofx', 'application/ofx',
+];
+
+async function processarPastaGenerica(base44, config, token) {
+  const todos = await listarPasta(config.folder_id, token);
+  const arquivos = todos.filter(f =>
+    GENERICO_MIMES.includes(f.mimeType) ||
+    /\.(pdf|png|jpe?g|csv|xlsx|ofx|qfx|txt)$/i.test(f.name || '')
+  );
+
+  const existentes = new Set();
+  const ids = arquivos.map(a => a.id);
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
+    const found = await base44.asServiceRole.entities.ArquivoImportInbox.filter({ drive_file_id: { $in: chunk } });
+    (found || []).forEach(e => existentes.add(e.drive_file_id));
+  }
+  const novos = arquivos.filter(a => !existentes.has(a.id));
+
+  let ok = 0, erros = 0;
+  if (novos.length > 0) {
+    const payloads = novos.map(f => ({
+      drive_file_id: f.id,
+      drive_file_url: f.webViewLink || `https://drive.google.com/file/d/${f.id}/view`,
+      nome_arquivo: f.name,
+      mime_type: f.mimeType,
+      tamanho_bytes: f.size ? parseInt(f.size) : 0,
+      modificado_em: f.modifiedTime,
+      folder_id: config.folder_id,
+      tipo_import: config.tipo_pasta,
+      status: 'novo',
+    }));
+    try {
+      await base44.asServiceRole.entities.ArquivoImportInbox.bulkCreate(payloads);
+      ok = payloads.length;
+    } catch (e) {
+      erros = payloads.length;
+    }
+  }
+
+  return { tipo: config.tipo_pasta, total_na_pasta: arquivos.length, ja_processados: existentes.size, novos: novos.length, ok, erros };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -130,8 +180,10 @@ Deno.serve(async (req) => {
       try {
         if (config.tipo_pasta === 'comprovante') {
           resumo = await processarPastaComprovante(base44, config, accessToken);
-        } else {
+        } else if (!config.tipo_pasta || config.tipo_pasta === 'xml') {
           resumo = await processarPastaXML(base44, config, accessToken);
+        } else {
+          resumo = await processarPastaGenerica(base44, config, accessToken);
         }
         await base44.asServiceRole.entities.ConfigDrivePastaXML.update(config.id, {
           ultima_varredura: new Date().toISOString(),

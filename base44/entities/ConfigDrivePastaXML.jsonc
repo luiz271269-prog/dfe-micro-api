@@ -1,16 +1,26 @@
 {
   "name": "ConfigDrivePastaXML",
   "type": "object",
-  "description": "Configura\u00e7\u00e3o de pasta monitorada no Google Drive para varredura autom\u00e1tica di\u00e1ria. Pode ser de XMLs de NF-e (importa/analisa notas) ou de comprovantes PDF/imagem (inbox deduplicado).",
+  "description": "Configura\u00e7\u00e3o de pasta monitorada no Google Drive para varredura autom\u00e1tica di\u00e1ria. O campo tipo_pasta define o que ser\u00e1 feito com os arquivos: 'xml' importa/analisa NF-e, 'comprovante' cria inbox deduplicado, e os demais tipos (extrato, fatura_cartao, etc.) coletam os arquivos novos em ArquivoImportInbox j\u00e1 marcados com o tipo de importa\u00e7\u00e3o.",
   "properties": {
     "tipo_pasta": {
       "type": "string",
       "enum": [
         "xml",
-        "comprovante"
+        "comprovante",
+        "extrato_bancario",
+        "boletos_liquidados",
+        "relatorio_nfs",
+        "relatorio_vendas_detalhado",
+        "compras_fornecedor",
+        "fatura_cartao",
+        "obra_reforma",
+        "folha_pagamento",
+        "dda_boletos",
+        "despesas_operacionais"
       ],
       "default": "xml",
-      "title": "Tipo da pasta monitorada"
+      "title": "Tipo de importa\u00e7\u00e3o dos arquivos desta pasta"
     },
     "folder_id": {
       "type": "string",

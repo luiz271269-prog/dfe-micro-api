@@ -1,0 +1,105 @@
+{
+  "name": "ArquivoImportInbox",
+  "type": "object",
+  "description": "Inbox de arquivos coletados automaticamente de pastas monitoradas no Google Drive para tipos de importa\u00e7\u00e3o gen\u00e9ricos (extrato, fatura de cart\u00e3o, boletos, folha, despesas, etc.). Deduplicado por drive_file_id. Aguardam processamento pela IA na tela de importa\u00e7\u00e3o, j\u00e1 pr\u00e9-classificados pelo tipo da pasta de origem.",
+  "properties": {
+    "drive_file_id": {
+      "type": "string",
+      "title": "ID do arquivo no Drive (chave de deduplica\u00e7\u00e3o)"
+    },
+    "drive_file_url": {
+      "type": "string",
+      "title": "Link de visualiza\u00e7\u00e3o no Drive"
+    },
+    "nome_arquivo": {
+      "type": "string",
+      "title": "Nome do arquivo"
+    },
+    "mime_type": {
+      "type": "string",
+      "title": "Tipo do arquivo"
+    },
+    "tamanho_bytes": {
+      "type": "number",
+      "title": "Tamanho em bytes"
+    },
+    "modificado_em": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Data de modifica\u00e7\u00e3o no Drive"
+    },
+    "folder_id": {
+      "type": "string",
+      "title": "Pasta de origem"
+    },
+    "tipo_import": {
+      "type": "string",
+      "title": "Tipo de importa\u00e7\u00e3o herdado da pasta (ex: fatura_cartao, extrato_bancario)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "novo",
+        "processado",
+        "ignorado"
+      ],
+      "default": "novo",
+      "title": "Status do arquivo"
+    }
+  },
+  "required": [
+    "drive_file_id",
+    "nome_arquivo",
+    "tipo_import"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
