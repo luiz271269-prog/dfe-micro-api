@@ -12,6 +12,7 @@ import { formatCurrency } from '../lib/formatters';
 import TabelaRevisaoVendasDetalhado from '../components/importar/TabelaRevisaoVendasDetalhado';
 import PainelMemoriaImportacao from '../components/importar/PainelMemoriaImportacao';
 import { registrarResultado, assinaturaDeRegistros } from '../lib/memoriaImportacaoEngine';
+import { aplicarRegrasHistorico } from '../lib/aplicarRegrasHistorico';
 
 const DOC_TYPES = [
   { id: 'extrato_bancario',   label: 'Extrato Bancário Sicredi',  icon: Landmark,     color: 'blue',   entity: 'LancamentoBancario', dedup: ['data','valor'] },
@@ -610,6 +611,20 @@ export default function ImportarDocumento() {
       } else {
         // Caso genérico: aplica deduplicação via motor
         enriched = await deduplicateRecords(items, typeConfig.entity);
+      }
+
+      // Aplica regras de categoria aprendidas do histórico — resolve localmente
+      // o que a IA já "errou" no passado e foi corrigido manualmente (economiza IA).
+      const escopoRegras = selectedType === 'fatura_cartao' ? 'cartao'
+        : selectedType === 'extrato_bancario' ? 'extrato' : null;
+      if (escopoRegras) {
+        try {
+          const res = await aplicarRegrasHistorico({ escopo: escopoRegras, records: enriched });
+          enriched = res.records;
+          if (res.aplicados > 0) {
+            showToast(`🧠 ${res.aplicados} lançamento(s) categorizados pelo histórico — sem precisar de IA.`, 'success');
+          }
+        } catch { /* histórico é auxiliar — nunca bloqueia */ }
       }
 
       setRecords(enriched);
