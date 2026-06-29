@@ -5,8 +5,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.35';
 //   2. LancamentoBancario com categoria = 'pessoal'? NÃO — 'pessoal' = folha (despesa da empresa). Fica de fora.
 //   3. LancamentoCartao com natureza = 'pessoal' (gastos pessoais em QUALQUER cartão)
 //
-// Folha de pagamento (LancamentoBancario.pessoal + FolhaPagamento) é mostrada SEPARADA,
-// como despesa da empresa, para o usuário comparar — nunca somada ao pró-labore.
+// Folha de pagamento de funcionários é despesa da empresa e NÃO entra aqui — fica na página Folha de Pagamento.
 //
 // Payload opcional: { mes_referencia?: 'YYYY-MM' }  — sem mês = todos os meses (visão anual).
 
@@ -24,11 +23,10 @@ Deno.serve(async (req) => {
     const mesFiltro = body.mes_referencia || null;
 
     const svc = base44.asServiceRole.entities;
-    const [lancBancarios, lancCartoes, cartoes, folhas] = await Promise.all([
+    const [lancBancarios, lancCartoes, cartoes] = await Promise.all([
       svc.LancamentoBancario.list('-data', 5000),
       svc.LancamentoCartao.list('-data_lancamento', 5000),
       svc.ContaCartao.list(),
-      svc.FolhaPagamento.list('-competencia', 2000),
     ]);
 
     const cartaoPorId = new Map(cartoes.map(c => [c.id, c]));
@@ -66,36 +64,11 @@ Deno.serve(async (req) => {
       }))
       .filter(x => noMes(x.mes));
 
-    // ─── SEPARADO: Folha de pagamento (despesa da empresa, NÃO é pró-labore) ───
-    const folhaExtrato = lancBancarios
-      .filter(l => l.categoria === 'pessoal')
-      .map(l => ({
-        origem: 'extrato_folha',
-        id: l.id,
-        data: l.data,
-        mes: mesDe(l.data, l.mes_referencia),
-        descricao: l.descricao,
-        valor: Math.abs(l.valor || 0),
-      }))
-      .filter(x => noMes(x.mes));
-
-    const folhaRH = folhas
-      .filter(f => f.status === 'pago')
-      .map(f => ({
-        origem: 'folha_rh',
-        id: f.id,
-        mes: f.competencia,
-        descricao: `Salário — ${f.funcionario_nome}`,
-        valor: f.salario_liquido || 0,
-      }))
-      .filter(x => noMes(x.mes));
-
     // ─── Totais ───
     const soma = arr => Math.round(arr.reduce((s, x) => s + (x.valor || 0), 0) * 100) / 100;
     const totalRetiradas = soma(retiradasExtrato);
     const totalCartao = soma(gastosCartao);
     const totalProLabore = Math.round((totalRetiradas + totalCartao) * 100) / 100;
-    const totalFolha = soma(folhaExtrato) + soma(folhaRH);
 
     // ─── Breakdown por cartão (qual cartão concentra mais gasto pessoal) ───
     // Resolve cartão via fatura -> conta_cartao_id
@@ -136,12 +109,6 @@ Deno.serve(async (req) => {
       },
       ranking_cartoes: rankingCartoes,
       timeline,
-      folha_pagamento_empresa: {
-        total: totalFolha,
-        observacao: 'Despesa da empresa — NÃO é pró-labore. Mostrado apenas para comparação.',
-        extrato: folhaExtrato.sort((a, b) => (b.data || '').localeCompare(a.data || '')),
-        rh: folhaRH,
-      },
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

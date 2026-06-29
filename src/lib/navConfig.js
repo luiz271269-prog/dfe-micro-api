@@ -27,7 +27,7 @@ export const navGroups = [
     label: 'Pagamentos',
     items: [
       { path: '/tributos', label: 'Tributos', icon: DollarSign },
-      { path: '/funcionarios', label: 'Pessoal', icon: Users },
+      { path: '/funcionarios', label: 'Folha de Pagamento', icon: Users },
       { path: '/prolabore', label: 'Pró-labore', icon: Wallet },
       { path: '/recorrentes', label: 'Despesas Recorrentes', icon: Repeat },
       { path: '/obras', label: 'Obras e Reformas', icon: Hammer },
