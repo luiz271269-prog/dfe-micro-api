@@ -37,6 +37,7 @@ import DiagnosticoConciliacao from './pages/DiagnosticoConciliacao';
 import CoberturaConciliacao from './pages/CoberturaConciliacao';
 import CertificadoNFe from './pages/CertificadoNFe';
 import NFeRecebidas from './pages/NFeRecebidas';
+import PastasMonitoradas from './pages/PastasMonitoradas';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -98,6 +99,7 @@ const AuthenticatedApp = () => {
         <Route path="/cobertura-conciliacao" element={<CoberturaConciliacao />} />
         <Route path="/certificado-nfe" element={<CertificadoNFe />} />
         <Route path="/nfe-recebidas" element={<NFeRecebidas />} />
+        <Route path="/pastas-monitoradas" element={<PastasMonitoradas />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

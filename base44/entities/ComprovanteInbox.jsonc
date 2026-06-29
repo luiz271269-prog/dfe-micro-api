@@ -1,0 +1,108 @@
+{
+  "name": "ComprovanteInbox",
+  "type": "object",
+  "description": "Inbox de comprovantes (PDF/imagem) importados automaticamente de uma pasta do Google Drive. Deduplicado por drive_file_id. Aguardam v\u00ednculo manual a um lan\u00e7amento financeiro.",
+  "properties": {
+    "drive_file_id": {
+      "type": "string",
+      "title": "ID do arquivo no Drive (chave de deduplica\u00e7\u00e3o)"
+    },
+    "drive_file_url": {
+      "type": "string",
+      "title": "Link de visualiza\u00e7\u00e3o no Drive"
+    },
+    "nome_arquivo": {
+      "type": "string",
+      "title": "Nome do arquivo"
+    },
+    "mime_type": {
+      "type": "string",
+      "title": "Tipo do arquivo (pdf/imagem)"
+    },
+    "tamanho_bytes": {
+      "type": "number",
+      "title": "Tamanho em bytes"
+    },
+    "modificado_em": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Data de modifica\u00e7\u00e3o no Drive"
+    },
+    "folder_id": {
+      "type": "string",
+      "title": "Pasta de origem"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "novo",
+        "vinculado",
+        "ignorado"
+      ],
+      "default": "novo",
+      "title": "Status do comprovante"
+    },
+    "vinculado_entidade": {
+      "type": "string",
+      "title": "Entidade vinculada (ex: DespesaOperacional)"
+    },
+    "vinculado_id": {
+      "type": "string",
+      "title": "ID do registro vinculado"
+    }
+  },
+  "required": [
+    "drive_file_id",
+    "nome_arquivo"
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

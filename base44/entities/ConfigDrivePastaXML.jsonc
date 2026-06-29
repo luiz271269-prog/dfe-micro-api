@@ -1,8 +1,17 @@
 {
   "name": "ConfigDrivePastaXML",
   "type": "object",
-  "description": "Configura\u00e7\u00e3o da pasta monitorada para varredura autom\u00e1tica de XMLs de NF-e \u2014 Drive (nuvem) + caminho de rede local (WTS/UNC) como refer\u00eancia operacional.",
+  "description": "Configura\u00e7\u00e3o de pasta monitorada no Google Drive para varredura autom\u00e1tica di\u00e1ria. Pode ser de XMLs de NF-e (importa/analisa notas) ou de comprovantes PDF/imagem (inbox deduplicado).",
   "properties": {
+    "tipo_pasta": {
+      "type": "string",
+      "enum": [
+        "xml",
+        "comprovante"
+      ],
+      "default": "xml",
+      "title": "Tipo da pasta monitorada"
+    },
     "folder_id": {
       "type": "string",
       "title": "ID da pasta no Google Drive"
@@ -49,6 +58,10 @@
       "type": "number",
       "default": 0,
       "title": "Quantos foram efetivamente processados na \u00faltima rodada"
+    },
+    "ultimo_status": {
+      "type": "string",
+      "title": "Resumo do \u00faltimo resultado (ok/erro + mensagem)"
     },
     "observacoes": {
       "type": "string",

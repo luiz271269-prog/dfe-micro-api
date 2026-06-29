@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart,
   Hammer, CreditCard, DollarSign, Users, BarChart3, CloudUpload, Map,
   Scale, Package, GitCompare, FolderOpen, Target, Repeat, Bot, FileCode,
-  Calculator, Activity, Link2, ShieldCheck, Wallet
+  Calculator, Activity, Link2, ShieldCheck, Wallet, FolderSync
 } from 'lucide-react';
 
 // Menu agrupado pela lógica dos fluxos (espelha o Diagnóstico de Fluxos)
@@ -51,6 +51,7 @@ export const navGroups = [
   {
     label: 'Fiscal & SEFAZ',
     items: [
+      { path: '/pastas-monitoradas', label: 'Pastas do Drive (Auto)', icon: FolderSync },
       { path: '/analise-nfe', label: 'Análise XML NF-e (Drive)', icon: FileCode },
       { path: '/nfe-recebidas', label: 'NFes Recebidas (AN)', icon: FileText },
       { path: '/certificado-nfe', label: 'Certificado NF-e (SEFAZ)', icon: ShieldCheck },
