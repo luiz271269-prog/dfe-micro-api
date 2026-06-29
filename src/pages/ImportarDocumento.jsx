@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
 import TabelaRevisaoVendasDetalhado from '../components/importar/TabelaRevisaoVendasDetalhado';
+import PainelMemoriaImportacao from '../components/importar/PainelMemoriaImportacao';
+import { registrarResultado, assinaturaDeRegistros } from '../lib/memoriaImportacaoEngine';
 
 const DOC_TYPES = [
   { id: 'extrato_bancario',   label: 'Extrato Bancário Sicredi',  icon: Landmark,     color: 'blue',   entity: 'LancamentoBancario', dedup: ['data','valor'] },
@@ -315,6 +317,7 @@ export default function ImportarDocumento() {
   const [step, setStep] = useState(1);
   const [dedupRunning, setDedupRunning] = useState(false);
   const [faturaValidacao, setFaturaValidacao] = useState(null);
+  const [memoriaRefresh, setMemoriaRefresh] = useState(0);
   const fileInputRef = useRef();
   const queryClient = useQueryClient();
 
@@ -780,6 +783,20 @@ export default function ImportarDocumento() {
       notes: notesValue,
     });
 
+      // Memória de aprendizado: registra se a importação saiu "redonda"
+      // (sem erros e com registros salvos). Ao atingir o limite, libera o aval.
+      try {
+        const typeLabel = DOC_TYPES.find(d => d.id === selectedType)?.label || selectedType;
+        const redonda = errors === 0 && saved > 0;
+        const user = await base44.auth.me().catch(() => null);
+        await registrarResultado(selectedType, typeLabel, {
+          redonda,
+          assinatura: assinaturaDeRegistros(records),
+          user,
+        });
+        setMemoriaRefresh(k => k + 1);
+      } catch { /* memória é auxiliar — nunca bloqueia o salvamento */ }
+
       // Deduplicação automática pós-salvamento — varre TODAS as entidades do sistema
       setSaveProgress('Verificando duplicatas em todo o sistema...');
       let removidos = 0;
@@ -906,6 +923,12 @@ export default function ImportarDocumento() {
           {/* Upload + Calendário + Histórico */}
           <div>
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">2. Arquivo</h2>
+
+            <PainelMemoriaImportacao
+              tipoImport={selectedType}
+              label={DOC_TYPES.find(d => d.id === selectedType)?.label}
+              refreshKey={memoriaRefresh}
+            />
 
             {selectedType === 'fatura_cartao' && (
               <div className="mb-4">
