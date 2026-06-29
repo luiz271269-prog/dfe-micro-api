@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart,
   Hammer, CreditCard, DollarSign, Users, BarChart3, CloudUpload, Map,
   Scale, Package, GitCompare, FolderOpen, Target, Repeat, Bot, FileCode,
-  Calculator, Activity, Link2, ShieldCheck
+  Calculator, Activity, Link2, ShieldCheck, Wallet
 } from 'lucide-react';
 
 // Menu agrupado pela lógica dos fluxos (espelha o Diagnóstico de Fluxos)
@@ -28,6 +28,7 @@ export const navGroups = [
     items: [
       { path: '/tributos', label: 'Tributos', icon: DollarSign },
       { path: '/funcionarios', label: 'Pessoal', icon: Users },
+      { path: '/prolabore', label: 'Pró-labore', icon: Wallet },
       { path: '/recorrentes', label: 'Despesas Recorrentes', icon: Repeat },
       { path: '/obras', label: 'Obras e Reformas', icon: Hammer },
     ],

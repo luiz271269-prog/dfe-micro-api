@@ -17,6 +17,7 @@ import Obras from './pages/Obras';
 import Cartoes from './pages/Cartoes';
 import Tributos from './pages/Tributos';
 import Funcionarios from './pages/Funcionarios';
+import ProLabore from './pages/ProLabore';
 import FluxoCaixa from './pages/FluxoCaixa';
 import MapaGeral from './pages/MapaGeral';
 import ImportarDocumento from './pages/ImportarDocumento';
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
         <Route path="/cartoes" element={<Cartoes />} />
         <Route path="/tributos" element={<Tributos />} />
         <Route path="/funcionarios" element={<Funcionarios />} />
+        <Route path="/prolabore" element={<ProLabore />} />
         <Route path="/fluxocaixa" element={<FluxoCaixa />} />
         <Route path="/mapa" element={<MapaGeral />} />
         <Route path="/importar" element={<ImportarDocumento />} />
