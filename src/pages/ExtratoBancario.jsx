@@ -19,7 +19,7 @@ import StatusBadge from '../components/shared/StatusBadge';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
-import { aprenderEAplicarRegra } from '../lib/autoCategorizacao';
+import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizacao';
 
 export default function ExtratoBancario() {
   const [lancamentos, setLancamentos] = useState([]);
@@ -91,13 +91,18 @@ export default function ExtratoBancario() {
 
   async function handleCategoriaChange(id, newCat) {
     const lanc = lancamentos.find(l => l.id === id);
-    await base44.entities.LancamentoBancario.update(id, { categoria: newCat });
     setEditingCategoria(null);
+    if (lanc?.categoria === newCat) return; // nada mudou
+
+    // Atualização dinâmica: muda só o campo no estado local, sem recarregar a lista
+    // (mantém o scroll na mesma posição). Persiste no banco em segundo plano.
+    setLancamentos(prev => prev.map(l => (l.id === id ? { ...l, categoria: newCat } : l)));
+    await base44.entities.LancamentoBancario.update(id, { categoria: newCat });
 
     // Aprende regra e aplica a lançamentos semelhantes ainda na categoria antiga
-    if (lanc?.descricao && lanc.categoria !== newCat) {
+    if (lanc?.descricao) {
       try {
-        const { aplicados } = await aprenderEAplicarRegra({
+        const { aplicados, termo_chave } = await aprenderEAplicarRegra({
           escopo: 'extrato',
           descricao: lanc.descricao,
           categoria: newCat,
@@ -105,12 +110,19 @@ export default function ExtratoBancario() {
           categoriasPadraoSubstituiveis: [lanc.categoria],
         });
         if (aplicados > 0) {
+          // Reflete as reclassificações em massa no estado local, sem recarregar
+          setLancamentos(prev => prev.map(l => {
+            if (l.id === id) return l;
+            if (l.categoria === lanc.categoria && extrairTermoChave(l.descricao) === termo_chave) {
+              return { ...l, categoria: newCat };
+            }
+            return l;
+          }));
           setReclassResult({ total: aplicados, auto: true });
           setTimeout(() => setReclassResult(null), 5000);
         }
       } catch (e) { /* não bloqueia o update principal */ }
     }
-    loadData();
   }
 
   async function handleReclassificarPessoal() {

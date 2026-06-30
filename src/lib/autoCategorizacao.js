@@ -80,7 +80,7 @@ export async function aprenderEAplicarRegra({ escopo, descricao, categoria, cate
     } catch (e) { /* ignora item individual */ }
   }
 
-  return { termo_chave: termo, aplicados };
+  return { termo_chave: termo, aplicados, regraCategoria: categoria };
 }
 
 /**
