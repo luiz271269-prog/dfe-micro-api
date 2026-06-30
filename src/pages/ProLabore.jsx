@@ -3,7 +3,6 @@ import { consolidarProLabore } from '@/functions/consolidarProLabore';
 import { Wallet, CreditCard, Landmark } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator from '../components/shared/MonthNavigator';
-import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import ProLaboreTimeline from '../components/prolabore/ProLaboreTimeline';
@@ -29,21 +28,23 @@ export default function ProLabore() {
 
   return (
     <div className="p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto">
-      <PageHeader title="Pró-labore Unificado" subtitle="Tudo que sai do seu bolso — retiradas + gastos pessoais em todos os cartões">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h1 className="text-lg font-bold text-foreground tracking-tight leading-tight">Pró-labore Unificado</h1>
+          <p className="text-xs text-muted-foreground">Tudo que sai do seu bolso — retiradas + gastos pessoais nos cartões</p>
+        </div>
         <MonthNavigator
           selectedMonth={selectedMonth}
           onSelectMonth={setSelectedMonth}
           isAnnual={isAnnual}
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
         />
-      </PageHeader>
+      </div>
 
-      {/* Aviso conceitual */}
-      <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-5">
-        <p className="text-sm text-violet-900 font-semibold mb-1">💡 O que entra no Pró-labore</p>
-        <p className="text-xs text-violet-800 leading-relaxed">
-          <strong>Pró-labore</strong> = o que é <strong>seu</strong> (retiradas no extrato + gastos pessoais nos cartões — KaBuM, restaurantes, compras suas). Sai do seu bolso.
-          <br />A <strong>folha de pagamento de funcionários</strong> é despesa da empresa e fica na página <strong>Folha de Pagamento</strong>, não aqui.
+      {/* Aviso conceitual — compacto */}
+      <div className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 mb-4">
+        <p className="text-[11px] text-violet-800 leading-snug">
+          💡 <strong>Pró-labore</strong> = o que é seu (retiradas + gastos pessoais nos cartões). A <strong>folha de funcionários</strong> fica em <strong>Folha de Pagamento</strong>.
         </p>
       </div>
 
