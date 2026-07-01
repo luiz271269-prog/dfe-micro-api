@@ -333,7 +333,7 @@ export default function Dashboard() {
           <button onClick={() => {setIsAnnual(false);if (monthIdx > 0) setSelectedMonth(ALL_MONTHS[monthIdx - 1]);}}
           disabled={monthIdx === 0 || isAnnual}
           className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors bg-[hsl(var(--primary))] text-[hsl(var(--foreground))]">
-            <ChevronLeft className="w-3.5 h-3.5 text-[hsl(var(--card))]" />
+            <ChevronLeft className="w-3.5 h-3.5 text-[hsl(var(--background))]" />
           </button>
           {ALL_MONTHS.slice(-5).map((m) =>
           <button key={m} onClick={() => {setSelectedMonth(m);setIsAnnual(false);}}
@@ -344,7 +344,7 @@ export default function Dashboard() {
           <button onClick={() => {setIsAnnual(false);if (monthIdx < ALL_MONTHS.length - 1) setSelectedMonth(ALL_MONTHS[monthIdx + 1]);}}
           disabled={monthIdx === ALL_MONTHS.length - 1 || isAnnual}
           className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors bg-[hsl(var(--primary))]">
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-3.5 h-3.5 text-[hsl(var(--background))]" />
           </button>
           <button onClick={() => setIsAnnual(!isAnnual)}
           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ml-1 bg-[hsl(var(--chart-4))] text-[hsl(var(--foreground))] ${isAnnual ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : "border hover:bg-muted"}`}>
@@ -396,7 +396,7 @@ export default function Dashboard() {
       </Link>
 
       {/* ─── ALERT BANNER ─── */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm px-3">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
           <Bell className="w-4 h-4 text-white" />
         </div>
