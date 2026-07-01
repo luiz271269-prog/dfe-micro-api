@@ -19,7 +19,7 @@ export default function DedupButton({ autoOncePerDay = false, size = 'sm', varia
       if (!silent) {
         setToast({
           type: 'success',
-          msg: total > 0 ? `🧹 ${total} duplicatas removidas` : 'Banco limpo — nenhuma duplicata',
+          msg: total > 0 ? `🧹 ${total} duplicatas removidas` : 'Banco limpo — nenhuma duplicata'
         });
         setTimeout(() => setToast(null), 4000);
       }
@@ -45,28 +45,28 @@ export default function DedupButton({ autoOncePerDay = false, size = 'sm', varia
 
   return (
     <>
-      <Button variant={variant} size={size} onClick={() => runDedup(false)} disabled={running} className="gap-2">
-        {running ? (
-          <>
+      <Button variant={variant} size={size} onClick={() => runDedup(false)} disabled={running} className="gap-2 text-[hsl(var(--input))]">
+        {running ?
+        <>
             <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
             Limpando…
-          </>
-        ) : (
-          <>
+          </> :
+
+        <>
             <Trash2 className="w-3.5 h-3.5" />
             {label}
           </>
-        )}
+        }
       </Button>
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold ${
-            toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'
-          }`}
-        >
+      {toast &&
+      <div
+        className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold ${
+        toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`
+        }>
+        
           {toast.msg}
         </div>
-      )}
-    </>
-  );
+      }
+    </>);
+
 }
