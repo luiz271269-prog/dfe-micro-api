@@ -101,7 +101,7 @@ export default function Recorrentes() {
   if (loading) return <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>;
 
   return (
-    <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Despesas Recorrentes" subtitle="Regras que o motor de conciliação usa para vincular automaticamente débitos repetitivos">
         <Button variant="outline" onClick={() => setSugestoesOpen(true)} className="gap-2">
           <Sparkles className="w-4 h-4" /> Aprender do Extrato ({sugestoes.length})

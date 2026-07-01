@@ -41,7 +41,7 @@ export default function SimulacaoCusto() {
 
   if (skus.length === 0) {
     return (
-      <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+      <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
         <PageHeader title="Simulação de Custo" subtitle="Avalie o impacto de regime tributário e troca de fornecedor" />
         <div className="bg-card border rounded-xl p-10 text-center">
           <Package2 className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
@@ -53,7 +53,7 @@ export default function SimulacaoCusto() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader
         title="Simulação de Custo"
         subtitle={`${skus.length} SKUs agrupados · ${skus.filter(s => s.recorrente).length} recorrentes · ${analises.length} NF-e`}

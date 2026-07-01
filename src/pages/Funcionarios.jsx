@@ -326,7 +326,7 @@ export default function Funcionarios() {
   );
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Pessoas (RH)" subtitle={`${funcionariosAtivos} funcionários ativos · ${funcionarios.length} cadastrados`}>
         {activeTab === 'funcionarios' && (
           <Button onClick={() => setShowFuncForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Funcionário</Button>

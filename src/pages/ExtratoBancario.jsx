@@ -184,7 +184,7 @@ export default function ExtratoBancario() {
   const activeFilterCount = (filterCategoria !== 'all' ? 1 : 0) + (searchTerm ? 1 : 0);
 
   return (
-    <div className="p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Extrato Bancário" subtitle="NeuralTec · Sicredi 36092-2">
         <div className="flex gap-2 flex-wrap w-full md:w-auto">
           <Button onClick={() => setShowForm(true)} className="gap-2 flex-1 md:flex-none" size="sm">

@@ -107,7 +107,7 @@ export default function Despesas() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Despesas Operacionais" subtitle="Controle de gastos e despesas fixas/variáveis">
         <MonthNavigator
           selectedMonth={selectedMonth}

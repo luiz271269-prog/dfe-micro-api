@@ -150,7 +150,7 @@ export default function Faturamento() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Faturamento" subtitle="Notas Fiscais e Contratos de Intermediação">
         <MonthNavigator
           selectedMonth={selectedMonth}

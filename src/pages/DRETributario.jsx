@@ -81,7 +81,7 @@ export default function DRETributario() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader
         title="DRE Tributário"
         subtitle="Impacto de ICMS-ST e IPI no custo efetivo dos produtos — consolidado das NF-e"

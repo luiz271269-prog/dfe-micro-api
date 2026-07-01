@@ -169,7 +169,7 @@ export default function Cobrancas() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Cobranças Sicredi" subtitle="Gestão de títulos e boletos">
         <MonthNavigator
           selectedMonth={selectedMonth}

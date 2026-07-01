@@ -108,7 +108,7 @@ export default function AuditoriaArquivos() {
   const totalPendentes = totalFiles - totalImportados;
 
   return (
-    <div className="p-4 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Auditoria de Arquivos" subtitle="Varra a pasta financeira e veja o que já foi importado">
       </PageHeader>
 

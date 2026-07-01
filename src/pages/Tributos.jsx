@@ -88,7 +88,7 @@ export default function Tributos() {
   );
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Gestão de Tributos" subtitle={`${tributos.length} tributos cadastrados`}>
         <MonthNavigator
           selectedMonth={selectedMonth}

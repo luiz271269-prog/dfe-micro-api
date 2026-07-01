@@ -864,7 +864,7 @@ export default function ImportarDocumento() {
     : [];
 
   return (
-    <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Importar Documento" subtitle="Extração de dados financeiros com IA · deduplicação automática">
         <Button variant="outline" size="sm" onClick={handleDedupManual} disabled={dedupRunning} className="gap-2">
           {dedupRunning ? (

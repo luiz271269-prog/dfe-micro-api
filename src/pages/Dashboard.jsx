@@ -320,7 +320,7 @@ export default function Dashboard() {
   const monthIdx = ALL_MONTHS.indexOf(selectedMonth);
 
   return (
-    <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-5">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto space-y-5">
 
       {/* ─── HEADER ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

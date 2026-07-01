@@ -39,7 +39,7 @@ export default function CertificadoNFe() {
   useEffect(() => { load(); }, []);
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto space-y-6">
       <PageHeader
         title="Certificado Digital — NF-e"
         subtitle="Cadastro do A1 e POC de conexão com a SEFAZ (Ambiente Nacional / NFeDistribuicaoDFe)"

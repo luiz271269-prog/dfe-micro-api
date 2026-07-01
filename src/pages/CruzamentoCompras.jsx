@@ -137,7 +137,7 @@ export default function CruzamentoCompras() {
   const { rows, totalComprado, totalPago, semPag, parcial } = analysis;
 
   return (
-    <div className="p-4 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Cruzamento Compras × Pagamentos" subtitle="Conciliação entre compras importadas e pagamentos (banco + cartão)" />
 
       {/* Filtro de mês */}

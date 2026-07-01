@@ -54,7 +54,7 @@ export default function NFeRecebidas() {
   const total = filtered.reduce((s, n) => s + (n.valor_total || 0), 0);
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader
         title="NFes Recebidas (SEFAZ AN)"
         subtitle={`${nfes.length} documentos baixados via NFeDistribuicaoDFe`}

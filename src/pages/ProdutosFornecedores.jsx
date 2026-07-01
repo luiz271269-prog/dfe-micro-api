@@ -141,7 +141,7 @@ export default function ProdutosFornecedores() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Produtos & Fornecedores" subtitle="Histórico de compras e gestão de fornecedores">
         <Button onClick={() => { setActiveTab('fornecedores'); setShowFornForm(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Novo Fornecedor

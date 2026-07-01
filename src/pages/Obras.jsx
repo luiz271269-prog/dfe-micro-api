@@ -190,7 +190,7 @@ export default function Obras() {
   }[v] || 'bg-slate-100 text-slate-600');
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Obras e Reformas" subtitle="Controle de despesas por local e profissional">
         <MonthNavigator
           selectedMonth={selectedMonth}

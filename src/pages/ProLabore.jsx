@@ -27,7 +27,7 @@ export default function ProLabore() {
   const pl = dados?.pro_labore;
 
   return (
-    <div className="p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <h1 className="text-lg font-bold text-foreground tracking-tight leading-tight">Pró-labore Unificado</h1>

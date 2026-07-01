@@ -67,7 +67,7 @@ export default function CoberturaConciliacao() {
   const pctExtrato = ext.total > 0 ? (ext.com_vinculo / ext.debitos) * 100 : 0;
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader
         title="Cobertura de Conciliação"
         subtitle="Quanto do extrato bancário tem vínculo com obrigações reais (VinculoExtrato)"

@@ -91,7 +91,7 @@ export default function Conciliacao360() {
   }, [dados]);
 
   return (
-    <div className="p-4 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Conciliação 360°" subtitle="Cruze extrato, notas, títulos, cartões e despesas em um só lugar">
         <Button onClick={rodarAutoBaixa} disabled={rodandoAuto} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
           <Zap className="w-4 h-4" /> {rodandoAuto ? 'Processando...' : 'Auto-baixa do extrato'}
