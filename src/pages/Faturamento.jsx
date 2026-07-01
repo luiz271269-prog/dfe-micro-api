@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, FileText, TrendingUp, DollarSign, Link2, Sparkles, Printer } from 'lucide-react';
+import SortableTh from '../components/shared/SortableTh';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,8 @@ export default function Faturamento() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [ocultarEspelhos, setOcultarEspelhos] = useState(true);
+  const [sortField, setSortField] = useState('numero');
+  const [sortDir, setSortDir] = useState('desc');
   const [detectando, setDetectando] = useState(false);
   const [toast, setToast] = useState(null);
   const [form, setForm] = useState({
@@ -74,6 +77,40 @@ export default function Faturamento() {
       return true;
     });
   }, [notas, filterVendedor, filterTipo, filterStatus, searchTerm, selectedMonth, isAnnual, ocultarEspelhos]);
+
+  function toggleSort(field) {
+    if (sortField === field) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  }
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    const numericFields = ['valor_total', 'valor_recebido', 'valor_aberto'];
+    const dateFields = ['data_emissao', 'data_vencimento_proxima'];
+    arr.sort((a, b) => {
+      let va = a[sortField];
+      let vb = b[sortField];
+      if (sortField === 'numero') {
+        va = parseInt(String(va ?? '').replace(/\D/g, ''), 10) || 0;
+        vb = parseInt(String(vb ?? '').replace(/\D/g, ''), 10) || 0;
+      } else if (numericFields.includes(sortField)) {
+        va = va || 0; vb = vb || 0;
+      } else if (dateFields.includes(sortField)) {
+        va = va || ''; vb = vb || '';
+      } else {
+        va = String(va ?? '').toLowerCase();
+        vb = String(vb ?? '').toLowerCase();
+      }
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [filtered, sortField, sortDir]);
 
   // Contagem de espelhos no mês selecionado (para badge informativo)
   const espelhosMes = useMemo(() => {
@@ -279,25 +316,25 @@ export default function Faturamento() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">NF/CI</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Cliente</th>
-                <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Vendedor</th>
-                <th className="hidden md:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Emissão</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Total</th>
-                <th className="hidden sm:table-cell text-right px-4 py-3 font-semibold text-muted-foreground">Recebido</th>
-                <th className="hidden sm:table-cell text-right px-4 py-3 font-semibold text-muted-foreground">Aberto</th>
-                <th className="hidden lg:table-cell text-left px-4 py-3 font-semibold text-muted-foreground">Próx. Venc.</th>
-                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Status</th>
+                <SortableTh field="numero" align="left" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>NF/CI</SortableTh>
+                <SortableTh field="cliente" align="left" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Cliente</SortableTh>
+                <SortableTh field="vendedor" align="left" className="hidden sm:table-cell" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Vendedor</SortableTh>
+                <SortableTh field="data_emissao" align="left" className="hidden md:table-cell" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Emissão</SortableTh>
+                <SortableTh field="valor_total" align="right" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Total</SortableTh>
+                <SortableTh field="valor_recebido" align="right" className="hidden sm:table-cell" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Recebido</SortableTh>
+                <SortableTh field="valor_aberto" align="right" className="hidden sm:table-cell" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Aberto</SortableTh>
+                <SortableTh field="data_vencimento_proxima" align="left" className="hidden lg:table-cell" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Próx. Venc.</SortableTh>
+                <SortableTh field="status" align="center" sortField={sortField} sortDir={sortDir} onSort={toggleSort}>Status</SortableTh>
                 <th className="text-center px-4 py-3 font-semibold text-muted-foreground">DANFE</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
-              ) : filtered.length === 0 ? (
+              ) : sorted.length === 0 ? (
                 <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Nenhuma nota encontrada</td></tr>
               ) : (
-                filtered.map(n => (
+                sorted.map(n => (
                   <tr key={n.id} className={`border-b hover:bg-muted/30 transition-colors cursor-pointer ${n.is_espelho_ci ? 'bg-blue-50/40 opacity-75' : ''}`} onClick={() => setDetalhes(n)}>
                     <td className="px-4 py-3 font-medium">
                       {n.numero} <span className="text-xs text-muted-foreground">({n.tipo})</span>
