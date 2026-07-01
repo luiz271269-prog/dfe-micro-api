@@ -334,7 +334,9 @@ export default function Cartoes() {
         {cartoesAgrupados.map(c => {
           const isExpanded = expandedCard === c.id;
           const cardFaturas = getCardFaturas(c.ids);
-          const latestFat = cardFaturas[0];
+          // Card mostra sempre a última fatura real do cartão (todos os meses),
+          // igual ao Calendário de Vencimentos — não fica "Sem fatura" fora do mês.
+          const latestFat = cardFaturas[0] || getUltimaFaturaGeral(c.ids);
           const bStyle = BANDEIRAS[c.bandeira] || BANDEIRAS.default;
           const url = latestFat ? getFaturaFileUrl(latestFat) : null;
           const isImg = url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
@@ -385,7 +387,7 @@ export default function Cartoes() {
                     <span className="text-[10px] text-muted-foreground tabular-nums">Venc. {formatDate(latestFat.data_vencimento)}</span>
                     <StatusBadge status={latestFat.status} />
                   </div>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">{cardFaturas.length} fatura(s)</p>
+                  <p className="text-[9px] text-muted-foreground mt-0.5">{latestFat.mes_referencia} · {cardFaturas.length || faturas.filter(f => c.ids.includes(f.conta_cartao_id)).length} fatura(s)</p>
                 </div>
               ) : (
                 <p className="text-[10px] text-muted-foreground pt-1.5 mt-1.5 border-t border-dashed italic">Sem fatura · vence dia {c.dia_vencimento}</p>
