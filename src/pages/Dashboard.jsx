@@ -329,7 +329,7 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground">NeuralTec Distribuição e Tecnologia Ltda</p>
         </div>
         {/* Month picker */}
-        <div className="flex items-center gap-1.5 flex-wrap px-48">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button onClick={() => {setIsAnnual(false);if (monthIdx > 0) setSelectedMonth(ALL_MONTHS[monthIdx - 1]);}}
           disabled={monthIdx === 0 || isAnnual}
           className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors bg-[hsl(var(--primary))] text-[hsl(var(--foreground))]">
