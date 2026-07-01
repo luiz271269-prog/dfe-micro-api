@@ -329,7 +329,7 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground">NeuralTec Distribuição e Tecnologia Ltda</p>
         </div>
         {/* Month picker */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap px-6">
           <button onClick={() => {setIsAnnual(false);if (monthIdx > 0) setSelectedMonth(ALL_MONTHS[monthIdx - 1]);}}
           disabled={monthIdx === 0 || isAnnual}
           className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
@@ -337,7 +337,7 @@ export default function Dashboard() {
           </button>
           {ALL_MONTHS.slice(-5).map((m) =>
           <button key={m} onClick={() => {setSelectedMonth(m);setIsAnnual(false);}}
-          className={`rounded-lg font-bold transition-all text-sm px-4 ${!isAnnual && selectedMonth === m ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!isAnnual && selectedMonth === m ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
               {fmtMes(m)}
             </button>
           )}
