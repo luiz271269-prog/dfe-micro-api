@@ -189,23 +189,41 @@ export default function Dashboard() {
     async function load() {
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+      // Carrega uma entidade com retry/backoff em caso de rate limit (429).
+      // Nunca lança: se falhar após as tentativas, devolve [] para não derrubar o painel.
+      const listSafe = async (entity, tentativas = 4) => {
+        for (let i = 0; i < tentativas; i++) {
+          try {
+            return await base44.entities[entity].list();
+          } catch (e) {
+            const isRateLimit = e?.status === 429 || (e?.message || '').toLowerCase().includes('rate limit');
+            if (isRateLimit && i < tentativas - 1) {
+              await sleep(1200 * (i + 1));
+              continue;
+            }
+            return [];
+          }
+        }
+        return [];
+      };
+
       // Carregar em lotes para não exceder rate limit
       const [lancRaw, nfsRaw, titRaw] = await Promise.all([
-        base44.entities.LancamentoBancario.list(),
-        base44.entities.NotaFiscal.list(),
-        base44.entities.TituloCobranca.list(),
+        listSafe('LancamentoBancario'),
+        listSafe('NotaFiscal'),
+        listSafe('TituloCobranca'),
       ]);
-      await sleep(300);
+      await sleep(400);
       const [compRaw, obrasRaw, tribRaw] = await Promise.all([
-        base44.entities.ItemCompra.list(),
-        base44.entities.ObraReforma.list(),
-        base44.entities.Tributo.list(),
+        listSafe('ItemCompra'),
+        listSafe('ObraReforma'),
+        listSafe('Tributo'),
       ]);
-      await sleep(300);
+      await sleep(400);
       const [funcRaw, folhasRaw, faturasRaw] = await Promise.all([
-        base44.entities.Funcionario.list(),
-        base44.entities.FolhaPagamento.list(),
-        base44.entities.FaturaCartao.list(),
+        listSafe('Funcionario'),
+        listSafe('FolhaPagamento'),
+        listSafe('FaturaCartao'),
       ]);
       const lancArr = Array.isArray(lancRaw) ? lancRaw : [];
       // Calcular saldo real: último lançamento NeuralTec com saldo_apos
