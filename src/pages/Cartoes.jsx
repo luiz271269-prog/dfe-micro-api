@@ -15,6 +15,7 @@ import ConciliarFaturasButton from '../components/cartoes/ConciliarFaturasButton
 import DeduplicarCartoesButton from '../components/cartoes/DeduplicarCartoesButton';
 import ReparoCartoesButton from '../components/cartoes/ReparoCartoesButton';
 import FaturaImageViewer from '../components/cartoes/FaturaImageViewer';
+import CartaoCalendarioCard from '../components/cartoes/CartaoCalendarioCard';
 import LancamentosEditableTable from '../components/cartoes/LancamentosEditableTable';
 import { FileImage } from 'lucide-react';
 import { formatCurrency, formatDate } from '../lib/formatters';
@@ -280,37 +281,37 @@ export default function Cartoes() {
         <GradientCard title="Cartões Ativos" value={cartoes.filter(c=>c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
       </div>
 
-      {/* Timeline de vencimentos */}
+      {/* Calendário de Vencimentos — cada tópico com o círculo do dia no topo e o card do cartão logo abaixo */}
       <div className="bg-card rounded-xl border p-5 mb-6">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
           <Calendar className="w-4 h-4" /> Calendário de Vencimentos
         </p>
-        <div className="flex items-start gap-4 overflow-x-auto pb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 items-start">
           {cartoesAgrupados.map(c => {
-            const latestFat = getUltimaFaturaGeral(c.ids);
-            const statusColors = {
-              aberta: 'bg-amber-100 border-amber-300 text-amber-800',
-              paga_total: 'bg-green-100 border-green-300 text-green-800',
-              vencida: 'bg-red-100 border-red-300 text-red-800',
-            };
-            const cls = latestFat ? (statusColors[latestFat.status] || 'bg-blue-100 border-blue-300 text-blue-800') : 'bg-slate-100 border-slate-200 text-slate-600';
+            const cardFaturas = getCardFaturas(c.ids);
+            const latestFat = cardFaturas[0] || getUltimaFaturaGeral(c.ids);
+            const url = latestFat ? getFaturaFileUrl(latestFat) : null;
+            const faturasCount = cardFaturas.length || faturas.filter(f => c.ids.includes(f.conta_cartao_id)).length;
             return (
-              <div key={c.id} className="flex flex-col items-center gap-1 min-w-[80px]">
-                <button
-                  onClick={() => setExpandedCard(expandedCard === c.id ? null : c.id)}
-                  className={`w-14 h-14 rounded-full border-2 flex flex-col items-center justify-center transition-all hover:scale-105 ${cls}`}
-                >
-                  <span className="text-lg font-bold leading-none">{c.dia_vencimento}</span>
-                  <span className="text-[9px] font-medium">dia</span>
-                </button>
-                <p className="text-[10px] text-center text-muted-foreground leading-tight max-w-[80px] truncate">{c.nome.split('—')[0].trim()}</p>
-                {latestFat ? (
-                  <p className="text-[10px] font-bold text-center">{formatCurrency(latestFat.valor_total)}</p>
-                ) : (
-                  <p className="text-[10px] text-center text-muted-foreground italic">sem fatura</p>
-                )}
-                {latestFat && <p className="text-[9px] text-center text-muted-foreground">{latestFat.mes_referencia}</p>}
-              </div>
+              <CartaoCalendarioCard
+                key={c.id}
+                cartao={c}
+                latestFat={latestFat}
+                fileUrl={url}
+                faturasCount={faturasCount}
+                isExpanded={expandedCard === c.id}
+                onToggle={() => {
+                  if (expandedCard === c.id) {
+                    setExpandedCard(null);
+                    setExpandedFatura(null);
+                  } else {
+                    setExpandedCard(c.id);
+                    const firstFat = getCardFaturas(c.ids)[0];
+                    if (firstFat) setExpandedFatura(firstFat.id);
+                  }
+                }}
+                onViewFile={setViewerFile}
+              />
             );
           })}
         </div>
@@ -328,74 +329,6 @@ export default function Cartoes() {
           totalFaturas={totalMes}
         />
       )}
-
-      {/* Cards list — grid compacto */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
-        {cartoesAgrupados.map(c => {
-          const isExpanded = expandedCard === c.id;
-          const cardFaturas = getCardFaturas(c.ids);
-          // Card mostra sempre a última fatura real do cartão (todos os meses),
-          // igual ao Calendário de Vencimentos — não fica "Sem fatura" fora do mês.
-          const latestFat = cardFaturas[0] || getUltimaFaturaGeral(c.ids);
-          const bStyle = BANDEIRAS[c.bandeira] || BANDEIRAS.default;
-          const url = latestFat ? getFaturaFileUrl(latestFat) : null;
-          const isImg = url && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(url);
-
-          return (
-            <button
-              key={c.id}
-              onClick={() => {
-                if (isExpanded) {
-                  setExpandedCard(null);
-                  setExpandedFatura(null);
-                } else {
-                  setExpandedCard(c.id);
-                  const firstFat = getCardFaturas(c.ids)[0];
-                  if (firstFat) setExpandedFatura(firstFat.id);
-                }
-              }}
-              className={`group relative bg-gradient-to-br from-card to-muted/20 rounded-xl border p-2.5 hover:shadow-md hover:border-primary/40 transition-all text-left overflow-hidden ${isExpanded ? 'ring-2 ring-primary border-primary shadow-md' : ''}`}
-            >
-              <div className={`absolute top-0 left-0 right-0 h-1 ${bStyle.bar}`} />
-              <div className="flex items-center gap-1.5 mb-1.5 mt-0.5">
-                <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 shadow-sm ${bStyle.icon}`}>
-                  <CreditCard className="w-3.5 h-3.5" />
-                </div>
-                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${bStyle.badge}`}>
-                  {c.bandeira || '—'}
-                </span>
-                <span className={`text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded ml-auto ${c.tipo === 'empresarial' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                  {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
-                </span>
-                {url && (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); setViewerFile({ url, titulo: `${c.nome} — ${latestFat.mes_referencia}` }); }}
-                    className="w-5 h-5 rounded border border-blue-200 bg-blue-50 overflow-hidden flex items-center justify-center hover:border-blue-400"
-                    title="Ver fatura original"
-                  >
-                    {isImg ? <img src={url} alt="" className="w-full h-full object-cover" /> : <FileImage className="w-2.5 h-2.5 text-blue-600" />}
-                  </span>
-                )}
-              </div>
-              <p className={`text-[11px] font-bold leading-tight truncate ${bStyle.nameText}`} title={c.nome}>{c.nome}</p>
-              {latestFat ? (
-                <div className="pt-1.5 mt-1.5 border-t border-dashed">
-                  <p className="text-sm font-extrabold tracking-tight tabular-nums truncate text-foreground">{formatCurrency(latestFat.valor_total)}</p>
-                  <div className="flex items-center justify-between gap-1 mt-0.5">
-                    <span className="text-[10px] text-muted-foreground tabular-nums">Venc. {formatDate(latestFat.data_vencimento)}</span>
-                    <StatusBadge status={latestFat.status} />
-                  </div>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">{latestFat.mes_referencia} · {cardFaturas.length || faturas.filter(f => c.ids.includes(f.conta_cartao_id)).length} fatura(s)</p>
-                </div>
-              ) : (
-                <p className="text-[10px] text-muted-foreground pt-1.5 mt-1.5 border-t border-dashed italic">Sem fatura · vence dia {c.dia_vencimento}</p>
-              )}
-            </button>
-          );
-        })}
-      </div>
 
       {/* Painel expandido — largura total na quebra abaixo */}
       {expandedCard && (() => {
