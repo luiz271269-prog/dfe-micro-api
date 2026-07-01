@@ -4,12 +4,6 @@ import { AlertCircle, HelpCircle, X } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import LancamentosEditableTable from './LancamentosEditableTable';
 
-function isPagamentoFatura(l) {
-  if ((l.valor || 0) < 0) return true;
-  const desc = `${l.estabelecimento || ''} ${l.observacao || ''}`.toLowerCase();
-  return /pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento/.test(desc);
-}
-
 function formatMesLabel(m) {
   if (!m) return '';
   const [y, mo] = m.split('-');
@@ -72,22 +66,23 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
     return 'nao_classificado';
   }
 
-  // Exclui pagamentos da fatura anterior — não são despesas reais
-  const lancsValidos = lancamentos.filter(l => !isPagamentoFatura(l));
-  const lancComClasse = lancsValidos.map(l => ({
+  // A base deve refletir o banco: classifica TODOS os lançamentos do mês
+  // (o valor_total das faturas os inclui). Não removemos nada aqui, senão
+  // o total da conciliação nunca bate com o Total Faturas.
+  const lancComClasse = lancamentos.map(l => ({
     ...l,
     _classe: classificarLanc(l),
     _cartaoInfo: cartaoPorFatura[l.fatura_id] || null,
   }));
 
+  // Soma COM sinal — igual ao banco. O valor_total da fatura já é o líquido
+  // (despesas menos pagamentos/estornos), então mantemos o sinal para bater.
   const classificacao = lancComClasse.reduce((acc, l) => {
-    acc[l._classe] = (acc[l._classe] || 0) + Math.abs(l.valor || 0);
+    acc[l._classe] = (acc[l._classe] || 0) + (l.valor || 0);
     return acc;
   }, {});
 
   const totalClassificado = Object.values(classificacao).reduce((s, v) => s + v, 0);
-  // Denominador = soma real dos lançamentos classificados (garante 100% sempre).
-  // totalFaturas é apenas referência: se divergir, o banner abaixo aponta.
   const total = totalClassificado;
   const divergenciaFaturas = totalFaturas != null && Math.abs(totalFaturas - totalClassificado) > 1
     ? totalClassificado - totalFaturas
