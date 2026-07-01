@@ -13,13 +13,24 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import { consolidarContasPagar } from '../lib/contasPagarEngine';
 
 const CATEGORIAS = ['recebimento_vendas', 'recebimento_cobranca', 'pagamento_fornecedor', 'pagamento_tributo', 'folha_pagamento', 'aluguel', 'despesa_fixa', 'despesa_variavel', 'investimento', 'emprestimo', 'outro'];
+
+const ORIGEM_LABEL = {
+  titulo_cobranca: 'Sicredi',
+  despesa: 'Despesa',
+  tributo: 'Tributo',
+  folha: 'Folha',
+  fatura: 'Cartão',
+  compra: 'Compra',
+};
 
 export default function FluxoCaixa() {
   const [fluxos, setFluxos] = useState([]);
   const [titulos, setTitulos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
+  const [contasPagar, setContasPagar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -33,14 +44,22 @@ export default function FluxoCaixa() {
   });
 
   async function loadData() {
-    const [fx, tit, lanc] = await Promise.all([
+    const [fx, tit, lanc, despesas, tributos, folhas, faturas, cartoes, compras] = await Promise.all([
       base44.entities.FluxoCaixa.list('-data_prevista', 500),
       base44.entities.TituloCobranca.list('-data_vencimento', 1000),
       base44.entities.LancamentoBancario.list('-data', 1000),
+      base44.entities.DespesaOperacional.list('-data', 1000),
+      base44.entities.Tributo.list('-data_vencimento', 1000),
+      base44.entities.FolhaPagamento.list('-competencia', 1000),
+      base44.entities.FaturaCartao.list('-data_vencimento', 1000),
+      base44.entities.ContaCartao.list('', 200),
+      base44.entities.ItemCompra.list('-data_emissao', 2000),
     ]);
     setFluxos(fx);
     setTitulos(tit);
     setLancamentos(lanc);
+    // Mesma visão consolidada da página "Contas a Pagar"
+    setContasPagar(consolidarContasPagar({ despesas, tributos, folhas, faturas, cartoes, compras }));
     setLoading(false);
   }
 
@@ -56,8 +75,8 @@ export default function FluxoCaixa() {
     return neural.length > 0 ? neural[0].saldo_apos : 0;
   }, [lancamentos]);
 
-  // Projeção automática: cobranças Sicredi a receber (entradas) + boletos DDA a pagar (saídas).
-  // Vira uma lista "virtual" de FluxoCaixa, combinada com as movimentações manuais.
+  // Projeção automática: cobranças Sicredi a receber (entradas) + contas a pagar consolidadas (saídas).
+  // As saídas usam a MESMA visão da página "Contas a Pagar" (despesas, tributos, folha, faturas, compras).
   const projecaoAuto = useMemo(() => {
     const itens = [];
     // ENTRADAS — títulos Sicredi em aberto / vencidos, pela data de vencimento
@@ -76,27 +95,24 @@ export default function FluxoCaixa() {
         origem_tipo: 'titulo_cobranca',
       });
     });
-    // SAÍDAS — boletos a pagar (DDA): lançamentos negativos, ainda futuros, de pagamento
+    // SAÍDAS — contas a pagar consolidadas (visão idêntica à página Contas a Pagar)
     const hojeISO = new Date().toISOString().slice(0, 10);
-    const catsSaida = ['fornecedor', 'tributo', 'financeiro', 'despesa_operacional'];
-    lancamentos.forEach(l => {
-      if ((l.valor || 0) >= 0) return; // só saídas
-      if (!l.data || l.data < hojeISO) return; // só a vencer
-      if (!catsSaida.includes(l.categoria)) return;
+    contasPagar.forEach(c => {
+      if ((c.valor || 0) <= 0) return;
       itens.push({
-        id: `dda-${l.id}`,
+        id: `cp-${c.id}`,
         _auto: true,
-        data_prevista: l.data,
+        data_prevista: c.data_vencimento,
         tipo: 'saida',
         categoria: 'pagamento_fornecedor',
-        descricao: `DDA/Boleto — ${l.descricao}`,
-        valor_previsto: Math.abs(l.valor || 0),
-        status: 'previsto',
-        origem_tipo: 'dda',
+        descricao: `${c.descricao}${c.fornecedor && c.fornecedor !== '—' ? ` · ${c.fornecedor}` : ''}`,
+        valor_previsto: c.valor,
+        status: c.data_vencimento && c.data_vencimento < hojeISO ? 'vencido' : 'previsto',
+        origem_tipo: c.origem_tipo,
       });
     });
     return itens;
-  }, [titulos, lancamentos]);
+  }, [titulos, contasPagar]);
 
   // Movimentações combinadas: manuais (FluxoCaixa) + projeção automática
   const fluxosCombinados = useMemo(() => [...fluxos, ...projecaoAuto], [fluxos, projecaoAuto]);
@@ -280,7 +296,7 @@ export default function FluxoCaixa() {
                         <StatusBadge status={f.status} />
                         {f._auto && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-                            {f.origem_tipo === 'titulo_cobranca' ? 'Sicredi' : 'DDA'}
+                            {ORIGEM_LABEL[f.origem_tipo] || 'Auto'}
                           </span>
                         )}
                       </div>
