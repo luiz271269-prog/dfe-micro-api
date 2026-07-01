@@ -258,7 +258,7 @@ export default function Cartoes() {
   const totalPagoMes = filteredFaturas.filter(f=>f.status==='paga_total').reduce((s,f)=>s+(f.valor_pago||0),0);
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Cartões de Crédito" subtitle={`${cartoesAgrupados.length} cartões cadastrados`}>
         <MonthNavigator
           selectedMonth={selectedMonth}
