@@ -919,17 +919,42 @@ export default function ImportarDocumento() {
         </div>
       }
 
-      {/* Steps */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
-        {['Selecionar tipo', 'Fazer upload', 'Revisar dados', 'Concluído'].map((s, i) =>
-        <div key={i} className="flex items-center gap-2 shrink-0">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all ${step > i + 1 ? 'bg-gradient-to-br from-violet-600 to-indigo-600' : step === i + 1 ? 'bg-gradient-to-br from-fuchsia-600 to-indigo-600 ring-4 ring-violet-200 shadow-md' : 'bg-slate-400'}`}>
-              {step > i + 1 ? '✓' : i + 1}
+      {/* Steps + Upload compacto ao lado */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 flex-1">
+          {['Selecionar tipo', 'Fazer upload', 'Revisar dados', 'Concluído'].map((s, i) =>
+          <div key={i} className="flex items-center gap-2 shrink-0">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all ${step > i + 1 ? 'bg-gradient-to-br from-violet-600 to-indigo-600' : step === i + 1 ? 'bg-gradient-to-br from-fuchsia-600 to-indigo-600 ring-4 ring-violet-200 shadow-md' : 'bg-slate-400'}`}>
+                {step > i + 1 ? '✓' : i + 1}
+              </div>
+              <span className={`text-xs font-medium ${step === i + 1 ? 'text-foreground' : step > i + 1 ? 'text-violet-700' : 'text-muted-foreground'}`}>{s}</span>
+              {i < 3 && <div className={`w-8 h-px ${step > i + 1 ? 'bg-gradient-to-r from-violet-500 to-indigo-500' : 'bg-border'}`} />}
             </div>
-            <span className={`text-xs font-medium ${step === i + 1 ? 'text-foreground' : step > i + 1 ? 'text-violet-700' : 'text-muted-foreground'}`}>{s}</span>
-            {i < 3 && <div className={`w-8 h-px ${step > i + 1 ? 'bg-gradient-to-r from-violet-500 to-indigo-500' : 'bg-border'}`} />}
+          )}
+        </div>
+
+        {step !== 4 &&
+        <div
+          onDragOver={(e) => {e.preventDefault();setDragging(true);}}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl text-center cursor-pointer transition-all py-2 px-3 flex items-center gap-2 shrink-0 w-full lg:w-[260px] ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}>
+            <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv,.ofx,.qfx,.txt" className="hidden"
+          onChange={(e) => handleFileSelect(e.target.files[0])} />
+            {file ?
+          <>
+              <FileText className="w-5 h-5 text-primary shrink-0" />
+              <span className="text-xs font-semibold truncate flex-1 text-left">{file.name}</span>
+              <button onClick={(e) => {e.stopPropagation();setFile(null);}} className="text-red-500 shrink-0"><X className="w-4 h-4" /></button>
+            </> :
+          <>
+              <Upload className="w-5 h-5 text-muted-foreground shrink-0" />
+              <span className="text-[11px] font-semibold text-foreground text-left leading-tight">Arraste o arquivo aqui<span className="block text-[10px] text-muted-foreground font-normal">PDF, PNG, JPG, XLSX, CSV, OFX</span></span>
+            </>
+          }
           </div>
-        )}
+        }
       </div>
 
       {step === 4 ?
@@ -1042,34 +1067,6 @@ export default function ImportarDocumento() {
                 </div>
               </div>
           }
-
-            {/* Drop zone — abaixo do calendário */}
-            <div
-            onDragOver={(e) => {e.preventDefault();setDragging(true);}}
-            onDragLeave={() => setDragging(false)}
-            onDrop={onDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl text-center cursor-pointer transition-all px-1 ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}>
-            
-              <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv,.ofx,.qfx,.txt" className="hidden"
-            onChange={(e) => handleFileSelect(e.target.files[0])} />
-              {file ?
-            <div>
-                  <FileText className="w-10 h-10 text-primary mx-auto mb-2" />
-                  <p className="font-semibold text-sm">{file.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{(file.size / 1024).toFixed(1)} KB</p>
-                  <button onClick={(e) => {e.stopPropagation();setFile(null);}}
-              className="mt-2 text-xs text-red-500 hover:underline">Remover</button>
-                </div> :
-
-            <>
-                  <Upload className="w-7 h-7 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-xs font-semibold text-foreground">Arraste o arquivo aqui</p>
-                  <p className="text-[11px] text-muted-foreground">PDF, PNG, JPG, XLSX, CSV, OFX</p>
-                  <Button variant="outline" size="sm" className="mt-2 pointer-events-none text-xs h-7">Selecionar arquivo</Button>
-                </>
-            }
-            </div>
 
             {file && selectedType &&
           <Button onClick={processWithAI} disabled={processing} className="w-full mt-4 gap-2 h-11">
