@@ -123,7 +123,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
       }
 
       {/* Grid de cards lado a lado */}
-      <div className="p-4 grid grid-cols-3 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4">
         {items.map((item) => {
           const value = classificacao[item.key] || 0;
           const pct = total > 0 ? (value / total * 100).toFixed(1) : '0.0';
