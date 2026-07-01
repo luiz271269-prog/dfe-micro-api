@@ -24,10 +24,34 @@ const PADROES_FOLHA = [
   /comiss[ãa]o\s+func/i,
 ];
 
-function classificar(descricao) {
+// Normaliza texto para comparação: minúsculo, sem acento, espaços simples
+function normalizar(txt) {
+  return (txt || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Verifica se a descrição contém o nome de um funcionário cadastrado.
+// Considera match quando pelo menos os 2 primeiros nomes do funcionário
+// aparecem na descrição (evita falso positivo por nome único muito comum).
+function contemFuncionario(descricaoNorm, nomesFuncionarios) {
+  for (const partes of nomesFuncionarios) {
+    if (partes.length < 2) continue;
+    const doisPrimeiros = partes.slice(0, 2).join(' ');
+    if (descricaoNorm.includes(doisPrimeiros)) return true;
+  }
+  return false;
+}
+
+function classificar(descricao, nomesFuncionarios) {
   if (!descricao) return null;
   if (PADROES_PRO_LABORE.some(rx => rx.test(descricao))) return 'pro_labore';
   if (PADROES_FOLHA.some(rx => rx.test(descricao))) return 'pessoal';
+  // Fallback: pagamento cujo texto bate com o nome de um funcionário = folha
+  const descNorm = normalizar(descricao);
+  if (contemFuncionario(descNorm, nomesFuncionarios)) return 'pessoal';
   return null;
 }
 
@@ -40,10 +64,16 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
 
+    // Nomes dos funcionários cadastrados, normalizados em partes (para casar com o extrato)
+    const funcionarios = await base44.entities.Funcionario.list('', 1000);
+    const nomesFuncionarios = funcionarios
+      .map(f => normalizar(f.nome).split(' ').filter(Boolean))
+      .filter(partes => partes.length >= 2);
+
     const todos = await base44.entities.LancamentoBancario.list('-data', 5000);
     const candidatos = todos
       .filter(l => (l.valor || 0) < 0)
-      .map(l => ({ l, sugerida: classificar(l.descricao) }))
+      .map(l => ({ l, sugerida: classificar(l.descricao, nomesFuncionarios) }))
       .filter(x => x.sugerida && x.sugerida !== x.l.categoria);
 
     const detalhes = candidatos.map(({ l, sugerida }) => ({
