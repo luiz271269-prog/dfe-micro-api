@@ -52,10 +52,14 @@ Retorne APENAS objeto JSON:
 {"data":"YYYY-MM-DD","responsavel":"NOME DO DESTINATÁRIO","valor":numero,"descricao":"descrição do serviço se disponível","fornecedor_cnpj_cpf":"CPF ou CNPJ","tipo_profissional":"serralheiro ou pedreiro ou pintor ou vidros ou eletricista ou hidraulico ou material ou outros","local_obra":"loja ou pavilhao ou terraco ou outro","forma_pagamento":"PIX ou boleto","tipo":"mao_obra ou material"}
 Regras: Se CPF → mao_obra; Se CNPJ → material`,
 
-  folha_pagamento: `Analise esta folha de pagamento e extraia os dados de TODOS os funcionários em JSON.
-Retorne APENAS array JSON:
-[{"funcionario_nome":"NOME","competencia":"YYYY-MM","salario_bruto":numero,"horas_extras":numero,"comissao":numero,"outros_descontos":numero,"salario_liquido":numero,"valor_pago":numero,"saldo_a_pagar":numero,"status":"pago ou pendente","empresa":"NeuralTec","setor":"administrativo ou vendas ou assistencia","faturado":numero}]
-Regras: competencia: inferir do título ex "FOLHA FEVEREIRO 2026" → "2026-02"`,
+  folha_pagamento: `Analise esta planilha de folha de pagamento e extraia os dados de TODOS os funcionários em JSON, capturando TODAS as colunas da planilha NA MESMA ORDEM.
+Retorne APENAS array JSON, um objeto por funcionário, com EXATAMENTE estas chaves nesta ordem:
+[{"funcionario_nome":"NOME","setor":"administracao ou vendas ou assistencia","admissao":"texto da coluna Admissão como está","folha":numero,"por_fora":numero,"salarios_total":numero,"vantagem":numero,"extras":numero,"premio":numero,"comissao":numero,"salario_total":numero,"dias_trabalhados":numero,"desconto_folha":numero,"compras":numero,"vales":numero,"salario_liquido":numero,"valor_pago":numero,"saldo_a_receber":numero,"competencia":"YYYY-MM","status":"pago ou pendente","empresa":"NeuralTec"}]
+Regras:
+- Mapeie: "Folha"→folha, "Por Fora"→por_fora, "Salários Total"→salarios_total, "Vantagem"→vantagem, "Extras"→extras, "Premio"→premio, "Comissão"→comissao, "Salário Total"→salario_total, "Dias Trab."→dias_trabalhados, "Desc. Folha"→desconto_folha, "Compras"→compras, "Vales"→vales, "LÍQUIDO"→salario_liquido, "Pago"→valor_pago, "Saldo a receber"→saldo_a_receber.
+- salario_bruto = salario_total (ou salarios_total se vazio). Valores SEM R$, ponto decimal. Vazio ou "-" = 0.
+- setor: inferir do agrupamento (ADMINISTRAÇÃO, VENDAS, ASSISTÊNCIA). status: "pago" se coluna Pago tiver valor.
+- competencia: inferir do título ex "FOLHA MÊS maio 2026" → "2026-05". NÃO inclua linhas de subtotal/total geral.`,
 
   dda_boletos: `Analise este DDA/boletos a vencer e extraia em JSON.
 Retorne APENAS array JSON:

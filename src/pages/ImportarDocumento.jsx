@@ -257,9 +257,17 @@ REGRAS CRÍTICAS — LEIA TODAS:
 Retorne APENAS objeto JSON:
 {"data":"YYYY-MM-DD","responsavel":"NOME","valor":numero,"descricao":"descrição","fornecedor_cnpj_cpf":"CPF ou CNPJ","tipo_profissional":"serralheiro ou pedreiro ou pintor ou vidros ou eletricista ou hidraulico ou material ou outros","local_obra":"loja ou pavilhao ou terraco ou outro","forma_pagamento":"PIX ou boleto","tipo":"mao_obra ou material"}`,
 
-  folha_pagamento: `Analise esta folha de pagamento e extraia os dados de TODOS os funcionários em JSON.
-Retorne APENAS array JSON:
-[{"funcionario_nome":"NOME","competencia":"YYYY-MM","salario_bruto":numero,"horas_extras":numero,"comissao":numero,"outros_descontos":numero,"salario_liquido":numero,"status":"pago ou pendente","empresa":"NeuralTec"}]`,
+  folha_pagamento: `Analise esta planilha de folha de pagamento e extraia os dados de TODOS os funcionários em JSON, capturando TODAS as colunas da planilha NA MESMA ORDEM em que aparecem.
+Retorne APENAS array JSON, um objeto por funcionário, com EXATAMENTE estas chaves nesta ordem:
+[{"funcionario_nome":"NOME","setor":"administracao ou vendas ou assistencia","admissao":"texto da coluna Admissão como está (ex: 19-nov ou 02.03.2020)","folha":numero,"por_fora":numero,"salarios_total":numero,"vantagem":numero,"extras":numero,"premio":numero,"comissao":numero,"salario_total":numero,"dias_trabalhados":numero,"desconto_folha":numero,"compras":numero,"vales":numero,"salario_liquido":numero,"valor_pago":numero,"saldo_a_receber":numero,"competencia":"YYYY-MM","status":"pago ou pendente","empresa":"NeuralTec"}]
+Regras:
+- Mapeie: coluna "Folha"→folha, "Por Fora"→por_fora, "Salários Total"→salarios_total, "Vantagem"→vantagem, "Extras"→extras, "Premio"→premio, "Comissão"→comissao, "Salário Total"→salario_total, "Dias Trab."→dias_trabalhados, "Desc. Folha"→desconto_folha, "Compras"→compras, "Vales"→vales, "LÍQUIDO"→salario_liquido, "Pago"→valor_pago, "Saldo a receber"→saldo_a_receber.
+- salario_bruto = salario_total (ou salarios_total se salario_total vazio).
+- Valores numéricos SEM símbolo R$, use ponto decimal. Célula vazia ou "-" = 0.
+- setor: inferir do agrupamento da planilha (ADMINISTRAÇÃO, VENDAS, ASSISTÊNCIA).
+- status: "pago" se a coluna Pago tiver valor; senão "pendente".
+- competencia: inferir do título ex "FOLHA MÊS maio 2026" → "2026-05".
+- NÃO inclua as linhas de subtotal/total geral, apenas funcionários individuais.`,
 
   dda_boletos: `Analise este DDA/boletos a vencer e extraia em JSON.
 Retorne APENAS array JSON:
@@ -859,9 +867,34 @@ export default function ImportarDocumento() {
 
   const selectedCount = records.filter(r => r.selected).length;
   const dupeCount = records.filter(r => r.status === 'duplicata').length;
-  const recordKeys = records.length > 0
-    ? [...new Set(records.flatMap(r => Object.keys(r.data)))].filter(k => k !== '__type').slice(0, 9)
+
+  // Ordem oficial das colunas da folha de pagamento (segue a planilha original)
+  const FOLHA_COL_ORDER = [
+    'funcionario_nome', 'setor', 'admissao', 'folha', 'por_fora', 'salarios_total',
+    'vantagem', 'extras', 'premio', 'comissao', 'salario_total', 'dias_trabalhados',
+    'desconto_folha', 'compras', 'vales', 'salario_liquido', 'valor_pago',
+    'saldo_a_receber', 'competencia', 'status', 'empresa',
+  ];
+
+  const allKeys = records.length > 0
+    ? [...new Set(records.flatMap(r => Object.keys(r.data)))].filter(k => k !== '__type')
     : [];
+
+  const isFolha = selectedType === 'folha_pagamento';
+  const recordKeys = records.length === 0 ? []
+    : isFolha
+      // Folha: mantém a ordem da planilha e mostra TODAS as colunas presentes
+      ? [...FOLHA_COL_ORDER.filter(k => allKeys.includes(k)), ...allKeys.filter(k => !FOLHA_COL_ORDER.includes(k))]
+      : allKeys.slice(0, 9);
+
+  // Totais brutos e líquidos (folha) — somente registros selecionados
+  const folhaTotais = isFolha ? records.reduce((acc, r) => {
+    if (!r.selected) return acc;
+    acc.bruto += Number(r.data.salario_total ?? r.data.salarios_total ?? r.data.salario_bruto ?? 0) || 0;
+    acc.liquido += Number(r.data.salario_liquido ?? 0) || 0;
+    acc.pago += Number(r.data.valor_pago ?? 0) || 0;
+    return acc;
+  }, { bruto: 0, liquido: 0, pago: 0 }) : null;
 
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
@@ -1256,6 +1289,25 @@ export default function ImportarDocumento() {
                       </tr>
                     ))}
                   </tbody>
+                  {isFolha && folhaTotais && (
+                    <tfoot>
+                      <tr className="border-t-2 bg-muted/40 font-bold">
+                        <td className="px-3 py-2" />
+                        <td className="px-2 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">Totais</td>
+                        {recordKeys.map(k => {
+                          let content = null;
+                          if (k === 'salario_total' || k === 'salarios_total' || k === 'salario_bruto') {
+                            content = <span className="tabular-nums text-blue-700">{formatCurrency(folhaTotais.bruto)}</span>;
+                          } else if (k === 'salario_liquido') {
+                            content = <span className="tabular-nums text-emerald-700">{formatCurrency(folhaTotais.liquido)}</span>;
+                          } else if (k === 'valor_pago') {
+                            content = <span className="tabular-nums text-purple-700">{formatCurrency(folhaTotais.pago)}</span>;
+                          }
+                          return <td key={k} className="px-2 py-2">{content}</td>;
+                        })}
+                      </tr>
+                    </tfoot>
+                  )}
                 </table>
               </div>
             </div>
