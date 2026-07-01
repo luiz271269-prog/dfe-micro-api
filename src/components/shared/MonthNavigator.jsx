@@ -59,8 +59,8 @@ export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual,
       {onToggleAnnual &&
       <button
         onClick={onToggleAnnual}
-        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ml-1 ${
-        isAnnual ? 'bg-primary text-primary-foreground shadow' : 'border hover:bg-muted text-muted-foreground'}`
+        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ml-1 bg-[hsl(var(--chart-4))] text-[hsl(var(--card-foreground))] ${
+        isAnnual ? 'bg-primary text-primary-foreground shadow' : "border hover:bg-muted"}`
         }>
         Anual</button>
       }
