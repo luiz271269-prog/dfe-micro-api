@@ -4,53 +4,53 @@ import { Link } from 'react-router-dom';
 import {
   Landmark, FileText, Receipt, ShoppingCart, Hammer, CreditCard,
   AlertTriangle, TrendingUp, TrendingDown, Bell, Users, BarChart3,
-  ChevronLeft, ChevronRight, Building2, Wallet, PiggyBank, DollarSign
-} from 'lucide-react';
+  ChevronLeft, ChevronRight, Building2, Wallet, PiggyBank, DollarSign } from
+'lucide-react';
 import { formatCurrency } from '../lib/formatters';
 import DASAlertBadge from '../components/dashboard/DASAlertBadge';
 import { getCurrentMonth } from '../lib/currentMonth';
 import DedupButton from '../components/shared/DedupButton';
 import SyncCalendarButton from '../components/shared/SyncCalendarButton';
 
-const ALL_MONTHS = ['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
+const ALL_MONTHS = ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
 
 function fmtMes(m) {
   const [y, mo] = m.split('-');
-  const nomes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  return `${nomes[parseInt(mo)-1]}/${y.slice(2)}`;
+  const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  return `${nomes[parseInt(mo) - 1]}/${y.slice(2)}`;
 }
 
 function fmtMesLong(m) {
   const [y, mo] = m.split('-');
-  const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  return `${nomes[parseInt(mo)-1]} ${y}`;
+  const nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  return `${nomes[parseInt(mo) - 1]} ${y}`;
 }
 
-function asArray(r) { return Array.isArray(r) ? r : []; }
+function asArray(r) {return Array.isArray(r) ? r : [];}
 
 // Metric card with gradient accent
 function MetricCard({ title, value, sub, icon: Icon, gradient, href, accent }) {
   const gradients = {
-    blue:    'from-blue-500 to-blue-600',
-    green:   'from-emerald-500 to-teal-600',
-    red:     'from-rose-500 to-red-600',
-    purple:  'from-purple-500 to-violet-600',
-    orange:  'from-orange-500 to-amber-600',
-    teal:    'from-teal-500 to-cyan-600',
-    indigo:  'from-indigo-500 to-blue-700',
-    slate:   'from-slate-500 to-slate-700',
-    amber:   'from-amber-500 to-yellow-600',
-    pink:    'from-pink-500 to-rose-600',
-    lime:    'from-lime-500 to-green-600',
-    sky:     'from-sky-500 to-blue-500',
+    blue: 'from-blue-500 to-blue-600',
+    green: 'from-emerald-500 to-teal-600',
+    red: 'from-rose-500 to-red-600',
+    purple: 'from-purple-500 to-violet-600',
+    orange: 'from-orange-500 to-amber-600',
+    teal: 'from-teal-500 to-cyan-600',
+    indigo: 'from-indigo-500 to-blue-700',
+    slate: 'from-slate-500 to-slate-700',
+    amber: 'from-amber-500 to-yellow-600',
+    pink: 'from-pink-500 to-rose-600',
+    lime: 'from-lime-500 to-green-600',
+    sky: 'from-sky-500 to-blue-500'
   };
   const grad = gradients[gradient || 'blue'];
 
-  const inner = (
-    <div className="group relative bg-white dark:bg-card rounded-2xl border border-border/60 overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
+  const inner =
+  <div className="group relative bg-white dark:bg-card rounded-2xl border border-border/60 overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 cursor-pointer">
       {/* Gradient top bar */}
       <div className={`h-1 w-full bg-gradient-to-r ${grad}`} />
-      <div className="p-4">
+      <div className="px-4">
         <div className="flex items-start justify-between mb-3">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide leading-tight">{title}</p>
           <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-sm shrink-0`}>
@@ -60,8 +60,8 @@ function MetricCard({ title, value, sub, icon: Icon, gradient, href, accent }) {
         <p className="text-xl font-bold text-foreground tracking-tight leading-none mb-1.5">{value}</p>
         {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
       </div>
-    </div>
-  );
+    </div>;
+
   if (href) return <Link to={href}>{inner}</Link>;
   return inner;
 }
@@ -69,24 +69,24 @@ function MetricCard({ title, value, sub, icon: Icon, gradient, href, accent }) {
 // Section block — colored header strip
 function Section({ icon: Icon, label, gradient, children, cols = 4 }) {
   const gradients = {
-    blue:   'from-blue-600 to-blue-700',
-    green:  'from-emerald-600 to-teal-700',
+    blue: 'from-blue-600 to-blue-700',
+    green: 'from-emerald-600 to-teal-700',
     orange: 'from-orange-500 to-amber-600',
     purple: 'from-purple-600 to-violet-700',
-    teal:   'from-teal-600 to-cyan-700',
-    red:    'from-rose-600 to-red-700',
+    teal: 'from-teal-600 to-cyan-700',
+    red: 'from-rose-600 to-red-700',
     indigo: 'from-indigo-600 to-blue-800',
-    slate:  'from-slate-600 to-slate-800',
-    amber:  'from-amber-600 to-yellow-700',
-    lime:   'from-lime-600 to-green-700',
-    sky:    'from-sky-600 to-blue-600',
+    slate: 'from-slate-600 to-slate-800',
+    amber: 'from-amber-600 to-yellow-700',
+    lime: 'from-lime-600 to-green-700',
+    sky: 'from-sky-600 to-blue-600'
   };
   const grad = gradients[gradient] || gradients.blue;
   const colsClass = {
     1: 'grid-cols-1',
     2: 'grid-cols-1 sm:grid-cols-2',
     3: 'grid-cols-1 sm:grid-cols-3',
-    4: 'grid-cols-2 lg:grid-cols-4',
+    4: 'grid-cols-2 lg:grid-cols-4'
   }[cols] || 'grid-cols-2 lg:grid-cols-4';
 
   return (
@@ -99,8 +99,8 @@ function Section({ icon: Icon, label, gradient, children, cols = 4 }) {
       <div className={`grid ${colsClass} gap-0 divide-x divide-y divide-border/40`}>
         {children}
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 // Inner metric for section (no card, uses section's bg)
@@ -112,19 +112,19 @@ function SectionMetric({ title, value, sub, icon: Icon, valueColor, href }) {
     orange: 'text-orange-600',
     purple: 'text-purple-600',
     amber: 'text-amber-600',
-    default: 'text-foreground',
+    default: 'text-foreground'
   }[valueColor || 'default'];
 
-  const inner = (
-    <div className="group p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+  const inner =
+  <div className="group p-4 hover:bg-muted/30 transition-colors cursor-pointer">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
         {Icon && <Icon className={`w-4 h-4 opacity-50 ${valCls}`} />}
       </div>
       <p className={`text-lg font-bold tracking-tight ${valCls}`}>{value}</p>
       {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
-    </div>
-  );
+    </div>;
+
   if (href) return <Link to={href}>{inner}</Link>;
   return inner;
 }
@@ -132,7 +132,7 @@ function SectionMetric({ title, value, sub, icon: Icon, valueColor, href }) {
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
-  const [rawData, setRawData] = useState({ lanc:[], nfs:[], tit:[], comp:[], obras:[], trib:[], func:[], folhas:[], faturas:[] });
+  const [rawData, setRawData] = useState({ lanc: [], nfs: [], tit: [], comp: [], obras: [], trib: [], func: [], folhas: [], faturas: [] });
   const [data, setData] = useState({
     bankBalance: 0, liesch: 41, fundos: 100000,
     recYTD: 0, pagYTD: 0,
@@ -142,7 +142,7 @@ export default function Dashboard() {
     totalCartoes: 0, proxVenc: 0, nCartoes: 0,
     totalTrib: 0, tribVencer: 0, tribVencidos: 0,
     funcAtivos: 0, folhaAtual: 0,
-    saldoProjetado: 0,
+    saldoProjetado: 0
   });
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -152,9 +152,9 @@ export default function Dashboard() {
     const pending = localStorage.getItem('neuralfinPendingRefresh');
     if (pending) {
       localStorage.removeItem('neuralfinPendingRefresh');
-      setRefreshKey(k => k + 1);
+      setRefreshKey((k) => k + 1);
     }
-    const handler = () => setRefreshKey(k => k + 1);
+    const handler = () => setRefreshKey((k) => k + 1);
     window.addEventListener('neuralfinRefresh', handler);
     // Reload when user returns to this tab/page
     const onVisible = () => {
@@ -162,7 +162,7 @@ export default function Dashboard() {
         const p = localStorage.getItem('neuralfinPendingRefresh');
         if (p) {
           localStorage.removeItem('neuralfinPendingRefresh');
-          setRefreshKey(k => k + 1);
+          setRefreshKey((k) => k + 1);
         }
       }
     };
@@ -171,15 +171,15 @@ export default function Dashboard() {
       window.removeEventListener('neuralfinRefresh', handler);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [])
+  }, []);
 
   // Correção 4: corrigir mes_referencia nulos uma única vez
   useEffect(() => {
     if (!localStorage.getItem('mesRef_corrigido_v1')) {
-      base44.entities.LancamentoBancario.filter({ mes_referencia: null }).then(semMes => {
+      base44.entities.LancamentoBancario.filter({ mes_referencia: null }).then((semMes) => {
         if (!semMes?.length) return;
-        Promise.all(semMes.filter(r => r.data).map(r =>
-          base44.entities.LancamentoBancario.update(r.id, { mes_referencia: r.data.substring(0, 7) })
+        Promise.all(semMes.filter((r) => r.data).map((r) =>
+        base44.entities.LancamentoBancario.update(r.id, { mes_referencia: r.data.substring(0, 7) })
         )).then(() => localStorage.setItem('mesRef_corrigido_v1', '1'));
       });
     }
@@ -187,7 +187,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function load() {
-      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
       // Carrega uma entidade com retry/backoff em caso de rate limit (429).
       // Nunca lança: se falhar após as tentativas, devolve [] para não derrubar o painel.
@@ -209,27 +209,27 @@ export default function Dashboard() {
 
       // Carregar em lotes para não exceder rate limit
       const [lancRaw, nfsRaw, titRaw] = await Promise.all([
-        listSafe('LancamentoBancario'),
-        listSafe('NotaFiscal'),
-        listSafe('TituloCobranca'),
-      ]);
+      listSafe('LancamentoBancario'),
+      listSafe('NotaFiscal'),
+      listSafe('TituloCobranca')]
+      );
       await sleep(400);
       const [compRaw, obrasRaw, tribRaw] = await Promise.all([
-        listSafe('ItemCompra'),
-        listSafe('ObraReforma'),
-        listSafe('Tributo'),
-      ]);
+      listSafe('ItemCompra'),
+      listSafe('ObraReforma'),
+      listSafe('Tributo')]
+      );
       await sleep(400);
       const [funcRaw, folhasRaw, faturasRaw] = await Promise.all([
-        listSafe('Funcionario'),
-        listSafe('FolhaPagamento'),
-        listSafe('FaturaCartao'),
-      ]);
+      listSafe('Funcionario'),
+      listSafe('FolhaPagamento'),
+      listSafe('FaturaCartao')]
+      );
       const lancArr = Array.isArray(lancRaw) ? lancRaw : [];
       // Calcular saldo real: último lançamento NeuralTec com saldo_apos
-      const neuralLanc = lancArr
-        .filter(l => l.conta_bancaria === 'NeuralTec 36092-2' && l.saldo_apos != null)
-        .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+      const neuralLanc = lancArr.
+      filter((l) => l.conta_bancaria === 'NeuralTec 36092-2' && l.saldo_apos != null).
+      sort((a, b) => (b.data || '').localeCompare(a.data || ''));
       const saldoReal = neuralLanc.length > 0 ? neuralLanc[0].saldo_apos : 0;
       const faturasArr = Array.isArray(faturasRaw) ? faturasRaw : [];
       setRawData({
@@ -241,10 +241,10 @@ export default function Dashboard() {
         trib: Array.isArray(tribRaw) ? tribRaw : [],
         func: Array.isArray(funcRaw) ? funcRaw : [],
         folhas: Array.isArray(folhasRaw) ? folhasRaw : [],
-        faturas: faturasArr,
+        faturas: faturasArr
       });
       if (saldoReal > 0) {
-        setData(prev => ({ ...prev, bankBalance: saldoReal, saldoProjetado: saldoReal }));
+        setData((prev) => ({ ...prev, bankBalance: saldoReal, saldoProjetado: saldoReal }));
       }
       setLoading(false);
     }
@@ -256,54 +256,54 @@ export default function Dashboard() {
     // Correção 2: filtrar lançamentos por data para pegar registros com mes_referencia null
     const inicio = selectedMonth + '-01';
     const fim = selectedMonth + '-31';
-    const lancF = isAnnual ? lanc : lanc.filter(r => {
+    const lancF = isAnnual ? lanc : lanc.filter((r) => {
       if (!r.data) return false;
       return r.data >= inicio && r.data <= fim;
     });
-    const f = (arr, field) => isAnnual ? arr : arr.filter(r => (r[field]||'').startsWith(selectedMonth));
-    const nfsF = f(nfs,'data_emissao'), titF = f(tit,'data_vencimento');
-    const compF = f(comp,'data_emissao'), obrasF = f(obras,'data');
-    setData(prev => {
+    const f = (arr, field) => isAnnual ? arr : arr.filter((r) => (r[field] || '').startsWith(selectedMonth));
+    const nfsF = f(nfs, 'data_emissao'),titF = f(tit, 'data_vencimento');
+    const compF = f(comp, 'data_emissao'),obrasF = f(obras, 'data');
+    setData((prev) => {
       const d = { ...prev };
       if (lanc.length) {
-        d.recYTD = lancF.filter(l=>l.categoria==='recebimento').reduce((s,l)=>s+(l.valor||0),0);
-        d.pagYTD = lancF.filter(l=>l.categoria!=='recebimento').reduce((s,l)=>s+Math.abs(l.valor||0),0);
+        d.recYTD = lancF.filter((l) => l.categoria === 'recebimento').reduce((s, l) => s + (l.valor || 0), 0);
+        d.pagYTD = lancF.filter((l) => l.categoria !== 'recebimento').reduce((s, l) => s + Math.abs(l.valor || 0), 0);
       }
       if (nfs.length) {
         // Exclui NFs-espelho de CI (já contabilizadas no CI — evita dupla contagem)
-        const nfsValidas = nfsF.filter(n => !n.is_espelho_ci);
-        d.totalFat = nfsValidas.reduce((s,n)=>s+(n.valor_total||0),0);
-        d.aReceber = nfsValidas.reduce((s,n)=>s+(n.valor_aberto||0),0);
-        d.tiago = nfsValidas.filter(n=>n.vendedor==='Tiago').reduce((s,n)=>s+(n.valor_total||0),0);
-        d.thais = nfsValidas.filter(n=>n.vendedor==='Thais').reduce((s,n)=>s+(n.valor_total||0),0);
+        const nfsValidas = nfsF.filter((n) => !n.is_espelho_ci);
+        d.totalFat = nfsValidas.reduce((s, n) => s + (n.valor_total || 0), 0);
+        d.aReceber = nfsValidas.reduce((s, n) => s + (n.valor_aberto || 0), 0);
+        d.tiago = nfsValidas.filter((n) => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_total || 0), 0);
+        d.thais = nfsValidas.filter((n) => n.vendedor === 'Thais').reduce((s, n) => s + (n.valor_total || 0), 0);
       }
       if (tit.length) {
         // Emitido: títulos com vencimento no mês selecionado
-        d.emitido = titF.reduce((s,t)=>s+(t.valor_titulo||0),0);
+        d.emitido = titF.reduce((s, t) => s + (t.valor_titulo || 0), 0);
         // Recebido: títulos pagos no mês selecionado (filtra por data_pagamento, não por vencimento)
-        const recebidosNoMes = isAnnual
-          ? tit.filter(t => t.status === 'pago')
-          : tit.filter(t => t.status === 'pago' && (t.data_pagamento || '').startsWith(selectedMonth));
-        d.recebido = recebidosNoMes.reduce((s,t)=>s+(t.valor_pago||0),0);
+        const recebidosNoMes = isAnnual ?
+        tit.filter((t) => t.status === 'pago') :
+        tit.filter((t) => t.status === 'pago' && (t.data_pagamento || '').startsWith(selectedMonth));
+        d.recebido = recebidosNoMes.reduce((s, t) => s + (t.valor_pago || 0), 0);
         // Em Aberto: TOTAL GERAL de títulos em aberto (independente do mês — controle por dia do vencimento)
-        d.emAberto = tit.filter(t=>t.status!=='pago').reduce((s,t)=>s+(t.valor_titulo||0),0);
+        d.emAberto = tit.filter((t) => t.status !== 'pago').reduce((s, t) => s + (t.valor_titulo || 0), 0);
       }
-      if (comp.length) d.totalCompras = compF.reduce((s,c)=>s+(c.valor_total||0),0);
-      if (obras.length) d.totalObras = obrasF.reduce((s,o)=>s+(o.valor||0),0);
+      if (comp.length) d.totalCompras = compF.reduce((s, c) => s + (c.valor_total || 0), 0);
+      if (obras.length) d.totalObras = obrasF.reduce((s, o) => s + (o.valor || 0), 0);
       if (trib.length) {
-        const tribPendentes = trib.filter(t => t.status === 'a_vencer' || t.status === 'vencido');
-        d.totalTrib = tribPendentes.reduce((s,t)=>s+(t.valor_original||0),0);
-        d.tribVencer = trib.filter(t=>t.status==='a_vencer').length;
-        d.tribVencidos = trib.filter(t=>t.status==='vencido').length;
+        const tribPendentes = trib.filter((t) => t.status === 'a_vencer' || t.status === 'vencido');
+        d.totalTrib = tribPendentes.reduce((s, t) => s + (t.valor_original || 0), 0);
+        d.tribVencer = trib.filter((t) => t.status === 'a_vencer').length;
+        d.tribVencidos = trib.filter((t) => t.status === 'vencido').length;
       }
-      if (func.length) d.funcAtivos = func.filter(f=>f.status==='ativo').length;
-      if (folhas.length) d.folhaAtual = folhas.filter(f=>f.competencia===selectedMonth&&f.status==='pago').reduce((s,f)=>s+(f.salario_liquido||0),0);
+      if (func.length) d.funcAtivos = func.filter((f) => f.status === 'ativo').length;
+      if (folhas.length) d.folhaAtual = folhas.filter((f) => f.competencia === selectedMonth && f.status === 'pago').reduce((s, f) => s + (f.salario_liquido || 0), 0);
       if (faturas.length) {
-        const faturasF = isAnnual ? faturas : faturas.filter(f => (f.mes_referencia||'').startsWith(selectedMonth));
-        d.totalCartoes = faturasF.reduce((s,f)=>s+(f.valor_total||0),0);
-        d.nCartoes = new Set(faturasF.map(f=>f.conta_cartao_id).filter(Boolean)).size;
+        const faturasF = isAnnual ? faturas : faturas.filter((f) => (f.mes_referencia || '').startsWith(selectedMonth));
+        d.totalCartoes = faturasF.reduce((s, f) => s + (f.valor_total || 0), 0);
+        d.nCartoes = new Set(faturasF.map((f) => f.conta_cartao_id).filter(Boolean)).size;
         // Próx vencimento: menor data_vencimento entre faturas não pagas
-        const abertas = faturas.filter(f => f.status !== 'paga_total').sort((a,b)=>(a.data_vencimento||'').localeCompare(b.data_vencimento||''));
+        const abertas = faturas.filter((f) => f.status !== 'paga_total').sort((a, b) => (a.data_vencimento || '').localeCompare(b.data_vencimento || ''));
         d.proxVenc = abertas.length > 0 ? abertas[0].valor_total : 0;
       }
       return d;
@@ -313,10 +313,10 @@ export default function Dashboard() {
   if (loading) return (
     <div className="flex items-center justify-center h-full">
       <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-    </div>
-  );
+    </div>);
 
-  const percCob = data.emitido > 0 ? ((data.recebido / data.emitido)*100).toFixed(1) : '—';
+
+  const percCob = data.emitido > 0 ? (data.recebido / data.emitido * 100).toFixed(1) : '—';
   const monthIdx = ALL_MONTHS.indexOf(selectedMonth);
 
   return (
@@ -330,24 +330,24 @@ export default function Dashboard() {
         </div>
         {/* Month picker */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          <button onClick={() => { setIsAnnual(false); if (monthIdx>0) setSelectedMonth(ALL_MONTHS[monthIdx-1]); }}
-            disabled={monthIdx===0||isAnnual}
-            className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
+          <button onClick={() => {setIsAnnual(false);if (monthIdx > 0) setSelectedMonth(ALL_MONTHS[monthIdx - 1]);}}
+          disabled={monthIdx === 0 || isAnnual}
+          className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>
-          {ALL_MONTHS.slice(-5).map(m => (
-            <button key={m} onClick={() => { setSelectedMonth(m); setIsAnnual(false); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!isAnnual&&selectedMonth===m ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
+          {ALL_MONTHS.slice(-5).map((m) =>
+          <button key={m} onClick={() => {setSelectedMonth(m);setIsAnnual(false);}}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!isAnnual && selectedMonth === m ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
               {fmtMes(m)}
             </button>
-          ))}
-          <button onClick={() => { setIsAnnual(false); if (monthIdx<ALL_MONTHS.length-1) setSelectedMonth(ALL_MONTHS[monthIdx+1]); }}
-            disabled={monthIdx===ALL_MONTHS.length-1||isAnnual}
-            className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
+          )}
+          <button onClick={() => {setIsAnnual(false);if (monthIdx < ALL_MONTHS.length - 1) setSelectedMonth(ALL_MONTHS[monthIdx + 1]);}}
+          disabled={monthIdx === ALL_MONTHS.length - 1 || isAnnual}
+          className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
           <button onClick={() => setIsAnnual(!isAnnual)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ml-1 ${isAnnual ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ml-1 ${isAnnual ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
             Anual
           </button>
           <DedupButton autoOncePerDay />
@@ -358,14 +358,14 @@ export default function Dashboard() {
       {/* ─── KPI HERO ROW ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Conta Sicredi 36092-2" icon={Landmark} gradient="sky" href="/extrato" />
-        <MetricCard title="Total Faturado" value={formatCurrency(data.totalFat)} sub={isAnnual?'Acumulado anual':fmtMesLong(selectedMonth)} icon={TrendingUp} gradient="green" href="/faturamento" />
+        <MetricCard title="Total Faturado" value={formatCurrency(data.totalFat)} sub={isAnnual ? 'Acumulado anual' : fmtMesLong(selectedMonth)} icon={TrendingUp} gradient="green" href="/faturamento" />
         <MetricCard title="A Receber" value={formatCurrency(data.aReceber)} sub="Em aberto NFs" icon={Wallet} gradient="orange" href="/faturamento" />
         <MetricCard title="Cobranças Recebidas" value={`${percCob}%`} sub={`${formatCurrency(data.recebido)} de ${formatCurrency(data.emitido)}`} icon={PiggyBank} gradient="teal" href="/cobrancas" />
       </div>
 
       {/* ─── CTA CONTAS A PAGAR ─── */}
       <Link to="/contas-a-pagar" className="block">
-        <div className="bg-gradient-to-r from-rose-600 to-red-700 rounded-2xl p-4 flex items-center justify-between gap-4 text-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all">
+        <div className="bg-gradient-to-r from-rose-600 to-red-700 rounded-2xl flex items-center justify-between gap-4 text-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all py-4 px-2">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
               <Wallet className="w-5 h-5" />
@@ -468,6 +468,6 @@ export default function Dashboard() {
         </Section>
       </div>
 
-    </div>
-  );
+    </div>);
+
 }
