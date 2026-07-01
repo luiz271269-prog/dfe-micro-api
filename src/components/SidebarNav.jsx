@@ -39,7 +39,7 @@ export default function SidebarNav({ collapsed, currentPath, onNavigate }) {
   // Modo recolhido ou sem edição: renderização simples, sem DnD
   if (collapsed || !editMode) {
     return (
-      <nav className="flex-1 overflow-y-auto pr-1 pl-1 pt-1 pb-4">
+      <nav className="flex-1 overflow-y-auto pr-1 pl-1 pt-1 pb-1">
         {!collapsed &&
         <div className="flex justify-end px-1 pb-2">
             <button
