@@ -17,6 +17,7 @@ import { aplicarRegrasHistorico } from '../lib/aplicarRegrasHistorico';
 const DOC_TYPES = [
 { id: 'extrato_bancario', label: 'Extrato Bancário Sicredi', icon: Landmark, color: 'blue', entity: 'LancamentoBancario', dedup: ['data', 'valor'], group: 'Visão Geral' },
 { id: 'dda_boletos', label: 'DDA / Boletos a Vencer', icon: Landmark, color: 'indigo', entity: 'LancamentoBancario', dedup: ['data', 'descricao', 'valor'], group: 'Visão Geral' },
+{ id: 'fatura_cartao', label: 'Fatura de Cartão', icon: CreditCard, color: 'purple', entity: 'FaturaCartao', dedup: ['conta_cartao_id', 'mes_referencia'], group: 'Visão Geral' },
 { id: 'relatorio_nfs', label: 'NFes Emitidas no Mês (Fiscal)', icon: FileText, color: 'green', entity: 'NotaFiscal', dedup: ['tipo', 'numero'], group: 'Receita' },
 { id: 'relatorio_vendas_detalhado', label: 'Relatório de Vendas Diário (NFs + Parcelas)', icon: FileText, color: 'cyan', entity: 'NotaFiscal', dedup: ['numero'], group: 'Receita' },
 { id: 'relatorio_vendas', label: 'Resumo Mensal de Vendas (Fabris/Ellitte)', icon: FileText, color: 'teal', entity: 'RelatorioFaturamento', dedup: ['mes'], group: 'Receita' },
@@ -24,11 +25,10 @@ const DOC_TYPES = [
 { id: 'folha_pagamento', label: 'Folha de Pagamento', icon: Users, color: 'slate', entity: 'FolhaPagamento', dedup: ['funcionario_nome', 'competencia'], group: 'Pagamentos' },
 { id: 'obra_reforma', label: 'Obra e Reforma', icon: Hammer, color: 'brown', entity: 'ObraReforma', dedup: ['data', 'responsavel', 'valor'], group: 'Pagamentos' },
 { id: 'despesas_operacionais', label: 'Despesas Operacionais', icon: Wallet, color: 'rose', entity: 'DespesaOperacional', dedup: ['data', 'descricao', 'valor'], group: 'Pagamentos' },
-{ id: 'compras_fornecedor', label: 'Compras por Fornecedor', icon: ShoppingCart, color: 'orange', entity: 'ItemCompra', dedup: ['fornecedor', 'numero_nota', 'descricao_produto'], group: 'Compras & Estoque' },
-{ id: 'fatura_cartao', label: 'Fatura de Cartão', icon: CreditCard, color: 'purple', entity: 'FaturaCartao', dedup: ['conta_cartao_id', 'mes_referencia'], group: 'Cartões' }];
+{ id: 'compras_fornecedor', label: 'Compras por Fornecedor', icon: ShoppingCart, color: 'orange', entity: 'ItemCompra', dedup: ['fornecedor', 'numero_nota', 'descricao_produto'], group: 'Compras & Estoque' }];
 
 // Ordem oficial dos grupos (espelha o menu lateral de acessos)
-const DOC_GROUPS = ['Visão Geral', 'Receita', 'Pagamentos', 'Compras & Estoque', 'Cartões'];
+const DOC_GROUPS = ['Visão Geral', 'Receita', 'Pagamentos', 'Compras & Estoque'];
 
 
 const COLOR_MAP = {
