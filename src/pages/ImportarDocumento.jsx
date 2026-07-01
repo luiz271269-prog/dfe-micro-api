@@ -15,8 +15,8 @@ import { registrarResultado, assinaturaDeRegistros } from '../lib/memoriaImporta
 import { aplicarRegrasHistorico } from '../lib/aplicarRegrasHistorico';
 
 const DOC_TYPES = [
-{ id: 'extrato_bancario', label: 'Extrato Bancário Sicredi', icon: Landmark, color: 'blue', entity: 'LancamentoBancario', dedup: ['data', 'valor'], group: 'Dados Bancários' },
-{ id: 'dda_boletos', label: 'DDA / Boletos a Vencer', icon: Landmark, color: 'indigo', entity: 'LancamentoBancario', dedup: ['data', 'descricao', 'valor'], group: 'Dados Bancários' },
+{ id: 'extrato_bancario', label: 'Extrato Bancário Sicredi', icon: Landmark, color: 'blue', entity: 'LancamentoBancario', dedup: ['data', 'valor'], group: 'Visão Geral' },
+{ id: 'dda_boletos', label: 'DDA / Boletos a Vencer', icon: Landmark, color: 'indigo', entity: 'LancamentoBancario', dedup: ['data', 'descricao', 'valor'], group: 'Visão Geral' },
 { id: 'relatorio_nfs', label: 'NFes Emitidas no Mês (Fiscal)', icon: FileText, color: 'green', entity: 'NotaFiscal', dedup: ['tipo', 'numero'], group: 'Receita' },
 { id: 'relatorio_vendas_detalhado', label: 'Relatório de Vendas Diário (NFs + Parcelas)', icon: FileText, color: 'cyan', entity: 'NotaFiscal', dedup: ['numero'], group: 'Receita' },
 { id: 'relatorio_vendas', label: 'Resumo Mensal de Vendas (Fabris/Ellitte)', icon: FileText, color: 'teal', entity: 'RelatorioFaturamento', dedup: ['mes'], group: 'Receita' },
@@ -27,8 +27,8 @@ const DOC_TYPES = [
 { id: 'compras_fornecedor', label: 'Compras por Fornecedor', icon: ShoppingCart, color: 'orange', entity: 'ItemCompra', dedup: ['fornecedor', 'numero_nota', 'descricao_produto'], group: 'Compras & Estoque' },
 { id: 'fatura_cartao', label: 'Fatura de Cartão', icon: CreditCard, color: 'purple', entity: 'FaturaCartao', dedup: ['conta_cartao_id', 'mes_referencia'], group: 'Cartões' }];
 
-// Ordem oficial dos grupos (espelha o menu lateral)
-const DOC_GROUPS = ['Dados Bancários', 'Receita', 'Pagamentos', 'Compras & Estoque', 'Cartões'];
+// Ordem oficial dos grupos (espelha o menu lateral de acessos)
+const DOC_GROUPS = ['Visão Geral', 'Receita', 'Pagamentos', 'Compras & Estoque', 'Cartões'];
 
 
 const COLOR_MAP = {
