@@ -333,7 +333,7 @@ export default function Dashboard() {
           <button onClick={() => {setIsAnnual(false);if (monthIdx > 0) setSelectedMonth(ALL_MONTHS[monthIdx - 1]);}}
           disabled={monthIdx === 0 || isAnnual}
           className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <ChevronLeft className="w-3.5 h-3.5 text-[hsl(var(--chart-3))]" />
           </button>
           {ALL_MONTHS.slice(-5).map((m) =>
           <button key={m} onClick={() => {setSelectedMonth(m);setIsAnnual(false);}}
@@ -343,7 +343,7 @@ export default function Dashboard() {
           )}
           <button onClick={() => {setIsAnnual(false);if (monthIdx < ALL_MONTHS.length - 1) setSelectedMonth(ALL_MONTHS[monthIdx + 1]);}}
           disabled={monthIdx === ALL_MONTHS.length - 1 || isAnnual}
-          className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
+          className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors bg-[hsl(var(--primary))]">
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
           <button onClick={() => setIsAnnual(!isAnnual)}
