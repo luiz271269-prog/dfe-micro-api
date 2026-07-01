@@ -38,7 +38,7 @@ function Breadcrumb({ location }) {
     </div>);
 
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground px-6 border-b bg-card mx-1">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground px-6 border-b bg-card mx-1 hidden">
       <Link to="/" className="flex items-center gap-1 hover:text-primary transition-colors">
         <LayoutDashboard className="w-3.5 h-3.5" />
         <span>Dashboard</span>
