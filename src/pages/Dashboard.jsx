@@ -332,7 +332,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-1.5 flex-wrap px-48">
           <button onClick={() => {setIsAnnual(false);if (monthIdx > 0) setSelectedMonth(ALL_MONTHS[monthIdx - 1]);}}
           disabled={monthIdx === 0 || isAnnual}
-          className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors">
+          className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors bg-[hsl(var(--primary))] text-[hsl(var(--background))]">
             <ChevronLeft className="w-3.5 h-3.5 text-[hsl(var(--chart-3))]" />
           </button>
           {ALL_MONTHS.slice(-5).map((m) =>
