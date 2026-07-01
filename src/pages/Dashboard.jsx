@@ -337,7 +337,7 @@ export default function Dashboard() {
           </button>
           {ALL_MONTHS.slice(-5).map((m) =>
           <button key={m} onClick={() => {setSelectedMonth(m);setIsAnnual(false);}}
-          className={`rounded-lg font-bold transition-all text-sm px-4 bg-[hsl(var(--sidebar-border))] text-[hsl(var(--sidebar-accent-foreground))] ${!isAnnual && selectedMonth === m ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : "border hover:bg-muted"}`}>
+          className={`rounded-lg font-bold transition-all text-sm bg-[hsl(var(--sidebar-border))] text-[hsl(var(--sidebar-accent-foreground))] px-8 ${!isAnnual && selectedMonth === m ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : "border hover:bg-muted"}`}>
               {fmtMes(m)}
             </button>
           )}
