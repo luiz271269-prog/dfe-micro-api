@@ -129,7 +129,7 @@ export default function Layout() {
           <span className="text-sidebar-accent-foreground font-semibold text-sm">NeuralTec</span>
         </div>
         <AlertBar />
-        <div className="relative flex items-center justify-end px-4 h-9 border-b bg-card shrink-0">
+        <div className="relative flex items-center justify-end h-9 border-b bg-card shrink-0 px-4 mx-1">
           <PainelNotificacoes />
         </div>
         <Breadcrumb location={location} />
