@@ -45,7 +45,7 @@ export default function DedupButton({ autoOncePerDay = false, size = 'sm', varia
 
   return (
     <>
-      <Button variant={variant} size={size} onClick={() => runDedup(false)} disabled={running} className="gap-2 text-[hsl(var(--input))]">
+      <Button variant={variant} size={size} onClick={() => runDedup(false)} disabled={running} className="gap-2 text-[hsl(var(--chart-2))] bg-[hsl(var(--background))]">
         {running ?
         <>
             <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
