@@ -920,11 +920,11 @@ export default function ImportarDocumento() {
       <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
         {['Selecionar tipo', 'Fazer upload', 'Revisar dados', 'Concluído'].map((s, i) =>
         <div key={i} className="flex items-center gap-2 shrink-0">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step > i + 1 ? 'bg-green-500 text-white' : step === i + 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all ${step > i + 1 ? 'bg-gradient-to-br from-violet-600 to-indigo-600' : step === i + 1 ? 'bg-gradient-to-br from-fuchsia-600 to-indigo-600 ring-4 ring-violet-200 shadow-md' : 'bg-slate-400'}`}>
               {step > i + 1 ? '✓' : i + 1}
             </div>
-            <span className={`text-xs font-medium ${step === i + 1 ? 'text-foreground' : 'text-muted-foreground'}`}>{s}</span>
-            {i < 3 && <div className={`w-8 h-px ${step > i + 1 ? 'bg-green-400' : 'bg-border'}`} />}
+            <span className={`text-xs font-medium ${step === i + 1 ? 'text-foreground' : step > i + 1 ? 'text-violet-700' : 'text-muted-foreground'}`}>{s}</span>
+            {i < 3 && <div className={`w-8 h-px ${step > i + 1 ? 'bg-gradient-to-r from-violet-500 to-indigo-500' : 'bg-border'}`} />}
           </div>
         )}
       </div>
