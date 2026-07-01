@@ -18,6 +18,8 @@ const CATEGORIAS = ['recebimento_vendas', 'recebimento_cobranca', 'pagamento_for
 
 export default function FluxoCaixa() {
   const [fluxos, setFluxos] = useState([]);
+  const [titulos, setTitulos] = useState([]);
+  const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -31,14 +33,73 @@ export default function FluxoCaixa() {
   });
 
   async function loadData() {
-    const data = await base44.entities.FluxoCaixa.list('-data_prevista', 500);
-    setFluxos(data);
+    const [fx, tit, lanc] = await Promise.all([
+      base44.entities.FluxoCaixa.list('-data_prevista', 500),
+      base44.entities.TituloCobranca.list('-data_vencimento', 1000),
+      base44.entities.LancamentoBancario.list('-data', 1000),
+    ]);
+    setFluxos(fx);
+    setTitulos(tit);
+    setLancamentos(lanc);
     setLoading(false);
   }
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Saldo atual real: último lançamento NeuralTec com saldo_apos preenchido
+  const saldoAtual = useMemo(() => {
+    const neural = lancamentos
+      .filter(l => l.conta_bancaria === 'NeuralTec 36092-2' && l.saldo_apos != null)
+      .sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    return neural.length > 0 ? neural[0].saldo_apos : 0;
+  }, [lancamentos]);
+
+  // Projeção automática: cobranças Sicredi a receber (entradas) + boletos DDA a pagar (saídas).
+  // Vira uma lista "virtual" de FluxoCaixa, combinada com as movimentações manuais.
+  const projecaoAuto = useMemo(() => {
+    const itens = [];
+    // ENTRADAS — títulos Sicredi em aberto / vencidos, pela data de vencimento
+    titulos.forEach(t => {
+      if (t.status === 'pago') return;
+      if (!t.data_vencimento) return;
+      itens.push({
+        id: `tit-${t.id}`,
+        _auto: true,
+        data_prevista: t.data_vencimento,
+        tipo: 'entrada',
+        categoria: 'recebimento_cobranca',
+        descricao: `Cobrança Sicredi — ${t.cliente || t.seu_numero || t.nosso_numero}`,
+        valor_previsto: (t.valor_titulo || 0) - (t.valor_pago || 0),
+        status: t.status === 'vencido' ? 'vencido' : 'previsto',
+        origem_tipo: 'titulo_cobranca',
+      });
+    });
+    // SAÍDAS — boletos a pagar (DDA): lançamentos negativos, ainda futuros, de pagamento
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const catsSaida = ['fornecedor', 'tributo', 'financeiro', 'despesa_operacional'];
+    lancamentos.forEach(l => {
+      if ((l.valor || 0) >= 0) return; // só saídas
+      if (!l.data || l.data < hojeISO) return; // só a vencer
+      if (!catsSaida.includes(l.categoria)) return;
+      itens.push({
+        id: `dda-${l.id}`,
+        _auto: true,
+        data_prevista: l.data,
+        tipo: 'saida',
+        categoria: 'pagamento_fornecedor',
+        descricao: `DDA/Boleto — ${l.descricao}`,
+        valor_previsto: Math.abs(l.valor || 0),
+        status: 'previsto',
+        origem_tipo: 'dda',
+      });
+    });
+    return itens;
+  }, [titulos, lancamentos]);
+
+  // Movimentações combinadas: manuais (FluxoCaixa) + projeção automática
+  const fluxosCombinados = useMemo(() => [...fluxos, ...projecaoAuto], [fluxos, projecaoAuto]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -61,12 +122,12 @@ export default function FluxoCaixa() {
   const monthTotals = useMemo(() => {
     const t = {};
     ALL_MONTHS.forEach(m => {
-      t[m] = fluxos.filter(f => f.data_prevista?.startsWith(m) && f.tipo === 'entrada').reduce((s,f) => s+(f.valor_previsto||0), 0);
+      t[m] = fluxosCombinados.filter(f => f.data_prevista?.startsWith(m) && f.tipo === 'entrada').reduce((s,f) => s+(f.valor_previsto||0), 0);
     });
     return t;
-  }, [fluxos]);
+  }, [fluxosCombinados]);
 
-  const filtrados = fluxos.filter(f => {
+  const filtrados = fluxosCombinados.filter(f => {
     if (!isAnnual && !f.data_prevista?.startsWith(selectedMonth)) return false;
     if (filterTipo && f.tipo !== filterTipo) return false;
     if (filterStatus && f.status !== filterStatus) return false;
@@ -77,7 +138,7 @@ export default function FluxoCaixa() {
   // Próximos 30 dias
   const today = new Date();
   const next30 = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const proximosMes = fluxos.filter(f => {
+  const proximosMes = fluxosCombinados.filter(f => {
     const d = new Date(f.data_prevista);
     return d >= today && d <= next30 && f.status !== 'cancelado';
   });
@@ -98,7 +159,7 @@ export default function FluxoCaixa() {
   // Saldo projetado
   const entradasTotal = proximosMes.filter(f => f.tipo === 'entrada').reduce((s, f) => s + f.valor_previsto, 0);
   const saidasTotal = proximosMes.filter(f => f.tipo === 'saida').reduce((s, f) => s + f.valor_previsto, 0);
-  const saldoProjetado = 54187.06 + entradasTotal - saidasTotal;
+  const saldoProjetado = saldoAtual + entradasTotal - saidasTotal;
   const alertaNegativo = saldoProjetado < 0;
 
   if (loading) return (
@@ -134,7 +195,7 @@ export default function FluxoCaixa() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
         <GradientCard title="Entradas" value={formatCurrency(entradasTotal)} sub="próx. 30 dias" icon={TrendingUp} gradient="green" />
         <GradientCard title="Saídas" value={formatCurrency(saidasTotal)} sub="próx. 30 dias" icon={TrendingDown} gradient="red" />
-        <GradientCard title="Saldo Atual" value="R$ 54.187,06" sub="NeuralTec 36092-2" icon={Landmark} gradient="blue" />
+        <GradientCard title="Saldo Atual" value={formatCurrency(saldoAtual)} sub="NeuralTec 36092-2" icon={Landmark} gradient="blue" />
         <GradientCard title="Saldo Projetado" value={formatCurrency(saldoProjetado)} sub="em 30 dias" icon={BarChart3} gradient={alertaNegativo ? 'red' : 'teal'} />
       </div>
 
@@ -214,9 +275,18 @@ export default function FluxoCaixa() {
                     <td className={`px-4 py-3 text-right font-bold ${f.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
                       {f.tipo === 'entrada' ? '+' : '-'}{formatCurrency(f.valor_previsto)}
                     </td>
-                    <td className="px-4 py-3"><StatusBadge status={f.status} /></td>
                     <td className="px-4 py-3">
-                      {f.status === 'previsto' && (
+                      <div className="flex items-center gap-1.5">
+                        <StatusBadge status={f.status} />
+                        {f._auto && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
+                            {f.origem_tipo === 'titulo_cobranca' ? 'Sicredi' : 'DDA'}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {!f._auto && f.status === 'previsto' && (
                         <button onClick={() => markRealizado(f.id, f.valor_previsto)} className="text-xs text-primary hover:underline">
                           Marcar realizado
                         </button>
