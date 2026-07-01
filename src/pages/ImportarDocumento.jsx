@@ -15,17 +15,20 @@ import { registrarResultado, assinaturaDeRegistros } from '../lib/memoriaImporta
 import { aplicarRegrasHistorico } from '../lib/aplicarRegrasHistorico';
 
 const DOC_TYPES = [
-{ id: 'extrato_bancario', label: 'Extrato Bancário Sicredi', icon: Landmark, color: 'blue', entity: 'LancamentoBancario', dedup: ['data', 'valor'] },
-{ id: 'boletos_liquidados', label: 'Boletos Liquidados', icon: Receipt, color: 'teal', entity: 'TituloCobranca', dedup: ['nosso_numero'] },
-{ id: 'relatorio_nfs', label: 'NFes Emitidas no Mês (Fiscal)', icon: FileText, color: 'green', entity: 'NotaFiscal', dedup: ['tipo', 'numero'] },
-{ id: 'relatorio_vendas_detalhado', label: 'Relatório de Vendas Diário (NFs + Parcelas)', icon: FileText, color: 'cyan', entity: 'NotaFiscal', dedup: ['numero'] },
-{ id: 'relatorio_vendas', label: 'Resumo Mensal de Vendas (Fabris/Ellitte)', icon: FileText, color: 'teal', entity: 'RelatorioFaturamento', dedup: ['mes'] },
-{ id: 'compras_fornecedor', label: 'Compras por Fornecedor', icon: ShoppingCart, color: 'orange', entity: 'ItemCompra', dedup: ['fornecedor', 'numero_nota', 'descricao_produto'] },
-{ id: 'fatura_cartao', label: 'Fatura de Cartão', icon: CreditCard, color: 'purple', entity: 'FaturaCartao', dedup: ['conta_cartao_id', 'mes_referencia'] },
-{ id: 'obra_reforma', label: 'Obra e Reforma', icon: Hammer, color: 'brown', entity: 'ObraReforma', dedup: ['data', 'responsavel', 'valor'] },
-{ id: 'folha_pagamento', label: 'Folha de Pagamento', icon: Users, color: 'slate', entity: 'FolhaPagamento', dedup: ['funcionario_nome', 'competencia'] },
-{ id: 'dda_boletos', label: 'DDA / Boletos a Vencer', icon: Landmark, color: 'indigo', entity: 'LancamentoBancario', dedup: ['data', 'descricao', 'valor'] },
-{ id: 'despesas_operacionais', label: 'Despesas Operacionais', icon: Wallet, color: 'rose', entity: 'DespesaOperacional', dedup: ['data', 'descricao', 'valor'] }];
+{ id: 'extrato_bancario', label: 'Extrato Bancário Sicredi', icon: Landmark, color: 'blue', entity: 'LancamentoBancario', dedup: ['data', 'valor'], group: 'Dados Bancários' },
+{ id: 'dda_boletos', label: 'DDA / Boletos a Vencer', icon: Landmark, color: 'indigo', entity: 'LancamentoBancario', dedup: ['data', 'descricao', 'valor'], group: 'Dados Bancários' },
+{ id: 'relatorio_nfs', label: 'NFes Emitidas no Mês (Fiscal)', icon: FileText, color: 'green', entity: 'NotaFiscal', dedup: ['tipo', 'numero'], group: 'Receita' },
+{ id: 'relatorio_vendas_detalhado', label: 'Relatório de Vendas Diário (NFs + Parcelas)', icon: FileText, color: 'cyan', entity: 'NotaFiscal', dedup: ['numero'], group: 'Receita' },
+{ id: 'relatorio_vendas', label: 'Resumo Mensal de Vendas (Fabris/Ellitte)', icon: FileText, color: 'teal', entity: 'RelatorioFaturamento', dedup: ['mes'], group: 'Receita' },
+{ id: 'boletos_liquidados', label: 'Boletos Liquidados', icon: Receipt, color: 'teal', entity: 'TituloCobranca', dedup: ['nosso_numero'], group: 'Receita' },
+{ id: 'folha_pagamento', label: 'Folha de Pagamento', icon: Users, color: 'slate', entity: 'FolhaPagamento', dedup: ['funcionario_nome', 'competencia'], group: 'Pagamentos' },
+{ id: 'obra_reforma', label: 'Obra e Reforma', icon: Hammer, color: 'brown', entity: 'ObraReforma', dedup: ['data', 'responsavel', 'valor'], group: 'Pagamentos' },
+{ id: 'despesas_operacionais', label: 'Despesas Operacionais', icon: Wallet, color: 'rose', entity: 'DespesaOperacional', dedup: ['data', 'descricao', 'valor'], group: 'Pagamentos' },
+{ id: 'compras_fornecedor', label: 'Compras por Fornecedor', icon: ShoppingCart, color: 'orange', entity: 'ItemCompra', dedup: ['fornecedor', 'numero_nota', 'descricao_produto'], group: 'Compras & Estoque' },
+{ id: 'fatura_cartao', label: 'Fatura de Cartão', icon: CreditCard, color: 'purple', entity: 'FaturaCartao', dedup: ['conta_cartao_id', 'mes_referencia'], group: 'Cartões' }];
+
+// Ordem oficial dos grupos (espelha o menu lateral)
+const DOC_GROUPS = ['Dados Bancários', 'Receita', 'Pagamentos', 'Compras & Estoque', 'Cartões'];
 
 
 const COLOR_MAP = {
@@ -941,28 +944,39 @@ export default function ImportarDocumento() {
           {/* Tipo de documento */}
           <div>
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">1. Tipo de Documento</h2>
-            <div className="grid grid-cols-1 gap-2">
-              {DOC_TYPES.map((dt) => {
-              const isActive = selectedType === dt.id;
-              const colors = COLOR_MAP[dt.color];
+            <div className="space-y-4">
+              {DOC_GROUPS.map((groupLabel) => {
+              const groupTypes = DOC_TYPES.filter((dt) => dt.group === groupLabel);
+              if (groupTypes.length === 0) return null;
               return (
-                <button key={dt.id} onClick={() => {setSelectedType(dt.id);setStep(Math.max(step, 1));}}
-                className={`flex items-center gap-3 rounded-xl border text-left transition-all pr-1 pl-1 ${isActive ? colors.active : `${colors.card} hover:shadow-sm`}`}>
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colors.icon}`}>
-                      <dt.icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className={`text-sm font-semibold block ${isActive ? 'text-foreground' : 'text-foreground/80'}`}>{dt.label}</span>
-                      {lastImports[dt.id] ?
-                    <span className="text-[10px] text-muted-foreground block truncate">
-                          {new Date(lastImports[dt.id].created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} · {lastImports[dt.id].created_by?.split('@')[0] || '—'} · {lastImports[dt.id].success_count ?? 0} registros
-                        </span> :
+                <div key={groupLabel}>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-1.5 px-1">{groupLabel}</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {groupTypes.map((dt) => {
+                      const isActive = selectedType === dt.id;
+                      const colors = COLOR_MAP[dt.color];
+                      return (
+                        <button key={dt.id} onClick={() => {setSelectedType(dt.id);setStep(Math.max(step, 1));}}
+                        className={`flex items-center gap-3 rounded-xl border text-left transition-all pr-1 pl-1 ${isActive ? colors.active : `${colors.card} hover:shadow-sm`}`}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colors.icon}`}>
+                              <dt.icon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className={`text-sm font-semibold block ${isActive ? 'text-foreground' : 'text-foreground/80'}`}>{dt.label}</span>
+                              {lastImports[dt.id] ?
+                            <span className="text-[10px] text-muted-foreground block truncate">
+                                  {new Date(lastImports[dt.id].created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} · {lastImports[dt.id].created_by?.split('@')[0] || '—'} · {lastImports[dt.id].success_count ?? 0} registros
+                                </span> :
 
-                    <span className="text-[10px] text-muted-foreground/50 block">Nunca importado</span>
-                    }
+                            <span className="text-[10px] text-muted-foreground/50 block">Nunca importado</span>
+                            }
+                            </div>
+                            {isActive && <span className="ml-auto text-primary text-xs font-bold shrink-0">✓</span>}
+                          </button>);
+
+                    })}
                     </div>
-                    {isActive && <span className="ml-auto text-primary text-xs font-bold shrink-0">✓</span>}
-                  </button>);
+                  </div>);
 
             })}
             </div>
