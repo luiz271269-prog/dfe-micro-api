@@ -381,7 +381,7 @@ export default function Dashboard() {
 
       {/* ─── CTA CONTROLE DE PRODUTOS (IA) ─── */}
       <Link to="/controle-produtos" className="block">
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl flex items-center justify-between gap-4 text-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all px-3">
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-2xl flex items-center justify-between gap-4 text-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all px-2">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
               <ShoppingCart className="w-5 h-5" />
@@ -396,7 +396,7 @@ export default function Dashboard() {
       </Link>
 
       {/* ─── ALERT BANNER ─── */}
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl flex items-start gap-3 shadow-sm px-3">
         <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shrink-0">
           <Bell className="w-4 h-4 text-white" />
         </div>
