@@ -133,7 +133,7 @@ export default function Layout() {
           <PainelNotificacoes />
         </div>
         <Breadcrumb location={location} />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto hidden">
           <Outlet />
         </main>
         {/* Footer */}
