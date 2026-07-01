@@ -337,7 +337,7 @@ export default function Dashboard() {
           </button>
           {ALL_MONTHS.slice(-5).map((m) =>
           <button key={m} onClick={() => {setSelectedMonth(m);setIsAnnual(false);}}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!isAnnual && selectedMonth === m ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
+          className={`rounded-lg font-bold transition-all text-sm px-4 ${!isAnnual && selectedMonth === m ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
               {fmtMes(m)}
             </button>
           )}
