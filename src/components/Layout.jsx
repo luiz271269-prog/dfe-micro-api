@@ -38,7 +38,7 @@ function Breadcrumb({ location }) {
     </div>);
 
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground px-6 border-b bg-card mx-1">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground px-6 border-b bg-card mx-1 hidden">
       <Link to="/" className="flex items-center gap-1 hover:text-primary transition-colors">
         <LayoutDashboard className="w-3.5 h-3.5" />
         <span>Dashboard</span>
@@ -129,7 +129,7 @@ export default function Layout() {
           <span className="text-sidebar-accent-foreground font-semibold text-sm">NeuralTec</span>
         </div>
         <AlertBar />
-        <div className="relative flex items-center justify-end px-4 h-9 border-b bg-card shrink-0">
+        <div className="relative flex items-center justify-end px-4 h-9 border-b bg-card shrink-0 hidden">
           <PainelNotificacoes />
         </div>
         <Breadcrumb location={location} />
