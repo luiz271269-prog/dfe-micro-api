@@ -1035,7 +1035,7 @@ export default function ImportarDocumento() {
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl text-center cursor-pointer transition-all px-4 ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}>
+            className={`border-2 border-dashed rounded-xl text-center cursor-pointer transition-all px-1 ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}>
             
               <input ref={fileInputRef} type="file" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv,.ofx,.qfx,.txt" className="hidden"
             onChange={(e) => handleFileSelect(e.target.files[0])} />
