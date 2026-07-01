@@ -116,7 +116,7 @@ function SectionMetric({ title, value, sub, icon: Icon, valueColor, href }) {
   }[valueColor || 'default'];
 
   const inner =
-  <div className="group p-4 hover:bg-muted/30 transition-colors cursor-pointer">
+  <div className="group hover:bg-muted/30 transition-colors cursor-pointer px-4">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{title}</p>
         {Icon && <Icon className={`w-4 h-4 opacity-50 ${valCls}`} />}
