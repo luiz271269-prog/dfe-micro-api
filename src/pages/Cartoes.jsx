@@ -23,14 +23,14 @@ import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
 
 const SEED_CARDS = [
-  { nome: 'Acentra — Luiz Carlos', bandeira: 'Acentra', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
-  { nome: 'Sicoob — Luiz Carlos', bandeira: 'Sicoob', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
-  { nome: 'Acentra — KLI', bandeira: 'Acentra', titular: 'KLI Tecnologia', tipo: 'empresarial', dia_vencimento: 11, empresa_vinculada: 'KLI Tecnologia', conta_bancaria_pagamento: 'conta KLI', is_ativo: true },
-  { nome: 'Acentra — Liesch', bandeira: 'Acentra', titular: 'Liesch Informática', tipo: 'empresarial', dia_vencimento: 11, empresa_vinculada: 'Liesch Informática', conta_bancaria_pagamento: 'Sicredi 37101-4', is_ativo: true },
-  { nome: 'Sicoob — KLI', bandeira: 'Sicoob', titular: 'KLI Tecnologia', tipo: 'empresarial', dia_vencimento: 22, empresa_vinculada: 'KLI Tecnologia', conta_bancaria_pagamento: 'conta KLI', is_ativo: true },
-  { nome: 'Sicredi — NeuralTec', bandeira: 'Sicredi', titular: 'NeuralTec Dist. Tecnologia Ltda', tipo: 'empresarial', dia_vencimento: 25, empresa_vinculada: 'NeuralTec', conta_bancaria_pagamento: 'Sicredi 36092-2', is_ativo: true },
-  { nome: 'Magalu / LuizaCred', bandeira: 'Magalu', titular: 'pessoal', tipo: 'pessoal', dia_vencimento: 27, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'Sicredi 36092-2', is_ativo: true },
-];
+{ nome: 'Acentra — Luiz Carlos', bandeira: 'Acentra', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
+{ nome: 'Sicoob — Luiz Carlos', bandeira: 'Sicoob', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
+{ nome: 'Acentra — KLI', bandeira: 'Acentra', titular: 'KLI Tecnologia', tipo: 'empresarial', dia_vencimento: 11, empresa_vinculada: 'KLI Tecnologia', conta_bancaria_pagamento: 'conta KLI', is_ativo: true },
+{ nome: 'Acentra — Liesch', bandeira: 'Acentra', titular: 'Liesch Informática', tipo: 'empresarial', dia_vencimento: 11, empresa_vinculada: 'Liesch Informática', conta_bancaria_pagamento: 'Sicredi 37101-4', is_ativo: true },
+{ nome: 'Sicoob — KLI', bandeira: 'Sicoob', titular: 'KLI Tecnologia', tipo: 'empresarial', dia_vencimento: 22, empresa_vinculada: 'KLI Tecnologia', conta_bancaria_pagamento: 'conta KLI', is_ativo: true },
+{ nome: 'Sicredi — NeuralTec', bandeira: 'Sicredi', titular: 'NeuralTec Dist. Tecnologia Ltda', tipo: 'empresarial', dia_vencimento: 25, empresa_vinculada: 'NeuralTec', conta_bancaria_pagamento: 'Sicredi 36092-2', is_ativo: true },
+{ nome: 'Magalu / LuizaCred', bandeira: 'Magalu', titular: 'pessoal', tipo: 'pessoal', dia_vencimento: 27, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'Sicredi 36092-2', is_ativo: true }];
+
 
 const categoriaLabels = {
   alimentacao: 'Alimentação', combustivel: 'Combustível', lazer: 'Lazer',
@@ -38,7 +38,7 @@ const categoriaLabels = {
   beleza: 'Beleza', farmacia: 'Farmácia', transporte: 'Transporte',
   financeiro: 'Financeiro', seguro: 'Seguro',
   produtos: 'Produtos', estoque: 'Estoque',
-  outro: 'Outro',
+  outro: 'Outro'
 };
 
 // Pagamento da fatura do mês anterior (crédito no cartão) — não é despesa real, não deve entrar em totais
@@ -56,22 +56,22 @@ const categoriaColors = {
   transporte: 'bg-slate-100 text-slate-700', financeiro: 'bg-red-100 text-red-700',
   seguro: 'bg-gray-100 text-gray-700',
   produtos: 'bg-indigo-100 text-indigo-700', estoque: 'bg-emerald-100 text-emerald-700',
-  outro: 'bg-amber-100 text-amber-700',
+  outro: 'bg-amber-100 text-amber-700'
 };
 
 // Estilo por bandeira/banco — cor própria de cada instituição
 const BANDEIRAS = {
-  Sicoob:  { bar: 'bg-teal-700',    icon: 'bg-teal-700 text-white',    badge: 'bg-teal-100 text-teal-800',     nameText: 'text-teal-800' },
-  Sicredi: { bar: 'bg-green-600',   icon: 'bg-green-600 text-white',   badge: 'bg-green-100 text-green-800',   nameText: 'text-green-700' },
-  Acentra: { bar: 'bg-orange-500',  icon: 'bg-orange-500 text-white',  badge: 'bg-orange-100 text-orange-800', nameText: 'text-orange-700' },
-  Magalu:  { bar: 'bg-blue-600',    icon: 'bg-blue-600 text-white',    badge: 'bg-blue-100 text-blue-800',     nameText: 'text-blue-700' },
-  default: { bar: 'bg-slate-500',   icon: 'bg-slate-600 text-white',   badge: 'bg-slate-100 text-slate-700',   nameText: 'text-slate-800' },
+  Sicoob: { bar: 'bg-teal-700', icon: 'bg-teal-700 text-white', badge: 'bg-teal-100 text-teal-800', nameText: 'text-teal-800' },
+  Sicredi: { bar: 'bg-green-600', icon: 'bg-green-600 text-white', badge: 'bg-green-100 text-green-800', nameText: 'text-green-700' },
+  Acentra: { bar: 'bg-orange-500', icon: 'bg-orange-500 text-white', badge: 'bg-orange-100 text-orange-800', nameText: 'text-orange-700' },
+  Magalu: { bar: 'bg-blue-600', icon: 'bg-blue-600 text-white', badge: 'bg-blue-100 text-blue-800', nameText: 'text-blue-700' },
+  default: { bar: 'bg-slate-500', icon: 'bg-slate-600 text-white', badge: 'bg-slate-100 text-slate-700', nameText: 'text-slate-800' }
 };
 
 function CategoriaBreakdown({ lancamentos }) {
-  const validos = lancamentos.filter(l => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
+  const validos = lancamentos.filter((l) => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
   const cats = {};
-  validos.forEach(l => {
+  validos.forEach((l) => {
     const cat = l.categoria || 'outro';
     cats[cat] = (cats[cat] || 0) + (l.valor || 0);
   });
@@ -84,8 +84,8 @@ function CategoriaBreakdown({ lancamentos }) {
         <PieChart className="w-3.5 h-3.5" /> Gastos por Categoria
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {sorted.map(([cat, val]) => (
-          <div key={cat} className="flex items-center justify-between bg-background rounded-md px-2 py-1.5 border">
+        {sorted.map(([cat, val]) =>
+        <div key={cat} className="flex items-center justify-between bg-background rounded-md px-2 py-1.5 border">
             <div className="flex items-center gap-1.5 min-w-0">
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${categoriaColors[cat] || 'bg-slate-100 text-slate-700'}`}>
                 {categoriaLabels[cat] || cat}
@@ -93,13 +93,13 @@ function CategoriaBreakdown({ lancamentos }) {
             </div>
             <div className="text-right ml-1 shrink-0">
               <p className="text-xs font-bold">{formatCurrency(val)}</p>
-              <p className="text-[10px] text-muted-foreground">{total > 0 ? ((val / total) * 100).toFixed(0) : 0}%</p>
+              <p className="text-[10px] text-muted-foreground">{total > 0 ? (val / total * 100).toFixed(0) : 0}%</p>
             </div>
           </div>
-        ))}
+        )}
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 export default function Cartoes() {
@@ -128,10 +128,10 @@ export default function Cartoes() {
       cards = await base44.entities.ContaCartao.list();
     }
     const [fats, lancs, batches] = await Promise.all([
-      base44.entities.FaturaCartao.list('-data_vencimento', 200),
-      base44.entities.LancamentoCartao.list('-data_lancamento', 1000),
-      base44.entities.ImportBatch.filter({ batch_type: 'fatura_cartao', status: 'completed' }, '-created_date', 200).catch(() => []),
-    ]);
+    base44.entities.FaturaCartao.list('-data_vencimento', 200),
+    base44.entities.LancamentoCartao.list('-data_lancamento', 1000),
+    base44.entities.ImportBatch.filter({ batch_type: 'fatura_cartao', status: 'completed' }, '-created_date', 200).catch(() => [])]
+    );
     setCartoes(cards.sort((a, b) => (a.dia_vencimento || 0) - (b.dia_vencimento || 0)));
     setFaturas(fats);
     setLancamentos(lancs);
@@ -162,7 +162,7 @@ export default function Cartoes() {
     await base44.entities.FaturaCartao.create({
       ...faturaForm,
       valor_total: parseFloat(faturaForm.valor_total),
-      valor_pago: faturaForm.valor_pago ? parseFloat(faturaForm.valor_pago) : 0,
+      valor_pago: faturaForm.valor_pago ? parseFloat(faturaForm.valor_pago) : 0
     });
     setShowFaturaForm(false);
     setFaturaForm({ conta_cartao_id: '', mes_referencia: '', data_vencimento: '', valor_total: '', status: 'aberta', data_pagamento: '', valor_pago: '0' });
@@ -171,15 +171,15 @@ export default function Cartoes() {
 
   const monthTotals = useMemo(() => {
     const t = {};
-    ALL_MONTHS.forEach(m => {
-      t[m] = faturas.filter(f => f.mes_referencia === m).reduce((s,f) => s+(f.valor_total||0), 0);
+    ALL_MONTHS.forEach((m) => {
+      t[m] = faturas.filter((f) => f.mes_referencia === m).reduce((s, f) => s + (f.valor_total || 0), 0);
     });
     return t;
   }, [faturas]);
 
   const filteredFaturas = useMemo(() => {
     if (isAnnual) return faturas;
-    return faturas.filter(f => f.mes_referencia === selectedMonth);
+    return faturas.filter((f) => f.mes_referencia === selectedMonth);
   }, [faturas, selectedMonth, isAnnual]);
 
   // Agrupa cartões duplicados (mesmo nome criado por usuários diferentes) — soma faturas de todos os ids
@@ -198,12 +198,12 @@ export default function Cartoes() {
 
   function getCardFaturas(cardIdOrIds) {
     const ids = Array.isArray(cardIdOrIds) ? cardIdOrIds : [cardIdOrIds];
-    return filteredFaturas.filter(f => ids.includes(f.conta_cartao_id)).sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento));
+    return filteredFaturas.filter((f) => ids.includes(f.conta_cartao_id)).sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento));
   }
 
   function getFaturaLancamentos(faturaId) {
     // Filtra + dedup por (data + estabelecimento normalizado + valor arredondado) para o total bater com a fatura
-    const raw = lancamentos.filter(l => l.fatura_id === faturaId);
+    const raw = lancamentos.filter((l) => l.fatura_id === faturaId);
     const seen = new Set();
     const dedup = [];
     for (const l of raw) {
@@ -218,17 +218,17 @@ export default function Cartoes() {
 
   // Localiza o arquivo PDF/imagem importado para uma fatura específica
   function getFaturaFileUrl(fat) {
-    const cartao = cartoes.find(c => c.id === fat.conta_cartao_id);
+    const cartao = cartoes.find((c) => c.id === fat.conta_cartao_id);
     const nomeCart = (cartao?.nome || '').split('—')[0].trim().toLowerCase();
     for (const b of importBatches) {
       if (!b.notes) continue;
       let n;
-      try { n = JSON.parse(b.notes); } catch { continue; }
+      try {n = JSON.parse(b.notes);} catch {continue;}
       if (!n?.file_url) continue;
       const matchValor = n.valor_total != null && Math.abs(n.valor_total - (fat.valor_total || 0)) < 1;
       const matchVenc = n.data_vencimento && n.data_vencimento === fat.data_vencimento;
       const matchCart = nomeCart && n.nome_cartao && n.nome_cartao.toLowerCase().includes(nomeCart);
-      if ((matchValor && matchVenc) || (matchCart && matchVenc) || (matchCart && matchValor)) {
+      if (matchValor && matchVenc || matchCart && matchVenc || matchCart && matchValor) {
         return n.file_url;
       }
     }
@@ -243,30 +243,30 @@ export default function Cartoes() {
   // que é uma visão geral e não deve depender do mês selecionado.
   function getUltimaFaturaGeral(cardIdOrIds) {
     const ids = Array.isArray(cardIdOrIds) ? cardIdOrIds : [cardIdOrIds];
-    return faturas
-      .filter(f => ids.includes(f.conta_cartao_id))
-      .sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento))[0] || null;
+    return faturas.
+    filter((f) => ids.includes(f.conta_cartao_id)).
+    sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento))[0] || null;
   }
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">
       <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-    </div>
-  );
+    </div>);
 
-  const totalMes = filteredFaturas.reduce((s,f)=>s+(f.valor_total||0),0);
-  const totalPagoMes = filteredFaturas.filter(f=>f.status==='paga_total').reduce((s,f)=>s+(f.valor_pago||0),0);
+
+  const totalMes = filteredFaturas.reduce((s, f) => s + (f.valor_total || 0), 0);
+  const totalPagoMes = filteredFaturas.filter((f) => f.status === 'paga_total').reduce((s, f) => s + (f.valor_pago || 0), 0);
 
   return (
-    <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
+    <div className="lg:px-6 lg:py-6 max-w-[1600px] mx-auto px-4 py-1">
       <PageHeader title="Cartões de Crédito" subtitle={`${cartoesAgrupados.length} cartões cadastrados`}>
         <MonthNavigator
           selectedMonth={selectedMonth}
           onSelectMonth={setSelectedMonth}
           isAnnual={isAnnual}
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
-          monthTotals={monthTotals}
-        />
+          monthTotals={monthTotals} />
+        
         <DeduplicarCartoesButton onDone={loadData} />
         <ReparoCartoesButton onComplete={loadData} />
         <ConciliarFaturasButton onDone={loadData} />
@@ -278,7 +278,7 @@ export default function Cartoes() {
         <GradientCard title="Total Faturas" value={formatCurrency(totalMes)} sub={`${filteredFaturas.length} faturas`} icon={CreditCard} gradient="purple" />
         <GradientCard title="Total Pago" value={formatCurrency(totalPagoMes)} sub="Faturas quitadas" icon={DollarSign} gradient="green" />
         <GradientCard title="A Pagar" value={formatCurrency(totalMes - totalPagoMes)} sub="Saldo restante" icon={AlertCircle} gradient="orange" />
-        <GradientCard title="Cartões Ativos" value={cartoes.filter(c=>c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
+        <GradientCard title="Cartões Ativos" value={cartoes.filter((c) => c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
       </div>
 
       {/* Calendário de Vencimentos — cada tópico com o círculo do dia no topo e o card do cartão logo abaixo */}
@@ -287,11 +287,11 @@ export default function Cartoes() {
           <Calendar className="w-4 h-4" /> Calendário de Vencimentos
         </p>
         <div className="flex gap-3 items-start overflow-x-auto pb-2">
-          {cartoesAgrupados.map(c => {
+          {cartoesAgrupados.map((c) => {
             const cardFaturas = getCardFaturas(c.ids);
             const latestFat = cardFaturas[0] || getUltimaFaturaGeral(c.ids);
             const url = latestFat ? getFaturaFileUrl(latestFat) : null;
-            const faturasCount = cardFaturas.length || faturas.filter(f => c.ids.includes(f.conta_cartao_id)).length;
+            const faturasCount = cardFaturas.length || faturas.filter((f) => c.ids.includes(f.conta_cartao_id)).length;
             return (
               <CartaoCalendarioCard
                 key={c.id}
@@ -310,29 +310,29 @@ export default function Cartoes() {
                     if (firstFat) setExpandedFatura(firstFat.id);
                   }
                 }}
-                onViewFile={setViewerFile}
-              />
-            );
+                onViewFile={setViewerFile} />);
+
+
           })}
         </div>
       </div>
 
       {/* Conciliação */}
-      {filteredFaturas.length > 0 && (
-        <ConciliacaoCartoes 
-          lancamentos={lancamentos.filter(l => 
-            l.fatura_id && 
-            faturas.find(f => f.id === l.fatura_id && (isAnnual || f.mes_referencia === selectedMonth))
-          )} 
-          selectedMonth={selectedMonth}
-          isAnnual={isAnnual}
-          totalFaturas={totalMes}
-        />
-      )}
+      {filteredFaturas.length > 0 &&
+      <ConciliacaoCartoes
+        lancamentos={lancamentos.filter((l) =>
+        l.fatura_id &&
+        faturas.find((f) => f.id === l.fatura_id && (isAnnual || f.mes_referencia === selectedMonth))
+        )}
+        selectedMonth={selectedMonth}
+        isAnnual={isAnnual}
+        totalFaturas={totalMes} />
+
+      }
 
       {/* Painel expandido — largura total na quebra abaixo */}
       {expandedCard && (() => {
-        const c = cartoesAgrupados.find(x => x.id === expandedCard);
+        const c = cartoesAgrupados.find((x) => x.id === expandedCard);
         if (!c) return null;
         const cardFaturas = getCardFaturas(c.ids);
         return (
@@ -344,51 +344,51 @@ export default function Cartoes() {
                 <span className="text-[10px] text-muted-foreground truncate">{c.bandeira} · dia {c.dia_vencimento} · {c.conta_bancaria_pagamento}</span>
               </div>
               <button
-                onClick={() => { setExpandedCard(null); setExpandedFatura(null); }}
-                className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted"
-              >
+                onClick={() => {setExpandedCard(null);setExpandedFatura(null);}}
+                className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted">
+                
                 Fechar ✕
               </button>
             </div>
             <div className="bg-muted/10">
-              {cardFaturas.length === 0 ? (
-                <p className="px-6 py-4 text-sm text-muted-foreground">Nenhuma fatura cadastrada</p>
-              ) : (
-                cardFaturas.map(fat => {
-                  const fatLancs = getFaturaLancamentos(fat.id);
-                  const isFatExpanded = expandedFatura === fat.id;
-                  const pagamentos = fatLancs.filter(l => isPagamentoFatura(l));
-                  const validos = fatLancs.filter(l => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
-                  const despesasParaTabela = fatLancs.filter(l => !isPagamentoFatura(l));
-                  const totalEmp = validos.filter(l => l.natureza === 'empresarial').reduce((s, l) => s + (l.valor || 0), 0);
-                  const totalPes = validos.filter(l => l.natureza === 'pessoal').reduce((s, l) => s + (l.valor || 0), 0);
-                  const totalPagamentos = pagamentos.reduce((s, l) => s + (l.valor || 0), 0);
+              {cardFaturas.length === 0 ?
+              <p className="px-6 py-4 text-sm text-muted-foreground">Nenhuma fatura cadastrada</p> :
 
-                  return (
-                    <div key={fat.id} className="border-b last:border-b-0">
+              cardFaturas.map((fat) => {
+                const fatLancs = getFaturaLancamentos(fat.id);
+                const isFatExpanded = expandedFatura === fat.id;
+                const pagamentos = fatLancs.filter((l) => isPagamentoFatura(l));
+                const validos = fatLancs.filter((l) => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
+                const despesasParaTabela = fatLancs.filter((l) => !isPagamentoFatura(l));
+                const totalEmp = validos.filter((l) => l.natureza === 'empresarial').reduce((s, l) => s + (l.valor || 0), 0);
+                const totalPes = validos.filter((l) => l.natureza === 'pessoal').reduce((s, l) => s + (l.valor || 0), 0);
+                const totalPagamentos = pagamentos.reduce((s, l) => s + (l.valor || 0), 0);
+
+                return (
+                  <div key={fat.id} className="border-b last:border-b-0">
                       <button
-                        onClick={() => setExpandedFatura(isFatExpanded ? null : fat.id)}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 text-left transition-colors"
-                      >
+                      onClick={() => setExpandedFatura(isFatExpanded ? null : fat.id)}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 text-left transition-colors">
+                      
                         <div className="flex-1 flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-semibold">{fat.mes_referencia}</span>
                           <StatusBadge status={fat.status} />
                           <span className="text-[10px] text-muted-foreground">Venc. {formatDate(fat.data_vencimento)}</span>
                           {fatLancs.length > 0 && <span className="text-[10px] text-muted-foreground">{fatLancs.length} lanç.</span>}
                           {(() => {
-                            const url2 = getFaturaFileUrl(fat);
-                            if (!url2) return null;
-                            return (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setViewerFile({ url: url2, titulo: `${c.nome} — ${fat.mes_referencia}` }); }}
-                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
-                                title="Ver fatura original importada"
-                              >
+                          const url2 = getFaturaFileUrl(fat);
+                          if (!url2) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => {e.stopPropagation();setViewerFile({ url: url2, titulo: `${c.nome} — ${fat.mes_referencia}` });}}
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                              title="Ver fatura original importada">
+                              
                                 <FileImage className="w-3 h-3" /> Ver original
-                              </button>
-                            );
-                          })()}
+                              </button>);
+
+                        })()}
                         </div>
                         <div className="text-right">
                           <span className="text-xs font-bold">{formatCurrency(fat.valor_total)}</span>
@@ -397,12 +397,12 @@ export default function Cartoes() {
                         {isFatExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
                       </button>
 
-                      {isFatExpanded && (
-                        <div className="px-3 pb-3 bg-background">
-                          {fatLancs.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-2">Nenhum lançamento cadastrado</p>
-                          ) : (
-                            <>
+                      {isFatExpanded &&
+                    <div className="px-3 pb-3 bg-background">
+                          {fatLancs.length === 0 ?
+                      <p className="text-xs text-muted-foreground py-2">Nenhum lançamento cadastrado</p> :
+
+                      <>
                               <div className="flex gap-1.5 mt-2 mb-2">
                                 <div className="bg-blue-50 border border-blue-100 rounded px-2 py-1 text-[10px] flex-1">
                                   <p className="text-blue-600 font-semibold">Empresarial</p>
@@ -424,20 +424,20 @@ export default function Cartoes() {
                                 <LancamentosEditableTable lancamentos={despesasParaTabela} onReload={loadData} />
                               </div>
 
-                              {pagamentos.length > 0 && (
-                                <div className="mt-4 pt-3 border-t border-dashed">
+                              {pagamentos.length > 0 &&
+                        <div className="mt-4 pt-3 border-t border-dashed">
                                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                                     Pagamentos da fatura anterior · não contabilizados
                                   </p>
                                   <table className="w-full text-xs text-muted-foreground/70">
                                     <tbody>
-                                      {pagamentos.map(l => (
-                                        <tr key={l.id} className="border-b last:border-b-0">
+                                      {pagamentos.map((l) =>
+                              <tr key={l.id} className="border-b last:border-b-0">
                                           <td className="py-1 whitespace-nowrap w-24">{formatDate(l.data_lancamento)}</td>
                                           <td className="py-1 italic" title={l.estabelecimento}>{l.estabelecimento}</td>
                                           <td className="py-1 text-right tabular-nums">{formatCurrency(l.valor)}</td>
                                         </tr>
-                                      ))}
+                              )}
                                       <tr>
                                         <td colSpan={2} className="py-1.5 text-right font-semibold uppercase text-[10px] tracking-wider">Total pagamentos</td>
                                         <td className="py-1.5 text-right font-bold tabular-nums">{formatCurrency(totalPagamentos)}</td>
@@ -445,26 +445,26 @@ export default function Cartoes() {
                                     </tbody>
                                   </table>
                                 </div>
-                              )}
+                        }
                             </>
-                          )}
+                      }
                         </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
+                    }
+                    </div>);
+
+              })
+              }
             </div>
-          </div>
-        );
+          </div>);
+
       })()}
 
       <FaturaImageViewer
         open={!!viewerFile}
-        onOpenChange={(v) => { if (!v) setViewerFile(null); }}
+        onOpenChange={(v) => {if (!v) setViewerFile(null);}}
         fileUrl={viewerFile?.url}
-        titulo={viewerFile?.titulo}
-      />
+        titulo={viewerFile?.titulo} />
+      
 
       {/* Fatura Form */}
       <Dialog open={showFaturaForm} onOpenChange={setShowFaturaForm}>
@@ -473,20 +473,20 @@ export default function Cartoes() {
           <form onSubmit={handleFaturaSubmit} className="space-y-4">
             <div>
               <Label>Cartão</Label>
-              <Select value={faturaForm.conta_cartao_id} onValueChange={v => setFaturaForm({...faturaForm, conta_cartao_id: v})}>
+              <Select value={faturaForm.conta_cartao_id} onValueChange={(v) => setFaturaForm({ ...faturaForm, conta_cartao_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>{cartoes.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                <SelectContent>{cartoes.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Mês Referência</Label><Input placeholder="2026-03" value={faturaForm.mes_referencia} onChange={e => setFaturaForm({...faturaForm, mes_referencia: e.target.value})} required /></div>
-              <div><Label>Data Vencimento</Label><Input type="date" value={faturaForm.data_vencimento} onChange={e => setFaturaForm({...faturaForm, data_vencimento: e.target.value})} required /></div>
+              <div><Label>Mês Referência</Label><Input placeholder="2026-03" value={faturaForm.mes_referencia} onChange={(e) => setFaturaForm({ ...faturaForm, mes_referencia: e.target.value })} required /></div>
+              <div><Label>Data Vencimento</Label><Input type="date" value={faturaForm.data_vencimento} onChange={(e) => setFaturaForm({ ...faturaForm, data_vencimento: e.target.value })} required /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Valor Total</Label><Input type="number" step="0.01" value={faturaForm.valor_total} onChange={e => setFaturaForm({...faturaForm, valor_total: e.target.value})} required /></div>
+              <div><Label>Valor Total</Label><Input type="number" step="0.01" value={faturaForm.valor_total} onChange={(e) => setFaturaForm({ ...faturaForm, valor_total: e.target.value })} required /></div>
               <div>
                 <Label>Status</Label>
-                <Select value={faturaForm.status} onValueChange={v => setFaturaForm({...faturaForm, status: v})}>
+                <Select value={faturaForm.status} onValueChange={(v) => setFaturaForm({ ...faturaForm, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="aberta">Aberta</SelectItem>
@@ -497,13 +497,13 @@ export default function Cartoes() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Data Pagamento</Label><Input type="date" value={faturaForm.data_pagamento} onChange={e => setFaturaForm({...faturaForm, data_pagamento: e.target.value})} /></div>
-              <div><Label>Valor Pago</Label><Input type="number" step="0.01" value={faturaForm.valor_pago} onChange={e => setFaturaForm({...faturaForm, valor_pago: e.target.value})} /></div>
+              <div><Label>Data Pagamento</Label><Input type="date" value={faturaForm.data_pagamento} onChange={(e) => setFaturaForm({ ...faturaForm, data_pagamento: e.target.value })} /></div>
+              <div><Label>Valor Pago</Label><Input type="number" step="0.01" value={faturaForm.valor_pago} onChange={(e) => setFaturaForm({ ...faturaForm, valor_pago: e.target.value })} /></div>
             </div>
             <Button type="submit" className="w-full">Salvar Fatura</Button>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>);
+
 }
