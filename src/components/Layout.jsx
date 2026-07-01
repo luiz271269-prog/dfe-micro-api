@@ -32,7 +32,7 @@ function AlertBar() {
 function Breadcrumb({ location }) {
   const item = navItems.find((n) => n.path === location.pathname);
   if (!item || item.path === '/') return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground px-6 py-2 border-b bg-card">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground px-6 py-2 border-b bg-card hidden">
       <LayoutDashboard className="w-3.5 h-3.5" />
       <span className="font-medium text-foreground">Dashboard</span>
     </div>);
