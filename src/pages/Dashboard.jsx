@@ -347,7 +347,7 @@ export default function Dashboard() {
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
           <button onClick={() => setIsAnnual(!isAnnual)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ml-1 ${isAnnual ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : 'border hover:bg-muted text-muted-foreground'}`}>
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ml-1 bg-[hsl(var(--chart-4))] text-[hsl(var(--foreground))] ${isAnnual ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' : "border hover:bg-muted"}`}>
             Anual
           </button>
           <DedupButton autoOncePerDay />
