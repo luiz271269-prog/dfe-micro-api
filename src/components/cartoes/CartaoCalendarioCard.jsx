@@ -27,7 +27,7 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
   return (
     <button
       onClick={onToggle}
-      className={`group relative bg-gradient-to-br from-card to-muted/20 rounded-xl border p-2.5 hover:shadow-md hover:border-primary/40 transition-all text-left overflow-hidden ${isExpanded ? 'ring-2 ring-primary border-primary shadow-md' : ''}`}
+      className={`group relative shrink-0 w-[180px] bg-gradient-to-br from-card to-muted/20 rounded-xl border p-2.5 hover:shadow-md hover:border-primary/40 transition-all text-left overflow-hidden ${isExpanded ? 'ring-2 ring-primary border-primary shadow-md' : ''}`}
     >
       <div className={`absolute top-0 left-0 right-0 h-1 ${bStyle.bar}`} />
 
