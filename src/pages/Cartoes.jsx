@@ -238,6 +238,15 @@ export default function Cartoes() {
     return getCardFaturas(cardIdOrIds)[0] || null;
   }
 
+  // Última fatura REAL do cartão (todos os meses) — usado no Calendário de Vencimentos,
+  // que é uma visão geral e não deve depender do mês selecionado.
+  function getUltimaFaturaGeral(cardIdOrIds) {
+    const ids = Array.isArray(cardIdOrIds) ? cardIdOrIds : [cardIdOrIds];
+    return faturas
+      .filter(f => ids.includes(f.conta_cartao_id))
+      .sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento))[0] || null;
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-full">
       <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -278,7 +287,7 @@ export default function Cartoes() {
         </p>
         <div className="flex items-start gap-4 overflow-x-auto pb-2">
           {cartoesAgrupados.map(c => {
-            const latestFat = getLatestFatura(c.ids);
+            const latestFat = getUltimaFaturaGeral(c.ids);
             const statusColors = {
               aberta: 'bg-amber-100 border-amber-300 text-amber-800',
               paga_total: 'bg-green-100 border-green-300 text-green-800',
@@ -295,7 +304,12 @@ export default function Cartoes() {
                   <span className="text-[9px] font-medium">dia</span>
                 </button>
                 <p className="text-[10px] text-center text-muted-foreground leading-tight max-w-[80px] truncate">{c.nome.split('—')[0].trim()}</p>
-                {latestFat && <p className="text-[10px] font-bold text-center">{formatCurrency(latestFat.valor_total)}</p>}
+                {latestFat ? (
+                  <p className="text-[10px] font-bold text-center">{formatCurrency(latestFat.valor_total)}</p>
+                ) : (
+                  <p className="text-[10px] text-center text-muted-foreground italic">sem fatura</p>
+                )}
+                {latestFat && <p className="text-[9px] text-center text-muted-foreground">{latestFat.mes_referencia}</p>}
               </div>
             );
           })}
