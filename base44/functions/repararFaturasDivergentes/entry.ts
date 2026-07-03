@@ -27,16 +27,18 @@ Deno.serve(async (req) => {
     for (const f of faturas) {
       const ls = lancs.filter(l => l.fatura_id === f.id);
       if (ls.length === 0) continue;
-      const somaPos = ls.filter(l => (l.valor || 0) > 0).reduce((s, l) => s + l.valor, 0);
+      // Soma LÍQUIDA (com sinal): despesas menos estornos/créditos — esta é a verdade fiscal.
+      // O valor_total às vezes foi extraído do PDF sem descontar os estornos, ficando inflado.
+      const somaLiquida = ls.reduce((s, l) => s + (Number(l.valor) || 0), 0);
       const valorAtual = Number(f.valor_total || 0);
-      const diff = Math.abs(somaPos - valorAtual);
+      const diff = Math.abs(somaLiquida - valorAtual);
       if (diff > tolerancia) {
         reparos.push({
           fatura_id: f.id,
           mes: f.mes_referencia,
           conta_cartao_id: f.conta_cartao_id,
           valor_total_atual: Math.round(valorAtual * 100) / 100,
-          soma_real: Math.round(somaPos * 100) / 100,
+          soma_real: Math.round(somaLiquida * 100) / 100,
           diff: Math.round(diff * 100) / 100,
           qtd_lancs: ls.length,
         });
