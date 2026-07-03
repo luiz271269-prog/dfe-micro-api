@@ -254,7 +254,12 @@ export default function Cartoes() {
     </div>);
 
 
-  const totalMes = filteredFaturas.reduce((s, f) => s + (f.valor_total || 0), 0);
+  // Fonte única de verdade: o total vem SEMPRE da soma dos lançamentos no banco
+  // (com sinal, incluindo estornos), nunca do campo valor_total armazenado — que pode estar desatualizado.
+  const faturaIdsMes = new Set(filteredFaturas.map((f) => f.id));
+  const totalMes = lancamentos.
+  filter((l) => faturaIdsMes.has(l.fatura_id)).
+  reduce((s, l) => s + (l.valor || 0), 0);
   const totalPagoMes = filteredFaturas.filter((f) => f.status === 'paga_total').reduce((s, f) => s + (f.valor_pago || 0), 0);
 
   return (
