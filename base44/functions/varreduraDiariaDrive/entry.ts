@@ -163,7 +163,19 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    const { accessToken } = await base44.asServiceRole.connectors.getCurrentAppUserConnection(CONNECTOR_ID);
+    // A automação agendada roda SEM usuário logado → getCurrentAppUserConnection falha
+    // ("No active connection found"). Usa a conexão compartilhada do workspace (BYO_SHARED),
+    // com fallback para a conexão do usuário atual quando chamada manualmente pela tela.
+    let accessToken;
+    try {
+      ({ accessToken } = await base44.asServiceRole.connectors.getWorkspaceConnection(CONNECTOR_ID));
+    } catch {
+      try {
+        ({ accessToken } = await base44.asServiceRole.connectors.getCurrentAppUserConnection(CONNECTOR_ID));
+      } catch {
+        accessToken = null;
+      }
+    }
     if (!accessToken) {
       return Response.json({ error: 'Conexão com o Google Drive não disponível' }, { status: 400 });
     }
