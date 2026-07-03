@@ -33,7 +33,15 @@ export default function ComprovantePicker({ entityName, record, onChange }) {
   useEffect(() => {
     (async () => {
       await loadScript('https://apis.google.com/js/api.js');
-      await new Promise(res => window.gapi.load('picker', res));
+      // Após o onload, window.gapi pode ainda não estar disponível — aguarda até aparecer.
+      await new Promise((res) => {
+        const check = () => {
+          if (window.gapi) return res();
+          setTimeout(check, 50);
+        };
+        check();
+      });
+      await new Promise((res) => window.gapi.load('picker', res));
       setPickerReady(true);
     })();
   }, []);
