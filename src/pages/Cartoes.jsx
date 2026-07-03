@@ -202,18 +202,12 @@ export default function Cartoes() {
   }
 
   function getFaturaLancamentos(faturaId) {
-    // Filtra + dedup por (data + estabelecimento normalizado + valor arredondado) para o total bater com a fatura
-    const raw = lancamentos.filter((l) => l.fatura_id === faturaId);
-    const seen = new Set();
-    const dedup = [];
-    for (const l of raw) {
-      const norm = (l.estabelecimento || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
-      const key = `${l.data_lancamento}|${norm}|${Math.round((l.valor || 0) * 100)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      dedup.push(l);
-    }
-    return dedup.sort((a, b) => new Date(a.data_lancamento) - new Date(b.data_lancamento));
+    // Fonte única: TODOS os lançamentos da fatura no banco, sem descartar nenhum.
+    // (Dedup real deve ser feito pelo botão "Deduplicar", não escondendo lançamentos aqui —
+    // esconder fazia a lista "faltar" itens e não fechar com a fatura.)
+    return lancamentos.
+    filter((l) => l.fatura_id === faturaId).
+    sort((a, b) => new Date(a.data_lancamento) - new Date(b.data_lancamento));
   }
 
   // Localiza o arquivo PDF/imagem importado para uma fatura específica
@@ -368,6 +362,8 @@ export default function Cartoes() {
                 const totalEmp = validos.filter((l) => l.natureza === 'empresarial').reduce((s, l) => s + (l.valor || 0), 0);
                 const totalPes = validos.filter((l) => l.natureza === 'pessoal').reduce((s, l) => s + (l.valor || 0), 0);
                 const totalPagamentos = pagamentos.reduce((s, l) => s + (l.valor || 0), 0);
+                // Total da fatura = soma dos lançamentos no banco (fonte única de verdade)
+                const totalFaturaReal = fatLancs.reduce((s, l) => s + (l.valor || 0), 0);
 
                 return (
                   <div key={fat.id} className="border-b last:border-b-0">
@@ -396,7 +392,7 @@ export default function Cartoes() {
                         })()}
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-bold">{formatCurrency(fat.valor_total)}</span>
+                          <span className="text-xs font-bold">{formatCurrency(totalFaturaReal)}</span>
                           {fat.valor_pago > 0 && <p className="text-[10px] text-green-600 leading-tight">Pago: {formatCurrency(fat.valor_pago)}</p>}
                         </div>
                         {isFatExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
@@ -419,7 +415,7 @@ export default function Cartoes() {
                                 </div>
                                 <div className="bg-muted border rounded px-2 py-1 text-[10px] flex-1">
                                   <p className="text-muted-foreground font-semibold">Total</p>
-                                  <p className="font-bold text-xs">{formatCurrency(fat.valor_total)}</p>
+                                  <p className="font-bold text-xs">{formatCurrency(totalFaturaReal)}</p>
                                 </div>
                               </div>
 
