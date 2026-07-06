@@ -6,9 +6,11 @@ import { conciliarFaturamentoFluxoCaixa } from '@/functions/conciliarFaturamento
 import { conciliarObrasCartoes } from '@/functions/conciliarObrasCartoes';
 import { conciliarContasAPagarExtrato } from '@/functions/conciliarContasAPagarExtrato';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
-import { CreditCard, Wallet, FileText, Hammer, Users, Banknote, Loader2, CheckCircle2 } from 'lucide-react';
+import { conciliarPorHistoricoMensal } from '@/functions/conciliarPorHistoricoMensal';
+import { CreditCard, Wallet, FileText, Hammer, Users, Banknote, Loader2, CheckCircle2, History } from 'lucide-react';
 
 const CONCILIACOES = [
+  { key: 'historico_mensal', label: 'Padrão do Mês Anterior', desc: 'Recorrentes: replica a conciliação dos meses anteriores', icon: History, fn: conciliarPorHistoricoMensal },
   { key: 'contas_apagar', label: 'Despesas ↔ Banco', desc: 'Despesas, tributos e faturas vs extrato', icon: Wallet, fn: conciliarContasAPagarExtrato },
   { key: 'folha', label: 'Folha ↔ Banco', desc: 'Pagamentos de folha vs PIX no extrato', icon: Users, fn: conciliarFolhaExtrato },
   { key: 'cobrancas', label: 'Cobranças ↔ Banco', desc: 'Títulos Sicredi vs recebimentos', icon: Banknote, fn: conciliarCobrancasBanco },
@@ -77,7 +79,9 @@ export default function PainelConciliacoes({ onConciliado }) {
                   {res.realizados > 0 && <p className="text-emerald-700">✓ {res.realizados} realizados</p>}
                   {res.confirmados > 0 && <p className="text-blue-700">✓ {res.confirmados} confirmados</p>}
                   {res.conciliadas > 0 && <p className="text-emerald-700">✓ {res.conciliadas} conciliadas</p>}
-                  {res.baixas_automaticas === 0 && res.sugestoes_criadas === 0 && res.realizados === 0 && res.conciliadas === 0 && res.tributos_auto_criados === 0 && (
+                  {res.conciliados > 0 && <p className="text-emerald-700">✓ {res.conciliados} conciliados pelo padrão mensal</p>}
+                  {res.criados_espelho_mes_anterior > 0 && <p className="text-blue-700">📋 {res.criados_espelho_mes_anterior} registros espelhados do mês anterior</p>}
+                  {!res.baixas_automaticas && !res.sugestoes_criadas && !res.realizados && !res.conciliadas && !res.tributos_auto_criados && !res.conciliados && (
                     <p className="text-muted-foreground">Nada a conciliar</p>
                   )}
                 </div>
