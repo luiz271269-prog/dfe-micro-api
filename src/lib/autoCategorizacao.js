@@ -1,5 +1,19 @@
 import { base44 } from '@/api/base44Client';
 
+// REGRAS PRIORITÁRIAS ("Padrão NeuralTec") — prevalecem sobre qualquer categoria
+// atribuída pelo banco ou por regras aprendidas. Comparação por substring no texto normalizado.
+export const REGRAS_PRIORITARIAS = [
+  { escopo: 'extrato', contem: ['magalu', 'luizacred'], categoria: 'pessoal' },
+];
+
+// Retorna a categoria prioritária para uma descrição, ou null se nenhuma regra bater.
+export function categoriaPrioritaria(escopo, descricao) {
+  if (!descricao) return null;
+  const s = descricao.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const regra = REGRAS_PRIORITARIAS.find(r => r.escopo === escopo && r.contem.some(t => s.includes(t)));
+  return regra?.categoria || null;
+}
+
 // Normaliza texto: lowercase, sem acentos, sem dígitos longos / códigos / CPF/CNPJ / pontuação.
 // Mantém apenas os "tokens nominais" — geralmente o estabelecimento ou beneficiário.
 export function extrairTermoChave(texto) {
@@ -88,6 +102,9 @@ export async function aprenderEAplicarRegra({ escopo, descricao, categoria, cate
  * Retorna null se não houver regra correspondente.
  */
 export async function sugerirCategoria({ escopo, descricao }) {
+  // Regras prioritárias prevalecem sobre regras aprendidas e sobre a categoria do banco
+  const prioritaria = categoriaPrioritaria(escopo, descricao);
+  if (prioritaria) return prioritaria;
   const termo = extrairTermoChave(descricao);
   if (!termo) return null;
   const regras = await base44.entities.RegraCategorizacao.filter({ escopo, termo_chave: termo });
