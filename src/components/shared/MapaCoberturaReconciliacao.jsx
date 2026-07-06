@@ -1,20 +1,20 @@
-import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function MapaCoberturaReconciliacao() {
   const reconciliacoes = [
     { nome: 'Banco ↔ Faturamento', status: 'ativo', pagina: 'ConciliacaoMensal', desc: 'Extrato vs NFs emitidas' },
     { nome: 'Compras ↔ Pagamentos', status: 'ativo', pagina: 'CruzamentoCompras', desc: 'Compras vs Banco/Cartão' },
     { nome: 'Cartões ↔ Lançamentos', status: 'ativo', pagina: 'Cartoes', desc: 'Faturas vs transações internas' },
-    
-    { nome: 'Cartões ↔ Despesas', status: 'faltante', desc: 'Transações cartão não estão vinculadas a despesas operacionais' },
-    { nome: 'Obras ↔ Cartões', status: 'faltante', desc: 'Pagamentos de obra/reforma não validados contra cartão' },
+    { nome: 'Despesas ↔ Banco', status: 'ativo', pagina: 'CoberturaConciliacao', desc: 'Despesas operacionais reconciliadas contra extrato' },
+    { nome: 'Folha ↔ Banco', status: 'ativo', pagina: 'CoberturaConciliacao', desc: 'Pagamentos de folha validados contra lançamentos bancários' },
+    { nome: 'Cobranças ↔ Banco', status: 'ativo', pagina: 'CoberturaConciliacao', desc: 'Títulos de cobrança validados contra recebimentos bancários' },
+    { nome: 'Cartões ↔ Despesas', status: 'ativo', pagina: 'CoberturaConciliacao', desc: 'Transações cartão vinculadas a despesas operacionais' },
+    { nome: 'Obras ↔ Cartões', status: 'ativo', pagina: 'CoberturaConciliacao', desc: 'Pagamentos de obra/reforma validados contra cartão' },
+    { nome: 'Faturamento ↔ Fluxo Caixa', status: 'ativo', pagina: 'CoberturaConciliacao', desc: 'Previsão de recebimento validada contra realizado' },
+
     { nome: 'Tributos ↔ Compras', status: 'faltante', desc: 'ICMS/PIS das compras não validados contra tributos registrados' },
-    { nome: 'Faturamento ↔ Fluxo Caixa', status: 'faltante', desc: 'Previsão de recebimento não validada contra realizado' },
-    { nome: 'Despesas ↔ Banco', status: 'faltante', desc: 'Despesas operacionais não reconciliadas contra extrato' },
-    { nome: 'Folha ↔ Banco', status: 'faltante', desc: 'Pagamentos de folha não validados contra lançamentos bancários' },
     { nome: 'Cartões ↔ Fornecedores', status: 'faltante', desc: 'Transações de cartão não vinculadas a fornecedores' },
     { nome: 'Compras ↔ Itens', status: 'faltante', desc: 'Consolidação de itens de compra por fornecedor/categoria' },
-    { nome: 'Cobrancas ↔ Banco', status: 'faltante', desc: 'Títulos de cobrança não validados contra recebimentos bancários' },
   ];
 
   const ativos = reconciliacoes.filter(r => r.status === 'ativo').length;
@@ -25,7 +25,6 @@ export default function MapaCoberturaReconciliacao() {
       <div className="bg-card rounded-xl border p-5">
         <p className="text-sm font-bold text-foreground mb-4">📊 Mapa de Cobertura — Cruzamentos de Dados Financeiros</p>
         
-        {/* Resumo */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
           <div className="bg-green-50 border border-green-200 rounded-lg p-3">
             <p className="text-xs text-green-600 font-semibold">Implementados</p>
@@ -41,7 +40,6 @@ export default function MapaCoberturaReconciliacao() {
           </div>
         </div>
 
-        {/* Cruzamentos ativos */}
         {ativos > 0 && (
           <div className="mb-5">
             <p className="text-xs font-semibold text-muted-foreground mb-2">✅ IMPLEMENTADOS</p>
@@ -60,7 +58,6 @@ export default function MapaCoberturaReconciliacao() {
           </div>
         )}
 
-        {/* Cruzamentos faltando */}
         {faltantes > 0 && (
           <div>
             <p className="text-xs font-semibold text-muted-foreground mb-2">⚠️ FALTANDO / ROADMAP</p>
@@ -79,15 +76,12 @@ export default function MapaCoberturaReconciliacao() {
         )}
       </div>
 
-      {/* Recomendações */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm font-semibold text-blue-900 mb-2">💡 Próximos Passos Recomendados</p>
         <ul className="text-xs text-blue-800 space-y-1">
-          <li>• <strong>Prioridade Alta:</strong> Cartões ↔ Despesas (melhor auditoria de gastos)</li>
-          <li>• <strong>Prioridade Alta:</strong> Despesas ↔ Banco (fechamento mensal)</li>
-          <li>• <strong>Prioridade Alta:</strong> Cobrancas ↔ Banco (validar recebimentos)</li>
-          <li>• <strong>Prioridade Média:</strong> Obras ↔ Cartões (rastreamento de projetos)</li>
-          <li>• <strong>Prioridade Média:</strong> Folha ↔ Banco (conformidade)</li>
+          <li>• <strong>Prioridade Alta:</strong> Compras ↔ Itens (consolidação por fornecedor/categoria)</li>
+          <li>• <strong>Prioridade Média:</strong> Tributos ↔ Compras (validar ICMS/PIS)</li>
+          <li>• <strong>Prioridade Baixa:</strong> Cartões ↔ Fornecedores (rastreamento de fornecedores)</li>
         </ul>
       </div>
     </div>

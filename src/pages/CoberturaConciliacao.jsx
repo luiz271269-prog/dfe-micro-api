@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { migrarParaVinculoExtrato } from '@/functions/migrarParaVinculoExtrato';
 import { diagnosticoConciliacao } from '@/functions/diagnosticoConciliacao';
+import PainelConciliacoes from '../components/conciliacao/PainelConciliacoes';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
 import { Activity, RefreshCw, Zap, CheckCircle2, AlertTriangle, Link2, FileText, Wallet, Users, AlertCircle, Hammer, ShoppingCart, CreditCard } from 'lucide-react';
@@ -121,6 +122,8 @@ export default function CoberturaConciliacao() {
           <div className="h-full bg-white transition-all" style={{ width: `${pctExtrato}%` }} />
         </div>
       </div>
+
+      <PainelConciliacoes onConciliado={carregar} />
 
       {/* Grid: cobertura por entidade */}
       <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">Cobertura por Tipo de Obrigação</h2>
