@@ -100,8 +100,38 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html, body {
+    overscroll-behavior-y: none;
+  }
   body {
     @apply bg-background text-foreground font-inter;
+  }
+  /* WebView: interações não selecionáveis, dados continuam copiáveis */
+  button, [role="button"], nav a {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  table, td, th, input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
+@layer utilities {
+  .no-select {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .overscroll-lock {
+    overscroll-behavior-y: none;
   }
 }
 

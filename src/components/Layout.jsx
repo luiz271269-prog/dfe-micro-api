@@ -7,6 +7,8 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import PainelNotificacoes from './notificacoes/PainelNotificacoes';
 import SidebarNav from './SidebarNav';
+import MobileTabBar from './MobileTabBar';
+import DeleteAccountDialog from './DeleteAccountDialog';
 import { navItems } from '@/lib/navConfig';
 
 function AlertBar() {
@@ -113,13 +115,14 @@ export default function Layout() {
             <LogOut className="w-5 h-5 shrink-0" />
             {!collapsed && <span>Sair</span>}
           </button>
+          <DeleteAccountDialog collapsed={collapsed} />
         </div>
       </aside>
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile top bar */}
-        <div className="flex md:hidden items-center gap-3 px-4 h-14 border-b bg-sidebar shrink-0">
+        <div className="flex md:hidden items-center gap-3 px-4 h-14 border-b bg-sidebar shrink-0 safe-top box-content">
           <button onClick={() => setMobileOpen(true)} className="text-sidebar-foreground">
             <Menu className="w-6 h-6" />
           </button>
@@ -133,11 +136,11 @@ export default function Layout() {
           <PainelNotificacoes />
         </div>
         <Breadcrumb location={location} />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto overscroll-lock pb-16 md:pb-0">
           <Outlet />
         </main>
         {/* Footer */}
-        <div className="border-t bg-card px-6 py-2 flex items-center justify-between text-xs text-muted-foreground shrink-0">
+        <div className="border-t bg-card px-6 py-2 hidden md:flex items-center justify-between text-xs text-muted-foreground shrink-0">
           <span>NeuralTec Distribuição e Tecnologia Ltda</span>
           <span>Sicredi Conta 36092-2 · Cooperativa 2604 · {today.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
         </div>
@@ -149,11 +152,14 @@ export default function Layout() {
         target="_blank"
         rel="noopener noreferrer"
         title="Conversar com o Consultor Financeiro no WhatsApp"
-        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105">
+        className="fixed bottom-20 md:bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 no-select">
         
         <MessageCircle className="w-5 h-5" />
         <span className="text-sm font-semibold hidden sm:inline">Consultor Financeiro</span>
       </a>
+
+      {/* Barra de navegação inferior — apenas mobile */}
+      <MobileTabBar />
     </div>);
 
 }
