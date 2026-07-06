@@ -23,11 +23,88 @@ Deno.serve(async (req) => {
       ? todas.filter(a => (a.data_emissao || '').startsWith(mes_referencia))
       : todas;
 
+    // FALLBACK: se NFeAnalise vazia, usa ItemCompra (sem detalhe tributário, mas mostra compras)
     if (analises.length === 0) {
+      const itens = await base44.asServiceRole.entities.ItemCompra.list('-data_emissao', 5000);
+      const itensFiltrados = mes_referencia
+        ? itens.filter(i => (i.data_emissao || '').startsWith(mes_referencia))
+        : itens;
+
+      if (itensFiltrados.length === 0) {
+        return Response.json({
+          mes_referencia,
+          total_nfe: 0,
+          mensagem: mes_referencia ? `Nenhuma NF-e nem compra no mês ${mes_referencia}` : 'Nenhuma NF-e analisada e nenhuma compra registrada',
+        });
+      }
+
+      // Agrupa por nota/fornecedor para simular NFeAnalise
+      const porFornecedor = {};
+      const porCategoria = {};
+      let comprasBrutas = 0;
+      const produtosImpacto = [];
+
+      for (const item of itensFiltrados) {
+        const forn = item.fornecedor || '—';
+        const cat = item.categoria_produto || 'outro';
+        const valor = item.valor_total || 0;
+        comprasBrutas += valor;
+
+        if (!porFornecedor[forn]) porFornecedor[forn] = { nome: forn, count: 0, valor_produtos: 0, icms_st: 0, ipi: 0, custo_efetivo: 0 };
+        porFornecedor[forn].count++;
+        porFornecedor[forn].valor_produtos += valor;
+        porFornecedor[forn].custo_efetivo += valor; // sem impostos
+
+        if (!porCategoria[cat]) porCategoria[cat] = { categoria: cat, count: 0, valor: 0, custo_efetivo: 0 };
+        porCategoria[cat].count++;
+        porCategoria[cat].valor += valor;
+        porCategoria[cat].custo_efetivo += valor;
+
+        produtosImpacto.push({
+          nfe_numero: item.numero_nota || '',
+          fornecedor: forn,
+          descricao: item.descricao_produto || '',
+          ncm: item.codigo_produto || '',
+          cfop: '',
+          quantidade: item.quantidade || 1,
+          valor_produto: valor,
+          icms_st: 0,
+          ipi: 0,
+          icms_destacado: 0,
+          custo_efetivo: valor,
+          custo_unitario_efetivo: (item.quantidade || 1) > 0 ? valor / item.quantidade : valor,
+          impacto_tributario_percentual: 0,
+        });
+      }
+
+      const dre = {
+        regime_comprador,
+        compras_brutas: comprasBrutas,
+        frete_sobre_compras: 0,
+        descontos_sobre_compras: 0,
+        outras_despesas_compras: 0,
+        impostos_nao_recuperaveis: { icms_st: 0, ipi: 0, pis_cofins_simples: 0, total: 0 },
+        creditos_tributarios: { icms: 0, pis: 0, cofins: 0, total: 0, observacao: 'Sem detalhe tributário — importe XMLs de NF-e para análise de ICMS-ST/IPI' },
+        custo_mercadorias_efetivo: comprasBrutas,
+        impacto_tributario_sobre_compras_percentual: 0,
+        carga_tributaria_total: 0,
+        carga_tributaria_percentual: 0,
+      };
+
       return Response.json({
-        mes_referencia,
-        total_nfe: 0,
-        mensagem: mes_referencia ? `Nenhuma NF-e no mês ${mes_referencia}` : 'Nenhuma NF-e analisada',
+        mes_referencia: mes_referencia || 'todos',
+        total_nfe: itensFiltrados.length,
+        origem_dados: 'item_compra',
+        aviso: 'DRE baseado em compras registradas. Para análise de ICMS-ST/IPI, importe XMLs de NF-e (tela Análise NFe).',
+        tributos_consolidados: { valor_produtos: comprasBrutas },
+        dre,
+        distribuicao_uf: { interno: 0, interestadual: 0 },
+        top_produtos_maior_impacto: produtosImpacto.sort((a, b) => b.valor_produto - a.valor_produto).slice(0, 20),
+        top_categorias_ncm: Object.values(porCategoria).sort((a, b) => b.valor - a.valor).slice(0, 15),
+        top_fornecedores_impacto: Object.values(porFornecedor).map(f => ({
+          ...f, impacto_nao_recuperavel: 0, impacto_percentual: 0,
+        })).sort((a, b) => b.valor_produtos - a.valor_produtos).slice(0, 15),
+        total_produtos_analisados: produtosImpacto.length,
       });
     }
 
@@ -237,6 +314,7 @@ Deno.serve(async (req) => {
     return Response.json({
       mes_referencia: mes_referencia || 'todos',
       total_nfe: analises.length,
+      origem_dados: 'nfe_analise',
       tributos_consolidados: tributos,
       dre,
       distribuicao_uf: porUF,

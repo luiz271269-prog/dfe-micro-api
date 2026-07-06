@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, RefreshCw, Calculator, TrendingDown, Scale, Package, Store, FileDown } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
 import MonthNavigator from '../components/shared/MonthNavigator';
+import DASAlertBar from '../components/dre/DASAlertBar';
 import { formatCurrency } from '../lib/formatters';
 
 function DRELine({ label, value, isTotal, isSub, negative, highlight, indent = 0 }) {
@@ -98,6 +99,8 @@ export default function DRETributario() {
         {dados && <Button variant="outline" onClick={exportarCSV} className="gap-2"><FileDown className="w-4 h-4" /> Exportar</Button>}
       </PageHeader>
 
+      <DASAlertBar mesReferencia={mes} />
+
       {loading && (
         <div className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
       )}
@@ -109,6 +112,13 @@ export default function DRETributario() {
       {!loading && dados && dados.total_nfe === 0 && (
         <div className="bg-card border rounded-xl p-8 text-center">
           <p className="text-sm text-muted-foreground">{dados.mensagem}</p>
+          <p className="text-xs text-muted-foreground mt-2">Importe XMLs de NF-e na tela <strong>Análise NFe</strong> ou registre compras em <strong>Compras</strong> para alimentar o DRE.</p>
+        </div>
+      )}
+
+      {!loading && dados && dados.total_nfe > 0 && dados.aviso && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 flex items-center gap-2">
+          <span className="text-xs text-blue-800">{dados.aviso}</span>
         </div>
       )}
 
