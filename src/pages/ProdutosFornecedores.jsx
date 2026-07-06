@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Package, Building2, Search, X, Plus, ChevronRight, TrendingDown } from 'lucide-react';
+import { Package, Building2, Search, XIcon, Plus, ChevronRight, TrendingDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -263,7 +263,7 @@ export default function ProdutosFornecedores() {
                     <p className="text-sm font-medium leading-tight mt-0.5 line-clamp-2">{selectedProd.descricao_produto}</p>
                   </div>
                   <button onClick={() => setSelectedProd(null)} className="text-muted-foreground hover:text-foreground shrink-0">
-                    <X className="w-4 h-4" />
+                    <XIcon className="w-4 h-4" />
                   </button>
                 </div>
                 {historicoPreco.length < 2 ? (

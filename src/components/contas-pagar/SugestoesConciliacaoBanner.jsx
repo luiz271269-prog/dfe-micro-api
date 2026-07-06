@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Check, X, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Sparkles, Check, XIcon, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import ResolverManualDialog from './ResolverManualDialog';
@@ -126,7 +126,7 @@ export default function SugestoesConciliacaoBanner() {
                 disabled={processandoId === s.id}
                 className="gap-1 h-8 border-red-300 text-red-700 hover:bg-red-50"
               >
-                <X className="w-3.5 h-3.5" /> Não é essa
+                <XIcon className="w-3.5 h-3.5" /> Não é essa
               </Button>
             </div>
           </div>

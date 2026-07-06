@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { ZoomIn, ZoomOut, ExternalLink, FileText, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, ExternalLink, FileText, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function FaturaImageViewer({ open, onOpenChange, fileUrl, titulo }) {
@@ -35,7 +35,7 @@ export default function FaturaImageViewer({ open, onOpenChange, fileUrl, titulo 
               </Button>
             </a>
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="h-7 w-7 p-0">
-              <X className="w-4 h-4" />
+              <XIcon className="w-4 h-4" />
             </Button>
           </div>
         </div>

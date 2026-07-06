@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Bell, X, CheckCircle2, AlertTriangle, FileCode, ExternalLink } from 'lucide-react';
+import { Bell, XIcon, CheckCircle2, AlertTriangle, FileCode, ExternalLink } from 'lucide-react';
 
 const TIPO_LABELS = {
   score_baixo: 'Score baixo',
@@ -104,7 +104,7 @@ export default function PainelNotificacoes() {
                     Marcar todas
                   </button>
                 )}
-                <button onClick={() => setOpen(false)} className="p-1 hover:bg-muted rounded"><X className="w-4 h-4" /></button>
+                <button onClick={() => setOpen(false)} className="p-1 hover:bg-muted rounded"><XIcon className="w-4 h-4" /></button>
               </div>
             </div>
 

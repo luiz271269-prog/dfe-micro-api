@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Loader2, AlertTriangle, CheckCircle, Clock, X, FlaskConical, Zap } from 'lucide-react';
+import { RefreshCw, Loader2, AlertTriangle, CheckCircle, Clock, XIcon, FlaskConical, Zap } from 'lucide-react';
 import { sincronizarNFeAN } from '@/functions/sincronizarNFeAN';
 
 export default function SincronizarButton({ empresa = 'NeuralTec', onDone }) {
@@ -77,7 +77,7 @@ export default function SincronizarButton({ empresa = 'NeuralTec', onDone }) {
               )}
             </div>
             <button onClick={() => setResult(null)} className="text-muted-foreground hover:text-foreground shrink-0">
-              <X className="w-3.5 h-3.5" />
+              <XIcon className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertCircle, HelpCircle, X } from 'lucide-react';
+import { AlertCircle, HelpCircle, XIcon } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import LancamentosEditableTable from './LancamentosEditableTable';
 
@@ -159,7 +159,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
               {activeItem?.label} — {filteredLancs.length} lançamento(s)
             </p>
             <button onClick={() => setActiveKey(null)} className="text-muted-foreground hover:text-foreground">
-              <X className="w-4 h-4" />
+              <XIcon className="w-4 h-4" />
             </button>
           </div>
           <LancamentosEditableTable

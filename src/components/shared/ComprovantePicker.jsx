@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Paperclip, Loader2, ExternalLink, X } from 'lucide-react';
+import { Paperclip, Loader2, ExternalLink, XIcon } from 'lucide-react';
 
 const CONNECTOR_ID = '69e4cc139c63e916cf87b922'; // Drive "Financeiro"
 // Comprovantes: PDF, imagens (foto/scan) e planilhas/docs comuns
@@ -108,7 +108,7 @@ export default function ComprovantePicker({ entityName, record, onChange }) {
           title="Remover comprovante"
           className="text-muted-foreground hover:text-red-600 transition-colors"
         >
-          <X className="w-3.5 h-3.5" />
+          <XIcon className="w-3.5 h-3.5" />
         </button>
       </div>
     );

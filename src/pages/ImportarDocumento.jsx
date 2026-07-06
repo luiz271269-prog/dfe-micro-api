@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { InvokeLLM, UploadFile } from '@/integrations/Core';
-import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, X, Calendar, Wallet, Trash2 } from 'lucide-react';
+import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, XIcon, Calendar, Wallet, Trash2 } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { conciliarNFsTitulosSicredi } from '@/functions/conciliarNFsTitulosSicredi';
 import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
@@ -54,13 +54,13 @@ Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lan�
   boletos_liquidados: `Analise este relatório/comprovante de BOLETOS LIQUIDADOS (Sicredi/Banco) e extraia TODOS os pagamentos em JSON.
 
 Retorne APENAS um array JSON válido (sem texto adicional, sem markdown):
-[{"nosso_numero":"26/100XXX-X","seu_numero":"NF-XXX","cliente":"NOME DO CLIENTE","data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","valor_titulo":numero,"valor_pago":numero,"status":"pago","canal_cobranca":"sicredi"}]
+[{"nosso_numero":"26/100XXX-XIcon","seu_numero":"NF-XXX","cliente":"NOME DO CLIENTE","data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","valor_titulo":numero,"valor_pago":numero,"status":"pago","canal_cobranca":"sicredi"}]
 
 REGRAS CRÍTICAS:
 
 1. nosso_numero — OBRIGATÓRIO. É o identificador do título no banco (Sicredi). Procure por:
    - "Nosso Número", "Nosso Nº", "NN", "Nro Título", "Documento" ou similar.
-   - Formato típico Sicredi: "26/100XXX-X", "26/100123-4", "100123-4" ou apenas dígitos longos (8+ caracteres).
+   - Formato típico Sicredi: "26/100XXX-XIcon", "26/100123-4", "100123-4" ou apenas dígitos longos (8+ caracteres).
    - Se o relatório só listar "Seu Número" + data + valor (sem Nosso Número explícito), use a coluna que identifica unicamente o boleto no banco — geralmente é um código numérico longo. NUNCA retorne vazio para nosso_numero.
    - Se realmente não houver Nosso Número, construa um identificador DETERMINÍSTICO baseado em dados do PRÓPRIO boleto: "BOL-{primeiras_8_letras_alfanum_do_cliente}-{data_pagamento}-{valor_em_centavos}" (ex: "BOL-SAOJUDAS-2026-06-01-130133"). REGRA CRÍTICA: NÃO incluir seu_numero nem nenhum dado variável no BOL — assim duas importações do mesmo boleto geram o MESMO nosso_numero, garantindo deduplicação natural.
 
@@ -150,7 +150,7 @@ REGRAS CRÍTICAS:
    - Coluna "Pagto." VAZIA → valor_pago=0, OMITA o campo data_pagamento (não inclua no JSON), status conforme regra 9.
    - NUNCA invente data_pagamento. NUNCA copie data de vencimento como pagamento.
 
-8. PARCELA SEM PRAZO/VENCIMENTO (vendas à vista — ex: NF-198/1, CI-100088/1, CI-100090/1, CI-100095/1, CI-100092/X com pagto antecipado):
+8. PARCELA SEM PRAZO/VENCIMENTO (vendas à vista — ex: NF-198/1, CI-100088/1, CI-100090/1, CI-100095/1, CI-100092/XIcon com pagto antecipado):
    - parcela_numero=1, parcela_total=1
    - Se há data de pagamento → use data_pagamento como data_vencimento E como data_pagamento, status="pago".
    - canal_cobranca="carteira".
@@ -915,7 +915,7 @@ export default function ImportarDocumento() {
       <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>
           {toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
           {toast.msg}
-          <button onClick={() => setToast(null)}><X className="w-4 h-4" /></button>
+          <button onClick={() => setToast(null)}><XIcon className="w-4 h-4" /></button>
         </div>
       }
 
@@ -946,7 +946,7 @@ export default function ImportarDocumento() {
           <>
               <FileText className="w-5 h-5 text-primary shrink-0" />
               <span className="text-xs font-semibold truncate flex-1 text-left">{file.name}</span>
-              <button onClick={(e) => {e.stopPropagation();setFile(null);}} className="text-red-500 shrink-0"><X className="w-4 h-4" /></button>
+              <button onClick={(e) => {e.stopPropagation();setFile(null);}} className="text-red-500 shrink-0"><XIcon className="w-4 h-4" /></button>
             </> :
           <>
               <Upload className="w-5 h-5 text-muted-foreground shrink-0" />
