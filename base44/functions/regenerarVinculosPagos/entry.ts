@@ -90,7 +90,8 @@ Deno.serve(async (req) => {
         .filter(c => c.dd <= 20 && (c.diffValor <= alvo.tol || (c.diffValor <= alvo.valor * 0.10 && c.nomeBate)))
         .sort((a, b) => (a.diffValor + a.dd) - (b.diffValor + b.dd));
 
-      const melhor = candidatos.find(c => !lancUsados.has(c.l.id)) || candidatos[0];
+      // Nunca reusa um lançamento que já quitou outra obrigação
+      const melhor = candidatos.find(c => !lancUsados.has(c.l.id));
 
       if (!melhor) {
         const mes = (alvo.dataRef || '').slice(0, 7);
