@@ -7,10 +7,12 @@ import { conciliarObrasCartoes } from '@/functions/conciliarObrasCartoes';
 import { conciliarContasAPagarExtrato } from '@/functions/conciliarContasAPagarExtrato';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
 import { conciliarPorHistoricoMensal } from '@/functions/conciliarPorHistoricoMensal';
-import { CreditCard, Wallet, FileText, Hammer, Users, Banknote, Loader2, CheckCircle2, History } from 'lucide-react';
+import { regenerarVinculosPagos } from '@/functions/regenerarVinculosPagos';
+import { CreditCard, Wallet, FileText, Hammer, Users, Banknote, Loader2, CheckCircle2, History, RefreshCw } from 'lucide-react';
 
 const CONCILIACOES = [
   { key: 'historico_mensal', label: 'Padrão do Mês Anterior', desc: 'Recorrentes: replica a conciliação dos meses anteriores', icon: History, fn: conciliarPorHistoricoMensal },
+  { key: 'regenerar_pagos', label: 'Pagos sem Vínculo', desc: 'Folhas e despesas pagas: revincula ao extrato ou sugere o mais próximo', icon: RefreshCw, fn: regenerarVinculosPagos },
   { key: 'contas_apagar', label: 'Despesas ↔ Banco', desc: 'Despesas, tributos e faturas vs extrato', icon: Wallet, fn: conciliarContasAPagarExtrato },
   { key: 'folha', label: 'Folha ↔ Banco', desc: 'Pagamentos de folha vs PIX no extrato', icon: Users, fn: conciliarFolhaExtrato },
   { key: 'cobrancas', label: 'Cobranças ↔ Banco', desc: 'Títulos Sicredi vs recebimentos', icon: Banknote, fn: conciliarCobrancasBanco },
@@ -81,7 +83,11 @@ export default function PainelConciliacoes({ onConciliado }) {
                   {res.conciliadas > 0 && <p className="text-emerald-700">✓ {res.conciliadas} conciliadas</p>}
                   {res.conciliados > 0 && <p className="text-emerald-700">✓ {res.conciliados} conciliados pelo padrão mensal</p>}
                   {res.criados_espelho_mes_anterior > 0 && <p className="text-blue-700">📋 {res.criados_espelho_mes_anterior} registros espelhados do mês anterior</p>}
-                  {!res.baixas_automaticas && !res.sugestoes_criadas && !res.realizados && !res.conciliadas && !res.tributos_auto_criados && !res.conciliados && (
+                  {res.vinculados > 0 && <p className="text-emerald-700">✓ {res.vinculados} revinculados ao extrato</p>}
+                  {res.meses_sem_extrato && Object.keys(res.meses_sem_extrato).length > 0 && (
+                    <p className="text-amber-700">📁 Sem extrato importado: {Object.entries(res.meses_sem_extrato).map(([m, n]) => `${m} (${n})`).join(', ')}</p>
+                  )}
+                  {!res.baixas_automaticas && !res.sugestoes_criadas && !res.realizados && !res.conciliadas && !res.tributos_auto_criados && !res.conciliados && !res.vinculados && (
                     <p className="text-muted-foreground">Nada a conciliar</p>
                   )}
                 </div>
