@@ -16,6 +16,7 @@ const FONTES = {
   memoria_importacao: 'MemoriaImportacao',
   regra_recorrente: 'RegraRecorrente',
   sugestao_conciliacao: 'SugestaoConciliacao',
+  conhecimento_negocio: 'ConhecimentoNegocio',
 };
 
 function normalizar(s) {
@@ -115,6 +116,23 @@ function toOKF(item, fonte) {
     };
   }
 
+  if (fonte === 'conhecimento_negocio') {
+    return {
+      ...base,
+      title: item.titulo,
+      knowledge_type: 'business_knowledge',
+      scope: item.tema,
+      content: item.conteudo,
+      keywords: item.keywords || [],
+      category: item.tema,
+      origin: item.origem || null,
+      reference_date: item.data_referencia || null,
+      confidence: 100,
+      provenance: { learning_method: 'human_curated' },
+      active: item.ativo !== false,
+    };
+  }
+
   return base;
 }
 
@@ -172,6 +190,7 @@ Deno.serve(async (req) => {
           if (f === 'regra_categorizacao') return normalizar(i.categoria) === catNorm;
           if (f === 'regra_recorrente') return normalizar(i.categoria) === catNorm;
           if (f === 'memoria_importacao') return normalizar(i.tipo_import) === catNorm;
+          if (f === 'conhecimento_negocio') return normalizar(i.tema) === catNorm;
           return false;
         });
       }
@@ -194,6 +213,7 @@ Deno.serve(async (req) => {
           if (f === 'memoria_importacao') campos.push(i.tipo_import, i.label, i.observacoes, ...(i.assinatura_layout || []));
           if (f === 'regra_recorrente') campos.push(i.nome, i.padrao_descricao, i.fornecedor, i.observacoes);
           if (f === 'sugestao_conciliacao') campos.push(i.descricao_conta, i.fornecedor, i.descricao_extrato, i.motivo);
+          if (f === 'conhecimento_negocio') campos.push(i.titulo, i.conteudo, i.origem, ...(i.keywords || []));
           return campos.some(c => normalizar(c).includes(q));
         });
       }

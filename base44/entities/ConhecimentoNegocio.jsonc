@@ -1,0 +1,76 @@
+{
+  "name": "ConhecimentoNegocio",
+  "type": "object",
+  "description": "Base de conhecimento de neg\u00f3cio para o RAG (segundo c\u00e9rebro). Notas estruturadas sobre modelos de refer\u00eancia (ex: Ellitte), auditorias de dados, decis\u00f5es e regras da empresa. Exposta via okfKnowledgeHub.",
+  "properties": {
+    "titulo": {
+      "type": "string",
+      "title": "T\u00edtulo do conhecimento"
+    },
+    "tema": {
+      "type": "string",
+      "enum": [
+        "modelo_referencia",
+        "auditoria_dados",
+        "regra_negocio",
+        "decisao",
+        "gap_funcional",
+        "outro"
+      ],
+      "default": "outro",
+      "title": "Tema"
+    },
+    "conteudo": {
+      "type": "string",
+      "title": "Conte\u00fado em texto (chunk para RAG)"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Palavras-chave para busca"
+    },
+    "origem": {
+      "type": "string",
+      "title": "Origem (ex: Ellitte, auditoria manual, conversa)"
+    },
+    "data_referencia": {
+      "type": "string",
+      "format": "date",
+      "title": "Data de refer\u00eancia do conhecimento"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "title": "Ativo (falso = obsoleto)"
+    }
+  },
+  "required": [
+    "titulo",
+    "tema",
+    "conteudo"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
