@@ -17,8 +17,12 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole.entities;
 
-    // 1. Limpa previsões automáticas anteriores (mantém lançamentos manuais e realizados)
-    await svc.FluxoCaixa.deleteMany({ status: 'previsto', origem_tipo: { $ne: 'manual' } });
+    // 1. Limpa previsões automáticas anteriores (mantém lançamentos manuais e realizados).
+    // Auto-geradas têm origem_id preenchido.
+    const previstosAntigos = await svc.FluxoCaixa.filter({ status: 'previsto' });
+    for (const p of previstosAntigos) {
+      if (p.origem_id) await svc.FluxoCaixa.delete(p.id);
+    }
 
     const [titulos, tributos, faturas, despesas, folhas, cartoes] = await Promise.all([
       svc.TituloCobranca.list('-data_vencimento', 3000),

@@ -12,7 +12,7 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import DedupButton from '../components/shared/DedupButton';
 import SyncCalendarButton from '../components/shared/SyncCalendarButton';
 
-const ALL_MONTHS = ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
+const ALL_MONTHS = ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'];
 
 function fmtMes(m) {
   const [y, mo] = m.split('-');
@@ -132,7 +132,7 @@ function SectionMetric({ title, value, sub, icon: Icon, valueColor, href }) {
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
-  const [rawData, setRawData] = useState({ lanc: [], nfs: [], tit: [], comp: [], obras: [], trib: [], func: [], folhas: [], faturas: [] });
+  const [rawData, setRawData] = useState({ lanc: [], nfs: [], tit: [], comp: [], obras: [], trib: [], func: [], folhas: [], faturas: [], fluxo: [] });
   const [data, setData] = useState({
     bankBalance: 0, liesch: 41, fundos: 100000,
     recYTD: 0, pagYTD: 0,
@@ -220,10 +220,11 @@ export default function Dashboard() {
       listSafe('Tributo')]
       );
       await sleep(400);
-      const [funcRaw, folhasRaw, faturasRaw] = await Promise.all([
+      const [funcRaw, folhasRaw, faturasRaw, fluxoRaw] = await Promise.all([
       listSafe('Funcionario'),
       listSafe('FolhaPagamento'),
-      listSafe('FaturaCartao')]
+      listSafe('FaturaCartao'),
+      listSafe('FluxoCaixa')]
       );
       const lancArr = Array.isArray(lancRaw) ? lancRaw : [];
       // Calcular saldo real: último lançamento NeuralTec com saldo_apos
@@ -241,7 +242,8 @@ export default function Dashboard() {
         trib: Array.isArray(tribRaw) ? tribRaw : [],
         func: Array.isArray(funcRaw) ? funcRaw : [],
         folhas: Array.isArray(folhasRaw) ? folhasRaw : [],
-        faturas: faturasArr
+        faturas: faturasArr,
+        fluxo: Array.isArray(fluxoRaw) ? fluxoRaw : []
       });
       if (saldoReal > 0) {
         setData((prev) => ({ ...prev, bankBalance: saldoReal, saldoProjetado: saldoReal }));
@@ -252,7 +254,7 @@ export default function Dashboard() {
   }, [refreshKey]); // eslint-disable-line
 
   useEffect(() => {
-    const { lanc, nfs, tit, comp, obras, trib, func, folhas, faturas } = rawData;
+    const { lanc, nfs, tit, comp, obras, trib, func, folhas, faturas, fluxo } = rawData;
     // Correção 2: filtrar lançamentos por data para pegar registros com mes_referencia null
     const inicio = selectedMonth + '-01';
     const fim = selectedMonth + '-31';
@@ -298,6 +300,17 @@ export default function Dashboard() {
       }
       if (func.length) d.funcAtivos = func.filter((f) => f.status === 'ativo').length;
       if (folhas.length) d.folhaAtual = folhas.filter((f) => f.competencia === selectedMonth && f.status === 'pago').reduce((s, f) => s + (f.salario_liquido || 0), 0);
+      if (fluxo.length) {
+        // Saldo projetado 30 dias = saldo bancário + previsões (entradas − saídas) do FluxoCaixa
+        const hoje = new Date().toISOString().slice(0, 10);
+        const limite = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+        const previstos = fluxo.filter((r) =>
+        (r.status === 'previsto' || r.status === 'confirmado') &&
+        r.data_prevista && r.data_prevista <= limite);
+        d.fluxoEntradas30 = previstos.filter((r) => r.tipo === 'entrada').reduce((s, r) => s + (r.valor_previsto || 0), 0);
+        d.fluxoSaidas30 = previstos.filter((r) => r.tipo === 'saida' && r.data_prevista >= hoje).reduce((s, r) => s + (r.valor_previsto || 0), 0);
+        d.saldoProjetado = d.bankBalance + d.fluxoEntradas30 - d.fluxoSaidas30;
+      }
       if (faturas.length) {
         const faturasF = isAnnual ? faturas : faturas.filter((f) => (f.mes_referencia || '').startsWith(selectedMonth));
         d.totalCartoes = faturasF.reduce((s, f) => s + (f.valor_total || 0), 0);
@@ -463,7 +476,7 @@ export default function Dashboard() {
           <SectionMetric title="Folha do Mês" value={formatCurrency(data.folhaAtual)} sub="Total líquido pago" icon={DollarSign} valueColor="purple" href="/funcionarios" />
         </Section>
         <Section icon={BarChart3} label="Fluxo de Caixa" gradient="sky" cols={2}>
-          <SectionMetric title="Saldo Projetado" value={formatCurrency(data.saldoProjetado)} sub="próximos 30 dias" icon={BarChart3} valueColor={data.saldoProjetado < 0 ? 'red' : 'green'} href="/fluxocaixa" />
+          <SectionMetric title="Saldo Projetado" value={formatCurrency(data.saldoProjetado)} sub={`próximos 30 dias · +${formatCurrency(data.fluxoEntradas30 || 0)} / -${formatCurrency(data.fluxoSaidas30 || 0)}`} icon={BarChart3} valueColor={data.saldoProjetado < 0 ? 'red' : 'green'} href="/fluxocaixa" />
           <SectionMetric title="Status do Caixa" value={data.saldoProjetado < 0 ? '⚠ Crítico' : '✓ OK'} sub="monitorar fluxo" icon={TrendingUp} valueColor={data.saldoProjetado < 0 ? 'red' : 'green'} href="/fluxocaixa" />
         </Section>
       </div>
