@@ -83,11 +83,17 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole.entities;
 
-    const [folhasPendentes, funcionarios, lancamentos] = await Promise.all([
+    const [folhasPendentes, funcionarios, lancamentos, vinculosExistentes] = await Promise.all([
       svc.FolhaPagamento.filter({ status: 'pendente' }),
       svc.Funcionario.filter({ status: 'ativo' }),
       svc.LancamentoBancario.list('-data', 5000),
+      svc.VinculoExtrato.list('-created_date', 5000),
     ]);
+
+    // Pares (lançamento, folha) já vinculados — impede recriar vínculo em reexecuções
+    const paresVinculados = new Set(
+      vinculosExistentes.map(v => `${v.lancamento_bancario_id}:${v.entidade_tipo}:${v.entidade_id}`)
+    );
 
     const TOL_TOTAL = 50.00;
 
@@ -175,6 +181,9 @@ Deno.serve(async (req) => {
 
       // Cria vínculos individuais (1 por PIX) — adiantamento é registrado mas com flag
       for (const { pix, valor, tipo } of pixClassificados) {
+        const chavePar = `${pix.id}:FolhaPagamento:${folha.id}`;
+        if (paresVinculados.has(chavePar)) continue; // já vinculado em execução anterior
+        paresVinculados.add(chavePar);
         try {
           await svc.VinculoExtrato.create({
             lancamento_bancario_id: pix.id,
