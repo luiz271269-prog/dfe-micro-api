@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { aprenderRecorrenciaDeClassificacao } from './aprenderRecorrencia';
 
 // REGRAS PRIORITÁRIAS ("Padrão NeuralTec") — prevalecem sobre qualquer categoria
 // atribuída pelo banco ou por regras aprendidas. Comparação por substring no texto normalizado.
@@ -92,6 +93,12 @@ export async function aprenderEAplicarRegra({ escopo, descricao, categoria, cate
       await base44.entities[entityName].update(l.id, { categoria });
       aplicados++;
     } catch (e) { /* ignora item individual */ }
+  }
+
+  // 3. Motor de recorrência: se o beneficiário repete em meses distintos,
+  // cria/recalibra a RegraRecorrente automaticamente — o próximo mês já chega classificado
+  if (escopo === 'extrato') {
+    await aprenderRecorrenciaDeClassificacao({ descricao, categoria, lancamentos: todos }).catch(() => null);
   }
 
   return { termo_chave: termo, aplicados, regraCategoria: categoria };
