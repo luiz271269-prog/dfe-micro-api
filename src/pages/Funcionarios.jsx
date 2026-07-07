@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2, CalendarPlus, Palmtree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
+import { gerarFolhasPendentes } from '@/functions/gerarFolhasPendentes';
 
 const SETORES = ['vendas', 'assistencia', 'financeiro', 'compras', 'administrativo', 'telemarketing'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -169,11 +170,31 @@ export default function Funcionarios() {
     nome: '', cpf: '', cargo: '', setor: '', data_admissao: '', status: 'ativo', salario_base: '', tipo_contrato: 'CLT', empresa: 'NeuralTec'
   });
   const [folhaForm, setFolhaForm] = useState({
-    funcionario_nome: '', competencia: '', salario_bruto: '', desconto_inss: '0', desconto_irrf: '0',
+    funcionario_nome: '', competencia: '', tipo: 'mensal', salario_bruto: '', desconto_inss: '0', desconto_irrf: '0',
     desconto_vt: '0', desconto_vr: '0', outros_descontos: '0', horas_extras: '0', comissao: '0',
     data_pagamento: '', status: 'pendente', fgts_valor: '0', empresa: 'NeuralTec'
   });
   const [conciliando, setConciliando] = useState(false);
+  const [gerando, setGerando] = useState(false);
+
+  async function handleGerarFolhas() {
+    setGerando(true);
+    try {
+      const res = await gerarFolhasPendentes({});
+      const { folhas_geradas = 0, competencia_alvo, detalhes = [] } = res?.data || {};
+      setToastFolha({
+        type: folhas_geradas > 0 ? 'success' : 'info',
+        msg: folhas_geradas > 0
+          ? `✓ ${folhas_geradas} folha(s) gerada(s) até ${competencia_alvo}: ${[...new Set(detalhes.map(d => d.funcionario.split(' ')[0]))].join(', ')}`
+          : `Nenhuma folha faltando — todas as competências até ${competencia_alvo} já existem`,
+      });
+      loadData();
+    } catch (err) {
+      setToastFolha({ type: 'error', msg: `Erro: ${err.message}` });
+    }
+    setGerando(false);
+    setTimeout(() => setToastFolha(null), 10000);
+  }
   const [toastFolha, setToastFolha] = useState(null);
 
   async function handleConciliarPIX() {
@@ -333,6 +354,13 @@ export default function Funcionarios() {
         )}
         {activeTab === 'folha' && (
           <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" onClick={handleGerarFolhas} disabled={gerando} className="gap-2">
+              {gerando ? (
+                <><div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /> Gerando...</>
+              ) : (
+                <><CalendarPlus className="w-4 h-4" /> Gerar Folhas Pendentes</>
+              )}
+            </Button>
             <Button variant="outline" onClick={handleConciliarPIX} disabled={conciliando} className="gap-2">
               {conciliando ? (
                 <><div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /> Conciliando...</>
@@ -508,7 +536,12 @@ export default function Funcionarios() {
                                 : (FOLHA_STATUS[f.status] || FOLHA_STATUS.pendente);
                               return (
                                 <tr key={f.id} className="border-b hover:bg-muted/20 transition-colors">
-                                  <td className="px-4 py-2.5 font-semibold">{f.funcionario_nome}</td>
+                                  <td className="px-4 py-2.5 font-semibold">
+                                    {f.funcionario_nome}
+                                    {f.tipo === 'ferias' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold inline-flex items-center gap-1"><Palmtree className="w-3 h-3" /> Férias</span>}
+                                    {f.tipo === 'decimo_terceiro' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">13º</span>}
+                                    {f.tipo === 'rescisao' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">Rescisão</span>}
+                                  </td>
                                   <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(f.salario_bruto)}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{f.horas_extras > 0 ? formatCurrency(f.horas_extras) : '—'}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{f.comissao > 0 ? formatCurrency(f.comissao) : '—'}</td>
@@ -616,6 +649,17 @@ export default function Funcionarios() {
                 </Select>
               </div>
               <div><Label>Competência</Label><Input type="month" value={folhaForm.competencia} onChange={e => setFolhaForm({...folhaForm, competencia: e.target.value})} required /></div>
+            </div>
+            <div><Label>Tipo de Folha</Label>
+              <Select value={folhaForm.tipo} onValueChange={v => setFolhaForm({...folhaForm, tipo: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mensal">Mensal (salário)</SelectItem>
+                  <SelectItem value="ferias">Férias</SelectItem>
+                  <SelectItem value="decimo_terceiro">13º Salário</SelectItem>
+                  <SelectItem value="rescisao">Rescisão</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>Salário Bruto</Label><Input type="number" step="0.01" value={folhaForm.salario_bruto} onChange={e => setFolhaForm({...folhaForm, salario_bruto: e.target.value})} required /></div>
