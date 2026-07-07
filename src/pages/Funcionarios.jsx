@@ -10,6 +10,7 @@ import PageHeader from '../components/shared/PageHeader';
 import FeriasSection from '../components/funcionarios/FeriasSection';
 import RelatorioPixFuncionarios from '../components/funcionarios/RelatorioPixFuncionarios';
 import ControleFerias from '../components/funcionarios/ControleFerias';
+import BancoHorasTab from '../components/funcionarios/BancoHorasTab';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
@@ -411,7 +412,7 @@ export default function Funcionarios() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b">
-        {[['funcionarios','Funcionários'],['folha','Folha de Pagamento'],['ferias','Férias'],['rastreio','Rastreio PIX']].map(([key, label]) => (
+        {[['funcionarios','Funcionários'],['folha','Folha de Pagamento'],['ferias','Férias'],['banco_horas','Banco de Horas'],['rastreio','Rastreio PIX']].map(([key, label]) => (
           <button key={key} onClick={() => setActiveTab(key)}
             className={`px-5 py-2.5 font-semibold text-sm transition-colors ${activeTab === key ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
             {label}
@@ -598,7 +599,10 @@ export default function Funcionarios() {
       {/* ABA 3 — Férias */}
       {activeTab === 'ferias' && <ControleFerias funcionarios={funcionarios} />}
 
-      {/* ABA 4 — Rastreio PIX */}
+      {/* ABA 4 — Banco de Horas */}
+      {activeTab === 'banco_horas' && <BancoHorasTab funcionarios={funcionarios} />}
+
+      {/* ABA 5 — Rastreio PIX */}
       {activeTab === 'rastreio' && <RelatorioPixFuncionarios />}
 
       {/* Modal detalhe funcionário */}

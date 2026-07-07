@@ -1,7 +1,8 @@
 // Motor de cálculo de férias (regras CLT):
-// - Período aquisitivo: cada 12 meses a partir da admissão.
+// - Período aquisitivo: cada 12 meses a partir da admissão → direito a 30 dias.
 // - Período concessivo: 12 meses após o fim do aquisitivo. Passado o limite → dobra.
-// - Cada registro de férias (não cancelado) consome o período aquisitivo mais antigo.
+// - Contabilidade em DIAS: férias em dias picados descontam do saldo do período
+//   aquisitivo mais antigo em aberto (o que está vencendo primeiro).
 
 function addYears(dateStr, years) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -20,11 +21,11 @@ export function calcularFimGozo(inicio, dias) {
   return addDays(inicio, dias - 1);
 }
 
-// Situação consolidada de férias de um funcionário
+// Situação consolidada de férias de um funcionário (contagem em dias)
 export function calcularSituacaoFerias(func, feriasDoFunc) {
   const hoje = new Date().toISOString().slice(0, 10);
   if (!func.data_admissao) {
-    return { periodosCompletos: 0, gozados: 0, pendentes: 0, saldoDias: 0, status: 'sem_dados' };
+    return { periodosCompletos: 0, gozados: 0, pendentes: 0, diasDireito: 0, diasUsados: 0, saldoDias: 0, status: 'sem_dados' };
   }
 
   // Períodos aquisitivos completos até hoje
@@ -32,17 +33,21 @@ export function calcularSituacaoFerias(func, feriasDoFunc) {
   while (addYears(func.data_admissao, periodosCompletos + 1) <= hoje) periodosCompletos++;
 
   const validas = feriasDoFunc.filter((f) => f.status !== 'cancelada');
-  const gozados = validas.length;
-  const pendentes = Math.max(0, periodosCompletos - gozados);
-  const saldoDias = pendentes * 30;
+  const diasUsados = validas.reduce((s, f) => s + (f.dias_gozo || 0) + (f.dias_abono || 0), 0);
+  const diasDireito = periodosCompletos * 30;
+  const saldoDias = Math.max(0, diasDireito - diasUsados);
 
-  // Próximo período pendente mais antigo
+  // Períodos totalmente quitados (30 dias consumidos = 1 período)
+  const gozados = Math.min(periodosCompletos, Math.floor(diasUsados / 30));
+  const pendentes = periodosCompletos - gozados;
+
+  // Período aquisitivo mais antigo ainda em aberto (mesmo que parcialmente gozado)
   let status = 'em_dia';
   let aquisitivoFim = null;
   let limiteConcessivo = null;
   let diasParaLimite = null;
 
-  if (pendentes > 0) {
+  if (saldoDias > 0) {
     aquisitivoFim = addYears(func.data_admissao, gozados + 1);
     limiteConcessivo = addYears(aquisitivoFim, 1);
     diasParaLimite = Math.floor(
@@ -57,7 +62,7 @@ export function calcularSituacaoFerias(func, feriasDoFunc) {
     .filter((f) => f.data_inicio_gozo > hoje)
     .sort((a, b) => a.data_inicio_gozo.localeCompare(b.data_inicio_gozo))[0] || null;
 
-  return { periodosCompletos, gozados, pendentes, saldoDias, aquisitivoFim, limiteConcessivo, diasParaLimite, status, emGozo, proximaFerias };
+  return { periodosCompletos, gozados, pendentes, diasDireito, diasUsados, saldoDias, aquisitivoFim, limiteConcessivo, diasParaLimite, status, emGozo, proximaFerias };
 }
 
 export const FERIAS_STATUS_CONFIG = {

@@ -1,0 +1,72 @@
+{
+  "name": "BancoHoras",
+  "type": "object",
+  "description": "Lan\u00e7amentos de banco de horas por funcion\u00e1rio: cr\u00e9ditos (horas extras acumuladas) e d\u00e9bitos (folgas/compensa\u00e7\u00f5es). O saldo \u00e9 a soma dos cr\u00e9ditos menos os d\u00e9bitos.",
+  "properties": {
+    "funcionario_id": {
+      "type": "string",
+      "title": "ID Funcion\u00e1rio"
+    },
+    "funcionario_nome": {
+      "type": "string",
+      "title": "Funcion\u00e1rio"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "title": "Data"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "credito",
+        "debito"
+      ],
+      "title": "Tipo (cr\u00e9dito = horas a favor, d\u00e9bito = compensa\u00e7\u00e3o/folga)"
+    },
+    "horas": {
+      "type": "number",
+      "title": "Horas"
+    },
+    "descricao": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o / Motivo"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    }
+  },
+  "required": [
+    "funcionario_nome",
+    "data",
+    "tipo",
+    "horas"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

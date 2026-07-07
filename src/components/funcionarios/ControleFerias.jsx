@@ -80,8 +80,8 @@ export default function ControleFerias({ funcionarios }) {
                 <tr className="border-b bg-muted/30 text-xs">
                   <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground">Funcionário</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Admissão</th>
-                  <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground">Períodos Completos</th>
-                  <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground">Gozados</th>
+                  <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground">Direito (dias)</th>
+                  <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground">Usados (dias)</th>
                   <th className="text-center px-3 py-2.5 font-semibold text-muted-foreground">Saldo (dias)</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Limite Concessivo</th>
                   <th className="text-left px-3 py-2.5 font-semibold text-muted-foreground">Próximas Férias</th>
@@ -95,8 +95,8 @@ export default function ControleFerias({ funcionarios }) {
                     <tr key={func.id} className="border-b hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-2.5 font-semibold">{func.nome}</td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDate(func.data_admissao)}</td>
-                      <td className="px-3 py-2.5 text-center tabular-nums">{sit.periodosCompletos}</td>
-                      <td className="px-3 py-2.5 text-center tabular-nums">{sit.gozados}</td>
+                      <td className="px-3 py-2.5 text-center tabular-nums">{sit.diasDireito}</td>
+                      <td className="px-3 py-2.5 text-center tabular-nums">{sit.diasUsados}</td>
                       <td className={`px-3 py-2.5 text-center tabular-nums font-bold ${sit.saldoDias > 30 ? 'text-red-600' : sit.saldoDias > 0 ? 'text-orange-600' : 'text-green-700'}`}>{sit.saldoDias}</td>
                       <td className="px-3 py-2.5 text-xs">{sit.limiteConcessivo ? formatDate(sit.limiteConcessivo) : '—'}</td>
                       <td className="px-3 py-2.5 text-xs">

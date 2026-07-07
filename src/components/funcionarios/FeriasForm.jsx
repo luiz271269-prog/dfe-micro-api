@@ -69,10 +69,10 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div><Label>Início do Gozo</Label><Input type="date" value={form.data_inicio_gozo} onChange={(e) => setForm({ ...form, data_inicio_gozo: e.target.value })} required /></div>
-            <div><Label>Dias de Gozo</Label><Input type="number" min="5" max="30" value={form.dias_gozo} onChange={(e) => setForm({ ...form, dias_gozo: e.target.value })} required /></div>
+            <div><Label>Dias de Gozo</Label><Input type="number" min="1" max="30" value={form.dias_gozo} onChange={(e) => setForm({ ...form, dias_gozo: e.target.value })} required /></div>
             <div><Label>Abono (vendidos)</Label><Input type="number" min="0" max="10" value={form.dias_abono} onChange={(e) => setForm({ ...form, dias_abono: e.target.value })} /></div>
           </div>
-          {dataFim && <p className="text-xs text-muted-foreground">Fim do gozo: <b>{dataFim.split('-').reverse().join('/')}</b></p>}
+          {dataFim && <p className="text-xs text-muted-foreground">Fim do gozo: <b>{dataFim.split('-').reverse().join('/')}</b> — dias picados são aceitos e descontam do saldo do período aquisitivo mais antigo</p>}
           <div className="flex items-center justify-between bg-muted/40 rounded-lg p-3">
             <div>
               <Label className="cursor-pointer" htmlFor="adiantado">Pagamento adiantado</Label>
