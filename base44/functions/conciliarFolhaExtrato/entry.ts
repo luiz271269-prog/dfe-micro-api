@@ -163,8 +163,7 @@ Deno.serve(async (req) => {
           && !reservadoPara.has(l.id)
           && donoDoPix.get(l.id) === chave
           && l.data >= inicio && l.data <= fim
-          && Math.abs(Math.abs(l.valor) - liquido) <= TOL_TOTAL
-          && l.data.slice(0, 7) !== folha.competencia);
+          && Math.abs(Math.abs(l.valor) - liquido) <= TOL_TOTAL);
         if (candidato) reservadoPara.set(candidato.id, folha.id);
       }
 
@@ -184,7 +183,10 @@ Deno.serve(async (req) => {
         const classificados = [];
         for (const pix of pixDaFolha) {
           const valor = Math.abs(pix.valor);
-          const tipo = classificarPix(valor, pix.data, folha, totalAlocado);
+          // PIX reservado (valor bate exato com o líquido) = pagamento integral, sempre
+          const tipo = reservadoPara.get(pix.id) === folha.id
+            ? 'salario_integral'
+            : classificarPix(valor, pix.data, folha, totalAlocado);
           classificados.push({ pix, valor, tipo });
           if (tipo !== 'adiantamento') totalAlocado += valor;
         }
