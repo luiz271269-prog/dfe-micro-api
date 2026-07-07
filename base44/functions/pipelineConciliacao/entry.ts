@@ -12,6 +12,7 @@ const ENGINES = [
   'conciliarFaturasCartao',
   'conciliarCartoesDespesas',
   'conciliarObrasCartoes',
+  'conciliarComprasPagamentos',
 ];
 
 const CONFIANCA_AUTO = 90;
@@ -69,6 +70,7 @@ Deno.serve(async (req) => {
           Tributo: { status: 'pago', data_pagamento: lanc.data, valor_pago: Math.abs(lanc.valor), lancamento_bancario_id: lanc.id },
           FaturaCartao: { status: 'paga_total', data_pagamento: lanc.data, valor_pago: Math.abs(lanc.valor), lancamento_bancario_id: lanc.id },
           FolhaPagamento: { status: 'pago', data_pagamento: lanc.data, lancamento_bancario_id: lanc.id },
+          ItemCompra: { status_pagamento: 'pago', valor_pago: Math.abs(lanc.valor), lancamento_bancario_id: lanc.id },
         };
         const baixa = baixaPorTipo[s.entidade_tipo];
         if (!baixa) continue;

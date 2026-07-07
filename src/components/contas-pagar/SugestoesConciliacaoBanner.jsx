@@ -39,6 +39,8 @@ export default function SugestoesConciliacaoBanner() {
         await base44.entities.FaturaCartao.update(s.entidade_id, { status: 'paga_total', data_pagamento: s.data_extrato, valor_pago: s.valor_extrato });
       } else if (s.entidade_tipo === 'FolhaPagamento') {
         await base44.entities.FolhaPagamento.update(s.entidade_id, { status: 'pago', data_pagamento: s.data_extrato });
+      } else if (s.entidade_tipo === 'ItemCompra') {
+        await base44.entities.ItemCompra.update(s.entidade_id, { status_pagamento: 'pago', valor_pago: s.valor_extrato, lancamento_bancario_id: s.lancamento_bancario_id });
       }
       // Cria vínculo
       await base44.entities.VinculoExtrato.create({
