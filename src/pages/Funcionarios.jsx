@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import PageHeader from '../components/shared/PageHeader';
+import FeriasSection from '../components/funcionarios/FeriasSection';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
@@ -130,6 +131,7 @@ function FuncModal({ func, folhas, onClose }) {
           </div>
         </div>
         {func.observacoes && <p className="text-xs text-muted-foreground italic mb-4 bg-yellow-50 border border-yellow-200 rounded p-2">{func.observacoes}</p>}
+        <FeriasSection func={func} />
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Histórico de Folhas</p>
         {historico.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nenhuma folha registrada</p>

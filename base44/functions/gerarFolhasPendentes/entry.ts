@@ -95,6 +95,44 @@ Deno.serve(async (req) => {
       }
     }
 
+    // FÉRIAS — gera folha de férias (salário + 1/3) quando há período registrado no cadastro.
+    // Regra: férias são pagas até 2 dias ANTES do início, então gera assim que o início
+    // estiver a até 30 dias à frente (ou já tiver passado).
+    for (const func of ativos) {
+      if (!func.ferias_inicio) continue;
+      const inicioFerias = new Date(func.ferias_inicio + 'T00:00:00Z');
+      if (inicioFerias.getTime() - Date.now() > 30 * 86400000) continue;
+
+      const compFerias = `${inicioFerias.getUTCFullYear()}-${String(inicioFerias.getUTCMonth() + 1).padStart(2, '0')}`;
+      const nomeNorm = normalizar(func.nome);
+      const jaExiste = folhas.some(fl => {
+        if (fl.tipo !== 'ferias' || fl.competencia !== compFerias) return false;
+        const n = normalizar(fl.funcionario_nome);
+        return n === nomeNorm || nomeNorm.includes(n) || n.includes(nomeNorm);
+      });
+      if (jaExiste) continue;
+
+      const fimFerias = func.ferias_fim ? new Date(func.ferias_fim + 'T00:00:00Z') : null;
+      const dias = fimFerias ? Math.round((fimFerias.getTime() - inicioFerias.getTime()) / 86400000) + 1 : 30;
+      const base = func.salario_base || 0;
+      const valorFerias = Math.round((base / 30) * dias * (4 / 3) * 100) / 100;
+      if (valorFerias <= 0) continue;
+
+      const criada = await svc.FolhaPagamento.create({
+        funcionario_id: func.id,
+        funcionario_nome: func.nome,
+        competencia: compFerias,
+        tipo: 'ferias',
+        salario_bruto: valorFerias,
+        salario_liquido: valorFerias,
+        status: 'pendente',
+        empresa: func.empresa,
+        gerada_automaticamente: true,
+      });
+      geradas.push(criada.id);
+      detalhes.push({ funcionario: func.nome, competencia: compFerias, liquido: valorFerias, base: `férias ${dias} dia(s) + 1/3` });
+    }
+
     return Response.json({
       success: true,
       competencia_alvo: competenciaAlvo,

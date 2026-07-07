@@ -51,6 +51,16 @@
       "type": "number",
       "title": "Sal\u00e1rio Base"
     },
+    "ferias_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "In\u00edcio das pr\u00f3ximas f\u00e9rias"
+    },
+    "ferias_fim": {
+      "type": "string",
+      "format": "date",
+      "title": "Fim das pr\u00f3ximas f\u00e9rias"
+    },
     "tipo_contrato": {
       "type": "string",
       "enum": [

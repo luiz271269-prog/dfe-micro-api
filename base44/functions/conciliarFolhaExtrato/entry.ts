@@ -121,7 +121,14 @@ Deno.serve(async (req) => {
       const chaves = chavesNome(nomeParaBusca);
       if (chaves.length === 0) { semMatch++; continue; }
 
-      const { inicio, fim } = competenciaParaJanela(folha.competencia);
+      let { inicio, fim } = competenciaParaJanela(folha.competencia);
+      if (folha.tipo === 'ferias') {
+        // Férias são pagas até 2 dias ANTES do início — janela: do dia 1 do mês
+        // anterior à competência até o fim do mês da competência.
+        const [anoF, mesF] = folha.competencia.split('-').map(Number);
+        inicio = new Date(anoF, mesF - 2, 1).toISOString().split('T')[0];
+        fim = new Date(anoF, mesF, 0).toISOString().split('T')[0];
+      }
 
       // Encontra TODOS os PIX do funcionário na janela. Filtro mais restrito:
       // exige match de pelo menos uma chave de 2 palavras OU sobrenome (≥4 letras) para evitar falso positivo com nome comum (ex: "Luiz" pegando fatura Magalu).
