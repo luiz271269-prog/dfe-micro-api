@@ -8,6 +8,7 @@ import {
 'lucide-react';
 import { formatCurrency } from '../lib/formatters';
 import DASAlertBadge from '../components/dashboard/DASAlertBadge';
+import FeriasAlertBadge from '../components/dashboard/FeriasAlertBadge';
 import { getCurrentMonth } from '../lib/currentMonth';
 import DedupButton from '../components/shared/DedupButton';
 import SyncCalendarButton from '../components/shared/SyncCalendarButton';
@@ -424,6 +425,7 @@ export default function Dashboard() {
           <p className="text-sm font-bold text-amber-900">Itens que precisam de atenção — {isAnnual ? '2026 (Anual)' : fmtMesLong(selectedMonth)}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <DASAlertBadge selectedMonth={selectedMonth} />
+            <FeriasAlertBadge />
             {data.tribVencidos > 0 && <span className="text-xs bg-red-100 text-red-700 border border-red-200 px-2.5 py-1 rounded-full font-medium">⚠ {data.tribVencidos} tributo(s) vencido(s) — ação imediata</span>}
             {data.aReceber > 0 && <span className="text-xs bg-orange-100 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-medium">💰 A receber: {formatCurrency(data.aReceber)}</span>}
             {data.emAberto > 0 && <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full font-medium">📋 Cobranças em aberto: {formatCurrency(data.emAberto)}</span>}

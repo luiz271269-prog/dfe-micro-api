@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { calcularFimGozo, calcularSituacaoFerias } from '@/lib/feriasEngine';
+import { calcularFimGozo, calcularSituacaoFerias, simularCustoFerias } from '@/lib/feriasEngine';
 
 export default function FeriasForm({ open, onClose, funcionarios, ferias, onSaved }) {
   const [form, setForm] = useState({
@@ -40,12 +40,38 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
       empresa: func.empresa,
       observacoes: form.observacoes || undefined,
     };
-    await base44.entities.FeriasFuncionario.create(record);
+    const created = await base44.entities.FeriasFuncionario.create(record);
     // Alimenta as datas no cadastro — a geração automática da folha de férias usa esses campos
     await base44.entities.Funcionario.update(func.id, {
       ferias_inicio: form.data_inicio_gozo,
       ferias_fim: dataFim,
     });
+    // Cria a folha de férias vinculada (se ainda não existir para a competência)
+    const competencia = form.data_inicio_gozo.slice(0, 7);
+    const existentes = await base44.entities.FolhaPagamento.filter({ funcionario_nome: func.nome, competencia, tipo: 'ferias' });
+    let folhaId = existentes[0]?.id;
+    if (!folhaId) {
+      const custo = simularCustoFerias(func.salario_base || 0, record.dias_gozo, record.dias_abono);
+      const total = Math.round(custo.totalPagamento * 100) / 100;
+      const folha = await base44.entities.FolhaPagamento.create({
+        funcionario_id: func.id,
+        funcionario_nome: func.nome,
+        competencia,
+        tipo: 'ferias',
+        salario_bruto: total,
+        salario_liquido: total,
+        fgts_valor: Math.round(custo.fgts * 100) / 100,
+        data_pagamento: form.pagamento_adiantado && form.data_pagamento ? form.data_pagamento : undefined,
+        status: form.pagamento_adiantado && form.data_pagamento ? 'pago' : 'pendente',
+        empresa: func.empresa,
+      });
+      folhaId = folha.id;
+    }
+    await base44.entities.FeriasFuncionario.update(created.id, { folha_pagamento_id: folhaId });
+    // Baixa a previsão lançada pelo simulador no fluxo de caixa (evita dupla contagem)
+    const previsoes = await base44.entities.FluxoCaixa.filter({ categoria: 'folha_pagamento', status: 'previsto' });
+    const prev = previsoes.find((p) => (p.descricao || '').startsWith('Férias') && p.descricao.includes(func.nome));
+    if (prev) await base44.entities.FluxoCaixa.update(prev.id, { status: 'confirmado', origem_id: folhaId, origem_tipo: 'folha' });
     setSaving(false);
     setForm({ funcionario_nome: '', data_inicio_gozo: '', dias_gozo: '30', dias_abono: '0', pagamento_adiantado: false, data_pagamento: '', valor_pago: '', status: 'planejada', observacoes: '' });
     onSaved();

@@ -14,6 +14,7 @@ import BancoHorasTab from '../components/funcionarios/BancoHorasTab';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
+import { calcularINSS, calcularFGTS } from '../lib/encargosEngine';
 import { gerarFolhasPendentes } from '@/functions/gerarFolhasPendentes';
 
 const SETORES = ['vendas', 'assistencia', 'financeiro', 'compras', 'administrativo', 'telemarketing'];
@@ -679,6 +680,14 @@ export default function Funcionarios() {
               <div><Label>Salário Bruto</Label><Input type="number" step="0.01" value={folhaForm.salario_bruto} onChange={e => setFolhaForm({...folhaForm, salario_bruto: e.target.value})} required /></div>
               <div><Label>Horas Extras</Label><Input type="number" step="0.01" value={folhaForm.horas_extras} onChange={e => setFolhaForm({...folhaForm, horas_extras: e.target.value})} /></div>
               <div><Label>Comissão</Label><Input type="number" step="0.01" value={folhaForm.comissao} onChange={e => setFolhaForm({...folhaForm, comissao: e.target.value})} /></div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" size="sm" className="gap-1 text-xs" onClick={() => {
+                const base = (parseFloat(folhaForm.salario_bruto)||0)+(parseFloat(folhaForm.horas_extras)||0)+(parseFloat(folhaForm.comissao)||0);
+                setFolhaForm({ ...folhaForm, desconto_inss: calcularINSS(base).toFixed(2), fgts_valor: calcularFGTS(base).toFixed(2) });
+              }}>
+                <Sparkles className="w-3 h-3" /> Calcular INSS/FGTS
+              </Button>
             </div>
             <div className="grid grid-cols-4 gap-2">
               {[['desconto_inss','INSS'],['desconto_irrf','IRRF'],['desconto_vt','VT'],['desconto_vr','VR']].map(([k,l]) => (

@@ -15,6 +15,15 @@ export default function ControleFerias({ funcionarios }) {
 
   async function load() {
     const list = await base44.entities.FeriasFuncionario.list('-data_inicio_gozo', 500);
+    // Auto-conclusão: férias cujo gozo já terminou passam a "concluída" e o funcionário volta a "ativo"
+    const hoje = new Date().toISOString().slice(0, 10);
+    const expiradas = list.filter((f) => f.data_fim_gozo && f.data_fim_gozo < hoje && (f.status === 'em_gozo' || f.status === 'planejada'));
+    if (expiradas.length > 0) {
+      await Promise.all(expiradas.map((f) => base44.entities.FeriasFuncionario.update(f.id, { status: 'concluida' })));
+      expiradas.forEach((f) => { f.status = 'concluida'; });
+      const emFerias = funcionarios.filter((fn) => fn.status === 'ferias' && expiradas.some((e) => e.funcionario_nome === fn.nome));
+      await Promise.all(emFerias.map((fn) => base44.entities.Funcionario.update(fn.id, { status: 'ativo' })));
+    }
     setFerias(list);
     setLoading(false);
   }

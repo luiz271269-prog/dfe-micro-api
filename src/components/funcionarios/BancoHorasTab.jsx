@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Clock, Plus, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Clock, Plus, Trash2, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/formatters';
 import BancoHorasForm from './BancoHorasForm';
@@ -32,7 +32,18 @@ export default function BancoHorasTab({ funcionarios }) {
       const meus = lancamentos.filter((l) => l.funcionario_nome === func.nome);
       const creditos = meus.filter((l) => l.tipo === 'credito').reduce((s, l) => s + (l.horas || 0), 0);
       const debitos = meus.filter((l) => l.tipo === 'debito').reduce((s, l) => s + (l.horas || 0), 0);
-      return { func, creditos, debitos, saldo: creditos - debitos, qtd: meus.length };
+      const saldo = creditos - debitos;
+      // Regra CLT: crédito deve ser compensado em até 6 meses (a contar do crédito mais antigo)
+      let limiteCompensacao = null, diasParaCompensar = null;
+      const creditosOrdenados = meus.filter((l) => l.tipo === 'credito' && l.data).sort((a, b) => a.data.localeCompare(b.data));
+      if (saldo > 0 && creditosOrdenados.length > 0) {
+        const d = new Date(creditosOrdenados[0].data + 'T00:00:00');
+        d.setMonth(d.getMonth() + 6);
+        limiteCompensacao = d.toISOString().slice(0, 10);
+        const hoje = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00');
+        diasParaCompensar = Math.floor((d - hoje) / 86400000);
+      }
+      return { func, creditos, debitos, saldo, qtd: meus.length, limiteCompensacao, diasParaCompensar };
     }).sort((a, b) => b.saldo - a.saldo);
   }, [funcionarios, lancamentos]);
 
@@ -50,8 +61,26 @@ export default function BancoHorasTab({ funcionarios }) {
 
   const visiveis = filtroFunc ? lancamentos.filter((l) => l.funcionario_nome === filtroFunc) : lancamentos;
 
+  const compensacoesUrgentes = saldos.filter((s) => s.saldo > 0 && s.diasParaCompensar != null && s.diasParaCompensar <= 30);
+
   return (
     <div className="space-y-6">
+      {/* Alertas de compensação (CLT: 6 meses) */}
+      {compensacoesUrgentes.length > 0 && (
+        <div className="space-y-2">
+          {compensacoesUrgentes.map(({ func, saldo, limiteCompensacao, diasParaCompensar }) => (
+            <div key={func.id} className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm border ${diasParaCompensar < 0 ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
+              <AlertTriangle className={`w-4 h-4 shrink-0 ${diasParaCompensar < 0 ? 'text-red-600' : 'text-yellow-600'}`} />
+              <p className={diasParaCompensar < 0 ? 'text-red-800' : 'text-yellow-800'}>
+                <b>{func.nome}</b>: saldo de <b>{fmtHoras(saldo)}</b> {diasParaCompensar < 0
+                  ? <>com prazo de compensação <b>vencido</b> desde {formatDate(limiteCompensacao)} (CLT: pagar como hora extra)</>
+                  : <>deve ser compensado até <b>{formatDate(limiteCompensacao)}</b> ({diasParaCompensar} dias — CLT: 6 meses)</>}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Saldos por funcionário */}
       <div>
         <div className="flex items-center justify-between mb-2">
