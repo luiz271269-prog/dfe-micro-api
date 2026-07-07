@@ -59,7 +59,7 @@ export default function Faturamento() {
     const t = {};
     ALL_MONTHS.forEach(m => {
       // Totais por mês excluem NFs-espelho (evita dupla contagem com o CI)
-      t[m] = notas.filter(n => n.data_emissao?.startsWith(m) && !n.is_espelho_ci).reduce((s,n) => s+(n.valor_total||0), 0);
+      t[m] = notas.filter(n => n.data_emissao?.startsWith(m) && !n.is_espelho_ci && n.status !== 'anulada').reduce((s,n) => s+(n.valor_total||0), 0);
     });
     return t;
   }, [notas]);
@@ -136,15 +136,18 @@ export default function Faturamento() {
     setTimeout(() => setToast(null), 5000);
   }
 
-  const totalFaturado = filtered.reduce((s, n) => s + (n.valor_total || 0), 0);
-  const totalRecebido = filtered.reduce((s, n) => s + (n.valor_recebido || 0), 0);
-  const totalAberto = filtered.reduce((s, n) => s + (n.valor_aberto || 0), 0);
+  // NFs anuladas não somam valor nem contam nos cards/totais
+  const validas = filtered.filter(n => n.status !== 'anulada');
+  const anuladasCount = filtered.length - validas.length;
+  const totalFaturado = validas.reduce((s, n) => s + (n.valor_total || 0), 0);
+  const totalRecebido = validas.reduce((s, n) => s + (n.valor_recebido || 0), 0);
+  const totalAberto = validas.reduce((s, n) => s + (n.valor_aberto || 0), 0);
 
   // Por vendedor — respeita filtro de mês/anual
-  const tiagoNFs = filtered.filter(n => n.vendedor === 'Tiago');
-  const thaisNFs = filtered.filter(n => n.vendedor === 'Thais');
-  const fatDiretoNFs = filtered.filter(n => n.vendedor === 'Fat.Direto');
-  const semVendedorNFs = filtered.filter(n => !n.vendedor || (n.vendedor !== 'Tiago' && n.vendedor !== 'Thais' && n.vendedor !== 'Fat.Direto'));
+  const tiagoNFs = validas.filter(n => n.vendedor === 'Tiago');
+  const thaisNFs = validas.filter(n => n.vendedor === 'Thais');
+  const fatDiretoNFs = validas.filter(n => n.vendedor === 'Fat.Direto');
+  const semVendedorNFs = validas.filter(n => !n.vendedor || (n.vendedor !== 'Tiago' && n.vendedor !== 'Thais' && n.vendedor !== 'Fat.Direto'));
 
   const tiagototal = tiagoNFs.reduce((s, n) => s + (n.valor_total || 0), 0);
   const tiagoAberto = tiagoNFs.reduce((s, n) => s + (n.valor_aberto || 0), 0);
@@ -269,7 +272,7 @@ export default function Faturamento() {
         <GradientCard
           title="Total Geral"
           value={formatCurrency(totalFaturado)}
-          sub={`✓ ${formatCurrency(totalRecebido)} · ⏳ ${formatCurrency(totalAberto)} · ${filtered.length} NFs`}
+          sub={`✓ ${formatCurrency(totalRecebido)} · ⏳ ${formatCurrency(totalAberto)} · ${validas.length} NFs${anuladasCount > 0 ? ` · ${anuladasCount} anulada(s)` : ''}`}
           icon={TrendingUp}
           gradient="green"
         />
@@ -306,6 +309,7 @@ export default function Faturamento() {
             <SelectItem value="parcial">Parcial</SelectItem>
             <SelectItem value="a_vencer">A Vencer</SelectItem>
             <SelectItem value="vencido">Vencido</SelectItem>
+            <SelectItem value="anulada">Anulada</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -335,7 +339,7 @@ export default function Faturamento() {
                 <tr><td colSpan={10} className="text-center py-12 text-muted-foreground">Nenhuma nota encontrada</td></tr>
               ) : (
                 sorted.map(n => (
-                  <tr key={n.id} className={`border-b hover:bg-muted/30 transition-colors cursor-pointer ${n.is_espelho_ci ? 'bg-blue-50/40 opacity-75' : ''}`} onClick={() => setDetalhes(n)}>
+                  <tr key={n.id} className={`border-b hover:bg-muted/30 transition-colors cursor-pointer ${n.is_espelho_ci ? 'bg-blue-50/40 opacity-75' : ''} ${n.status === 'anulada' ? 'opacity-50 line-through decoration-slate-400' : ''}`} onClick={() => setDetalhes(n)}>
                     <td className="px-4 py-3 font-medium">
                       {n.numero} <span className="text-xs text-muted-foreground">({n.tipo})</span>
                       {n.is_espelho_ci && (
@@ -355,7 +359,11 @@ export default function Faturamento() {
                       <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-green-600">{formatCurrency(n.valor_recebido)}</td>
                       <td className="hidden sm:table-cell px-4 py-3 text-right tabular-nums text-orange-600">{formatCurrency(n.valor_aberto)}</td>
                       <td className="hidden lg:table-cell px-4 py-3 whitespace-nowrap text-sm">{formatDate(n.data_vencimento_proxima)}</td>
-                      <td className="px-4 py-3 text-center"><StatusBadge status={n.status} /></td>
+                      <td className="px-4 py-3 text-center">
+                        {n.status === 'anulada'
+                          ? <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-slate-200 text-slate-600 no-underline inline-block">Anulada</span>
+                          : <StatusBadge status={n.status} />}
+                      </td>
                       <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                         {n.tipo === 'NF' && (
                           <button
@@ -374,7 +382,7 @@ export default function Faturamento() {
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30">
-                  <td colSpan={4} className="px-4 py-3 font-semibold">Total ({filtered.length} notas)</td>
+                  <td colSpan={4} className="px-4 py-3 font-semibold">Total ({validas.length} notas{anuladasCount > 0 ? ` + ${anuladasCount} anulada(s)` : ''})</td>
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(totalFaturado)}</td>
                   <td className="px-4 py-3 text-right font-bold text-green-600">{formatCurrency(totalRecebido)}</td>
                   <td className="px-4 py-3 text-right font-bold text-orange-600">{formatCurrency(totalAberto)}</td>

@@ -279,8 +279,8 @@ export default function Dashboard() {
         d.pagYTD = lancF.filter((l) => l.categoria !== 'recebimento').reduce((s, l) => s + Math.abs(l.valor || 0), 0);
       }
       if (nfs.length) {
-        // Exclui NFs-espelho de CI (já contabilizadas no CI — evita dupla contagem)
-        const nfsValidas = nfsF.filter((n) => !n.is_espelho_ci);
+        // Exclui NFs-espelho de CI (já contabilizadas no CI) e NFs anuladas
+        const nfsValidas = nfsF.filter((n) => !n.is_espelho_ci && n.status !== 'anulada');
         d.totalFat = nfsValidas.reduce((s, n) => s + (n.valor_total || 0), 0);
         d.aReceber = nfsValidas.reduce((s, n) => s + (n.valor_aberto || 0), 0);
         d.tiago = nfsValidas.filter((n) => n.vendedor === 'Tiago').reduce((s, n) => s + (n.valor_total || 0), 0);

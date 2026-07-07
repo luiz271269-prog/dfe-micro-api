@@ -12,7 +12,7 @@ export function getDrilldown(key, { rawData, selectedMonth, isAnnual }) {
   const inicio = selectedMonth + '-01';
   const fim = selectedMonth + '-31';
   const lancF = isAnnual ? lanc : lanc.filter((r) => r.data && r.data >= inicio && r.data <= fim);
-  const nfsValidas = filtroMes(nfs, 'data_emissao', selectedMonth, isAnnual).filter((n) => !n.is_espelho_ci);
+  const nfsValidas = filtroMes(nfs, 'data_emissao', selectedMonth, isAnnual).filter((n) => !n.is_espelho_ci && n.status !== 'anulada');
 
   const colsLanc = [
     { label: 'Data', get: (r) => r.data },
