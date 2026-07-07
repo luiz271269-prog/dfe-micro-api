@@ -126,6 +126,14 @@ Deno.serve(async (req) => {
       if (candidatos.length === 0) continue;
 
       const { l: match, diff, nomeMatch } = candidatos[0];
+
+      // Guarda anti-falso-positivo: sem similaridade de nome, só sugere se a obra
+      // foi paga no cartão OU se valor é EXATO e a data está a ≤2 dias.
+      if (!nomeMatch) {
+        const pagoNoCartao = norm(obra.forma_pagamento).includes('cart') || norm(obra.forma_pagamento).includes('credito');
+        const valorExatoDataProxima = Math.abs(Math.abs(match.valor) - valor) <= 0.01 && diff <= 2;
+        if (!pagoNoCartao && !valorExatoDataProxima) continue;
+      }
       const confianca = nomeMatch
         ? (diff <= 3 ? 90 : 75)
         : (diff <= 3 ? 70 : 55);
