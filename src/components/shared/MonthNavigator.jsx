@@ -33,7 +33,7 @@ export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual,
             <button
               key={m}
               onClick={() => {if (onToggleAnnual && isAnnual) onToggleAnnual();onSelectMonth(m);}}
-              className={`rounded-lg text-xs font-semibold transition-all flex flex-col items-center min-w-[60px] bg-[hsl(var(--sidebar-ring))] text-[hsl(var(--chart-4))] px-2 py-1 ${
+              className={`rounded-lg text-xs font-semibold transition-all flex flex-col items-center min-w-[60px] bg-[hsl(var(--sidebar-ring))] text-[hsl(var(--chart-4))] px-2 py-1 opacity-70 ${
               isActive ?
               'bg-primary text-primary-foreground shadow' :
               "border hover:bg-muted"}`
