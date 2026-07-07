@@ -41,7 +41,7 @@ export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual,
               
               <span>{fmtMes(m)}</span>
               {total !== undefined &&
-              <span className={`text-[10px] font-bold mt-0.5 ${isActive ? 'text-emerald-300' : 'text-emerald-600'}`}>
+              <span className={`font-bold mt-0.5 text-[hsl(var(--destructive))] text-xs px-3 ${isActive ? 'text-emerald-300' : ""}`}>
                   {formatCurrency(total, true)}
                 </span>
               }
