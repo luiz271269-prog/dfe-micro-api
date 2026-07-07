@@ -6,6 +6,7 @@ import { formatCurrency } from '../../lib/formatters';
 import { consolidarContasPagar, calcularAging, executarBaixaAutomatica } from '../../lib/contasPagarEngine';
 import CalendarioSemanal from './CalendarioSemanal';
 import PainelDDA from './PainelDDA';
+import FluxoContasAPagar from './FluxoContasAPagar';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Despesa', href: '/despesas' },
@@ -156,6 +157,8 @@ export default function ContasAPagarPanel() {
           )}
         </div>
       )}
+
+      <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} />
 
       {/* Totais principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
