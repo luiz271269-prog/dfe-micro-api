@@ -1,0 +1,113 @@
+{
+  "name": "FeriasFuncionario",
+  "type": "object",
+  "description": "Registro de f\u00e9rias por funcion\u00e1rio: per\u00edodo aquisitivo consumido, per\u00edodo de gozo, abono pecuni\u00e1rio e pagamento adiantado (CLT: pagamento at\u00e9 2 dias antes do in\u00edcio do gozo).",
+  "properties": {
+    "funcionario_id": {
+      "type": "string",
+      "title": "ID Funcion\u00e1rio"
+    },
+    "funcionario_nome": {
+      "type": "string",
+      "title": "Funcion\u00e1rio"
+    },
+    "periodo_aquisitivo_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "In\u00edcio do Per\u00edodo Aquisitivo"
+    },
+    "periodo_aquisitivo_fim": {
+      "type": "string",
+      "format": "date",
+      "title": "Fim do Per\u00edodo Aquisitivo"
+    },
+    "data_inicio_gozo": {
+      "type": "string",
+      "format": "date",
+      "title": "In\u00edcio do Gozo"
+    },
+    "data_fim_gozo": {
+      "type": "string",
+      "format": "date",
+      "title": "Fim do Gozo"
+    },
+    "dias_gozo": {
+      "type": "number",
+      "default": 30,
+      "title": "Dias de Gozo"
+    },
+    "dias_abono": {
+      "type": "number",
+      "default": 0,
+      "title": "Dias Vendidos (Abono Pecuni\u00e1rio \u2014 m\u00e1x. 10)"
+    },
+    "pagamento_adiantado": {
+      "type": "boolean",
+      "default": false,
+      "title": "Pagamento Adiantado (antes do in\u00edcio do gozo)"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data do Pagamento"
+    },
+    "valor_pago": {
+      "type": "number",
+      "title": "Valor Pago (sal\u00e1rio + 1/3)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planejada",
+        "em_gozo",
+        "concluida",
+        "cancelada"
+      ],
+      "default": "planejada",
+      "title": "Status"
+    },
+    "folha_pagamento_id": {
+      "type": "string",
+      "title": "ID da FolhaPagamento de f\u00e9rias vinculada"
+    },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa"
+    },
+    "observacoes": {
+      "type": "string",
+      "title": "Observa\u00e7\u00f5es"
+    }
+  },
+  "required": [
+    "funcionario_nome",
+    "data_inicio_gozo",
+    "data_fim_gozo"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
