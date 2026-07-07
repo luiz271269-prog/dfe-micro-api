@@ -11,6 +11,8 @@ import DASAlertBadge from '../components/dashboard/DASAlertBadge';
 import { getCurrentMonth } from '../lib/currentMonth';
 import DedupButton from '../components/shared/DedupButton';
 import SyncCalendarButton from '../components/shared/SyncCalendarButton';
+import DrilldownDialog from '../components/dashboard/DrilldownDialog';
+import { getDrilldown } from '../lib/dashboardDrilldowns';
 
 const ALL_MONTHS = ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'];
 
@@ -29,7 +31,7 @@ function fmtMesLong(m) {
 function asArray(r) {return Array.isArray(r) ? r : [];}
 
 // Metric card with gradient accent
-function MetricCard({ title, value, sub, icon: Icon, gradient, href, accent }) {
+function MetricCard({ title, value, sub, icon: Icon, gradient, href, onClick, accent }) {
   const gradients = {
     blue: 'from-blue-500 to-blue-600',
     green: 'from-emerald-500 to-teal-600',
@@ -62,6 +64,7 @@ function MetricCard({ title, value, sub, icon: Icon, gradient, href, accent }) {
       </div>
     </div>;
 
+  if (onClick) return <div onClick={onClick}>{inner}</div>;
   if (href) return <Link to={href}>{inner}</Link>;
   return inner;
 }
@@ -104,7 +107,7 @@ function Section({ icon: Icon, label, gradient, children, cols = 4 }) {
 }
 
 // Inner metric for section (no card, uses section's bg)
-function SectionMetric({ title, value, sub, icon: Icon, valueColor, href }) {
+function SectionMetric({ title, value, sub, icon: Icon, valueColor, href, onClick }) {
   const valCls = {
     green: 'text-emerald-600',
     red: 'text-rose-600',
@@ -125,6 +128,7 @@ function SectionMetric({ title, value, sub, icon: Icon, valueColor, href }) {
       {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>;
 
+  if (onClick) return <div onClick={onClick}>{inner}</div>;
   if (href) return <Link to={href}>{inner}</Link>;
   return inner;
 }
@@ -146,6 +150,9 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [drill, setDrill] = useState(null);
+
+  const openDrill = (key) => setDrill(getDrilldown(key, { rawData, selectedMonth, isAnnual }));
 
   useEffect(() => {
     // Verificar refresh pendente ao montar (vindo de outra página após importação)
@@ -370,10 +377,10 @@ export default function Dashboard() {
 
       {/* ─── KPI HERO ROW ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricCard title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Conta Sicredi 36092-2" icon={Landmark} gradient="sky" href="/extrato" />
-        <MetricCard title="Total Faturado" value={formatCurrency(data.totalFat)} sub={isAnnual ? 'Acumulado anual' : fmtMesLong(selectedMonth)} icon={TrendingUp} gradient="green" href="/faturamento" />
-        <MetricCard title="A Receber" value={formatCurrency(data.aReceber)} sub="Em aberto NFs" icon={Wallet} gradient="orange" href="/faturamento" />
-        <MetricCard title="Cobranças Recebidas" value={`${percCob}%`} sub={`${formatCurrency(data.recebido)} de ${formatCurrency(data.emitido)}`} icon={PiggyBank} gradient="teal" href="/cobrancas" />
+        <MetricCard title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Conta Sicredi 36092-2" icon={Landmark} gradient="sky" onClick={() => openDrill('saldo')} />
+        <MetricCard title="Total Faturado" value={formatCurrency(data.totalFat)} sub={isAnnual ? 'Acumulado anual' : fmtMesLong(selectedMonth)} icon={TrendingUp} gradient="green" onClick={() => openDrill('totalFat')} />
+        <MetricCard title="A Receber" value={formatCurrency(data.aReceber)} sub="Em aberto NFs" icon={Wallet} gradient="orange" onClick={() => openDrill('aReceber')} />
+        <MetricCard title="Cobranças Recebidas" value={`${percCob}%`} sub={`${formatCurrency(data.recebido)} de ${formatCurrency(data.emitido)}`} icon={PiggyBank} gradient="teal" onClick={() => openDrill('recebido')} />
       </div>
 
       {/* ─── CTA CONTAS A PAGAR ─── */}
@@ -426,60 +433,62 @@ export default function Dashboard() {
 
       {/* ─── GRUPO 1: POSIÇÃO BANCÁRIA ─── */}
       <Section icon={Landmark} label="Posição Bancária" gradient="blue" cols={4}>
-        <SectionMetric title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Sicredi 36092-2" icon={Landmark} valueColor="blue" href="/extrato" />
+        <SectionMetric title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Sicredi 36092-2" icon={Landmark} valueColor="blue" onClick={() => openDrill('saldo')} />
         <SectionMetric title="Liesch + Fundos" value={formatCurrency(data.liesch + data.fundos)} sub="R$41 + R$100k em fundos" icon={Building2} valueColor="default" href="/extrato" />
-        <SectionMetric title="Entradas" value={formatCurrency(data.recYTD)} sub="Recebimentos" icon={TrendingUp} valueColor="green" href="/extrato" />
-        <SectionMetric title="Saídas" value={formatCurrency(-data.pagYTD)} sub="Pagamentos" icon={TrendingDown} valueColor="red" href="/extrato" />
+        <SectionMetric title="Entradas" value={formatCurrency(data.recYTD)} sub="Recebimentos" icon={TrendingUp} valueColor="green" onClick={() => openDrill('entradas')} />
+        <SectionMetric title="Saídas" value={formatCurrency(-data.pagYTD)} sub="Pagamentos" icon={TrendingDown} valueColor="red" onClick={() => openDrill('saidas')} />
       </Section>
 
       {/* ─── GRUPO 2: FATURAMENTO ─── */}
       <Section icon={FileText} label="Faturamento" gradient="green" cols={4}>
-        <SectionMetric title="Total Faturado" value={formatCurrency(data.totalFat)} sub="NFs + CIs emitidas" icon={FileText} valueColor="green" href="/faturamento" />
-        <SectionMetric title="A Receber" value={formatCurrency(data.aReceber)} sub="Saldo em aberto" icon={TrendingUp} valueColor="orange" href="/faturamento" />
-        <SectionMetric title="Tiago (V-01)" value={formatCurrency(data.tiago)} sub="Vendas diretas" icon={FileText} valueColor="blue" href="/faturamento" />
-        <SectionMetric title="Thais (V-05)" value={formatCurrency(data.thais)} sub="Televendas" icon={FileText} valueColor="purple" href="/faturamento" />
+        <SectionMetric title="Total Faturado" value={formatCurrency(data.totalFat)} sub="NFs + CIs emitidas" icon={FileText} valueColor="green" onClick={() => openDrill('totalFat')} />
+        <SectionMetric title="A Receber" value={formatCurrency(data.aReceber)} sub="Saldo em aberto" icon={TrendingUp} valueColor="orange" onClick={() => openDrill('aReceber')} />
+        <SectionMetric title="Tiago (V-01)" value={formatCurrency(data.tiago)} sub="Vendas diretas" icon={FileText} valueColor="blue" onClick={() => openDrill('tiago')} />
+        <SectionMetric title="Thais (V-05)" value={formatCurrency(data.thais)} sub="Televendas" icon={FileText} valueColor="purple" onClick={() => openDrill('thais')} />
       </Section>
 
       {/* ─── GRUPO 3: COBRANÇAS ─── */}
       <Section icon={Receipt} label="Cobranças Sicredi" gradient="teal" cols={3}>
-        <SectionMetric title="Total Emitido" value={formatCurrency(data.emitido)} sub="Boletos gerados" icon={Receipt} valueColor="blue" href="/cobrancas" />
-        <SectionMetric title="Recebido" value={formatCurrency(data.recebido)} sub={`${percCob}% de taxa de recebimento`} icon={TrendingUp} valueColor="green" href="/cobrancas" />
-        <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Total geral — todos os vencimentos" icon={AlertTriangle} valueColor="orange" href="/cobrancas" />
+        <SectionMetric title="Total Emitido" value={formatCurrency(data.emitido)} sub="Boletos gerados" icon={Receipt} valueColor="blue" onClick={() => openDrill('emitido')} />
+        <SectionMetric title="Recebido" value={formatCurrency(data.recebido)} sub={`${percCob}% de taxa de recebimento`} icon={TrendingUp} valueColor="green" onClick={() => openDrill('recebido')} />
+        <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Total geral — todos os vencimentos" icon={AlertTriangle} valueColor="orange" onClick={() => openDrill('emAberto')} />
       </Section>
 
       {/* ─── GRUPO 4: OPERACIONAL (Compras + Obras) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Section icon={ShoppingCart} label="Compras" gradient="orange" cols={1}>
-          <SectionMetric title="Total de Compras" value={formatCurrency(-data.totalCompras)} sub={isAnnual ? 'Acumulado anual' : fmtMesLong(selectedMonth)} icon={ShoppingCart} valueColor="red" href="/compras" />
+          <SectionMetric title="Total de Compras" value={formatCurrency(-data.totalCompras)} sub={isAnnual ? 'Acumulado anual' : fmtMesLong(selectedMonth)} icon={ShoppingCart} valueColor="red" onClick={() => openDrill('compras')} />
         </Section>
         <Section icon={Hammer} label="Obras e Reformas" gradient="lime" cols={1}>
-          <SectionMetric title="Total de Obras" value={formatCurrency(-data.totalObras)} sub="Mão de obra + Material" icon={Hammer} valueColor="green" href="/obras" />
+          <SectionMetric title="Total de Obras" value={formatCurrency(-data.totalObras)} sub="Mão de obra + Material" icon={Hammer} valueColor="green" onClick={() => openDrill('obras')} />
         </Section>
       </div>
 
       {/* ─── GRUPO 5: CARTÕES + TRIBUTOS ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Section icon={CreditCard} label="Cartões de Crédito" gradient="purple" cols={2}>
-          <SectionMetric title="Pago no Banco" value={formatCurrency(-data.totalCartoes)} sub={`${data.nCartoes || '—'} cartões no período`} icon={CreditCard} valueColor="purple" href="/cartoes" />
-          <SectionMetric title="Próx. Vencimento" value={formatCurrency(data.proxVenc)} sub="Próxima fatura em aberto" icon={DollarSign} valueColor="amber" href="/cartoes" />
+          <SectionMetric title="Pago no Banco" value={formatCurrency(-data.totalCartoes)} sub={`${data.nCartoes || '—'} cartões no período`} icon={CreditCard} valueColor="purple" onClick={() => openDrill('cartoes')} />
+          <SectionMetric title="Próx. Vencimento" value={formatCurrency(data.proxVenc)} sub="Próxima fatura em aberto" icon={DollarSign} valueColor="amber" onClick={() => openDrill('proxVenc')} />
         </Section>
         <Section icon={AlertTriangle} label="Tributos" gradient="red" cols={2}>
-          <SectionMetric title="Total a Pagar" value={formatCurrency(data.totalTrib)} sub={`${data.tribVencer} a vencer`} icon={AlertTriangle} valueColor="blue" href="/tributos" />
-          <SectionMetric title="Vencidos" value={data.tribVencidos} sub={data.tribVencidos > 0 ? '⚠ Ação imediata' : 'Em dia'} icon={AlertTriangle} valueColor={data.tribVencidos > 0 ? 'red' : 'green'} href="/tributos" />
+          <SectionMetric title="Total a Pagar" value={formatCurrency(data.totalTrib)} sub={`${data.tribVencer} a vencer`} icon={AlertTriangle} valueColor="blue" onClick={() => openDrill('tributos')} />
+          <SectionMetric title="Vencidos" value={data.tribVencidos} sub={data.tribVencidos > 0 ? '⚠ Ação imediata' : 'Em dia'} icon={AlertTriangle} valueColor={data.tribVencidos > 0 ? 'red' : 'green'} onClick={() => openDrill('tribVencidos')} />
         </Section>
       </div>
 
       {/* ─── GRUPO 6: PESSOAS + FLUXO ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Section icon={Users} label="Gestão de Pessoas" gradient="indigo" cols={2}>
-          <SectionMetric title="Colaboradores Ativos" value={data.funcAtivos} sub="funcionários" icon={Users} valueColor="blue" href="/funcionarios" />
-          <SectionMetric title="Folha do Mês" value={formatCurrency(data.folhaAtual)} sub="Total líquido pago" icon={DollarSign} valueColor="purple" href="/funcionarios" />
+          <SectionMetric title="Colaboradores Ativos" value={data.funcAtivos} sub="funcionários" icon={Users} valueColor="blue" onClick={() => openDrill('funcAtivos')} />
+          <SectionMetric title="Folha do Mês" value={formatCurrency(data.folhaAtual)} sub="Total líquido pago" icon={DollarSign} valueColor="purple" onClick={() => openDrill('folhaAtual')} />
         </Section>
         <Section icon={BarChart3} label="Fluxo de Caixa" gradient="sky" cols={2}>
-          <SectionMetric title="Saldo Projetado" value={formatCurrency(data.saldoProjetado)} sub={`próximos 30 dias · +${formatCurrency(data.fluxoEntradas30 || 0)} / -${formatCurrency(data.fluxoSaidas30 || 0)}`} icon={BarChart3} valueColor={data.saldoProjetado < 0 ? 'red' : 'green'} href="/fluxocaixa" />
+          <SectionMetric title="Saldo Projetado" value={formatCurrency(data.saldoProjetado)} sub={`próximos 30 dias · +${formatCurrency(data.fluxoEntradas30 || 0)} / -${formatCurrency(data.fluxoSaidas30 || 0)}`} icon={BarChart3} valueColor={data.saldoProjetado < 0 ? 'red' : 'green'} onClick={() => openDrill('fluxo')} />
           <SectionMetric title="Status do Caixa" value={data.saldoProjetado < 0 ? '⚠ Crítico' : '✓ OK'} sub="monitorar fluxo" icon={TrendingUp} valueColor={data.saldoProjetado < 0 ? 'red' : 'green'} href="/fluxocaixa" />
         </Section>
       </div>
+
+      <DrilldownDialog drill={drill} onClose={() => setDrill(null)} />
 
     </div>);
 
