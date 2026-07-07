@@ -1,19 +1,19 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 
-// Concilia FolhaPagamento pendente com PIX/transferências do extrato bancário.
-// Regra de negócio (NeuralTec):
-//  - Folha (salário) é paga no 5º dia útil
-//  - Comissão é paga do dia 10 em diante
-//  - PIX adicionais no mês = adiantamento de salário
+// Concilia FolhaPagamento pendente com PIX do extrato bancário.
+// Regras de negócio (NeuralTec):
+//  - Salário: pago no 5º dia útil do mês seguinte à competência
+//  - Comissão: um ou mais PIX do dia 10 em diante (vendedores: Tiago e Thaís)
+//  - PIX extras dentro do mês da competência = adiantamento (vale)
 //
-// Estratégia: para cada folha pendente, SOMAR todos os PIX do funcionário na janela
-// (do dia 20 do mês de competência até dia 20 do mês seguinte). Classificar cada PIX:
-//   - Salário (1º PIX, mais próximo do salário_bruto - descontos sem comissão)
-//   - Comissão (PIX que ~= valor da comissão)
-//   - Adiantamento (PIX extra além dos esperados)
-// Status final:
-//   - pago: soma PIX ≈ salário líquido (tolerância R$ 50)
-//   - parcial: soma PIX < salário líquido (faltou comissão ou parcela)
+// Estratégia v2 (anti falso-positivo):
+//  1. Extrai o NOME COMPLETO do beneficiário da descrição do PIX
+//     (padrão: "PAGAMENTO PIX <CPF> <NOME COMPLETO>").
+//  2. Cada PIX é atribuído globalmente à MELHOR pessoa (score de tokens do nome).
+//     "Thiago"≈"Tiago" e "Thais"≈"Tais" via normalização th→t.
+//     "Luiz Carlos Liesch" vence "Luiz Gabriel Liesch" para o PIX certo (3 vs 2 tokens).
+//  3. Cada PIX entra em NO MÁXIMO UMA folha (set global de usados) —
+//     alocação cronológica: folha pendente mais antiga primeiro, dentro da janela.
 
 function normalizarTexto(s) {
   return (s || '')
@@ -24,30 +24,50 @@ function normalizarTexto(s) {
     .trim();
 }
 
-function chavesNome(nomeCompleto) {
-  const partes = normalizarTexto(nomeCompleto).split(' ').filter(p => p.length >= 3);
-  if (partes.length === 0) return [];
-  const primeiro = partes[0];
-  const ultimo = partes[partes.length - 1];
-  const chaves = new Set([primeiro]);
-  if (ultimo !== primeiro) chaves.add(ultimo);
-  if (partes.length >= 2) chaves.add(`${primeiro} ${ultimo}`);
-  return [...chaves];
+// tokens fonéticos: th→t (thiago=tiago, thais=tais)
+function tokensNome(nome) {
+  return normalizarTexto(nome)
+    .split(' ')
+    .filter(t => t.length >= 3 && !/^\d+$/.test(t))
+    .map(t => t.replace(/^th/, 't'));
 }
 
-function competenciaParaJanela(competencia) {
-  // Janela ampla: do dia 15 do mês de competência até o último dia do mês seguinte.
-  // Cobre: adiantamento (fim do mês de competência) + salário (5º dia útil do mês seguinte)
-  // + comissão (dia 10+ do mês seguinte) + atrasos até fim do mês seguinte.
-  // Ex: competência abr → janela 15/abr → 31/mai.
+// Extrai o nome do beneficiário da descrição do PIX
+function beneficiarioDesc(descricao) {
+  const norm = normalizarTexto(descricao);
+  // remove prefixos comuns e números (CPF/CNPJ)
+  return norm.replace(/pagamento|transferencia|pix|enviado|debito/g, ' ').replace(/\d+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+// Score de match entre beneficiário do PIX e o nome da pessoa
+function scoreMatch(tokensBenef, tokensPessoa) {
+  if (tokensPessoa.length === 0 || tokensBenef.length === 0) return 0;
+  const setBenef = new Set(tokensBenef);
+  const matches = tokensPessoa.filter(t => setBenef.has(t)).length;
+  if (matches === 0) return 0;
+  // exige pelo menos 2 tokens em comum, OU nome de 1 token com match forte (≥5 letras)
+  if (matches < 2 && !(tokensPessoa.length === 1 && tokensPessoa[0].length >= 5)) return 0;
+  return matches * 10 + (matches / tokensPessoa.length); // mais tokens > proporção
+}
+
+function competenciaParaJanela(competencia, tipo) {
   const [ano, mes] = competencia.split('-').map(Number);
-  const inicio = new Date(ano, mes - 1, 15);
-  const fim = new Date(ano, mes + 1, 0); // dia 0 do mês+2 = último dia do mês+1
-  return { inicio: inicio.toISOString().split('T')[0], fim: fim.toISOString().split('T')[0] };
+  if (tipo === 'ferias') {
+    // Férias pagas até 2 dias antes do início — janela: mês anterior até fim do mês da competência
+    return {
+      inicio: new Date(Date.UTC(ano, mes - 2, 1)).toISOString().split('T')[0],
+      fim: new Date(Date.UTC(ano, mes, 0)).toISOString().split('T')[0],
+    };
+  }
+  // Mensal: do dia 15 da competência (vales) até o último dia do mês seguinte (salário 5º dia útil + comissões dia 10+)
+  return {
+    inicio: new Date(Date.UTC(ano, mes - 1, 15)).toISOString().split('T')[0],
+    fim: new Date(Date.UTC(ano, mes + 1, 0)).toISOString().split('T')[0],
+  };
 }
 
-// Classifica um PIX dentro do contexto do que já foi alocado para a folha
-function classificarPix(pixValor, folha, totalAlocadoAntes) {
+// Classifica um PIX no contexto da folha
+function classificarPix(pixValor, pixData, folha, totalAlocadoAntes) {
   const liquido = folha.salario_liquido || 0;
   const comissao = folha.comissao || 0;
   const descontos = (folha.desconto_inss || 0) + (folha.desconto_irrf || 0)
@@ -55,19 +75,16 @@ function classificarPix(pixValor, folha, totalAlocadoAntes) {
                   + (folha.outros_descontos || 0);
   const baseSemComissao = (folha.salario_bruto || 0) - descontos;
   const TOL = 50;
-  const restante = liquido - totalAlocadoAntes; // quanto ainda falta pagar
+  const restante = liquido - totalAlocadoAntes;
+  // PIX dentro do próprio mês da competência = adiantamento (vale)
+  const dentroDaCompetencia = pixData.slice(0, 7) === folha.competencia;
 
-  // Se já cobriu o líquido total, qualquer PIX adicional é adiantamento
   if (restante <= TOL) return 'adiantamento';
-  // PIX = líquido inteiro → salário integral
-  if (Math.abs(pixValor - liquido) <= TOL) return 'salario_integral';
-  // PIX = salário base sem comissão
-  if (Math.abs(pixValor - baseSemComissao) <= TOL) return 'salario_base';
-  // PIX = valor da comissão
-  if (comissao > 0 && Math.abs(pixValor - comissao) <= TOL) return 'comissao';
-  // PIX cabe dentro do restante → considera complemento (será absorvido pela folha)
+  if (Math.abs(pixValor - liquido) <= TOL) return dentroDaCompetencia ? 'adiantamento' : 'salario_integral';
+  if (Math.abs(pixValor - baseSemComissao) <= TOL && !dentroDaCompetencia) return 'salario_base';
+  if (comissao > 0 && Math.abs(pixValor - comissao) <= TOL && !dentroDaCompetencia) return 'comissao';
+  if (dentroDaCompetencia) return 'adiantamento';
   if (pixValor <= restante + TOL) return 'complemento';
-  // PIX maior que o restante → parte vai pra folha, parte sobra (adiantamento) — mas por simplicidade marca como adiantamento
   return 'adiantamento';
 }
 
@@ -85,151 +102,149 @@ Deno.serve(async (req) => {
 
     const [folhasPendentes, funcionarios, lancamentos, vinculosExistentes] = await Promise.all([
       svc.FolhaPagamento.filter({ status: 'pendente' }),
-      svc.Funcionario.filter({ status: 'ativo' }),
+      svc.Funcionario.list('', 200),
       svc.LancamentoBancario.list('-data', 5000),
       svc.VinculoExtrato.list('-created_date', 5000),
     ]);
 
-    // Pares (lançamento, folha) já vinculados — impede recriar vínculo em reexecuções
-    const paresVinculados = new Set(
-      vinculosExistentes.map(v => `${v.lancamento_bancario_id}:${v.entidade_tipo}:${v.entidade_id}`)
+    // PIX já usados em QUALQUER vínculo de folha — um PIX nunca entra em duas folhas
+    const pixUsados = new Set(
+      vinculosExistentes.filter(v => v.entidade_tipo === 'FolhaPagamento').map(v => v.lancamento_bancario_id)
     );
 
     const TOL_TOTAL = 50.00;
+    const saidas = lancamentos.filter(l => l.valor < 0 && l.data);
 
-    const saidas = lancamentos.filter(l => l.valor < 0);
+    // ---- 1. Monta pessoas (nome de folha → nome mais completo conhecido) ----
+    const pessoas = new Map(); // chave = nome da folha; valor = { tokens, folhas: [] }
+    for (const folha of folhasPendentes) {
+      const nomeFolha = folha.funcionario_nome;
+      if (!pessoas.has(nomeFolha)) {
+        const nfNorm = normalizarTexto(nomeFolha);
+        // nome mais completo do cadastro, se bater
+        const func = funcionarios.find(f => {
+          const n = normalizarTexto(f.nome);
+          return n === nfNorm || n.includes(nfNorm) || nfNorm.includes(n);
+        });
+        const nomeCompleto = (func && func.nome.length > nomeFolha.length) ? func.nome : nomeFolha;
+        pessoas.set(nomeFolha, { tokens: tokensNome(nomeCompleto), folhas: [] });
+      }
+      pessoas.get(nomeFolha).folhas.push(folha);
+    }
 
-    let conciliadas = 0;
-    let parciais = 0;
-    let adiantamentos = 0;
-    let semMatch = 0;
+    // ---- 2. Atribui cada PIX à melhor pessoa (score global) ----
+    const donoDoPix = new Map(); // lanc.id → chave da pessoa
+    for (const lanc of saidas) {
+      if (pixUsados.has(lanc.id)) continue;
+      const tokensBenef = tokensNome(beneficiarioDesc(lanc.descricao));
+      let melhor = null, melhorScore = 0;
+      for (const [chave, pessoa] of pessoas) {
+        const s = scoreMatch(tokensBenef, pessoa.tokens);
+        if (s > melhorScore) { melhorScore = s; melhor = chave; }
+      }
+      if (melhor) donoDoPix.set(lanc.id, melhor);
+    }
+
+    // ---- 3. Aloca PIX por pessoa, folha mais antiga primeiro ----
+    let conciliadas = 0, parciais = 0, adiantamentos = 0, semMatch = 0;
     const detalhes = [];
 
-    for (const folha of folhasPendentes) {
-      // Tenta cruzar com Funcionario cadastrado para obter nome completo (melhora match no extrato).
-      // Match flexível: nome exato OU funcionario_nome contido no cadastro OU primeiro nome em comum.
-      const nomeFolhaNorm = normalizarTexto(folha.funcionario_nome);
-      const func = funcionarios.find(f => {
-        const nomeCadNorm = normalizarTexto(f.nome);
-        if (nomeCadNorm === nomeFolhaNorm) return true;
-        if (nomeCadNorm.includes(nomeFolhaNorm) || nomeFolhaNorm.includes(nomeCadNorm)) return true;
-        return false;
-      });
+    for (const [chave, pessoa] of pessoas) {
+      const folhasOrdenadas = pessoa.folhas.sort((a, b) =>
+        (a.competencia || '').localeCompare(b.competencia || ''));
 
-      // Usa nome completo do cadastro (mais palavras → match melhor); senão usa o da folha mesmo
-      const nomeParaBusca = func?.nome || folha.funcionario_nome;
-      const chaves = chavesNome(nomeParaBusca);
-      if (chaves.length === 0) { semMatch++; continue; }
-
-      let { inicio, fim } = competenciaParaJanela(folha.competencia);
-      if (folha.tipo === 'ferias') {
-        // Férias são pagas até 2 dias ANTES do início — janela: do dia 1 do mês
-        // anterior à competência até o fim do mês da competência.
-        const [anoF, mesF] = folha.competencia.split('-').map(Number);
-        inicio = new Date(anoF, mesF - 2, 1).toISOString().split('T')[0];
-        fim = new Date(anoF, mesF, 0).toISOString().split('T')[0];
+      // PASSO A — reserva PIX cujo valor bate EXATO com o líquido de uma folha
+      // (evita que a folha anterior "roube" o pagamento integral da seguinte)
+      const reservadoPara = new Map(); // lanc.id → folha.id
+      for (const folha of folhasOrdenadas) {
+        const { inicio, fim } = competenciaParaJanela(folha.competencia, folha.tipo);
+        const liquido = folha.salario_liquido || 0;
+        const candidato = saidas.find(l => !pixUsados.has(l.id)
+          && !reservadoPara.has(l.id)
+          && donoDoPix.get(l.id) === chave
+          && l.data >= inicio && l.data <= fim
+          && Math.abs(Math.abs(l.valor) - liquido) <= TOL_TOTAL
+          && l.data.slice(0, 7) !== folha.competencia);
+        if (candidato) reservadoPara.set(candidato.id, folha.id);
       }
 
-      // Encontra TODOS os PIX do funcionário na janela. Filtro mais restrito:
-      // exige match de pelo menos uma chave de 2 palavras OU sobrenome (≥4 letras) para evitar falso positivo com nome comum (ex: "Luiz" pegando fatura Magalu).
-      const chavesRestrita = chaves.filter(k => k.includes(' ') || k.length >= 5);
-      const chavesFinal = chavesRestrita.length > 0 ? chavesRestrita : chaves;
-      const pixDoFunc = saidas
-        .filter(l => {
-          if (!l.data || l.data < inicio || l.data > fim) return false;
-          const desc = normalizarTexto(l.descricao);
-          return chavesFinal.some(k => desc.includes(k));
-        })
-        .sort((a, b) => (a.data || '').localeCompare(b.data || ''));
+      for (const folha of folhasOrdenadas) {
+        const { inicio, fim } = competenciaParaJanela(folha.competencia, folha.tipo);
+        const pixDaFolha = saidas
+          .filter(l => !pixUsados.has(l.id)
+            && donoDoPix.get(l.id) === chave
+            && l.data >= inicio && l.data <= fim
+            && (!reservadoPara.has(l.id) || reservadoPara.get(l.id) === folha.id))
+          .sort((a, b) => a.data.localeCompare(b.data));
 
-      if (pixDoFunc.length === 0) { semMatch++; continue; }
+        if (pixDaFolha.length === 0) { semMatch++; continue; }
 
-      // Classifica cada PIX e soma
-      const liquido = folha.salario_liquido || 0;
-      let totalAlocado = 0;
-      const pixClassificados = [];
+        const liquido = folha.salario_liquido || 0;
+        let totalAlocado = 0;
+        const classificados = [];
+        for (const pix of pixDaFolha) {
+          const valor = Math.abs(pix.valor);
+          const tipo = classificarPix(valor, pix.data, folha, totalAlocado);
+          classificados.push({ pix, valor, tipo });
+          if (tipo !== 'adiantamento') totalAlocado += valor;
+        }
 
-      for (const pix of pixDoFunc) {
-        const valor = Math.abs(pix.valor);
-        const tipo = classificarPix(valor, folha, totalAlocado);
-        pixClassificados.push({ pix, valor, tipo });
-        // Acumula tudo que não é adiantamento puro
-        if (tipo !== 'adiantamento') totalAlocado += valor;
-      }
+        const diff = liquido - totalAlocado;
+        let novoStatus, tipoVinculo;
+        if (Math.abs(diff) <= TOL_TOTAL) {
+          novoStatus = 'pago'; tipoVinculo = 'pagamento_integral'; conciliadas++;
+        } else if (totalAlocado > 0) {
+          novoStatus = 'pendente'; tipoVinculo = 'pagamento_parcial'; parciais++;
+        } else {
+          // só adiantamentos — registra os vales, folha continua pendente
+          novoStatus = 'pendente'; tipoVinculo = 'pagamento_parcial';
+        }
 
-      // Decide status final da folha
-      const diff = liquido - totalAlocado;
-      let novoStatus, tipoVinculo;
-      if (Math.abs(diff) <= TOL_TOTAL) {
-        novoStatus = 'pago';
-        tipoVinculo = 'pagamento_integral';
-        conciliadas++;
-      } else if (totalAlocado > 0 && totalAlocado < liquido) {
-        novoStatus = 'pendente'; // mantém pendente mas marca como parcial via data_pagamento do 1º
-        tipoVinculo = 'pagamento_parcial';
-        parciais++;
-      } else {
-        novoStatus = 'pendente';
-        tipoVinculo = 'pagamento_parcial';
-        semMatch++;
-        continue;
-      }
+        const pixPrincipal = classificados.find(p => p.tipo !== 'adiantamento');
+        if (novoStatus === 'pago') {
+          await svc.FolhaPagamento.update(folha.id, {
+            status: 'pago',
+            data_pagamento: pixPrincipal?.pix.data,
+            lancamento_bancario_id: pixPrincipal?.pix?.id || null,
+          });
+        }
 
-      // Atualiza folha — grava também FK direto para o PIX principal (granularidade total fica em VinculoExtrato)
-      const pixPrincipal = pixClassificados.find(p => p.tipo !== 'adiantamento');
-      const primeiraData = pixPrincipal?.pix.data;
-      if (novoStatus === 'pago') {
-        await svc.FolhaPagamento.update(folha.id, {
-          status: 'pago',
-          data_pagamento: primeiraData,
-          lancamento_bancario_id: pixPrincipal?.pix?.id || null,
+        for (const { pix, valor, tipo } of classificados) {
+          pixUsados.add(pix.id); // consome o PIX — nunca reutilizado em outra folha
+          try {
+            await svc.VinculoExtrato.create({
+              lancamento_bancario_id: pix.id,
+              entidade_tipo: 'FolhaPagamento',
+              entidade_id: folha.id,
+              valor_alocado: valor,
+              tipo_vinculo: tipo === 'adiantamento' ? 'adiantamento' : tipoVinculo,
+              conciliado_por: 'auto',
+              confianca: tipo === 'adiantamento' ? 70 : 90,
+              observacao: `${tipo === 'salario_base' ? 'Salário base' :
+                            tipo === 'comissao' ? 'Comissão' :
+                            tipo === 'complemento' ? 'Complemento' :
+                            tipo === 'salario_integral' ? 'Salário integral' :
+                            'Adiantamento'} · ${folha.funcionario_nome} · ${folha.competencia}`,
+            });
+            if (tipo === 'adiantamento') adiantamentos++;
+          } catch { /* silencioso */ }
+          try {
+            await svc.LancamentoBancario.update(pix.id, {
+              status_conciliacao: tipo === 'adiantamento' ? 'parcial' : 'conciliado',
+            });
+          } catch { /* silencioso */ }
+        }
+
+        detalhes.push({
+          funcionario: folha.funcionario_nome,
+          competencia: folha.competencia,
+          valor_folha: liquido,
+          total_pix: Math.round(totalAlocado * 100) / 100,
+          diferenca: Math.round(diff * 100) / 100,
+          status: novoStatus === 'pago' ? 'pago' : 'parcial',
+          pix: classificados.map(p => ({ data: p.pix.data, valor: p.valor, tipo: p.tipo, descricao: p.pix.descricao })),
         });
       }
-
-      // Cria vínculos individuais (1 por PIX) — adiantamento é registrado mas com flag
-      for (const { pix, valor, tipo } of pixClassificados) {
-        const chavePar = `${pix.id}:FolhaPagamento:${folha.id}`;
-        if (paresVinculados.has(chavePar)) continue; // já vinculado em execução anterior
-        paresVinculados.add(chavePar);
-        try {
-          await svc.VinculoExtrato.create({
-            lancamento_bancario_id: pix.id,
-            entidade_tipo: 'FolhaPagamento',
-            entidade_id: folha.id,
-            valor_alocado: valor,
-            tipo_vinculo: tipo === 'adiantamento' ? 'adiantamento' : tipoVinculo,
-            conciliado_por: 'auto',
-            confianca: tipo === 'adiantamento' ? 70 : 90,
-            observacao: `${tipo === 'salario_base' ? 'Salário base' :
-                          tipo === 'comissao' ? 'Comissão' :
-                          tipo === 'complemento' ? 'Complemento' :
-                          tipo === 'salario_integral' ? 'Salário integral' :
-                          'Adiantamento'} · ${folha.funcionario_nome} · ${folha.competencia}`,
-          });
-          if (tipo === 'adiantamento') adiantamentos++;
-        } catch { /* silencioso */ }
-
-        try {
-          await svc.LancamentoBancario.update(pix.id, {
-            status_conciliacao: tipo === 'adiantamento' ? 'parcial' : 'conciliado',
-          });
-        } catch { /* silencioso */ }
-      }
-
-      detalhes.push({
-        funcionario: folha.funcionario_nome,
-        competencia: folha.competencia,
-        valor_folha: liquido,
-        total_pix: Math.round(totalAlocado * 100) / 100,
-        diferenca: Math.round(diff * 100) / 100,
-        status: novoStatus === 'pago' ? 'pago' : 'parcial',
-        pix: pixClassificados.map(p => ({
-          data: p.pix.data,
-          valor: p.valor,
-          tipo: p.tipo,
-          descricao: p.pix.descricao,
-        })),
-      });
     }
 
     return Response.json({
