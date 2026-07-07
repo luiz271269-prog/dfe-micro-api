@@ -65,6 +65,68 @@ export function calcularSituacaoFerias(func, feriasDoFunc) {
   return { periodosCompletos, gozados, pendentes, diasDireito, diasUsados, saldoDias, aquisitivoFim, limiteConcessivo, diasParaLimite, status, emGozo, proximaFerias };
 }
 
+// Detalhamento por período aquisitivo (30 dias/ano) com alocação FIFO dos gozos:
+// cada gozo registrado abate do período mais antigo em aberto, permitindo ver
+// retroativas (períodos vencidos) e quando/quanto foi pago em cada período.
+export function calcularPeriodosAquisitivos(func, feriasDoFunc) {
+  if (!func.data_admissao) return [];
+  const hoje = new Date().toISOString().slice(0, 10);
+  const validas = (feriasDoFunc || [])
+    .filter((f) => f.status !== 'cancelada')
+    .sort((a, b) => (a.data_inicio_gozo || '').localeCompare(b.data_inicio_gozo || ''));
+  const gozos = validas.map((f) => ({ ...f, restante: (f.dias_gozo || 0) + (f.dias_abono || 0) }));
+
+  const periodos = [];
+  let n = 0;
+  while (true) {
+    const inicio = addYears(func.data_admissao, n);
+    const fimExclusivo = addYears(func.data_admissao, n + 1);
+    const fim = addDays(fimExclusivo, -1);
+    if (fimExclusivo > hoje) {
+      // Período aquisitivo em curso: direito proporcional (~2,5 dias/mês)
+      const meses = Math.floor((new Date(hoje + 'T00:00:00') - new Date(inicio + 'T00:00:00')) / (30.44 * 86400000));
+      periodos.push({ inicio, fim, emCurso: true, diasDireito: 30, diasProporcionais: Math.min(30, Math.floor(meses * 2.5)), diasUsados: 0, saldo: null, status: 'em_curso', pagamentos: [] });
+      break;
+    }
+    const limiteConcessivo = addYears(fim, 1);
+    let usados = 0;
+    const pagamentos = [];
+    for (const g of gozos) {
+      if (usados >= 30) break;
+      if (g.restante <= 0) continue;
+      const aloc = Math.min(30 - usados, g.restante);
+      g.restante -= aloc;
+      usados += aloc;
+      pagamentos.push({
+        dias: aloc,
+        inicio_gozo: g.data_inicio_gozo,
+        fim_gozo: g.data_fim_gozo,
+        data_pagamento: g.data_pagamento || null,
+        valor_pago: g.valor_pago || null,
+        abono: (g.dias_abono || 0) > 0,
+      });
+    }
+    const saldo = 30 - usados;
+    let status = 'quitado';
+    if (saldo > 0) {
+      if (limiteConcessivo < hoje) status = 'vencido';
+      else if (usados > 0) status = 'parcial';
+      else status = 'em_aberto';
+    }
+    periodos.push({ inicio, fim, limiteConcessivo, diasDireito: 30, diasUsados: usados, saldo, status, pagamentos });
+    n++;
+  }
+  return periodos;
+}
+
+export const PERIODO_STATUS_CONFIG = {
+  quitado: { label: 'Quitado', color: 'bg-green-100 text-green-700' },
+  parcial: { label: 'Parcial', color: 'bg-blue-100 text-blue-700' },
+  em_aberto: { label: 'Em aberto', color: 'bg-yellow-100 text-yellow-700' },
+  vencido: { label: 'RETROATIVA (vencida — dobra)', color: 'bg-red-100 text-red-700' },
+  em_curso: { label: 'Em curso', color: 'bg-slate-100 text-slate-600' },
+};
+
 // Simulação de custo de férias (adiantamento) e abono pecuniário
 // - Férias: (salário/30 × dias de gozo) + 1/3 constitucional
 // - Abono: (salário/30 × dias vendidos) + 1/3 sobre o abono

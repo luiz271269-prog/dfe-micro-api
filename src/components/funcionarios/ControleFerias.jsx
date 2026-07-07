@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Palmtree, Plus, AlertTriangle, Trash2, CheckCircle2, Calculator } from 'lucide-react';
+import { Palmtree, Plus, AlertTriangle, Trash2, CheckCircle2, Calculator, ChevronDown, ChevronRight } from 'lucide-react';
+import PeriodosAquisitivos from './PeriodosAquisitivos';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { calcularSituacaoFerias, FERIAS_STATUS_CONFIG, SITUACAO_CONFIG } from '@/lib/feriasEngine';
@@ -12,6 +13,7 @@ export default function ControleFerias({ funcionarios }) {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showSimulador, setShowSimulador] = useState(false);
+  const [expandido, setExpandido] = useState(null);
 
   async function load() {
     const list = await base44.entities.FeriasFuncionario.list('-data_inicio_gozo', 500);
@@ -103,11 +105,18 @@ export default function ControleFerias({ funcionarios }) {
                 </tr>
               </thead>
               <tbody>
-                {situacoes.map(({ func, sit }) => {
+                {situacoes.map(({ func, sit, ferias: fer }) => {
                   const sc = SITUACAO_CONFIG[sit.status] || SITUACAO_CONFIG.sem_dados;
+                  const aberto = expandido === func.id;
                   return (
-                    <tr key={func.id} className="border-b hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-2.5 font-semibold">{func.nome}</td>
+                    <Fragment key={func.id}>
+                    <tr onClick={() => setExpandido(aberto ? null : func.id)} className="border-b hover:bg-muted/20 transition-colors cursor-pointer">
+                      <td className="px-4 py-2.5 font-semibold">
+                        <span className="inline-flex items-center gap-1.5">
+                          {aberto ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                          {func.nome}
+                        </span>
+                      </td>
                       <td className="px-3 py-2.5 text-xs text-muted-foreground">{formatDate(func.data_admissao)}</td>
                       <td className="px-3 py-2.5 text-center tabular-nums">{sit.diasDireito}</td>
                       <td className="px-3 py-2.5 text-center tabular-nums">{sit.diasUsados}</td>
@@ -120,6 +129,14 @@ export default function ControleFerias({ funcionarios }) {
                         <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${sc.color}`}>{sc.label}</span>
                       </td>
                     </tr>
+                    {aberto && (
+                      <tr className="border-b bg-muted/10">
+                        <td colSpan={8} className="px-6 py-3">
+                          <PeriodosAquisitivos func={func} ferias={fer} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>
