@@ -1,15 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Palmtree, Plus, AlertTriangle, Trash2, CheckCircle2 } from 'lucide-react';
+import { Palmtree, Plus, AlertTriangle, Trash2, CheckCircle2, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { calcularSituacaoFerias, FERIAS_STATUS_CONFIG, SITUACAO_CONFIG } from '@/lib/feriasEngine';
 import FeriasForm from './FeriasForm';
+import SimuladorFerias from './SimuladorFerias';
 
 export default function ControleFerias({ funcionarios }) {
   const [ferias, setFerias] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showSimulador, setShowSimulador] = useState(false);
 
   async function load() {
     const list = await base44.entities.FeriasFuncionario.list('-data_inicio_gozo', 500);
@@ -71,7 +73,10 @@ export default function ControleFerias({ funcionarios }) {
       <div>
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Situação por Funcionário</p>
-          <Button size="sm" onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Registrar Férias</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowSimulador(true)} className="gap-2"><Calculator className="w-4 h-4" /> Simular Custo</Button>
+            <Button size="sm" onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Registrar Férias</Button>
+          </div>
         </div>
         <div className="bg-card rounded-xl border overflow-hidden">
           <div className="overflow-x-auto">
@@ -155,6 +160,7 @@ export default function ControleFerias({ funcionarios }) {
       </div>
 
       <FeriasForm open={showForm} onClose={() => setShowForm(false)} funcionarios={funcionarios} ferias={ferias} onSaved={load} />
+      <SimuladorFerias open={showSimulador} onClose={() => setShowSimulador(false)} funcionarios={funcionarios} />
     </div>
   );
 }

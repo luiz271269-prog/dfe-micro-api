@@ -65,6 +65,36 @@ export function calcularSituacaoFerias(func, feriasDoFunc) {
   return { periodosCompletos, gozados, pendentes, diasDireito, diasUsados, saldoDias, aquisitivoFim, limiteConcessivo, diasParaLimite, status, emGozo, proximaFerias };
 }
 
+// Simulação de custo de férias (adiantamento) e abono pecuniário
+// - Férias: (salário/30 × dias de gozo) + 1/3 constitucional
+// - Abono: (salário/30 × dias vendidos) + 1/3 sobre o abono
+// - FGTS (8%) incide sobre férias + 1/3 (não sobre o abono) — custo do empregador
+export function simularCustoFerias(salarioBase, diasGozo, diasAbono) {
+  const diaria = (salarioBase || 0) / 30;
+  const valorFerias = diaria * (diasGozo || 0);
+  const tercoFerias = valorFerias / 3;
+  const valorAbono = diaria * (diasAbono || 0);
+  const tercoAbono = valorAbono / 3;
+  const totalPagamento = valorFerias + tercoFerias + valorAbono + tercoAbono;
+  const fgts = (valorFerias + tercoFerias) * 0.08;
+  return {
+    diaria,
+    valorFerias,
+    tercoFerias,
+    valorAbono,
+    tercoAbono,
+    totalPagamento,
+    fgts,
+    custoTotalEmpregador: totalPagamento + fgts,
+  };
+}
+
+// CLT art. 145: pagamento até 2 dias antes do início do gozo
+export function dataLimitePagamento(dataInicioGozo) {
+  if (!dataInicioGozo) return '';
+  return addDays(dataInicioGozo, -2);
+}
+
 export const FERIAS_STATUS_CONFIG = {
   planejada: { label: 'Planejada', color: 'bg-blue-100 text-blue-700' },
   em_gozo: { label: 'Em Gozo', color: 'bg-purple-100 text-purple-700' },
