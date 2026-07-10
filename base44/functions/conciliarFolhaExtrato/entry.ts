@@ -112,8 +112,17 @@ Deno.serve(async (req) => {
       vinculosExistentes.filter(v => v.entidade_tipo === 'FolhaPagamento').map(v => v.lancamento_bancario_id)
     );
 
-    const TOL_TOTAL = 50.00;
-    const saidas = lancamentos.filter(l => l.valor < 0 && l.data);
+    // Tolerância manual: baixa como pago quando a diferença não excede este valor
+    const TOL_TOTAL = Number(body?.tolerancia) > 0 ? Number(body.tolerancia) : 50.00;
+    const saidas = lancamentos.filter(l => l.valor < 0 && l.data
+      && l.categoria !== 'transferencia' && l.categoria !== 'interno');
+
+    // Soma dos vínculos JÁ existentes por folha (parciais anteriores contam no total)
+    const somaVinculosFolha = {};
+    for (const v of vinculosExistentes) {
+      if (v.entidade_tipo !== 'FolhaPagamento' || v.tipo_vinculo === 'adiantamento') continue;
+      somaVinculosFolha[v.entidade_id] = (somaVinculosFolha[v.entidade_id] || 0) + (v.valor_alocado || 0);
+    }
 
     // ---- 1. Monta pessoas (nome de folha → nome mais completo conhecido) ----
     const pessoas = new Map(); // chave = nome da folha; valor = { tokens, folhas: [] }
@@ -141,6 +150,31 @@ Deno.serve(async (req) => {
       for (const [chave, pessoa] of pessoas) {
         const s = scoreMatch(tokensBenef, pessoa.tokens);
         if (s > melhorScore) { melhorScore = s; melhor = chave; }
+      }
+      if (melhor) donoDoPix.set(lanc.id, melhor);
+    }
+
+    // ---- 2b. Fallback pela CLASSIFICAÇÃO do extrato: PIX categorizado como
+    // 'pessoal' sem match de nome é atribuído à pessoa com folha pendente na
+    // janela cujo valor (líquido ou saldo restante) fica MAIS PRÓXIMO do PIX.
+    for (const lanc of saidas) {
+      if (pixUsados.has(lanc.id) || donoDoPix.has(lanc.id)) continue;
+      if (lanc.categoria !== 'pessoal') continue;
+      const valorPix = Math.abs(lanc.valor);
+      let melhor = null, melhorDist = Infinity;
+      for (const [chave, pessoa] of pessoas) {
+        for (const folha of pessoa.folhas) {
+          const { inicio, fim } = competenciaParaJanela(folha.competencia, folha.tipo);
+          if (lanc.data < inicio || lanc.data > fim) continue;
+          const liquido = folha.salario_liquido || 0;
+          const restante = liquido - (somaVinculosFolha[folha.id] || 0);
+          if (restante <= 0) continue;
+          const dist = Math.min(Math.abs(valorPix - liquido), Math.abs(valorPix - restante));
+          // aceita integral próximo OU parcial (PIX menor que o restante)
+          if (dist <= TOL_TOTAL || valorPix <= restante + TOL_TOTAL) {
+            if (dist < melhorDist) { melhorDist = dist; melhor = chave; }
+          }
+        }
       }
       if (melhor) donoDoPix.set(lanc.id, melhor);
     }
@@ -176,10 +210,21 @@ Deno.serve(async (req) => {
             && (!reservadoPara.has(l.id) || reservadoPara.get(l.id) === folha.id))
           .sort((a, b) => a.data.localeCompare(b.data));
 
-        if (pixDaFolha.length === 0) { semMatch++; continue; }
-
         const liquido = folha.salario_liquido || 0;
-        let totalAlocado = 0;
+        // Parciais anteriores contam: começa do que já foi vinculado
+        let totalAlocado = somaVinculosFolha[folha.id] || 0;
+
+        if (pixDaFolha.length === 0) {
+          // Sem PIX novo, mas os parciais já cobrem o líquido (dentro da tolerância) → conclui
+          if (totalAlocado > 0 && liquido - totalAlocado <= TOL_TOTAL) {
+            await svc.FolhaPagamento.update(folha.id, { status: 'pago' });
+            conciliadas++;
+            detalhes.push({ funcionario: folha.funcionario_nome, competencia: folha.competencia,
+              valor_folha: liquido, total_pix: totalAlocado, diferenca: Math.round((liquido - totalAlocado) * 100) / 100,
+              status: 'pago', pix: [] });
+          } else { semMatch++; }
+          continue;
+        }
         const classificados = [];
         for (const pix of pixDaFolha) {
           const valor = Math.abs(pix.valor);
@@ -193,7 +238,7 @@ Deno.serve(async (req) => {
 
         const diff = liquido - totalAlocado;
         let novoStatus, tipoVinculo;
-        if (Math.abs(diff) <= TOL_TOTAL) {
+        if (diff <= TOL_TOTAL && totalAlocado > 0) {
           novoStatus = 'pago'; tipoVinculo = 'pagamento_integral'; conciliadas++;
         } else if (totalAlocado > 0) {
           novoStatus = 'pendente'; tipoVinculo = 'pagamento_parcial'; parciais++;
