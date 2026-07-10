@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ExternalLink } from 'lucide-react';
-import { formatCurrency } from '../../lib/formatters';
+import { formatCurrency, formatDate } from '../../lib/formatters';
+
+// REGRA BRT: qualquer data ISO (YYYY-MM-DD) é exibida como DD/MM/AAAA
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const display = (v) => (typeof v === 'string' && ISO_DATE.test(v)) ? formatDate(v) : v;
 
 // Tela de auditoria: lista os registros exatos que compõem um totalizador do dashboard.
 export default function DrilldownDialog({ drill, onClose }) {
@@ -46,7 +50,7 @@ export default function DrilldownDialog({ drill, onClose }) {
                       const isMoney = v && typeof v === 'object' && v.money;
                       return (
                         <td key={c.label} className={`px-3 py-2 ${isMoney ? 'text-right tabular-nums font-medium whitespace-nowrap' : ''} ${isMoney && v.value < 0 ? 'text-rose-600' : ''}`}>
-                          {isMoney ? formatCurrency(v.value || 0) : (v ?? '—')}
+                          {isMoney ? formatCurrency(v.value || 0) : (display(v) ?? '—')}
                         </td>
                       );
                     })}
