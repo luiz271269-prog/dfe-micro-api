@@ -44,7 +44,12 @@ function tituloCobrancaKey(r) {
 const DEDUP_CONFIG = {
   LancamentoBancario: {
     entity: 'LancamentoBancario',
-    keys: ['data', 'valor', 'conta_bancaria'],
+    // descricao entra na chave: dois PIX no mesmo dia com o mesmo valor mas
+    // descrições diferentes são lançamentos DISTINTOS (não duplicata).
+    keys: ['data', 'valor', 'descricao'],
+    normalizers: {
+      descricao: v => (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30),
+    },
   },
   NotaFiscal: {
     entity: 'NotaFiscal',

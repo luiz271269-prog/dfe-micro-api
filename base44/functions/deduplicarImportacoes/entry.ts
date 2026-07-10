@@ -76,8 +76,10 @@ const ENTITIES_CONFIG = [
   },
   {
     name: 'LancamentoBancario',
+    // descricao normalizada na chave — dois PIX no mesmo dia com o mesmo valor
+    // mas descrições diferentes são lançamentos DISTINTOS (não deletar).
     keyFn: r => r.data && r.valor != null
-      ? `${r.data}|${Number(r.valor).toFixed(2)}|${r.conta_bancaria || ''}`
+      ? `${r.data}|${Number(r.valor).toFixed(2)}|${(r.descricao || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30)}`
       : null,
   },
   {

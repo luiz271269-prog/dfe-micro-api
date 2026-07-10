@@ -9,10 +9,12 @@ Deno.serve(async (req) => {
     // Fetch all LancamentoBancario records
     const all = await base44.asServiceRole.entities.LancamentoBancario.list();
 
-    // Group by (data, valor, conta_bancaria)
+    // Group by (data, valor, descricao normalizada) — dois PIX no mesmo dia com
+    // o mesmo valor mas descrições diferentes são lançamentos DISTINTOS.
     const groups = {};
     for (const rec of all) {
-      const key = `${rec.data}|${rec.valor}|${rec.conta_bancaria || ''}`;
+      const descNorm = (rec.descricao || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
+      const key = `${rec.data}|${rec.valor}|${descNorm}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(rec);
     }
