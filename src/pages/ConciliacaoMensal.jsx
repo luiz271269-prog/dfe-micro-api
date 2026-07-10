@@ -206,7 +206,7 @@ export default function ConciliacaoMensal() {
 
   // Carregar meses disponíveis + refresh após importação
   const loadMeses = () => {
-    base44.entities.LancamentoBancario.list('-data', 500).then(lancamentos => {
+    base44.entities.LancamentoBancario.list('-data', 5000).then(lancamentos => {
       const mesSet = new Set();
       lancamentos.filter(l => l.valor > 0).forEach(l => {
         if (l.mes_referencia) mesSet.add(l.mes_referencia);
@@ -243,8 +243,8 @@ export default function ConciliacaoMensal() {
     setLoading(true);
     Promise.all([
       base44.entities.ConciliacaoItem.filter({ mes_referencia: mesSelecionado }),
-      base44.entities.NotaFiscal.list('-data_emissao', 200),
-      base44.entities.LancamentoBancario.list('-data', 500),
+      base44.entities.NotaFiscal.list('-data_emissao', 2000),
+      base44.entities.LancamentoBancario.filter({ mes_referencia: mesSelecionado }),
     ]).then(async ([concItems, todasNfs, todosLanc]) => {
       const mesAnt = mesAnterior(mesSelecionado);
       const nfsFiltradas = todasNfs.filter(nf => {
@@ -366,6 +366,11 @@ export default function ConciliacaoMensal() {
             </div>
           ) : null}
         </div>
+      </div>
+
+      {/* Aviso de legado — conciliação oficial vive nos motores do banco (Conciliação 360) */}
+      <div className="text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+        ⚠️ Esta tela é um relatório de apoio (entradas × NFs por mês). A conciliação oficial — que dá baixa e cria vínculos — roda pelos motores do banco de dados na <a href="/conciliacao360" className="font-bold underline">Conciliação 360</a>.
       </div>
 
       {/* Status badge */}

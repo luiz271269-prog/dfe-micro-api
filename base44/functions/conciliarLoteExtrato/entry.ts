@@ -22,21 +22,31 @@ Deno.serve(async (req) => {
 
     const { mes_referencia } = await req.json().catch(() => ({}));
 
-    // 1) Carregar dados
-    const [lancs, despesas, tributos, folhas, faturas] = await Promise.all([
+    // 1) Carregar dados — REGRA: conciliação lê o BANCO inteiro (pendências),
+    // nunca "a última importação". Sem mês informado, busca todos os lançamentos
+    // não conciliados do banco (pendência é sempre um conjunto pequeno).
+    const svcRead = base44.asServiceRole.entities;
+    const [lancsAll, despesas, tributos, folhas, faturas] = await Promise.all([
       mes_referencia
-        ? base44.entities.LancamentoBancario.filter({ mes_referencia })
-        : base44.entities.LancamentoBancario.list('-data', 500),
-      base44.entities.DespesaOperacional.filter({ status: 'pendente' }),
-      base44.entities.Tributo.list('-data_vencimento', 200),
-      base44.entities.FolhaPagamento.filter({ status: 'pendente' }),
-      base44.entities.FaturaCartao.list('-data_vencimento', 100),
+        ? svcRead.LancamentoBancario.filter({ mes_referencia })
+        : svcRead.LancamentoBancario.list('-data', 10000),
+      svcRead.DespesaOperacional.filter({ status: 'pendente' }),
+      svcRead.Tributo.list('-data_vencimento', 2000),
+      svcRead.FolhaPagamento.filter({ status: 'pendente' }),
+      svcRead.FaturaCartao.list('-data_vencimento', 1000),
     ]);
+    // Só pendências entram na conciliação
+    const lancs = (lancsAll || []).filter(l => l.status_conciliacao !== 'conciliado');
 
     const tributosAbertos = tributos.filter(t => t.status === 'a_vencer' || t.status === 'vencido');
     const faturasAbertas = faturas.filter(f => f.status === 'aberta' || f.status === 'vencida');
 
-    const debitos = (lancs || []).filter(l => (l.valor || 0) < 0);
+    // Exclui transferências e movimentos internos — nunca são contas a pagar
+    const debitos = (lancs || []).filter(l =>
+      (l.valor || 0) < 0 &&
+      l.categoria !== 'transferencia' &&
+      l.categoria !== 'interno'
+    );
     const baixas = [];
     const duplicidades = [];
 
