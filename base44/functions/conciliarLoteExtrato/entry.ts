@@ -93,24 +93,38 @@ Deno.serve(async (req) => {
         duplicidades.push({ lanc_id: lanc.id, ref: dupCand.id, data: lanc.data, valor: lanc.valor });
       }
 
-      // (B) Buscar match em contas a pagar pendentes (despesa/tributo/folha/fatura)
+      // (B) Buscar match em contas a pagar pendentes — ROTEADO PELA CATEGORIA
+      // já classificada no extrato (banco de dados). A categoria define ONDE procurar:
+      // tributo→Tributos, pessoal/pro_labore→Folha, despesa_operacional→Despesas,
+      // financeiro→Faturas de cartão, fornecedor→Despesas+Faturas.
+      // Sem categoria mapeada, procura em tudo (comportamento antigo).
+      const rotaCategoria = {
+        tributo: ['tributo'],
+        pessoal: ['folha'],
+        pro_labore: ['folha'],
+        despesa_operacional: ['despesa'],
+        financeiro: ['fatura', 'despesa'],
+        fornecedor: ['despesa', 'fatura'],
+      };
+      const tiposPermitidos = rotaCategoria[lanc.categoria] || ['despesa', 'tributo', 'folha', 'fatura'];
+      const roteado = !!rotaCategoria[lanc.categoria];
       const candidatos = [];
 
-      for (const d of despesas) {
+      if (tiposPermitidos.includes('despesa')) for (const d of despesas) {
         if (Math.abs(d.valor - valorAbs) > 0.50) continue;
         const ref = d.data_vencimento || d.data;
         const dd = diffDias(ref, lanc.data);
         if (dd > 15) continue;
         candidatos.push({ tipo: 'despesa', ref: d, score: dd * 10 + Math.abs(d.valor - valorAbs) });
       }
-      for (const t of tributosAbertos) {
+      if (tiposPermitidos.includes('tributo')) for (const t of tributosAbertos) {
         const valorT = (t.valor_original || 0) - (t.valor_pago || 0);
         if (Math.abs(valorT - valorAbs) > 0.50) continue;
         const dd = diffDias(t.data_vencimento, lanc.data);
         if (dd > 15) continue;
         candidatos.push({ tipo: 'tributo', ref: t, score: dd * 10 + Math.abs(valorT - valorAbs) });
       }
-      for (const f of folhas) {
+      if (tiposPermitidos.includes('folha')) for (const f of folhas) {
         if (Math.abs(f.salario_liquido - valorAbs) > 0.50) continue;
         const [y, m] = (f.competencia || '').split('-').map(Number);
         if (!y || !m) continue;
@@ -119,7 +133,7 @@ Deno.serve(async (req) => {
         if (dd > 15) continue;
         candidatos.push({ tipo: 'folha', ref: f, score: dd * 10 + Math.abs(f.salario_liquido - valorAbs) });
       }
-      for (const fat of faturasAbertas) {
+      if (tiposPermitidos.includes('fatura')) for (const fat of faturasAbertas) {
         const aberto = fat.valor_total - (fat.valor_pago || 0);
         if (Math.abs(aberto - valorAbs) > 1.0) continue;
         const dd = diffDias(fat.data_vencimento, lanc.data);
@@ -133,8 +147,11 @@ Deno.serve(async (req) => {
       candidatos.sort((a, b) => a.score - b.score);
       const best = candidatos[0];
       if (!best) continue;
-      // Só dá baixa automática se confiança alta: score < 5 (data próxima + valor exato)
-      if (best.score >= 5) continue;
+      // Confiança: quando a busca foi roteada pela categoria classificada, o match é
+      // mais específico — tolera até 3 dias de diferença (score < 30). Sem roteamento,
+      // mantém o critério rígido (score < 5: mesmo dia/dia seguinte + valor exato).
+      const limiteScore = roteado ? 30 : 5;
+      if (best.score >= limiteScore) continue;
 
       const entidadeTipo = tipoMap[best.tipo];
       const chaveVinc = `${lanc.id}|${entidadeTipo}|${best.ref.id}`;
