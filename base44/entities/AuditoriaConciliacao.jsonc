@@ -1,0 +1,68 @@
+{
+  "name": "AuditoriaConciliacao",
+  "type": "object",
+  "description": "Trilha de auditoria do saneamento de concilia\u00e7\u00e3o. Cada registro guarda o payload completo do v\u00ednculo removido/alterado, permitindo revers\u00e3o manual. Nunca \u00e9 apagado.",
+  "properties": {
+    "execucao_id": {
+      "type": "string",
+      "title": "ID da execu\u00e7\u00e3o do saneamento"
+    },
+    "acao": {
+      "type": "string",
+      "enum": [
+        "vinculo_removido",
+        "obrigacao_reaberta",
+        "cache_recalculado",
+        "alerta_limpo",
+        "sugestao_normalizada"
+      ],
+      "title": "A\u00e7\u00e3o executada"
+    },
+    "motivo": {
+      "type": "string",
+      "title": "Motivo (ex: folha sem identidade, sobrealoca\u00e7\u00e3o)"
+    },
+    "entidade_tipo": {
+      "type": "string",
+      "title": "Tipo da entidade afetada"
+    },
+    "entidade_id": {
+      "type": "string",
+      "title": "ID da entidade afetada"
+    },
+    "payload_original": {
+      "type": "string",
+      "title": "JSON completo do registro antes da altera\u00e7\u00e3o (para revers\u00e3o)"
+    },
+    "detalhe": {
+      "type": "string",
+      "title": "Detalhe leg\u00edvel da altera\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "execucao_id",
+    "acao"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
