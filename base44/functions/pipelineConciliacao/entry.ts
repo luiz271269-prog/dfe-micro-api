@@ -56,7 +56,8 @@ Deno.serve(async (req) => {
     for (const s of altas) {
       try {
         const lanc = await svc.LancamentoBancario.get(s.lancamento_bancario_id);
-        if (!lanc || lanc.status_conciliacao === 'conciliado') {
+        const vincsLanc = lanc ? await svc.VinculoExtrato.filter({ lancamento_bancario_id: lanc.id }) : [];
+        if (!lanc || lanc.status_conciliacao === 'conciliado' || vincsLanc.length > 0) {
           await svc.SugestaoConciliacao.update(s.id, { status: 'rejeitada', resolvida_em: new Date().toISOString(), motivo: (s.motivo || '') + ' · descartada: lançamento já conciliado' });
           continue;
         }

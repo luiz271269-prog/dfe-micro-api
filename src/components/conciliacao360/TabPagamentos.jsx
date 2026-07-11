@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Link2, CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark, Repeat, AlertTriangle, Clock } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
+import { vincularExtrato } from '@/functions/vincularExtrato';
 import { aplicarRegra } from '../../lib/recurringEngine';
 import { consolidarContasPagar, acharContaPagarPorLancamento } from '../../lib/contasPagarEngine';
 
@@ -104,33 +105,22 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
     totalValor: pagamentos.reduce((a, p) => a + Math.abs(p.valor), 0),
   }), [pagamentos]);
 
-  // Dá baixa automática no item pendente vinculado ao débito
+  // Dá baixa via serviço central de vínculo — cria VinculoExtrato,
+  // valida sobrealocação e deriva o status da obrigação automaticamente
   async function darBaixaDDA(lanc, item) {
     setSalvando(true);
     try {
-      if (item.origem_tipo === 'despesa') {
-        await base44.entities.DespesaOperacional.update(item.origem_id, {
-          status: 'pago',
-          data: lanc.data,
-        });
-      } else if (item.origem_tipo === 'tributo') {
-        await base44.entities.Tributo.update(item.origem_id, {
-          status: 'pago',
-          data_pagamento: lanc.data,
-          valor_pago: Math.abs(lanc.valor),
-        });
-      } else if (item.origem_tipo === 'folha') {
-        await base44.entities.FolhaPagamento.update(item.origem_id, {
-          status: 'pago',
-          data_pagamento: lanc.data,
-        });
-      } else if (item.origem_tipo === 'fatura') {
-        await base44.entities.FaturaCartao.update(item.origem_id, {
-          status: 'paga_total',
-          data_pagamento: lanc.data,
-          valor_pago: Math.abs(lanc.valor),
-        });
-      }
+      const tipoMap = { despesa: 'DespesaOperacional', tributo: 'Tributo', folha: 'FolhaPagamento', fatura: 'FaturaCartao' };
+      await vincularExtrato({
+        acao: 'criar',
+        lancamento_bancario_id: lanc.id,
+        entidade_tipo: tipoMap[item.origem_tipo],
+        entidade_id: item.origem_id,
+        valor_alocado: Math.abs(lanc.valor),
+        observacao: `Baixa manual · Conciliação 360 · ${item.descricao || ''}`,
+      });
+    } catch (err) {
+      alert(err?.response?.data?.error || err.message);
     } finally {
       setSalvando(false);
       setVincularLanc(null);

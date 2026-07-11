@@ -107,10 +107,8 @@ Deno.serve(async (req) => {
       svc.VinculoExtrato.list('-created_date', 5000),
     ]);
 
-    // PIX já usados em QUALQUER vínculo de folha — um PIX nunca entra em duas folhas
-    const pixUsados = new Set(
-      vinculosExistentes.filter(v => v.entidade_tipo === 'FolhaPagamento').map(v => v.lancamento_bancario_id)
-    );
+    // PIX já usados em QUALQUER vínculo (de qualquer tipo) — um lançamento nunca paga duas obrigações além do seu valor
+    const pixUsados = new Set(vinculosExistentes.map(v => v.lancamento_bancario_id));
 
     // Tolerância manual: baixa como pago quando a diferença não excede este valor
     const TOL_TOTAL = Number(body?.tolerancia) > 0 ? Number(body.tolerancia) : 50.00;
@@ -154,30 +152,9 @@ Deno.serve(async (req) => {
       if (melhor) donoDoPix.set(lanc.id, melhor);
     }
 
-    // ---- 2b. Fallback pela CLASSIFICAÇÃO do extrato: PIX categorizado como
-    // 'pessoal' sem match de nome é atribuído à pessoa com folha pendente na
-    // janela cujo valor (líquido ou saldo restante) fica MAIS PRÓXIMO do PIX.
-    for (const lanc of saidas) {
-      if (pixUsados.has(lanc.id) || donoDoPix.has(lanc.id)) continue;
-      if (lanc.categoria !== 'pessoal') continue;
-      const valorPix = Math.abs(lanc.valor);
-      let melhor = null, melhorDist = Infinity;
-      for (const [chave, pessoa] of pessoas) {
-        for (const folha of pessoa.folhas) {
-          const { inicio, fim } = competenciaParaJanela(folha.competencia, folha.tipo);
-          if (lanc.data < inicio || lanc.data > fim) continue;
-          const liquido = folha.salario_liquido || 0;
-          const restante = liquido - (somaVinculosFolha[folha.id] || 0);
-          if (restante <= 0) continue;
-          const dist = Math.min(Math.abs(valorPix - liquido), Math.abs(valorPix - restante));
-          // aceita integral próximo OU parcial (PIX menor que o restante)
-          if (dist <= TOL_TOTAL || valorPix <= restante + TOL_TOTAL) {
-            if (dist < melhorDist) { melhorDist = dist; melhor = chave; }
-          }
-        }
-      }
-      if (melhor) donoDoPix.set(lanc.id, melhor);
-    }
+    // REGRA DE IDENTIDADE (Loop C): PIX sem match de nome NUNCA é atribuído a folha
+    // automaticamente — categoria e proximidade de valor não comprovam o beneficiário.
+    // (fallback antigo por categoria 'pessoal' removido após auditoria forense)
 
     // ---- 3. Aloca PIX por pessoa, folha mais antiga primeiro ----
     let conciliadas = 0, parciais = 0, adiantamentos = 0, semMatch = 0;
