@@ -91,8 +91,9 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Vínculo já existe', vinculo_id: vincsAtuais.find(v => v.entidade_tipo === entidade_tipo && v.entidade_id === entidade_id).id }, { status: 409 });
       }
 
-      // Trava de sobrealocação
+      // Trava de sobrealocação (v2)
       const jaAlocado = vincsAtuais.reduce((s, v) => s + (v.valor_alocado || 0), 0);
+      console.log(`[trava] jaAlocado=${jaAlocado} novo=${Math.abs(valor_alocado)} teto=${Math.abs(lanc.valor || 0)}`);
       const valorNovo = Math.abs(valor_alocado);
       const teto = Math.abs(lanc.valor || 0);
       if (jaAlocado + valorNovo > teto + 0.01) {
