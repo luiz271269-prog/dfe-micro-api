@@ -68,9 +68,9 @@ export function calcularSituacaoFerias(func, feriasDoFunc) {
 // Detalhamento por período aquisitivo (30 dias/ano) com alocação FIFO dos gozos:
 // cada gozo registrado abate do período mais antigo em aberto, permitindo ver
 // retroativas (períodos vencidos) e quando/quanto foi pago em cada período.
-export function calcularPeriodosAquisitivos(func, feriasDoFunc) {
+export function calcularPeriodosAquisitivos(func, feriasDoFunc, dataReferencia) {
   if (!func.data_admissao) return [];
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = dataReferencia || new Date().toISOString().slice(0, 10);
   const validas = (feriasDoFunc || [])
     .filter((f) => f.status !== 'cancelada')
     .sort((a, b) => (a.data_inicio_gozo || '').localeCompare(b.data_inicio_gozo || ''));

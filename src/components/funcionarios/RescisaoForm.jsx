@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Calculator, Paperclip } from 'lucide-react';
-import { formatCurrency } from '@/lib/formatters';
-import { calcularSituacaoFerias } from '@/lib/feriasEngine';
+import { formatCurrency, formatDate } from '@/lib/formatters';
+import { calcularPeriodosAquisitivos } from '@/lib/feriasEngine';
 import { calcularRescisao, TIPOS_RESCISAO } from '@/lib/rescisaoEngine';
 
 const VERBAS = [
@@ -30,6 +30,9 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
   const [ferias, setFerias] = useState([]);
   const [anexar, setAnexar] = useState(false);
   const [file, setFile] = useState(null);
+  const [homologada, setHomologada] = useState(false);
+  const [calculo, setCalculo] = useState(null);
+  const [error, setError] = useState('');
   const [efetivar, setEfetivar] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -38,17 +41,22 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
   }, [open]);
 
   const func = funcionarios.find((f) => f.nome === form.funcionario_nome);
-  const saldoFeriasDias = useMemo(() => {
-    if (!func) return 0;
-    return calcularSituacaoFerias(func, ferias.filter((f) => f.funcionario_nome === func.nome)).saldoDias || 0;
-  }, [func, ferias]);
+  const periodosFerias = useMemo(() => {
+    if (!func) return [];
+    return calcularPeriodosAquisitivos(func, ferias.filter((f) => f.funcionario_nome === func.nome), form.data_desligamento);
+  }, [func, ferias, form.data_desligamento]);
+  const periodosCompletos = periodosFerias.filter((p) => !p.emCurso && p.saldo > 0);
+  const saldoFeriasDias = periodosCompletos.reduce((s, p) => s + p.saldo, 0);
+  const feriasDobradasDias = periodosCompletos.filter((p) => p.status === 'vencido').reduce((s, p) => s + p.saldo, 0);
 
   function preCalcular() {
     if (!func) return;
     const c = calcularRescisao({
       salarioBase: func.salario_base, dataAdmissao: func.data_admissao, dataDesligamento: form.data_desligamento,
-      tipo: form.tipo_rescisao, avisoPrevio: form.aviso_previo, saldoFgts: parseFloat(form.saldo_fgts) || 0, saldoFeriasDias,
+      tipo: form.tipo_rescisao, avisoPrevio: form.aviso_previo, saldoFgts: parseFloat(form.saldo_fgts) || 0,
+      feriasPendentesDias: saldoFeriasDias, feriasDobradasDias,
     });
+    setCalculo(c);
     setForm({
       ...form,
       saldo_salario: c.saldoSalario.toFixed(2),
@@ -66,6 +74,11 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!func) return;
+    if (homologada && !file) {
+      setError('Para marcar como homologada, anexe o termo de rescisão.');
+      return;
+    }
+    setError('');
     setSaving(true);
     let anexo_url = '', anexo_nome = '';
     if (anexar && file) {
@@ -74,6 +87,11 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
       anexo_nome = file.name;
     }
     const num = (k) => parseFloat(form[k]) || 0;
+    const calcBase = calculo || calcularRescisao({
+      salarioBase: func.salario_base, dataAdmissao: func.data_admissao, dataDesligamento: form.data_desligamento,
+      tipo: form.tipo_rescisao, avisoPrevio: form.aviso_previo, saldoFgts: parseFloat(form.saldo_fgts) || 0,
+      feriasPendentesDias: saldoFeriasDias, feriasDobradasDias,
+    });
     const resc = await base44.entities.RescisaoFuncionario.create({
       funcionario_id: func.id, funcionario_nome: func.nome,
       data_desligamento: form.data_desligamento, tipo_rescisao: form.tipo_rescisao, aviso_previo: form.aviso_previo,
@@ -82,8 +100,14 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
       decimo_terceiro_valor: num('decimo_terceiro_valor'), multa_fgts_valor: num('multa_fgts_valor'),
       outros_valores: num('outros_valores'), descontos: num('descontos'),
       total_liquido: Math.round(totalLiquido * 100) / 100,
+      tempo_casa_meses: calcBase.tempoCasaMeses,
+      dias_aviso_previo: calcBase.diasAviso,
+      ferias_pendentes_dias: saldoFeriasDias,
+      ferias_dobradas_dias: feriasDobradasDias,
       anexo_url, anexo_nome,
-      status: anexo_url ? 'homologada' : 'pre_calculo',
+      homologada: homologada && !!anexo_url,
+      ...(homologada && anexo_url ? { homologada_em: new Date().toISOString() } : {}),
+      status: homologada && anexo_url ? 'homologada' : 'pre_calculo',
       empresa: func.empresa, observacoes: form.observacoes,
     });
     if (efetivar) {
@@ -141,10 +165,12 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
               <Calculator className="w-4 h-4" /> Pré-calcular Verbas
             </Button>
           </div>
-          {func && saldoFeriasDias > 0 && (
-            <p className="text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-3 py-2">
-              Saldo de férias em aberto: <b>{saldoFeriasDias} dias</b> (usado no cálculo de férias vencidas + 1/3)
-            </p>
+          {func && (
+            <div className="text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-3 py-2 space-y-1">
+              <p><b>Base CLT do pré-cálculo:</b> admissão em {formatDate(func.data_admissao)} · salário-base {formatCurrency(func.salario_base)}.</p>
+              <p>Férias de períodos completos pendentes: <b>{saldoFeriasDias} dias</b>{feriasDobradasDias > 0 ? ` · ${feriasDobradasDias} dias fora do período concessivo calculados em dobro` : ''}.</p>
+              {calculo && <p>Tempo de casa: <b>{Math.floor(calculo.tempoCasaMeses / 12)} ano(s) e {calculo.tempoCasaMeses % 12} mês(es)</b> · aviso considerado: <b>{calculo.diasAviso} dias</b> · férias proporcionais: <b>{calculo.mesesFeriasProp}/12</b> · 13º: <b>{calculo.mesesDecimo}/12</b>.</p>}
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
@@ -164,7 +190,13 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
             <input type="checkbox" checked={anexar} onChange={(e) => setAnexar(e.target.checked)} className="rounded" />
             <Paperclip className="w-4 h-4 text-muted-foreground" /> Anexar termo de rescisão (PDF/imagem)
           </label>
-          {anexar && <Input type="file" accept=".pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />}
+          {anexar && <Input type="file" accept=".pdf,image/*" onChange={(e) => { setFile(e.target.files?.[0] || null); setError(''); }} />}
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={homologada} onChange={(e) => { setHomologada(e.target.checked); if (e.target.checked) setAnexar(true); }} className="rounded" />
+            Rescisão homologada (exige termo anexado)
+          </label>
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" checked={efetivar} onChange={(e) => setEfetivar(e.target.checked)} className="rounded" />
@@ -173,6 +205,7 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
 
           <div><Label>Observações</Label><Input value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
 
+          <p className="text-[11px] text-muted-foreground">Estimativa baseada nas regras CLT gerais. A conferência final deve considerar convenção coletiva, médias remuneratórias, descontos e validação contábil.</p>
           <Button type="submit" className="w-full" disabled={saving || !func}>
             {saving ? 'Salvando...' : 'Salvar Rescisão'}
           </Button>
