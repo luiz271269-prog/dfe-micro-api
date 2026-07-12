@@ -56,6 +56,26 @@
       "default": 0,
       "title": "Dias de f\u00e9rias fora do per\u00edodo concessivo, calculados em dobro"
     },
+    "media_remuneracao_variavel": {
+      "type": "number",
+      "default": 0,
+      "title": "M\u00e9dia de comiss\u00f5es e horas extras das \u00faltimas 12 folhas (R$)"
+    },
+    "meses_media_remuneracao": {
+      "type": "number",
+      "default": 0,
+      "title": "Quantidade de folhas usadas na m\u00e9dia remunerat\u00f3ria"
+    },
+    "saldo_banco_horas": {
+      "type": "number",
+      "default": 0,
+      "title": "Saldo do banco de horas no desligamento"
+    },
+    "desconto_banco_horas": {
+      "type": "number",
+      "default": 0,
+      "title": "Desconto sugerido pelo banco de horas negativo (R$)"
+    },
     "saldo_salario": {
       "type": "number",
       "default": 0,
@@ -94,7 +114,7 @@
     "descontos": {
       "type": "number",
       "default": 0,
-      "title": "Descontos (R$)"
+      "title": "Outros Descontos (R$)"
     },
     "total_liquido": {
       "type": "number",

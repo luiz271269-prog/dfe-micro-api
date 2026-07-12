@@ -41,25 +41,27 @@ export function mesesCompletos(dataAdmissao, dataFim) {
   return Math.max(0, meses);
 }
 
-export function calcularRescisao({ salarioBase, dataAdmissao, dataDesligamento, tipo, avisoPrevio, saldoFgts, saldoFeriasDias, feriasPendentesDias, feriasDobradasDias }) {
+export function calcularRescisao({ salarioBase, mediaVariaveis = 0, dataAdmissao, dataDesligamento, tipo, avisoPrevio, saldoFgts, saldoFeriasDias, feriasPendentesDias, feriasDobradasDias }) {
   const salario = salarioBase || 0;
-  const diaria = salario / 30;
+  const remuneracaoBase = salario + (mediaVariaveis || 0);
+  const diariaSalario = salario / 30;
+  const diariaRemuneracao = remuneracaoBase / 30;
   const d = new Date(dataDesligamento + 'T00:00:00');
 
-  const saldoSalario = r2(diaria * d.getDate());
+  const saldoSalario = r2(diariaSalario * d.getDate());
 
   const anos = dataAdmissao ? anosCompletos(dataAdmissao, dataDesligamento) : 0;
   const diasAviso = Math.min(90, 30 + 3 * anos);
   let avisoValor = 0;
   if (avisoPrevio === 'indenizado') {
-    if (tipo === 'sem_justa_causa') avisoValor = r2(diaria * diasAviso);
-    else if (tipo === 'acordo') avisoValor = r2((diaria * diasAviso) / 2);
+    if (tipo === 'sem_justa_causa') avisoValor = r2(diariaRemuneracao * diasAviso);
+    else if (tipo === 'acordo') avisoValor = r2((diariaRemuneracao * diasAviso) / 2);
   }
 
   const diasPendentes = feriasPendentesDias ?? saldoFeriasDias ?? 0;
   const diasDobrados = Math.min(diasPendentes, feriasDobradasDias || 0);
   const diasSimples = Math.max(0, diasPendentes - diasDobrados);
-  const feriasVencidas = r2((diasSimples + diasDobrados * 2) * diaria * (4 / 3));
+  const feriasVencidas = r2((diasSimples + diasDobrados * 2) * diariaRemuneracao * (4 / 3));
 
   // Férias proporcionais: meses do período aquisitivo em curso
   let feriasProporcionais = 0;
@@ -68,7 +70,7 @@ export function calcularRescisao({ salarioBase, dataAdmissao, dataDesligamento, 
     const inicioAquisitivo = new Date(dataAdmissao + 'T00:00:00');
     inicioAquisitivo.setFullYear(inicioAquisitivo.getFullYear() + anos);
     mesesFeriasProp = mesesComFracao(inicioAquisitivo.toISOString().slice(0, 10), dataDesligamento);
-    feriasProporcionais = r2((mesesFeriasProp / 12) * salario * (4 / 3));
+    feriasProporcionais = r2((mesesFeriasProp / 12) * remuneracaoBase * (4 / 3));
   }
 
   // 13º proporcional: conta apenas os meses trabalhados no ano, com fração >= 15 dias.
@@ -78,7 +80,7 @@ export function calcularRescisao({ salarioBase, dataAdmissao, dataDesligamento, 
     const inicioAno = `${d.getFullYear()}-01-01`;
     const inicioDecimo = dataAdmissao && dataAdmissao > inicioAno ? dataAdmissao : inicioAno;
     mesesDecimo = mesesComFracao(inicioDecimo, dataDesligamento);
-    decimoTerceiro = r2((mesesDecimo / 12) * salario);
+    decimoTerceiro = r2((mesesDecimo / 12) * remuneracaoBase);
   }
 
   let multaFgts = 0;
@@ -87,5 +89,5 @@ export function calcularRescisao({ salarioBase, dataAdmissao, dataDesligamento, 
 
   const totalBruto = r2(saldoSalario + avisoValor + feriasVencidas + feriasProporcionais + decimoTerceiro + multaFgts);
 
-  return { saldoSalario, diasAviso, avisoValor, feriasVencidas, feriasProporcionais, mesesFeriasProp, decimoTerceiro, mesesDecimo, multaFgts, totalBruto, tempoCasaMeses: mesesCompletos(dataAdmissao, dataDesligamento), feriasPendentesDias: diasPendentes, feriasDobradasDias: diasDobrados };
+  return { saldoSalario, diasAviso, avisoValor, feriasVencidas, feriasProporcionais, mesesFeriasProp, decimoTerceiro, mesesDecimo, multaFgts, totalBruto, remuneracaoBase, tempoCasaMeses: mesesCompletos(dataAdmissao, dataDesligamento), feriasPendentesDias: diasPendentes, feriasDobradasDias: diasDobrados };
 }

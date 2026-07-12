@@ -9,6 +9,7 @@ import { Calculator, Paperclip } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { calcularPeriodosAquisitivos } from '@/lib/feriasEngine';
 import { calcularRescisao, TIPOS_RESCISAO } from '@/lib/rescisaoEngine';
+import { calcularMediaVariaveis, calcularDeficitBancoHoras } from '@/lib/rescisaoRemuneracao';
 
 const VERBAS = [
   ['saldo_salario', 'Saldo de Salário'],
@@ -25,9 +26,11 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
     funcionario_nome: '', data_desligamento: hoje, tipo_rescisao: 'sem_justa_causa', aviso_previo: 'indenizado',
     saldo_fgts: '', saldo_salario: '0', aviso_previo_valor: '0', ferias_vencidas_valor: '0',
     ferias_proporcionais_valor: '0', decimo_terceiro_valor: '0', multa_fgts_valor: '0',
-    outros_valores: '0', descontos: '0', observacoes: '',
+    outros_valores: '0', desconto_banco_horas: '0', descontos: '0', observacoes: '',
   });
   const [ferias, setFerias] = useState([]);
+  const [folhas, setFolhas] = useState([]);
+  const [bancoHoras, setBancoHoras] = useState([]);
   const [anexar, setAnexar] = useState(false);
   const [file, setFile] = useState(null);
   const [homologada, setHomologada] = useState(false);
@@ -37,7 +40,16 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) base44.entities.FeriasFuncionario.list('', 500).then(setFerias);
+    if (!open) return;
+    Promise.all([
+      base44.entities.FeriasFuncionario.list('', 500),
+      base44.entities.FolhaPagamento.list('-competencia', 500),
+      base44.entities.BancoHoras.list('-data', 500),
+    ]).then(([listaFerias, listaFolhas, listaBanco]) => {
+      setFerias(listaFerias);
+      setFolhas(listaFolhas);
+      setBancoHoras(listaBanco);
+    });
   }, [open]);
 
   const func = funcionarios.find((f) => f.nome === form.funcionario_nome);
@@ -48,11 +60,14 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
   const periodosCompletos = periodosFerias.filter((p) => !p.emCurso && p.saldo > 0);
   const saldoFeriasDias = periodosCompletos.reduce((s, p) => s + p.saldo, 0);
   const feriasDobradasDias = periodosCompletos.filter((p) => p.status === 'vencido').reduce((s, p) => s + p.saldo, 0);
+  const mediaVariavel = useMemo(() => calcularMediaVariaveis(folhas, func, form.data_desligamento), [folhas, func, form.data_desligamento]);
+  const remuneracaoBase = (func?.salario_base || 0) + mediaVariavel.media;
+  const deficitBanco = useMemo(() => calcularDeficitBancoHoras(bancoHoras, func, form.data_desligamento, remuneracaoBase), [bancoHoras, func, form.data_desligamento, remuneracaoBase]);
 
   function preCalcular() {
     if (!func) return;
     const c = calcularRescisao({
-      salarioBase: func.salario_base, dataAdmissao: func.data_admissao, dataDesligamento: form.data_desligamento,
+      salarioBase: func.salario_base, mediaVariaveis: mediaVariavel.media, dataAdmissao: func.data_admissao, dataDesligamento: form.data_desligamento,
       tipo: form.tipo_rescisao, avisoPrevio: form.aviso_previo, saldoFgts: parseFloat(form.saldo_fgts) || 0,
       feriasPendentesDias: saldoFeriasDias, feriasDobradasDias,
     });
@@ -65,11 +80,13 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
       ferias_proporcionais_valor: c.feriasProporcionais.toFixed(2),
       decimo_terceiro_valor: c.decimoTerceiro.toFixed(2),
       multa_fgts_valor: c.multaFgts.toFixed(2),
+      desconto_banco_horas: deficitBanco.desconto.toFixed(2),
     });
   }
 
   const totalBruto = VERBAS.reduce((s, [k]) => s + (parseFloat(form[k]) || 0), 0) + (parseFloat(form.outros_valores) || 0);
-  const totalLiquido = totalBruto - (parseFloat(form.descontos) || 0);
+  const totalDescontos = (parseFloat(form.desconto_banco_horas) || 0) + (parseFloat(form.descontos) || 0);
+  const totalLiquido = totalBruto - totalDescontos;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -87,8 +104,8 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
       anexo_nome = file.name;
     }
     const num = (k) => parseFloat(form[k]) || 0;
-    const calcBase = calculo || calcularRescisao({
-      salarioBase: func.salario_base, dataAdmissao: func.data_admissao, dataDesligamento: form.data_desligamento,
+    const calcBase = calcularRescisao({
+      salarioBase: func.salario_base, mediaVariaveis: mediaVariavel.media, dataAdmissao: func.data_admissao, dataDesligamento: form.data_desligamento,
       tipo: form.tipo_rescisao, avisoPrevio: form.aviso_previo, saldoFgts: parseFloat(form.saldo_fgts) || 0,
       feriasPendentesDias: saldoFeriasDias, feriasDobradasDias,
     });
@@ -104,6 +121,10 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
       dias_aviso_previo: calcBase.diasAviso,
       ferias_pendentes_dias: saldoFeriasDias,
       ferias_dobradas_dias: feriasDobradasDias,
+      media_remuneracao_variavel: Math.round(mediaVariavel.media * 100) / 100,
+      meses_media_remuneracao: mediaVariavel.meses,
+      saldo_banco_horas: Math.round(deficitBanco.saldo * 100) / 100,
+      desconto_banco_horas: num('desconto_banco_horas'),
       anexo_url, anexo_nome,
       homologada: homologada && !!anexo_url,
       ...(homologada && anexo_url ? { homologada_em: new Date().toISOString() } : {}),
@@ -116,7 +137,7 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
         funcionario_id: func.id, funcionario_nome: func.nome,
         competencia: form.data_desligamento.slice(0, 7), tipo: 'rescisao',
         salario_bruto: Math.round(totalBruto * 100) / 100,
-        outros_descontos: num('descontos'),
+        outros_descontos: totalDescontos,
         salario_liquido: Math.round(totalLiquido * 100) / 100,
         status: 'pendente', empresa: func.empresa,
       });
@@ -168,7 +189,9 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
           {func && (
             <div className="text-xs bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-3 py-2 space-y-1">
               <p><b>Base CLT do pré-cálculo:</b> admissão em {formatDate(func.data_admissao)} · salário-base {formatCurrency(func.salario_base)}.</p>
+              <p>Média variável: <b>{formatCurrency(mediaVariavel.media)}</b> em {mediaVariavel.meses} folha(s) · base remuneratória sugerida: <b>{formatCurrency(remuneracaoBase)}</b>.</p>
               <p>Férias de períodos completos pendentes: <b>{saldoFeriasDias} dias</b>{feriasDobradasDias > 0 ? ` · ${feriasDobradasDias} dias fora do período concessivo calculados em dobro` : ''}.</p>
+              <p>Banco de horas: <b>{deficitBanco.saldo.toFixed(2)}h</b>{deficitBanco.horasDeficit > 0 ? ` · déficit sugerido para desconto: ${formatCurrency(deficitBanco.desconto)}` : ' · sem déficit'}.</p>
               {calculo && <p>Tempo de casa: <b>{Math.floor(calculo.tempoCasaMeses / 12)} ano(s) e {calculo.tempoCasaMeses % 12} mês(es)</b> · aviso considerado: <b>{calculo.diasAviso} dias</b> · férias proporcionais: <b>{calculo.mesesFeriasProp}/12</b> · 13º: <b>{calculo.mesesDecimo}/12</b>.</p>}
             </div>
           )}
@@ -178,11 +201,12 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
               <div key={k}><Label className="text-xs">{l}</Label><Input type="number" step="0.01" value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></div>
             ))}
             <div><Label className="text-xs">Outras Verbas</Label><Input type="number" step="0.01" value={form.outros_valores} onChange={(e) => setForm({ ...form, outros_valores: e.target.value })} /></div>
-            <div><Label className="text-xs">Descontos</Label><Input type="number" step="0.01" value={form.descontos} onChange={(e) => setForm({ ...form, descontos: e.target.value })} /></div>
+            <div><Label className="text-xs">Desconto Banco de Horas</Label><Input type="number" step="0.01" value={form.desconto_banco_horas} onChange={(e) => setForm({ ...form, desconto_banco_horas: e.target.value })} /></div>
+            <div><Label className="text-xs">Outros Descontos</Label><Input type="number" step="0.01" value={form.descontos} onChange={(e) => setForm({ ...form, descontos: e.target.value })} /></div>
           </div>
 
           <div className="bg-muted/40 rounded-xl p-3 flex justify-between items-center text-sm">
-            <span className="text-muted-foreground">Total bruto: <b>{formatCurrency(totalBruto)}</b></span>
+            <span className="text-muted-foreground">Bruto: <b>{formatCurrency(totalBruto)}</b> · descontos: <b>{formatCurrency(totalDescontos)}</b></span>
             <span className="font-bold text-lg text-primary">Líquido: {formatCurrency(totalLiquido)}</span>
           </div>
 

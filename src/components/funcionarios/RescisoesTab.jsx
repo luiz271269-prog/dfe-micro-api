@@ -92,11 +92,12 @@ export default function RescisoesTab({ funcionarios, onChanged }) {
                 {verbas.length > 0 && (
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     {verbas.map(([l, v]) => <span key={l}>{l}: <b className="text-foreground">{formatCurrency(v)}</b></span>)}
-                    {r.descontos > 0 && <span className="text-red-600">Descontos: <b>-{formatCurrency(r.descontos)}</b></span>}
+                    {r.desconto_banco_horas > 0 && <span className="text-red-600">Banco de horas: <b>-{formatCurrency(r.desconto_banco_horas)}</b></span>}
+                    {r.descontos > 0 && <span className="text-red-600">Outros descontos: <b>-{formatCurrency(r.descontos)}</b></span>}
                   </div>
                 )}
                 {(r.tempo_casa_meses > 0 || r.ferias_pendentes_dias > 0) && (
-                  <p className="text-xs text-muted-foreground mt-1">Base do pré-cálculo: {Math.floor((r.tempo_casa_meses || 0) / 12)} ano(s) e {(r.tempo_casa_meses || 0) % 12} mês(es) de casa · {r.ferias_pendentes_dias || 0} dias de férias pendentes{r.ferias_dobradas_dias > 0 ? ` (${r.ferias_dobradas_dias} dias em dobro)` : ''}.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Base do pré-cálculo: {Math.floor((r.tempo_casa_meses || 0) / 12)} ano(s) e {(r.tempo_casa_meses || 0) % 12} mês(es) de casa · {r.ferias_pendentes_dias || 0} dias de férias pendentes{r.ferias_dobradas_dias > 0 ? ` (${r.ferias_dobradas_dias} dias em dobro)` : ''}{r.media_remuneracao_variavel > 0 ? ` · média variável ${formatCurrency(r.media_remuneracao_variavel)}` : ''}.</p>
                 )}
                 {r.observacoes && <p className="text-xs text-muted-foreground italic mt-1">{r.observacoes}</p>}
               </div>
