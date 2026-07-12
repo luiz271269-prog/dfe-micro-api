@@ -13,10 +13,38 @@ export function formatCurrency(value, compact = false) {
   }).format(value);
 }
 
-export function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('pt-BR');
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T/;
+
+export function formatDate(value) {
+  if (!value) return '—';
+  if (typeof value === 'string') {
+    if (ISO_DATE.test(value.slice(0, 10))) {
+      const [year, month, day] = value.slice(0, 10).split('-');
+      return `${day}/${month}/${year}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat('pt-BR').format(date);
+}
+
+export function formatDateTime(value) {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return formatDate(value);
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Sao_Paulo',
+  }).format(date);
+}
+
+export function formatDateValue(value) {
+  if (typeof value !== 'string') return value;
+  if (ISO_DATE.test(value)) return formatDate(value);
+  if (ISO_DATE_TIME.test(value)) return formatDateTime(value);
+  return value;
 }
 
 export function formatPercent(value) {

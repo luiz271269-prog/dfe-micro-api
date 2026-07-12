@@ -1,9 +1,19 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
+import { getCurrentMonth } from '../../lib/currentMonth';
 
-const ALL_MONTHS = [
-'2025-09', '2025-10', '2025-11', '2025-12',
-'2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
+function buildMonthRange(start, end) {
+  const months = [];
+  let [year, month] = start.split('-').map(Number);
+  while (`${year}-${String(month).padStart(2, '0')}` <= end) {
+    months.push(`${year}-${String(month).padStart(2, '0')}`);
+    month += 1;
+    if (month === 13) { month = 1; year += 1; }
+  }
+  return months;
+}
+
+const ALL_MONTHS = buildMonthRange('2025-09', getCurrentMonth());
 
 
 function fmtMes(m) {
@@ -13,20 +23,25 @@ function fmtMes(m) {
 }
 
 export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual, onToggleAnnual, monthTotals }) {
-  const monthIdx = ALL_MONTHS.indexOf(selectedMonth);
+  const months = [...new Set([...ALL_MONTHS, ...Object.keys(monthTotals || {}), selectedMonth])]
+    .filter((month) => /^\d{4}-\d{2}$/.test(month))
+    .sort();
+  const monthIdx = months.indexOf(selectedMonth);
   const canPrev = monthIdx > 0;
-  const canNext = monthIdx < ALL_MONTHS.length - 1;
+  const canNext = monthIdx >= 0 && monthIdx < months.length - 1;
+  const windowStart = Math.max(0, Math.min(monthIdx - 2, months.length - 5));
+  const visibleMonths = months.slice(windowStart, windowStart + 5);
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       <button
-        onClick={() => {if (onToggleAnnual && isAnnual) onToggleAnnual();if (canPrev) onSelectMonth(ALL_MONTHS[monthIdx - 1]);}}
+        onClick={() => {if (onToggleAnnual && isAnnual) onToggleAnnual();if (canPrev) onSelectMonth(months[monthIdx - 1]);}}
         disabled={!canPrev || isAnnual}
         className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors shrink-0">
         <ChevronLeft className="w-3.5 h-3.5" /></button>
 
       <div className="flex items-center gap-1 overflow-x-auto">
-        {ALL_MONTHS.slice(-5).map((m) => {
+        {visibleMonths.map((m) => {
           const isActive = !isAnnual && selectedMonth === m;
           const total = monthTotals?.[m];
           return (
@@ -51,7 +66,7 @@ export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual,
       </div>
 
       <button
-        onClick={() => {if (onToggleAnnual && isAnnual) onToggleAnnual();if (canNext) onSelectMonth(ALL_MONTHS[monthIdx + 1]);}}
+        onClick={() => {if (onToggleAnnual && isAnnual) onToggleAnnual();if (canNext) onSelectMonth(months[monthIdx + 1]);}}
         disabled={!canNext || isAnnual}
         className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors shrink-0">
         <ChevronRight className="w-3.5 h-3.5" /></button>

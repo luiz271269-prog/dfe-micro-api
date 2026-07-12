@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ExternalLink } from 'lucide-react';
-import { formatCurrency, formatDate } from '../../lib/formatters';
+import { formatCurrency, formatDateValue } from '../../lib/formatters';
 
-// REGRA BRT: qualquer data ISO (YYYY-MM-DD) é exibida como DD/MM/AAAA
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const display = (v) => (typeof v === 'string' && ISO_DATE.test(v)) ? formatDate(v) : v;
+// Regra global: datas e data/horas ISO são sempre exibidas no padrão brasileiro.
+const display = (value) => formatDateValue(value);
 
 // Tela de auditoria: lista os registros exatos que compõem um totalizador do dashboard.
 export default function DrilldownDialog({ drill, onClose }) {

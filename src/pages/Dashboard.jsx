@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, Building2, Wallet, PiggyBank, DollarSign } from
 'lucide-react';
 import { formatCurrency } from '../lib/formatters';
+import { ALL_MONTHS, fmtMes } from '../components/shared/MonthNavigator';
 import DASAlertBadge from '../components/dashboard/DASAlertBadge';
 import FeriasAlertBadge from '../components/dashboard/FeriasAlertBadge';
 import { getCurrentMonth } from '../lib/currentMonth';
@@ -14,14 +15,6 @@ import DedupButton from '../components/shared/DedupButton';
 import SyncCalendarButton from '../components/shared/SyncCalendarButton';
 import DrilldownDialog from '../components/dashboard/DrilldownDialog';
 import { getDrilldown } from '../lib/dashboardDrilldowns';
-
-const ALL_MONTHS = ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07'];
-
-function fmtMes(m) {
-  const [y, mo] = m.split('-');
-  const nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  return `${nomes[parseInt(mo) - 1]}/${y.slice(2)}`;
-}
 
 function fmtMesLong(m) {
   const [y, mo] = m.split('-');
