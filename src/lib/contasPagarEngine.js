@@ -10,6 +10,8 @@
  * Também faz o pareamento com débitos do extrato para baixa automática.
  */
 
+import { ehSaidaContasPagar } from './extratoNatureza';
+
 export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [], compras = [] }) {
   const itens = [];
 
@@ -225,10 +227,7 @@ export async function executarBaixaAutomatica(base44, { despesas, tributos, folh
   // Limitar aos últimos 90 dias para performance
   const todosLancamentos = await base44.entities.LancamentoBancario.list('-data', 2000);
   const lancamentosDebito = todosLancamentos.filter(l =>
-    l.valor < 0 &&
-    l.status_conciliacao !== 'conciliado' &&
-    l.categoria !== 'transferencia' &&
-    l.categoria !== 'interno'
+    ehSaidaContasPagar(l) && l.status_conciliacao !== 'conciliado'
   );
 
   // Buscar vínculos existentes para evitar dupla baixa

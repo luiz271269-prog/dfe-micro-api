@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, ArrowRight, CreditCard, Landmark, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronUp, ArrowRight, CreditCard, Landmark, AlertTriangle, ArrowDownLeft, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../lib/formatters';
+import { classificarNaturezaExtrato, ehSaidaContasPagar } from '../../lib/extratoNatureza';
 
 // Mapa visual do funcionamento do Contas a Pagar e seus cruzamentos:
 //  Origens (compras, despesas, tributos, folha, pró-labore)
 //   → pagas no CARTÃO: o item "evapora" para a fatura (só a fatura fica a pagar)
 //   → pagas no BANCO: cruzam com o extrato bancário (baixa automática)
 //  Sinaliza gaps: faturas de contas não monitoradas, fatura sem cartão, duplicidades.
-export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamentos = [] }) {
+export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamentos = [], mesReferencia }) {
   const [aberto, setAberto] = useState(true);
 
   const diag = useMemo(() => {
@@ -38,15 +39,24 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
 
     const soma = arr => arr.reduce((s, x) => s + x.aberto, 0);
     const duplicados = lancamentos.filter(l => l.alerta_duplicidade && l.status_conciliacao !== 'ignorar');
+    const movimentosMes = lancamentos.filter((l) => !mesReferencia || (l.data || '').startsWith(mesReferencia));
+    const extrato = movimentosMes.reduce((acc, l) => {
+      const natureza = classificarNaturezaExtrato(l);
+      if (natureza === 'entrada') acc.entradas += Math.abs(l.valor || 0);
+      if (natureza === 'saida' && ehSaidaContasPagar(l)) acc.saidas += Math.abs(l.valor || 0);
+      if (natureza === 'aplicacao') acc.aplicacoes += Math.abs(l.valor || 0);
+      if (natureza !== 'saida' || ehSaidaContasPagar(l)) acc.quantidades[natureza] = (acc.quantidades[natureza] || 0) + 1;
+      return acc;
+    }, { entradas: 0, saidas: 0, aplicacoes: 0, quantidades: {} });
 
     return {
       semCartao, contaNaoMonitorada, monitoradas,
       totalSemCartao: soma(semCartao),
       totalNaoMonitorado: soma(contaNaoMonitorada),
       totalMonitorado: soma(monitoradas),
-      duplicados,
+      duplicados, extrato,
     };
-  }, [faturas, cartoes, lancamentos]);
+  }, [faturas, cartoes, lancamentos, mesReferencia]);
 
   return (
     <div className="bg-card border rounded-xl mb-4 overflow-hidden">
@@ -64,6 +74,23 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
 
       {aberto && (
         <div className="px-4 pb-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase text-emerald-700 flex items-center gap-1"><ArrowDownLeft className="w-3 h-3" /> Entradas no extrato</p>
+              <p className="text-lg font-bold text-emerald-800">{formatCurrency(diag.extrato.entradas)}</p>
+              <p className="text-[10px] text-emerald-700">{diag.extrato.quantidades.entrada || 0} movimento(s) no mês</p>
+            </div>
+            <div className="border border-red-200 bg-red-50 rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase text-red-700 flex items-center gap-1"><ArrowUpRight className="w-3 h-3" /> Saídas no extrato</p>
+              <p className="text-lg font-bold text-red-800">{formatCurrency(diag.extrato.saidas)}</p>
+              <p className="text-[10px] text-red-700">{diag.extrato.quantidades.saida || 0} movimento(s) elegíveis para baixa</p>
+            </div>
+            <div className="border border-blue-200 bg-blue-50 rounded-lg p-3">
+              <p className="text-[10px] font-bold uppercase text-blue-700 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Aplicações e resgates</p>
+              <p className="text-lg font-bold text-blue-800">{formatCurrency(diag.extrato.aplicacoes)}</p>
+              <p className="text-[10px] text-blue-700">{diag.extrato.quantidades.aplicacao || 0} movimento(s) fora do Contas a Pagar</p>
+            </div>
+          </div>
           {/* Mapa do fluxo */}
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold bg-muted/30 rounded-lg p-3">
             <span className="bg-sky-100 text-sky-700 px-2 py-1 rounded">Compras</span>

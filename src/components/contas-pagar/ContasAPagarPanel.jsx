@@ -158,7 +158,7 @@ export default function ContasAPagarPanel() {
         </div>
       )}
 
-      <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} />
+      <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} />
 
       {/* Totais principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">

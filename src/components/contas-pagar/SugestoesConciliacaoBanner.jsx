@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Sparkles, Check, XIcon, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
+import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
 import ResolverManualDialog from './ResolverManualDialog';
 
 export default function SugestoesConciliacaoBanner() {
@@ -14,8 +15,12 @@ export default function SugestoesConciliacaoBanner() {
 
   async function load() {
     setLoading(true);
-    const lista = await base44.entities.SugestaoConciliacao.filter({ status: 'pendente' }, '-confianca', 200);
-    setSugestoes(lista);
+    const [lista, lancamentos] = await Promise.all([
+      base44.entities.SugestaoConciliacao.filter({ status: 'pendente' }, '-confianca', 200),
+      base44.entities.LancamentoBancario.list('-data', 2000),
+    ]);
+    const lancamentosPorId = new Map(lancamentos.map((l) => [l.id, l]));
+    setSugestoes(lista.filter((s) => ehSaidaContasPagar(lancamentosPorId.get(s.lancamento_bancario_id))));
     setLoading(false);
   }
 
@@ -102,6 +107,7 @@ export default function SugestoesConciliacaoBanner() {
               <div className="flex items-center gap-2 flex-wrap">
                 <Sparkles className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
                 <p className="font-semibold text-sm text-foreground truncate">{s.descricao_conta}</p>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">Saída</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-200 text-yellow-800 font-bold">
                   {s.confianca}% confiança
                 </span>
