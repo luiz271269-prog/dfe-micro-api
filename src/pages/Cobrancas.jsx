@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Check, Receipt, TrendingUp, Clock } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
+import SortableTh from '../components/shared/SortableTh';
 import DedupTitulosButton from '../components/cobrancas/DedupTitulosButton';
 import ReconciliarOrfaosButton from '../components/cobrancas/ReconciliarOrfaosButton';
 import { formatCurrency, formatDate } from '../lib/formatters';
@@ -19,6 +20,14 @@ const statusRowColors = {
   em_aberto: 'bg-orange-50/50',
   pago: 'bg-green-50/50',
   vencido: 'bg-red-50/50',
+};
+
+const effectiveStatus = (titulo) => {
+  if (titulo.status === 'pago') return 'pago';
+  if (!titulo.data_vencimento) return titulo.status;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return new Date(`${titulo.data_vencimento}T00:00:00`) < hoje ? 'vencido' : 'em_aberto';
 };
 
 export default function Cobrancas() {
@@ -39,11 +48,6 @@ export default function Cobrancas() {
       if (prev.direction === 'asc') return { key, direction: 'desc' };
       return { key: 'data_vencimento', direction: 'asc' };
     });
-  }
-
-  function SortIcon({ column }) {
-    if (sortConfig.key !== column) return <ArrowUpDown className="w-3 h-3 opacity-40" />;
-    return sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />;
   }
   const [form, setForm] = useState({
     nosso_numero: '', seu_numero: '', cliente: '', data_vencimento: '',
@@ -90,10 +94,11 @@ export default function Cobrancas() {
         const d = diasAteVenc(t.data_vencimento);
         if (d === null || d < 0 || d > 7) return false;
       } else {
-        if (!isAnnual && !t.data_vencimento?.startsWith(selectedMonth)) return false;
-        if (quickFilter === 'pagos' && t.status !== 'pago') return false;
-        if (quickFilter === 'abertos' && t.status !== 'em_aberto') return false;
-        if (quickFilter === 'vencidos' && t.status !== 'vencido') return false;
+        if (quickFilter !== 'vencidos' && !isAnnual && !t.data_vencimento?.startsWith(selectedMonth)) return false;
+        const status = effectiveStatus(t);
+        if (quickFilter === 'pagos' && status !== 'pago') return false;
+        if (quickFilter === 'abertos' && status !== 'em_aberto') return false;
+        if (quickFilter === 'vencidos' && status !== 'vencido') return false;
       }
       if (searchTerm && !t.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) && !t.nosso_numero?.includes(searchTerm)) return false;
       return true;
@@ -106,13 +111,14 @@ export default function Cobrancas() {
     const numericKeys = new Set(['valor_titulo', 'valor_pago', 'parcela_numero']);
     const dateKeys = new Set(['data_vencimento', 'data_pagamento']);
     return [...filtered].sort((a, b) => {
-      let va = a[key], vb = b[key];
+      let va = key === 'status' ? effectiveStatus(a) : a[key];
+      let vb = key === 'status' ? effectiveStatus(b) : b[key];
       if (numericKeys.has(key)) { va = Number(va || 0); vb = Number(vb || 0); }
       else if (dateKeys.has(key)) { va = va || ''; vb = vb || ''; }
       else { va = String(va ?? '').toLowerCase(); vb = String(vb ?? '').toLowerCase(); }
       if (va < vb) return -1 * dir;
       if (va > vb) return 1 * dir;
-      return 0;
+      return String(a.data_vencimento || '').localeCompare(String(b.data_vencimento || ''));
     });
   }, [filtered, sortConfig]);
 
@@ -162,9 +168,9 @@ export default function Cobrancas() {
 
   const countByStatus = {
     todos: titulos.length,
-    pagos: titulos.filter(t => t.status === 'pago').length,
-    abertos: titulos.filter(t => t.status === 'em_aberto').length,
-    vencidos: titulos.filter(t => t.status === 'vencido').length,
+    pagos: titulos.filter(t => effectiveStatus(t) === 'pago').length,
+    abertos: titulos.filter(t => effectiveStatus(t) === 'em_aberto').length,
+    vencidos: titulos.filter(t => effectiveStatus(t) === 'vencido').length,
     semana: countVencendoSemana,
   };
 
@@ -244,28 +250,14 @@ export default function Cobrancas() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
-                  <button onClick={() => handleSort('nosso_numero')} className="flex items-center gap-1 hover:text-foreground transition-colors">Nosso Nº <SortIcon column="nosso_numero" /></button>
-                </th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
-                  <button onClick={() => handleSort('cliente')} className="flex items-center gap-1 hover:text-foreground transition-colors">Cliente <SortIcon column="cliente" /></button>
-                </th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
-                  <button onClick={() => handleSort('data_vencimento')} className="flex items-center gap-1 hover:text-foreground transition-colors">Vencimento <SortIcon column="data_vencimento" /></button>
-                </th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">
-                  <button onClick={() => handleSort('parcela_numero')} className="flex items-center gap-1 hover:text-foreground transition-colors">Parcela <SortIcon column="parcela_numero" /></button>
-                </th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">
-                  <button onClick={() => handleSort('valor_titulo')} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">Valor <SortIcon column="valor_titulo" /></button>
-                </th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">
-                  <button onClick={() => handleSort('valor_pago')} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">Pago <SortIcon column="valor_pago" /></button>
-                </th>
-                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">
-                  <button onClick={() => handleSort('status')} className="flex items-center gap-1 hover:text-foreground transition-colors mx-auto">Status <SortIcon column="status" /></button>
-                </th>
-                <th className="text-center px-4 py-3 font-semibold text-muted-foreground">Ação</th>
+                <SortableTh field="nosso_numero" sortField={sortConfig.key} sortDir={sortConfig.direction} onSort={handleSort}>Nosso Nº</SortableTh>
+                <SortableTh field="cliente" sortField={sortConfig.key} sortDir={sortConfig.direction} onSort={handleSort}>Cliente</SortableTh>
+                <SortableTh field="data_vencimento" sortField={sortConfig.key} sortDir={sortConfig.direction} onSort={handleSort}>Vencimento</SortableTh>
+                <SortableTh field="parcela_numero" sortField={sortConfig.key} sortDir={sortConfig.direction} onSort={handleSort}>Parcela</SortableTh>
+                <SortableTh field="valor_titulo" align="right" sortField={sortConfig.key} sortDir={sortConfig.direction} onSort={handleSort}>Valor</SortableTh>
+                <SortableTh field="valor_pago" align="right" sortField={sortConfig.key} sortDir={sortConfig.direction} onSort={handleSort}>Pago</SortableTh>
+                <SortableTh field="status" align="center" sortField={sortConfig.key} sortDir={sortConfig.direction} onSort={handleSort}>Status</SortableTh>
+                <SortableTh field="data_pagamento" align="center" sortField={sortConfig.key} sortDir={sortConfig.direction} onSort={handleSort}>Ação / Pagamento</SortableTh>
               </tr>
             </thead>
             <tbody>
@@ -276,26 +268,30 @@ export default function Cobrancas() {
               ) : (
                 sorted.map(t => {
                   const dias = diasAteVenc(t.data_vencimento);
-                  const vencendoCritico = t.status !== 'pago' && dias !== null && dias >= 0 && dias <= 3;
-                  const rowClass = vencendoCritico
-                    ? 'bg-red-100/70 hover:bg-red-100 border-l-4 border-l-red-600'
-                    : `${statusRowColors[t.status] || ''} hover:brightness-95`;
+                  const status = effectiveStatus(t);
+                  const vencida = status === 'vencido';
+                  const vencendoCritico = status !== 'pago' && dias !== null && dias >= 0 && dias <= 3;
+                  const rowClass = vencida
+                    ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-600'
+                    : vencendoCritico
+                      ? 'bg-red-100/70 hover:bg-red-100 border-l-4 border-l-red-600'
+                      : `${statusRowColors[status] || ''} hover:brightness-95`;
                   return (
                   <tr key={t.id} className={`border-b transition-colors ${rowClass}`}>
                     <td className={`px-4 py-3 font-medium ${vencendoCritico ? 'text-red-800' : ''}`}>{t.nosso_numero}</td>
                     <td className={`px-4 py-3 ${vencendoCritico ? 'text-red-800 font-semibold' : ''}`}>{t.cliente}</td>
                     <td className={`px-4 py-3 whitespace-nowrap ${vencendoCritico ? 'text-red-700 font-bold' : ''}`}>
                       {formatDate(t.data_vencimento)}
-                      {vencendoCritico && (
+                      {(vencida || vencendoCritico) && (
                         <span className="ml-2 text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded-full font-bold">
-                          {dias === 0 ? 'HOJE' : `${dias}d`}
+                          {vencida ? `${Math.abs(dias)}d vencida` : dias === 0 ? 'HOJE' : `${dias}d`}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3">{t.parcela_numero && t.parcela_total ? `${t.parcela_numero}/${t.parcela_total}` : '—'}</td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatCurrency(t.valor_titulo)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-green-700">{formatCurrency(t.valor_pago)}</td>
-                    <td className="px-4 py-3 text-center"><StatusBadge status={t.status} /></td>
+                    <td className="px-4 py-3 text-center"><StatusBadge status={status} /></td>
                     <td className="px-4 py-3 text-center">
                       {t.status !== 'pago' ? (
                         <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => { setBaixaId(t.id); setBaixaValor(String(t.valor_titulo)); }}>
