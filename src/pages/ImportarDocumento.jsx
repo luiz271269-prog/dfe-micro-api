@@ -11,8 +11,10 @@ import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
 import TabelaRevisaoVendasDetalhado from '../components/importar/TabelaRevisaoVendasDetalhado';
 import PainelMemoriaImportacao from '../components/importar/PainelMemoriaImportacao';
+import ExtratoValidationCard from '../components/importar/ExtratoValidationCard';
 import { registrarResultado, assinaturaDeRegistros } from '../lib/memoriaImportacaoEngine';
 import { aplicarRegrasHistorico } from '../lib/aplicarRegrasHistorico';
+import { validateExtratoRecords } from '../lib/extratoValidation';
 
 const DOC_TYPES = [
 { id: 'extrato_bancario', label: 'Extrato Bancário Sicredi', icon: Landmark, color: 'blue', entity: 'LancamentoBancario', dedup: ['data', 'valor'], group: 'Visão Geral' },
@@ -49,7 +51,7 @@ const PROMPTS = {
 Para arquivos OFX/QFX: extraia cada <STMTTRN> — use <DTPOSTED> como data, <TRNAMT> como valor (mantendo sinal), <MEMO> ou <NAME> como descrição, <FITID> como detalhe.
 Retorne APENAS um array JSON válido, sem texto adicional, no formato:
 [{"data":"YYYY-MM-DD","descricao":"descrição exata do extrato","valor":numero_positivo_ou_negativo,"categoria":"recebimento ou fornecedor ou pessoal ou tributo ou despesa_operacional ou financeiro ou saque ou transferencia ou interno","saldo_apos":numero,"conta_bancaria":"NeuralTec 36092-2","detalhe":"documento ex: COB000001 ou PIX_DEB ou FITID ou vazio"}]
-Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lançamentos, ignorar apenas "SALDO ANTERIOR" e linhas de saldo consolidado.`,
+Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lançamentos efetivamente contabilizados. Ignore "SALDO ANTERIOR", linhas de saldo consolidado e lançamentos agendados, projetados ou futuros. A data deve ser a data de contabilização impressa na linha, nunca vencimento ou data prevista. Confira cada dia separadamente: saldo inicial do dia + entradas − saídas = saldo final do mesmo dia; nunca mova um lançamento para outro dia.`,
 
   boletos_liquidados: `Analise este relatório/comprovante de BOLETOS LIQUIDADOS (Sicredi/Banco) e extraia TODOS os pagamentos em JSON.
 
@@ -329,6 +331,7 @@ export default function ImportarDocumento() {
   const [step, setStep] = useState(1);
   const [dedupRunning, setDedupRunning] = useState(false);
   const [faturaValidacao, setFaturaValidacao] = useState(null);
+  const [extratoValidacao, setExtratoValidacao] = useState(null);
   const [memoriaRefresh, setMemoriaRefresh] = useState(0);
   const fileInputRef = useRef();
   const queryClient = useQueryClient();
@@ -409,6 +412,7 @@ export default function ImportarDocumento() {
     setRawText(null);
     setFileUrl(null);
     setFaturaValidacao(null);
+    setExtratoValidacao(null);
     try {
       // 0. Calcular hash SHA-256 do arquivo (cache exato)
       const hashCalculado = await sha256OfFile(file);
@@ -592,6 +596,11 @@ export default function ImportarDocumento() {
 
       if (selectedType === 'relatorio_nfs') items = items.map((i) => ({ ...i, numero: String(i.numero ?? '').trim() }));
       if (selectedType === 'boletos_liquidados') items = items.map((i) => ({ ...i, nosso_numero: String(i.nosso_numero ?? '').trim() }));
+      if (selectedType === 'extrato_bancario') {
+        const validation = validateExtratoRecords(items, new Date().toISOString().split('T')[0]);
+        items = validation.records;
+        setExtratoValidacao(validation);
+      }
 
       // 5. Deduplicação via motor genérico
       const typeConfig = DOC_TYPES.find((d) => d.id === selectedType);
@@ -662,6 +671,9 @@ export default function ImportarDocumento() {
   }
 
   async function confirmSave() {
+    if (selectedType === 'extrato_bancario' && extratoValidacao && !extratoValidacao.ok) {
+      return showToast('A sequência de saldos não bate. Corrija a extração antes de salvar.', 'error');
+    }
     // Respeita seleção explícita do usuário — se marcou um registro com status 'erro',
     // ele será salvo mesmo assim (usuário viu que os dados estão corretos)
     const toSave = records.filter((r) => r.selected);
@@ -866,6 +878,7 @@ export default function ImportarDocumento() {
     setFileHash(null);
     setRecords([]);setRawText(null);setStep(1);
     setFaturaValidacao(null);
+    setExtratoValidacao(null);
   }
 
   const selectedCount = records.filter((r) => r.selected).length;
@@ -1221,6 +1234,7 @@ export default function ImportarDocumento() {
               </Button>
             </div>
           </div>
+          {selectedType === 'extrato_bancario' && <ExtratoValidationCard validation={extratoValidacao} />}
           {selectedType === 'fatura_cartao' && faturaValidacao &&
         <div className={`mb-3 rounded-xl border p-3 ${faturaValidacao.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
               <div className="flex items-start gap-2">

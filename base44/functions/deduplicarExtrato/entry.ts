@@ -9,12 +9,16 @@ Deno.serve(async (req) => {
     // Fetch all LancamentoBancario records
     const all = await base44.asServiceRole.entities.LancamentoBancario.list();
 
-    // Group by (data, valor, descricao normalizada) — dois PIX no mesmo dia com
-    // o mesmo valor mas descrições diferentes são lançamentos DISTINTOS.
+    // Parcelas de financiamento usam contrato + mês + valor; os demais lançamentos
+    // continuam usando data + valor + descrição para preservar movimentos distintos.
     const groups = {};
     for (const rec of all) {
+      const text = `${rec.descricao || ''} ${rec.detalhe || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+      const contract = text.match(/C\s*(\d{8,})/);
       const descNorm = (rec.descricao || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
-      const key = `${rec.data}|${rec.valor}|${descNorm}`;
+      const key = contract && /OPERACAO DE CREDITO|LIQUIDACAO DE PARCELA|PARCELA/.test(text)
+        ? `fin:${String(rec.data || '').slice(0, 7)}|c:${contract[1].slice(0, 8)}|v:${Math.round(Number(rec.valor || 0) * 100)}`
+        : `${rec.data}|${rec.valor}|${descNorm}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(rec);
     }

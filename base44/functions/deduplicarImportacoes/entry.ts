@@ -76,11 +76,19 @@ const ENTITIES_CONFIG = [
   },
   {
     name: 'LancamentoBancario',
-    // descricao normalizada na chave — dois PIX no mesmo dia com o mesmo valor
-    // mas descrições diferentes são lançamentos DISTINTOS (não deletar).
-    keyFn: r => r.data && r.valor != null
-      ? `${r.data}|${Number(r.valor).toFixed(2)}|${(r.descricao || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30)}`
-      : null,
+    keyFn: r => {
+      if (!r.data || r.valor == null) return null;
+      const text = `${r.descricao || ''} ${r.detalhe || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+      const contract = text.match(/C\s*(\d{8,})/);
+      if (contract && /OPERACAO DE CREDITO|LIQUIDACAO DE PARCELA|PARCELA/.test(text)) {
+        return `fin:${String(r.data).slice(0, 7)}|c:${contract[1].slice(0, 8)}|v:${Math.round(Number(r.valor) * 100)}`;
+      }
+      return `${r.data}|${Number(r.valor).toFixed(2)}|${(r.descricao || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30)}`;
+    },
+    preferKeepFn: (a, b) => {
+      const score = r => r.data <= String(r.created_date || '').slice(0, 10) ? 10 : 0;
+      return score(a) - score(b);
+    },
   },
   {
     name: 'ItemCompra',

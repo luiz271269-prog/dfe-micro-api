@@ -41,15 +41,20 @@ function tituloCobrancaKey(r) {
   return null;
 }
 
+function lancamentoBancarioKey(r) {
+  const text = `${r.descricao || ''} ${r.detalhe || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  const contract = text.match(/C\s*(\d{8,})/);
+  if (contract && /OPERACAO DE CREDITO|LIQUIDACAO DE PARCELA|PARCELA/.test(text)) {
+    return `fin:${String(r.data || '').slice(0, 7)}|c:${contract[1].slice(0, 8)}|v:${Math.round(Number(r.valor || 0) * 100)}`;
+  }
+  const description = (r.descricao || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
+  return `${r.data}|${Number(r.valor).toFixed(2)}|${description}`;
+}
+
 const DEDUP_CONFIG = {
   LancamentoBancario: {
     entity: 'LancamentoBancario',
-    // descricao entra na chave: dois PIX no mesmo dia com o mesmo valor mas
-    // descrições diferentes são lançamentos DISTINTOS (não duplicata).
-    keys: ['data', 'valor', 'descricao'],
-    normalizers: {
-      descricao: v => (v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30),
-    },
+    keyBuilder: lancamentoBancarioKey,
   },
   NotaFiscal: {
     entity: 'NotaFiscal',
