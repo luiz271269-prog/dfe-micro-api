@@ -41,14 +41,10 @@ export default function ExtratoBancario() {
 
   async function loadData() {
     setLoading(true);
-    const year = selectedMonth.slice(0, 4);
-    const period = isAnnual
-      ? { data: { $gte: `${year}-01-01`, $lte: `${year}-12-31` } }
-      : { data: { $gte: `${selectedMonth}-01`, $lte: `${selectedMonth}-31` } };
     let attempts = 0;
     while (attempts < 3) {
       try {
-        const data = await base44.entities.LancamentoBancario.filter(period, '-data', 10000);
+        const data = await base44.entities.LancamentoBancario.list('-data', 10000);
         setLancamentos(data);
         break;
       } catch (e) {
