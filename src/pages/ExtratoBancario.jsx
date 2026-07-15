@@ -41,10 +41,14 @@ export default function ExtratoBancario() {
 
   async function loadData() {
     setLoading(true);
+    const year = selectedMonth.slice(0, 4);
+    const period = isAnnual
+      ? { data: { $gte: `${year}-01-01`, $lte: `${year}-12-31` } }
+      : { data: { $gte: `${selectedMonth}-01`, $lte: `${selectedMonth}-31` } };
     let attempts = 0;
     while (attempts < 3) {
       try {
-        const data = await base44.entities.LancamentoBancario.list('-data', 500);
+        const data = await base44.entities.LancamentoBancario.filter(period, '-data', 10000);
         setLancamentos(data);
         break;
       } catch (e) {
@@ -65,10 +69,11 @@ export default function ExtratoBancario() {
     const handler = () => loadData();
     window.addEventListener('neuralfinRefresh', handler);
     return () => { window.removeEventListener('neuralfinRefresh', handler); };
-  }, []);
+  }, [selectedMonth, isAnnual]);
 
   const filtered = useMemo(() => {
     return lancamentos.filter(l => {
+      if (l.status_conciliacao === 'ignorar') return false;
       if (!isAnnual) {
         const mes = l.mes_referencia || l.data?.slice(0,7);
         if (mes !== selectedMonth) return false;
@@ -175,6 +180,7 @@ export default function ExtratoBancario() {
   const monthTotals = useMemo(() => {
     const totals = {};
     lancamentos.forEach(l => {
+      if (l.status_conciliacao === 'ignorar') return;
       const m = l.mes_referencia || l.data?.slice(0,7);
       if (m) totals[m] = (totals[m] || 0) + (l.valor || 0);
     });
