@@ -160,47 +160,41 @@ export default function ContasAPagarPanel() {
 
       <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} />
 
-      {/* Totais principais */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <div className="bg-gradient-to-br from-slate-700 to-slate-900 text-white rounded-xl p-4 shadow">
+      {/* Totais principais — linha compacta de KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+        <div className="bg-gradient-to-br from-slate-700 to-slate-900 text-white rounded-xl px-3 py-2 shadow" title={`${itens.length} itens em aberto`}>
           <p className="text-[10px] font-bold uppercase opacity-80">Total a pagar</p>
-          <p className="text-2xl font-bold">{formatCurrency(total)}</p>
-          <p className="text-[10px] opacity-80 mt-1">{itens.length} itens em aberto</p>
+          <p className="text-xl font-bold">{formatCurrency(total)}</p>
         </div>
-        <div className="bg-red-50 rounded-xl p-4 border border-red-200">
+        <div className="bg-red-50 rounded-xl px-3 py-2 border border-red-200" title={`${aging.vencidos.length} item(ns) em atraso`}>
           <p className="text-[10px] font-bold uppercase text-red-700">Vencido</p>
-          <p className="text-2xl font-bold text-red-700">{formatCurrency(totalVencido)}</p>
-          <p className="text-[10px] text-red-600 mt-1">{aging.vencidos.length} item(ns) em atraso</p>
+          <p className="text-lg font-bold text-red-700">{formatCurrency(totalVencido)}</p>
         </div>
-        <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+        <div className="bg-orange-50 rounded-xl px-3 py-2 border border-orange-200" title={`${aging.hoje.length + aging.semana.length} item(ns)`}>
           <p className="text-[10px] font-bold uppercase text-orange-700">Próximos 7 dias</p>
-          <p className="text-2xl font-bold text-orange-700">{formatCurrency(totalSemana)}</p>
-          <p className="text-[10px] text-orange-600 mt-1">{aging.hoje.length + aging.semana.length} item(ns)</p>
+          <p className="text-lg font-bold text-orange-700">{formatCurrency(totalSemana)}</p>
         </div>
-        <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+        <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-200" title="Projeção de desembolso">
           <p className="text-[10px] font-bold uppercase text-blue-700">Este mês (30d)</p>
-          <p className="text-2xl font-bold text-blue-700">{formatCurrency(totalMes)}</p>
-          <p className="text-[10px] text-blue-600 mt-1">Projeção de desembolso</p>
+          <p className="text-lg font-bold text-blue-700">{formatCurrency(totalMes)}</p>
         </div>
       </div>
 
-      {/* Filtro por origem */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 mb-4">
-        <button onClick={() => setFiltroOrigem('todos')}
-          className={`rounded-xl border p-3 text-left transition-all ${filtroOrigem === 'todos' ? 'ring-2 ring-primary bg-primary/5' : 'bg-card hover:bg-muted/30'}`}>
+      {/* Filtro por origem — grade compacta */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+        <button onClick={() => setFiltroOrigem('todos')} title={`${itensRaw.length} itens`}
+          className={`rounded-lg border px-3 py-2 text-left transition-all ${filtroOrigem === 'todos' ? 'ring-2 ring-primary bg-primary/5' : 'bg-card hover:bg-muted/30'}`}>
           <p className="text-[10px] font-bold uppercase text-muted-foreground">Todas as origens</p>
-          <p className="text-lg font-bold">{formatCurrency(itensRaw.reduce((a,i)=>a+i.valor,0))}</p>
-          <p className="text-[10px] text-muted-foreground">{itensRaw.length} itens</p>
+          <p className="text-sm font-bold">{formatCurrency(itensRaw.reduce((a,i)=>a+i.valor,0))}</p>
         </button>
         {Object.entries(ORIGEM_CONFIG).map(([key, cfg]) => {
           const Icon = cfg.icon;
           const qtd = itensRaw.filter(i => i.origem_tipo === key).length;
           return (
-            <button key={key} onClick={() => setFiltroOrigem(key)}
-              className={`rounded-xl border p-3 text-left transition-all ${filtroOrigem === key ? 'ring-2 ring-primary bg-primary/5' : 'bg-card hover:bg-muted/30'}`}>
+            <button key={key} onClick={() => setFiltroOrigem(key)} title={`${qtd} item(ns)`}
+              className={`rounded-lg border px-3 py-2 text-left transition-all ${filtroOrigem === key ? 'ring-2 ring-primary bg-primary/5' : 'bg-card hover:bg-muted/30'}`}>
               <p className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1"><Icon className="w-3 h-3" /> {cfg.label}</p>
-              <p className="text-lg font-bold">{formatCurrency(totaisPorOrigem[key] || 0)}</p>
-              <p className="text-[10px] text-muted-foreground">{qtd} item(ns)</p>
+              <p className="text-sm font-bold">{formatCurrency(totaisPorOrigem[key] || 0)}</p>
             </button>
           );
         })}

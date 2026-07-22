@@ -75,24 +75,21 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
       {aberto && (
         <div className="px-4 pb-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-3">
+            <div className="border border-emerald-200 bg-emerald-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2" title={`${diag.extrato.quantidades.entrada || 0} movimento(s) no mês`}>
               <p className="text-[10px] font-bold uppercase text-emerald-700 flex items-center gap-1"><ArrowDownLeft className="w-3 h-3" /> Entradas no extrato</p>
-              <p className="text-lg font-bold text-emerald-800">{formatCurrency(diag.extrato.entradas)}</p>
-              <p className="text-[10px] text-emerald-700">{diag.extrato.quantidades.entrada || 0} movimento(s) no mês</p>
+              <p className="text-sm font-bold text-emerald-800 whitespace-nowrap">{formatCurrency(diag.extrato.entradas)}</p>
             </div>
-            <div className="border border-red-200 bg-red-50 rounded-lg p-3">
+            <div className="border border-red-200 bg-red-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2" title={`${diag.extrato.quantidades.saida || 0} movimento(s) elegíveis para baixa`}>
               <p className="text-[10px] font-bold uppercase text-red-700 flex items-center gap-1"><ArrowUpRight className="w-3 h-3" /> Saídas no extrato</p>
-              <p className="text-lg font-bold text-red-800">{formatCurrency(diag.extrato.saidas)}</p>
-              <p className="text-[10px] text-red-700">{diag.extrato.quantidades.saida || 0} movimento(s) elegíveis para baixa</p>
+              <p className="text-sm font-bold text-red-800 whitespace-nowrap">{formatCurrency(diag.extrato.saidas)}</p>
             </div>
-            <div className="border border-blue-200 bg-blue-50 rounded-lg p-3">
+            <div className="border border-blue-200 bg-blue-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2" title={`${diag.extrato.quantidades.aplicacao || 0} movimento(s) fora do Contas a Pagar`}>
               <p className="text-[10px] font-bold uppercase text-blue-700 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Aplicações e resgates</p>
-              <p className="text-lg font-bold text-blue-800">{formatCurrency(diag.extrato.aplicacoes)}</p>
-              <p className="text-[10px] text-blue-700">{diag.extrato.quantidades.aplicacao || 0} movimento(s) fora do Contas a Pagar</p>
+              <p className="text-sm font-bold text-blue-800 whitespace-nowrap">{formatCurrency(diag.extrato.aplicacoes)}</p>
             </div>
           </div>
           {/* Mapa do fluxo */}
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold bg-muted/30 rounded-lg p-3">
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold bg-muted/30 rounded-lg px-3 py-2" title='Item comprado no cartão não fica "a pagar" individualmente — a obrigação evapora para a fatura do cartão, que é paga no extrato. Pró-labore (retirada de lucros) é identificado no extrato e nos cartões pessoais.'>
             <span className="bg-sky-100 text-sky-700 px-2 py-1 rounded">Compras</span>
             <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Despesas fixas/variáveis</span>
             <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded">Impostos (vendas + folha)</span>
@@ -107,30 +104,21 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
               <Landmark className="w-3 h-3" /> Direto → cruza com Extrato
             </span>
           </div>
-          <p className="text-[10px] text-muted-foreground -mt-1">
-            Item comprado no cartão não fica "a pagar" individualmente — a obrigação evapora para a fatura do cartão, que é paga no extrato. Pró-labore (retirada de lucros) é identificado no extrato e nos cartões pessoais.
-          </p>
-
           {/* Sinais */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div className="border border-emerald-200 bg-emerald-50 rounded-lg p-3">
+            <div className="border border-emerald-200 bg-emerald-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2" title={`${diag.monitoradas.length} fatura(s) de contas monitoradas — a baixa automática resolve`}>
               <p className="text-[10px] font-bold uppercase text-emerald-700">Faturas cruzáveis com extrato</p>
-              <p className="text-lg font-bold text-emerald-800">{formatCurrency(diag.totalMonitorado)}</p>
-              <p className="text-[10px] text-emerald-700">{diag.monitoradas.length} fatura(s) de contas monitoradas — a baixa automática resolve</p>
+              <p className="text-sm font-bold text-emerald-800 whitespace-nowrap">{formatCurrency(diag.totalMonitorado)}</p>
             </div>
-            <div className={`border rounded-lg p-3 ${diag.contaNaoMonitorada.length ? 'border-amber-200 bg-amber-50' : 'border-border bg-muted/20'}`}>
+            <div className={`border rounded-lg px-3 py-2 flex items-center justify-between gap-2 ${diag.contaNaoMonitorada.length ? 'border-amber-200 bg-amber-50' : 'border-border bg-muted/20'}`}
+              title={`${diag.contaNaoMonitorada.length} fatura(s) pagas por contas sem extrato importado (${[...new Set(diag.contaNaoMonitorada.map(x => x.cartao.conta_bancaria_pagamento))].join(', ') || '—'}) — nunca serão baixadas automaticamente`}>
               <p className="text-[10px] font-bold uppercase text-amber-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Sem extrato da conta pagadora</p>
-              <p className="text-lg font-bold text-amber-800">{formatCurrency(diag.totalNaoMonitorado)}</p>
-              <p className="text-[10px] text-amber-700">
-                {diag.contaNaoMonitorada.length} fatura(s) pagas por contas sem extrato importado ({[...new Set(diag.contaNaoMonitorada.map(x => x.cartao.conta_bancaria_pagamento))].join(', ') || '—'}) — nunca serão baixadas automaticamente
-              </p>
+              <p className="text-sm font-bold text-amber-800 whitespace-nowrap">{formatCurrency(diag.totalNaoMonitorado)}</p>
             </div>
-            <div className={`border rounded-lg p-3 ${diag.semCartao.length ? 'border-red-200 bg-red-50' : 'border-border bg-muted/20'}`}>
+            <div className={`border rounded-lg px-3 py-2 flex items-center justify-between gap-2 ${diag.semCartao.length ? 'border-red-200 bg-red-50' : 'border-border bg-muted/20'}`}
+              title={diag.semCartao.length ? `${diag.semCartao.map(x => x.f.mes_referencia).join(', ')} — vincule o cartão em Cartões para permitir o cruzamento` : 'Nenhuma — tudo certo'}>
               <p className="text-[10px] font-bold uppercase text-red-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Fatura sem cartão vinculado</p>
-              <p className="text-lg font-bold text-red-800">{formatCurrency(diag.totalSemCartao)}</p>
-              <p className="text-[10px] text-red-700">
-                {diag.semCartao.length ? `${diag.semCartao.map(x => x.f.mes_referencia).join(', ')} — vincule o cartão em Cartões para permitir o cruzamento` : 'Nenhuma — tudo certo'}
-              </p>
+              <p className="text-sm font-bold text-red-800 whitespace-nowrap">{formatCurrency(diag.totalSemCartao)}</p>
             </div>
           </div>
 
