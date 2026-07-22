@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart,
   Hammer, CreditCard, DollarSign, Users, BarChart3, CloudUpload, Map,
   Scale, Package, GitCompare, FolderOpen, Target, Repeat, Bot, FileCode,
-  Calculator, Activity, Link2, ShieldCheck, Wallet, FolderSync
+  Calculator, Activity, Link2, ShieldCheck, Wallet, FolderSync, CircleDollarSign
 } from 'lucide-react';
 
 // Menu agrupado pela lógica dos fluxos (espelha o Diagnóstico de Fluxos)
@@ -26,6 +26,7 @@ export const navGroups = [
   {
     label: 'Pagamentos',
     items: [
+      { path: '/contas-a-pagar', label: 'Contas a Pagar', icon: CircleDollarSign },
       { path: '/tributos', label: 'Tributos', icon: DollarSign },
       { path: '/funcionarios', label: 'Folha de Pagamento', icon: Users },
       { path: '/prolabore', label: 'Pró-labore', icon: Wallet },
