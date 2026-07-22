@@ -10,7 +10,7 @@ export default function SortableTh({ field, children, align = 'left', className 
       <button
         type="button"
         onClick={() => onSort(field)}
-        className={`inline-flex items-center gap-1 ${alignClass} hover:text-foreground transition-colors select-none w-full ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+        className={`inline-flex items-center gap-1 text-[hsl(var(--destructive))] ${alignClass} hover:text-foreground transition-colors select-none w-full ${align === 'right' ? 'flex-row-reverse' : ''}`}>
         
         <span>{children}</span>
         {active ?
