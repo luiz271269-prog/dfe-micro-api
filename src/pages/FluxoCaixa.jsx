@@ -10,10 +10,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PageHeader from '../components/shared/PageHeader';
-import StatusBadge from '../components/shared/StatusBadge';
-import { formatCurrency, formatDate } from '../lib/formatters';
+import { formatCurrency } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { consolidarContasPagar } from '../lib/contasPagarEngine';
+import FluxoColumn from '../components/fluxo-caixa/FluxoColumn';
 
 const CATEGORIAS = ['recebimento_vendas', 'recebimento_cobranca', 'pagamento_fornecedor', 'pagamento_tributo', 'folha_pagamento', 'aluguel', 'despesa_fixa', 'despesa_variavel', 'investimento', 'emprestimo', 'outro'];
 
@@ -150,6 +150,8 @@ export default function FluxoCaixa() {
     if (filterCategoria && f.categoria !== filterCategoria) return false;
     return true;
   });
+  const entradasFiltradas = filtrados.filter(f => f.tipo === 'entrada');
+  const saidasFiltradas = filtrados.filter(f => f.tipo === 'saida');
 
   // Próximos 30 dias
   const today = new Date();
@@ -259,61 +261,22 @@ export default function FluxoCaixa() {
         </Select>
       </div>
 
-      {/* Tabela */}
-      <div className="bg-card rounded-xl border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b">
-              <tr className="bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-4 py-3 font-semibold">Data</th>
-                <th className="text-left px-4 py-3 font-semibold">Descrição</th>
-                <th className="text-left px-4 py-3 font-semibold">Tipo</th>
-                <th className="text-left px-4 py-3 font-semibold">Categoria</th>
-                <th className="text-right px-4 py-3 font-semibold">Valor</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.length === 0 ? (
-                <tr><td colSpan="7" className="px-4 py-8 text-center text-muted-foreground">Nenhuma movimentação encontrada</td></tr>
-              ) : (
-                filtrados.map(f => (
-                  <tr key={f.id} className="border-b">
-                    <td className="px-4 py-3 font-semibold">{formatDate(f.data_prevista)}</td>
-                    <td className="px-4 py-3">{f.descricao}</td>
-                    <td className="px-4 py-3 text-xs">
-                      <span className={`px-2 py-0.5 rounded-full font-semibold ${f.tipo === 'entrada' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {f.tipo === 'entrada' ? '↓ Entrada' : '↑ Saída'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{f.categoria}</td>
-                    <td className={`px-4 py-3 text-right font-bold ${f.tipo === 'entrada' ? 'text-green-600' : 'text-red-600'}`}>
-                      {f.tipo === 'entrada' ? '+' : '-'}{formatCurrency(f.valor_previsto)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <StatusBadge status={f.status} />
-                        {f._auto && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-                            {ORIGEM_LABEL[f.origem_tipo] || 'Auto'}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {!f._auto && f.status === 'previsto' && (
-                        <button onClick={() => markRealizado(f.id, f.valor_previsto)} className="text-xs text-primary hover:underline">
-                          Marcar realizado
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Entradas e saídas */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <FluxoColumn
+          title="A receber · Entradas"
+          tipo="entrada"
+          items={entradasFiltradas}
+          origemLabels={ORIGEM_LABEL}
+          onMarkRealizado={markRealizado}
+        />
+        <FluxoColumn
+          title="A pagar · Saídas"
+          tipo="saida"
+          items={saidasFiltradas}
+          origemLabels={ORIGEM_LABEL}
+          onMarkRealizado={markRealizado}
+        />
       </div>
 
       {/* Form */}
