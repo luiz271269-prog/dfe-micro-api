@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, ArrowRight, CreditCard, Landmark, AlertTriangle, ArrowDownLeft, ArrowUpRight, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertTriangle, ArrowDownLeft, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import PipelineFluxo from './PipelineFluxo';
 import { formatCurrency } from '../../lib/formatters';
 import { classificarNaturezaExtrato, ehSaidaContasPagar } from '../../lib/extratoNatureza';
 
@@ -88,22 +89,8 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
               <p className="text-sm font-bold text-blue-800 whitespace-nowrap">{formatCurrency(diag.extrato.aplicacoes)}</p>
             </div>
           </div>
-          {/* Mapa do fluxo */}
-          <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold bg-muted/30 rounded-lg px-3 py-2" title='Item comprado no cartão não fica "a pagar" individualmente — a obrigação evapora para a fatura do cartão, que é paga no extrato. Pró-labore (retirada de lucros) é identificado no extrato e nos cartões pessoais.'>
-            <span className="bg-sky-100 text-sky-700 px-2 py-1 rounded">Compras</span>
-            <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Despesas fixas/variáveis</span>
-            <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded">Impostos (vendas + folha)</span>
-            <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded">Folha</span>
-            <Link to="/prolabore" className="bg-purple-100 text-purple-700 px-2 py-1 rounded hover:underline">Pró-labore</Link>
-            <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="flex items-center gap-1 bg-purple-50 border border-purple-200 text-purple-700 px-2 py-1 rounded">
-              <CreditCard className="w-3 h-3" /> No cartão → vira Fatura
-            </span>
-            <span className="text-muted-foreground">ou</span>
-            <span className="flex items-center gap-1 bg-blue-50 border border-blue-200 text-blue-700 px-2 py-1 rounded">
-              <Landmark className="w-3 h-3" /> Direto → cruza com Extrato
-            </span>
-          </div>
+          {/* Mapa do fluxo — pipeline conectado */}
+          <PipelineFluxo />
           {/* Sinais */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="border border-emerald-200 bg-emerald-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2" title={`${diag.monitoradas.length} fatura(s) de contas monitoradas — a baixa automática resolve`}>
