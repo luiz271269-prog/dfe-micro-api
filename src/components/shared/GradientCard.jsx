@@ -38,9 +38,9 @@ export function GradientCard({ title, value, sub, icon: Icon, gradient = 'blue',
     className={`group relative bg-white dark:bg-card rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 ${onClick || href ? 'cursor-pointer' : ''} ${active ? 'ring-2 ring-primary/40 border-primary/30' : 'border-border/60'}`}>
     
       <div className={`h-1 w-full bg-gradient-to-r ${grad}`} />
-      <div className="px-5 bg-[hsl(var(--background))]">
+      <div className="px-5">
         <div className="flex items-start justify-between mb-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide leading-tight">{title}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide leading-tight text-[hsl(var(--destructive))]">{title}</p>
           {Icon &&
         <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-sm shrink-0`}>
               <Icon className="w-4 h-4 text-white" />

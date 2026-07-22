@@ -191,7 +191,7 @@ export default function Cobrancas() {
 
       {/* Alerta */}
       {alertas.length > 0 &&
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+      <div className="bg-amber-50 border border-amber-200 rounded-xl mb-6 flex items-start gap-3 px-4 py-5">
           <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-semibold text-amber-800">Vencimentos nos próximos 7 dias ({alertas.length})</p>
