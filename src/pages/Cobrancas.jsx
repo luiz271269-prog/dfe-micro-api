@@ -212,7 +212,7 @@ export default function Cobrancas() {
       </div>
 
       {/* Quick filters + search */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6 bg-[hsl(var(--border))]">
         <div className="flex rounded-lg border overflow-hidden">
           {[
           { key: 'todos', label: 'Todos' },
