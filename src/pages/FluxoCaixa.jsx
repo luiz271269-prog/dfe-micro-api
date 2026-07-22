@@ -209,33 +209,33 @@ export default function FluxoCaixa() {
         </div>
       )}
 
-      {/* Cards resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6">
-        <GradientCard title="Entradas" value={formatCurrency(entradasTotal)} sub="próx. 30 dias" icon={TrendingUp} gradient="green" />
-        <GradientCard title="Saídas" value={formatCurrency(saidasTotal)} sub="próx. 30 dias" icon={TrendingDown} gradient="red" />
-        <GradientCard title="Saldo Atual" value={formatCurrency(saldoAtual)} sub="NeuralTec 36092-2" icon={Landmark} gradient="blue" />
-        <GradientCard title="Saldo Projetado" value={formatCurrency(saldoProjetado)} sub="em 30 dias" icon={BarChart3} gradient={alertaNegativo ? 'red' : 'teal'} />
-      </div>
-
-      {/* Gráficos */}
-      {chartData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-card rounded-xl border p-4">
-            <p className="text-sm font-semibold mb-4">Entradas vs Saídas por Semana</p>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={chartData}>
+      {/* Gráfico e totais compactos */}
+      <div className="grid grid-cols-1 gap-3 mb-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(420px,1fr)]">
+        <div className="bg-card rounded-xl border p-3">
+          <p className="text-xs font-semibold mb-1">Entradas vs Saídas por Semana</p>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={175}>
+              <BarChart data={chartData} margin={{ top: 8, right: 4, left: -18, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="semana" />
-                <YAxis />
+                <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(val) => formatCurrency(val)} />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="entradas" fill="#22c55e" name="Entradas" />
                 <Bar dataKey="saidas" fill="#ef4444" name="Saídas" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          ) : (
+            <div className="flex h-[175px] items-center justify-center text-xs text-muted-foreground">Sem movimentações nos próximos 30 dias</div>
+          )}
         </div>
-      )}
+        <div className="grid grid-cols-2 gap-2">
+          <GradientCard title="Entradas" value={formatCurrency(entradasTotal)} sub="próx. 30 dias" icon={TrendingUp} gradient="green" />
+          <GradientCard title="Saídas" value={formatCurrency(saidasTotal)} sub="próx. 30 dias" icon={TrendingDown} gradient="red" />
+          <GradientCard title="Saldo Atual" value={formatCurrency(saldoAtual)} sub="NeuralTec 36092-2" icon={Landmark} gradient="blue" />
+          <GradientCard title="Saldo Projetado" value={formatCurrency(saldoProjetado)} sub="em 30 dias" icon={BarChart3} gradient={alertaNegativo ? 'red' : 'teal'} />
+        </div>
+      </div>
 
       {/* Filtros */}
       <div className="bg-card rounded-xl border p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
