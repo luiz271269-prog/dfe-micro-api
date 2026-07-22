@@ -229,7 +229,7 @@ export default function Cobrancas() {
               <button
                 key={f.key}
                 onClick={() => setQuickFilter(f.key)}
-                className={`px-3 py-2 text-xs font-semibold transition-colors flex items-center gap-1.5 opacity-65 ${baseClass}`}>
+                className={`text-xs font-semibold transition-colors flex items-center gap-1.5 opacity-65 py-1 px-5 my-2 ${baseClass}`}>
                 
                 {f.highlight && <AlertTriangle className="w-3 h-3" />}
                 {f.label}
