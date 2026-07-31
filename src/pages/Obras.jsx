@@ -9,6 +9,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
+import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -277,6 +278,8 @@ export default function Obras() {
                 <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Tipo</th>
                 <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Responsável</th>
                 <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Descrição</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Quem comprou</th>
+                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Tipo de compra</th>
                 <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Orçado</th>
                 <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Realizado</th>
                 <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Dif.</th>
@@ -286,9 +289,9 @@ export default function Obras() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={13} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Nenhum registro encontrado</td></tr>
+                <tr><td colSpan={13} className="text-center py-12 text-muted-foreground">Nenhum registro encontrado</td></tr>
               ) : filtered.map(o => {
                 const dif = (o.orcamento || 0) - (o.valor || 0);
                 return (
@@ -299,6 +302,12 @@ export default function Obras() {
                     <td className="px-3 py-2.5 text-xs">{o.tipo === 'mao_obra' ? 'Mão de Obra' : 'Material'}</td>
                     <td className="px-3 py-2.5">{o.responsavel}</td>
                     <td className="px-3 py-2.5 max-w-[200px] truncate" title={o.descricao}>{o.descricao}</td>
+                    <td className="px-3 py-2.5">
+                      <SeletorClassificacao eixo="origem" entityName="ObraReforma" record={o} field="origem_compra" />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <SeletorClassificacao eixo="tipo" entityName="ObraReforma" record={o} field="tipo_compra" />
+                    </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">{o.orcamento ? formatCurrency(o.orcamento) : '—'}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums font-medium">{formatCurrency(o.valor)}</td>
                     <td className={`px-3 py-2.5 text-right tabular-nums text-xs font-semibold ${!o.orcamento ? 'text-muted-foreground' : dif >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -315,7 +324,7 @@ export default function Obras() {
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30">
-                  <td colSpan={6} className="px-3 py-3 font-semibold">{filtered.length} registro(s)</td>
+                  <td colSpan={8} className="px-3 py-3 font-semibold">{filtered.length} registro(s)</td>
                   <td className="px-3 py-3 text-right font-bold text-muted-foreground">{formatCurrency(totalOrcado)}</td>
                   <td className="px-3 py-3 text-right font-bold">{formatCurrency(totalRealizado)}</td>
                   <td className={`px-3 py-3 text-right font-bold text-xs ${totalOrcado > 0 ? (totalOrcado - totalRealizado >= 0 ? 'text-green-600' : 'text-red-600') : 'text-muted-foreground'}`}>

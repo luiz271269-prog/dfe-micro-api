@@ -50,6 +50,14 @@
       ],
       "title": "Local"
     },
+    "origem_compra": {
+      "type": "string",
+      "title": "Quem comprou (classifica\u00e7\u00e3o unificada: empresa, pro_labore, condominio, pessoal)"
+    },
+    "tipo_compra": {
+      "type": "string",
+      "title": "Tipo de compra (classifica\u00e7\u00e3o unificada: estoque, fretes, impostos, despesas, folha, pro_labore, obras, financeiro, outro)"
+    },
     "etapa_obra": {
       "type": "string",
       "enum": [
