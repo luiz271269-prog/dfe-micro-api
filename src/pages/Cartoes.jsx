@@ -17,6 +17,7 @@ import ReparoCartoesButton from '../components/cartoes/ReparoCartoesButton';
 import FaturaImageViewer from '../components/cartoes/FaturaImageViewer';
 import CartaoCalendarioCard from '../components/cartoes/CartaoCalendarioCard';
 import LancamentosEditableTable from '../components/cartoes/LancamentosEditableTable';
+import ReanalisarFaturaButton from '../components/cartoes/ReanalisarFaturaButton';
 import { FileImage } from 'lucide-react';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { seedSicoobFatura } from '../lib/seedData';
@@ -390,6 +391,7 @@ export default function Cartoes() {
                               </button>);
 
                         })()}
+                          <ReanalisarFaturaButton faturaId={fat.id} titulo={`${c.nome} — ${fat.mes_referencia}`} />
                         </div>
                         <div className="text-right">
                           <span className="text-xs font-bold">{formatCurrency(totalFaturaReal)}</span>
