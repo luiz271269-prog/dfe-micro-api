@@ -5,6 +5,7 @@ import { ArrowUp, ArrowDown, ChevronsUpDown, Plus } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import { aprenderEAplicarRegra } from '../../lib/autoCategorizacao';
 import ComprovantePicker from '../shared/ComprovantePicker';
+import SeletorClassificacao from '../shared/SeletorClassificacao';
 
 const CATEGORIAS_PADRAO = {
   alimentacao: 'Alimentação', combustivel: 'Combustível', lazer: 'Lazer',
@@ -154,6 +155,8 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
             <th className={`text-left ${headerCls}`} onClick={() => toggleSort('estabelecimento')}>Estabelecimento <SortIcon field="estabelecimento" /></th>
             <th className={`text-left ${headerCls}`} onClick={() => toggleSort('categoria')}>Categoria <SortIcon field="categoria" /></th>
             <th className={`text-left ${headerCls}`} onClick={() => toggleSort('natureza')}>Natureza <SortIcon field="natureza" /></th>
+            <th className="text-left py-2 font-semibold text-muted-foreground">Quem comprou</th>
+            <th className="text-left py-2 font-semibold text-muted-foreground">Tipo de compra</th>
             <th className={`text-right ${headerCls}`} onClick={() => toggleSort('valor')}>Valor <SortIcon field="valor" /></th>
             <th className="text-left py-2 pl-3 font-semibold text-muted-foreground">Comprovante</th>
           </tr>
@@ -228,6 +231,12 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
                     </span>
                   )}
                 </td>
+                <td className="py-1.5 pr-2">
+                  <SeletorClassificacao eixo="origem" entityName="LancamentoCartao" record={l} field="origem_compra" />
+                </td>
+                <td className="py-1.5 pr-2">
+                  <SeletorClassificacao eixo="tipo" entityName="LancamentoCartao" record={l} field="tipo_compra" />
+                </td>
                 <td className={`py-1.5 text-right font-medium tabular-nums ${l.valor < 0 ? 'text-green-600' : ''}`}>
                   {formatCurrency(l.valor)}
                 </td>
@@ -240,7 +249,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-foreground/20 font-bold">
-            <td className="py-2 uppercase text-[10px] tracking-wider text-muted-foreground" colSpan={4}>
+            <td className="py-2 uppercase text-[10px] tracking-wider text-muted-foreground" colSpan={6}>
               Total ({localRows.length} lançamentos)
             </td>
             <td className="py-2 text-right tabular-nums text-sm">{formatCurrency(totalValor)}</td>

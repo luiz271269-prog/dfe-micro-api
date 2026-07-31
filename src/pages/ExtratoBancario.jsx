@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
+import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizacao';
@@ -343,6 +344,8 @@ export default function ExtratoBancario() {
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Quem comprou</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Tipo de compra</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Saldo</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Comprovante</th>
@@ -350,9 +353,9 @@ export default function ExtratoBancario() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 text-muted-foreground">Nenhum lançamento encontrado</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhum lançamento encontrado</td></tr>
               ) : (
                 filtered.map(l => (
                   <tr key={l.id} className="border-b hover:bg-muted/30 transition-colors">
@@ -384,6 +387,12 @@ export default function ExtratoBancario() {
                         </button>
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      <SeletorClassificacao eixo="origem" entityName="LancamentoBancario" record={l} field="origem_compra" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <SeletorClassificacao eixo="tipo" entityName="LancamentoBancario" record={l} field="tipo_compra" />
+                    </td>
                     <td className={`px-4 py-3 text-right font-semibold tabular-nums ${(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(l.valor)}
                     </td>
@@ -396,7 +405,7 @@ export default function ExtratoBancario() {
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30">
-                  <td colSpan={3} className="px-4 py-3 font-semibold">Total ({filtered.length} lançamentos)</td>
+                  <td colSpan={5} className="px-4 py-3 font-semibold">Total ({filtered.length} lançamentos)</td>
                   <td className={`px-4 py-3 text-right font-bold ${totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totalGeral)}</td>
                   <td colSpan={2}></td>
                 </tr>

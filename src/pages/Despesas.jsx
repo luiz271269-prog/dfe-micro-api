@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
+import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -171,6 +172,8 @@ export default function Despesas() {
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Fornecedor</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Quem comprou</th>
+                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Tipo de compra</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Empresa</th>
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden lg:table-cell">Forma Pag.</th>
                 <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
@@ -180,9 +183,9 @@ export default function Despesas() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Nenhuma despesa encontrada</td></tr>
+                <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Nenhuma despesa encontrada</td></tr>
               ) : filtered.map(d => (
                 <tr key={d.id} className={`border-b hover:bg-muted/30 transition-colors ${d.status === 'vencido' ? 'bg-red-50' : ''}`}>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">{formatDate(d.data)}</td>
@@ -196,6 +199,12 @@ export default function Despesas() {
                       {(d.categoria || '').replace(/_/g,' ')}
                     </span>
                   </td>
+                  <td className="px-4 py-3">
+                    <SeletorClassificacao eixo="origem" entityName="DespesaOperacional" record={d} field="origem_compra" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <SeletorClassificacao eixo="tipo" entityName="DespesaOperacional" record={d} field="tipo_compra" />
+                  </td>
                   <td className="px-4 py-3 text-xs hidden md:table-cell">{d.empresa || '—'}</td>
                   <td className="px-4 py-3 text-xs hidden lg:table-cell">{d.forma_pagamento || '—'}</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(d.valor)}</td>
@@ -207,7 +216,7 @@ export default function Despesas() {
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30">
-                  <td colSpan={6} className="px-4 py-3 font-semibold">Total ({filtered.length} itens)</td>
+                  <td colSpan={8} className="px-4 py-3 font-semibold">Total ({filtered.length} itens)</td>
                   <td className="px-4 py-3 text-right font-bold text-red-600">{formatCurrency(filtered.reduce((s,d)=>s+(d.valor||0),0))}</td>
                   <td colSpan={2}></td>
                 </tr>
