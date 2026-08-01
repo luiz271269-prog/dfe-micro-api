@@ -25,6 +25,14 @@
       "default": "mensal",
       "title": "Tipo de folha (mensal, f\u00e9rias, 13\u00ba, rescis\u00e3o)"
     },
+    "origem_compra": {
+      "type": "string",
+      "title": "Quem comprou (classifica\u00e7\u00e3o unificada: empresa, pro_labore, condominio, pessoal)"
+    },
+    "tipo_compra": {
+      "type": "string",
+      "title": "Tipo de compra (classifica\u00e7\u00e3o unificada: estoque, fretes, impostos, despesas, folha, pro_labore, obras, financeiro, outro)"
+    },
     "salario_bruto": {
       "type": "number",
       "title": "Sal\u00e1rio Bruto"
