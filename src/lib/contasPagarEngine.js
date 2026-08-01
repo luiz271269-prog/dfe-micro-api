@@ -12,6 +12,22 @@
 
 import { ehSaidaContasPagar } from './extratoNatureza';
 
+// Tipo de compra padrão por origem, quando o registro ainda não foi classificado
+const TIPO_COMPRA_PADRAO = {
+  despesa: 'despesas',
+  tributo: 'impostos',
+  folha: 'folha',
+  fatura: 'financeiro',
+  compra: 'estoque',
+};
+
+function eixos(reg, origem_tipo) {
+  return {
+    origem_compra: reg?.origem_compra || 'empresa',
+    tipo_compra: reg?.tipo_compra || TIPO_COMPRA_PADRAO[origem_tipo] || 'outro',
+  };
+}
+
 export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [], compras = [] }) {
   const itens = [];
 
@@ -27,6 +43,7 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       data_vencimento: d.data_vencimento || d.data,
       empresa: d.empresa,
       forma_pagamento: d.forma_pagamento,
+      ...eixos(d, 'despesa'),
     });
   });
 
@@ -42,6 +59,7 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       data_vencimento: t.data_vencimento,
       empresa: t.empresa,
       forma_pagamento: 'boleto',
+      ...eixos(t, 'tributo'),
     });
   });
 
@@ -60,6 +78,7 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       data_vencimento: venc,
       empresa: f.empresa,
       forma_pagamento: 'transferencia',
+      ...eixos(f, 'folha'),
     });
   });
 
@@ -76,6 +95,7 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       data_vencimento: fat.data_vencimento,
       empresa: cartao?.empresa_vinculada || '—',
       forma_pagamento: 'debito_automatico',
+      ...eixos(fat, 'fatura'),
     });
   });
 
@@ -97,6 +117,7 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
         data_vencimento: c.data_emissao,
         empresa: c.empresa || '—',
         forma_pagamento: c.forma_pagamento,
+        ...eixos(c, 'compra'),
       });
     });
 
@@ -323,6 +344,8 @@ async function aplicarBaixa(base44, lanc, conta) {
     entidade_tipo: entidadeTipo,
     entidade_id: conta.origem_id,
     valor_alocado: valorAlocado,
+    origem_compra: conta.origem_compra,
+    tipo_compra: conta.tipo_compra,
     tipo_vinculo: 'pagamento_integral',
     conciliado_por: 'auto',
     confianca: 95,
@@ -332,6 +355,8 @@ async function aplicarBaixa(base44, lanc, conta) {
   // 3. Atualiza o lançamento para conciliado
   await base44.entities.LancamentoBancario.update(lanc.id, {
     status_conciliacao: 'conciliado',
+    origem_compra: lanc.origem_compra || conta.origem_compra,
+    tipo_compra: lanc.tipo_compra || conta.tipo_compra,
     vinculos_count: (lanc.vinculos_count || 0) + 1,
     valor_conciliado: (lanc.valor_conciliado || 0) + valorAlocado,
   });
