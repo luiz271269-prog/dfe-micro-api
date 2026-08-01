@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
 
 /**
  * Conciliação automática em lote.
@@ -183,6 +184,7 @@ Deno.serve(async (req) => {
           entidade_tipo: entidadeTipo,
           entidade_id: best.ref.id,
           valor_alocado: valorAbs,
+          ...eixosDoVinculo(best.ref, entidadeTipo, lanc),
           tipo_vinculo: 'pagamento_integral',
           conciliado_por: 'auto',
           confianca: Math.max(60, Math.round(100 - best.score * 5)),

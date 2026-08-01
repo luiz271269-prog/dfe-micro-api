@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
 
 /**
  * SERVIÇO CENTRAL DE VÍNCULO (fonte única de verdade da conciliação).
@@ -102,11 +103,16 @@ Deno.serve(async (req) => {
         }, { status: 422 });
       }
 
+      // Classificação unificada herdada da origem (fonte única de totalização)
+      const [origemReg] = await svc[entidade_tipo].filter({ id: entidade_id });
+      const eixos = eixosDoVinculo(origemReg, entidade_tipo, lanc);
+
       const novo = await svc.VinculoExtrato.create({
         lancamento_bancario_id,
         entidade_tipo,
         entidade_id,
         valor_alocado: valorNovo,
+        ...eixos,
         tipo_vinculo: tipo_vinculo || 'pagamento_integral',
         conciliado_por: conciliado_por || (internoOk ? 'auto' : 'manual'),
         confianca: confianca ?? 100,
