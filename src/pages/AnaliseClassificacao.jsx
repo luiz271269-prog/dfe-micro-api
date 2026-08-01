@@ -5,6 +5,7 @@ import MonthNavigator from '@/components/shared/MonthNavigator';
 import MatrizClassificacao from '@/components/classificacao/MatrizClassificacao';
 import DrilldownVinculos from '@/components/classificacao/DrilldownVinculos';
 import CoberturaPeriodo from '@/components/classificacao/CoberturaPeriodo';
+import RodarPipelineButton from '@/components/classificacao/RodarPipelineButton';
 
 export default function AnaliseClassificacao() {
   const [vinculos, setVinculos] = useState([]);
@@ -14,8 +15,7 @@ export default function AnaliseClassificacao() {
   const [anual, setAnual] = useState(false);
   const [drill, setDrill] = useState(null);
 
-  useEffect(() => {
-    (async () => {
+  const carregar = async () => {
       setLoading(true);
       const [v, l] = await Promise.all([
         base44.entities.VinculoExtrato.list('-created_date', 10000),
@@ -24,8 +24,9 @@ export default function AnaliseClassificacao() {
       setVinculos(v || []);
       setLancs(l || []);
       setLoading(false);
-    })();
-  }, []);
+  };
+
+  useEffect(() => { carregar(); }, []);
 
   const lancPorId = useMemo(() => {
     const m = {};
@@ -63,7 +64,9 @@ export default function AnaliseClassificacao() {
       <PageHeader
         title="Análise por Classificação"
         subtitle="Totais consolidados a partir dos vínculos do extrato (fonte única da verdade)"
-      />
+      >
+        <RodarPipelineButton onConcluido={carregar} />
+      </PageHeader>
 
       <MonthNavigator
         selectedMonth={mes}
