@@ -14,7 +14,9 @@ export default function TabelaMensalPorTipo({ dados, tipos }) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <h3 className="text-sm font-semibold">Pagamentos mês a mês por tipo</h3>
-      <p className="text-xs text-muted-foreground mb-3">Valor em R$ e, abaixo, o percentual sobre o faturamento do mês</p>
+      <p className="text-xs text-muted-foreground mb-3">
+        Valor em R$ e, abaixo, o percentual sobre o faturamento do mês. Transferências entre contas e recebimentos não entram como despesa.
+      </p>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>

@@ -1,6 +1,11 @@
 // Consolida os gastos classificados (VinculoExtrato + lançamentos classificados direto no extrato)
 // em linhas mensais {mes, origem, tipo, valor} e agregados para o relatório gerencial.
 
+// Movimentos que NÃO são despesa real (dinheiro que só troca de lugar ou entrada de caixa)
+const CATEGORIAS_NAO_DESPESA = ['transferencia', 'interno', 'recebimento'];
+const ENTIDADES_NAO_DESPESA = ['NotaFiscal', 'TituloCobranca', 'TransferenciaInterna'];
+const VINCULOS_NAO_DESPESA = ['recebimento_integral', 'recebimento_parcial', 'estorno'];
+
 export function construirLinhas(vinculos, lancs) {
   const lancById = new Map(lancs.map((l) => [l.id, l]));
   const idsComVinculo = new Set(vinculos.map((v) => v.lancamento_bancario_id));
@@ -9,6 +14,9 @@ export function construirLinhas(vinculos, lancs) {
   for (const v of vinculos) {
     const l = lancById.get(v.lancamento_bancario_id);
     if (!l || (l.valor || 0) >= 0) continue;
+    if (ENTIDADES_NAO_DESPESA.includes(v.entidade_tipo)) continue;
+    if (VINCULOS_NAO_DESPESA.includes(v.tipo_vinculo)) continue;
+    if (CATEGORIAS_NAO_DESPESA.includes(l.categoria)) continue;
     linhas.push({
       mes: (l.data || '').slice(0, 7),
       origem: v.origem_compra || l.origem_compra || 'sem_classificacao',
@@ -19,6 +27,7 @@ export function construirLinhas(vinculos, lancs) {
 
   for (const l of lancs) {
     if (idsComVinculo.has(l.id) || (l.valor || 0) >= 0) continue;
+    if (CATEGORIAS_NAO_DESPESA.includes(l.categoria)) continue;
     if (!l.origem_compra || !l.tipo_compra) continue;
     linhas.push({
       mes: (l.data || '').slice(0, 7),
