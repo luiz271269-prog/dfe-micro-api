@@ -6,6 +6,7 @@ import MatrizClassificacao from '@/components/classificacao/MatrizClassificacao'
 import DrilldownVinculos from '@/components/classificacao/DrilldownVinculos';
 import CoberturaPeriodo from '@/components/classificacao/CoberturaPeriodo';
 import RodarPipelineButton from '@/components/classificacao/RodarPipelineButton';
+import ExportarCSVButton from '@/components/classificacao/ExportarCSVButton';
 
 export default function AnaliseClassificacao() {
   const [vinculos, setVinculos] = useState([]);
@@ -66,6 +67,11 @@ export default function AnaliseClassificacao() {
         subtitle="Totais consolidados a partir dos vínculos do extrato (fonte única da verdade)"
       >
         <RodarPipelineButton onConcluido={carregar} />
+        <ExportarCSVButton
+          vinculos={filtrados}
+          lancPorId={lancPorId}
+          nomeArquivo={`classificacao-${anual ? mes.slice(0, 4) : mes}`}
+        />
       </PageHeader>
 
       <MonthNavigator
