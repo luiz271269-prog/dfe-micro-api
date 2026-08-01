@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart,
   Hammer, CreditCard, DollarSign, Users, BarChart3, CloudUpload, Map,
   Scale, Package, GitCompare, FolderOpen, Target, Repeat, Bot, FileCode,
-  Calculator, Activity, Link2, ShieldCheck, Wallet, FolderSync, CircleDollarSign
+  Calculator, Activity, Link2, ShieldCheck, Wallet, FolderSync, CircleDollarSign, PieChart
 } from 'lucide-react';
 
 // Menu agrupado pela lógica dos fluxos (espelha o Diagnóstico de Fluxos)
@@ -14,6 +14,7 @@ export const navGroups = [
       { path: '/mapa', label: 'Mapa Geral', icon: Map },
       { path: '/fluxocaixa', label: 'Fluxo de Caixa', icon: BarChart3 },
       { path: '/extrato', label: 'Extrato Bancário', icon: Landmark },
+      { path: '/analise-classificacao', label: 'Análise por Classificação', icon: PieChart },
     ],
   },
   {

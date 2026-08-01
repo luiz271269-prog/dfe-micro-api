@@ -39,6 +39,7 @@ import CertificadoNFe from './pages/CertificadoNFe';
 import NFeRecebidas from './pages/NFeRecebidas';
 import PastasMonitoradas from './pages/PastasMonitoradas';
 import ExperimentarBadges from './pages/ExperimentarBadges';
+import AnaliseClassificacao from './pages/AnaliseClassificacao';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -102,6 +103,7 @@ const AuthenticatedApp = () => {
         <Route path="/nfe-recebidas" element={<NFeRecebidas />} />
         <Route path="/pastas-monitoradas" element={<PastasMonitoradas />} />
         <Route path="/experimentar-badges" element={<ExperimentarBadges />} />
+        <Route path="/analise-classificacao" element={<AnaliseClassificacao />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
