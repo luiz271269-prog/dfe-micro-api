@@ -32,7 +32,8 @@ export function construirLinhas(vinculos, lancs) {
 }
 
 export function ultimosMeses(linhas, qtd = 12) {
-  const meses = [...new Set(linhas.map((r) => r.mes))].sort();
+  const atual = new Date().toISOString().slice(0, 7);
+  const meses = [...new Set(linhas.map((r) => r.mes))].filter((m) => m <= atual).sort();
   return meses.slice(-qtd);
 }
 

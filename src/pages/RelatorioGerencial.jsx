@@ -5,6 +5,7 @@ import ResumoExecutivo from '@/components/relatorio/ResumoExecutivo';
 import EvolucaoMensal from '@/components/relatorio/EvolucaoMensal';
 import TabelaDesempenho from '@/components/relatorio/TabelaDesempenho';
 import ComparativoReceitaCustos from '@/components/relatorio/ComparativoReceitaCustos';
+import TabelaMensalPorTipo from '@/components/relatorio/TabelaMensalPorTipo';
 import {
   construirLinhas,
   ultimosMeses,
@@ -73,6 +74,7 @@ export default function RelatorioGerencial() {
         <>
           <ResumoExecutivo serie={serie} porTipo={porTipo} meses={meses} />
           <ComparativoReceitaCustos dados={comparativo.dados} tipos={comparativo.tipos} />
+          <TabelaMensalPorTipo dados={comparativo.dados} tipos={comparativo.tipos} />
           <EvolucaoMensal serie={serie} />
           <TabelaDesempenho titulo="Desempenho por tipo de compra" eixo="tipo" dados={porTipo} />
           <TabelaDesempenho titulo="Desempenho por quem comprou" eixo="origem" dados={porOrigem} />
