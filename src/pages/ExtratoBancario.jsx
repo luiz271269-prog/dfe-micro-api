@@ -18,6 +18,7 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
+import { ORIGENS_COMPRA, TIPOS_COMPRA } from '../lib/classificacaoUnificada';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizacao';
@@ -37,6 +38,7 @@ export default function ExtratoBancario() {
   const [reclassResult, setReclassResult] = useState(null);
   const [form, setForm] = useState({
     data: '', descricao: '', valor: '', categoria: 'recebimento',
+    origem_compra: 'empresa', tipo_compra: 'despesas',
     saldo_apos: '', conta_bancaria: 'NeuralTec 36092-2', detalhe: '', mes_referencia: ''
   });
 
@@ -170,7 +172,7 @@ export default function ExtratoBancario() {
       saldo_apos: form.saldo_apos ? parseFloat(form.saldo_apos) : null,
     });
     setShowForm(false);
-    setForm({ data: '', descricao: '', valor: '', categoria: 'recebimento', saldo_apos: '', conta_bancaria: 'NeuralTec 36092-2', detalhe: '', mes_referencia: '' });
+    setForm({ data: '', descricao: '', valor: '', categoria: 'recebimento', origem_compra: 'empresa', tipo_compra: 'despesas', saldo_apos: '', conta_bancaria: 'NeuralTec 36092-2', detalhe: '', mes_referencia: '' });
     loadData();
   }
 
@@ -436,6 +438,26 @@ export default function ExtratoBancario() {
                 </Select>
               </div>
               <div><Label>Mês Referência</Label><Input placeholder="ex: 2025-03" value={form.mes_referencia} onChange={e => setForm({...form, mes_referencia: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Quem comprou</Label>
+                <Select value={form.origem_compra} onValueChange={v => setForm({...form, origem_compra: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(ORIGENS_COMPRA).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Tipo de compra</Label>
+                <Select value={form.tipo_compra} onValueChange={v => setForm({...form, tipo_compra: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TIPOS_COMPRA).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label>Saldo Após</Label><Input type="number" step="0.01" value={form.saldo_apos} onChange={e => setForm({...form, saldo_apos: e.target.value})} /></div>
