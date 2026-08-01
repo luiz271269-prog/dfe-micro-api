@@ -66,7 +66,8 @@ export default function AnaliseClassificacao() {
   const diretos = useMemo(
     () =>
       lancsPeriodo
-        .filter((l) => !idsComVinculo.has(l.id) && l.origem_compra && l.tipo_compra)
+        // só saídas: entradas (recebimentos) não são "compras" e distorceriam a matriz
+        .filter((l) => !idsComVinculo.has(l.id) && (l.valor || 0) < 0 && l.origem_compra && l.tipo_compra)
         .map((l) => ({
           id: `direto-${l.id}`,
           lancamento_bancario_id: l.id,
@@ -87,7 +88,7 @@ export default function AnaliseClassificacao() {
   }, [idsComVinculo, diretos]);
 
   const naoCobertos = useMemo(
-    () => lancsPeriodo.filter((l) => !idsCobertos.has(l.id)),
+    () => lancsPeriodo.filter((l) => (l.valor || 0) < 0 && !idsCobertos.has(l.id)),
     [lancsPeriodo, idsCobertos]
   );
 
@@ -117,7 +118,7 @@ export default function AnaliseClassificacao() {
 
       {!loading && (
         <CoberturaPeriodo
-          lancsPeriodo={lancsPeriodo}
+          lancsPeriodo={lancsPeriodo.filter((l) => (l.valor || 0) < 0)}
           idsComVinculo={idsCobertos}
           onVerNaoCobertos={() => setClassificando(true)}
         />
