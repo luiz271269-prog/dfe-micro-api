@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
 
 // PIPELINE DINÂMICO DE CONCILIAÇÃO
 // Orquestra todos os motores em sequência e depois auto-aprova
@@ -6,6 +7,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 // Roda via automação agendada (sem usuário) ou manualmente por admin.
 
 const ENGINES = [
+  'sanearClassificacaoExtrato',
   'conciliarContasAPagarExtrato',
   'conciliarCobrancasBanco',
   'conciliarFolhaExtrato',
@@ -77,11 +79,15 @@ Deno.serve(async (req) => {
         if (!baixa) continue;
         await svc[s.entidade_tipo].update(s.entidade_id, baixa);
 
+        const origemReg = await svc[s.entidade_tipo].get(s.entidade_id).catch(() => null);
+        const eixos = eixosDoVinculo(origemReg, s.entidade_tipo, lanc);
+
         await svc.VinculoExtrato.create({
           lancamento_bancario_id: lanc.id,
           entidade_tipo: s.entidade_tipo,
           entidade_id: s.entidade_id,
           valor_alocado: Math.abs(lanc.valor),
+          ...eixos,
           tipo_vinculo: isCredito ? 'recebimento_integral' : 'pagamento_integral',
           conciliado_por: 'auto',
           confianca: s.confianca,
