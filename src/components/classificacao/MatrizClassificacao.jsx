@@ -2,7 +2,7 @@ import { getOpcoes, getCor, loadCustom } from '@/lib/classificacaoUnificada';
 
 const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export default function MatrizClassificacao({ vinculos }) {
+export default function MatrizClassificacao({ vinculos, onSelecionar }) {
   const custom = loadCustom();
   const origens = getOpcoes('origem', custom);
   const tipos = getOpcoes('tipo', custom);
@@ -11,11 +11,14 @@ export default function MatrizClassificacao({ vinculos }) {
   const chaveT = Object.keys(tipos).concat('__sem__');
 
   const matriz = {};
+  const grupos = {};
   let total = 0;
   for (const v of vinculos) {
     const o = origens[v.origem_compra] ? v.origem_compra : '__sem__';
     const t = tipos[v.tipo_compra] ? v.tipo_compra : '__sem__';
-    matriz[`${o}|${t}`] = (matriz[`${o}|${t}`] || 0) + (v.valor_alocado || 0);
+    const k = `${o}|${t}`;
+    matriz[k] = (matriz[k] || 0) + (v.valor_alocado || 0);
+    (grupos[k] = grupos[k] || []).push(v);
     total += v.valor_alocado || 0;
   }
   const somaLinha = (o) => chaveT.reduce((s, t) => s + (matriz[`${o}|${t}`] || 0), 0);
@@ -48,7 +51,14 @@ export default function MatrizClassificacao({ vinculos }) {
               {colsVisiveis.map((t) => {
                 const v = matriz[`${o}|${t}`] || 0;
                 return (
-                  <td key={t} className="text-right p-2 tabular-nums text-muted-foreground">
+                  <td
+                    key={t}
+                    onClick={() => v && onSelecionar?.(
+                      `${label(origens, o)} · ${label(tipos, t)}`,
+                      grupos[`${o}|${t}`] || []
+                    )}
+                    className={`text-right p-2 tabular-nums text-muted-foreground ${v ? 'cursor-pointer hover:bg-primary/10 hover:text-foreground' : ''}`}
+                  >
                     {v ? fmt(v) : '—'}
                   </td>
                 );

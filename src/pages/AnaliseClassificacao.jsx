@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/shared/PageHeader';
 import MonthNavigator from '@/components/shared/MonthNavigator';
 import MatrizClassificacao from '@/components/classificacao/MatrizClassificacao';
+import DrilldownVinculos from '@/components/classificacao/DrilldownVinculos';
 
 export default function AnaliseClassificacao() {
   const [vinculos, setVinculos] = useState([]);
@@ -10,6 +11,7 @@ export default function AnaliseClassificacao() {
   const [loading, setLoading] = useState(true);
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
   const [anual, setAnual] = useState(false);
+  const [drill, setDrill] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -24,6 +26,11 @@ export default function AnaliseClassificacao() {
     })();
   }, []);
 
+  const lancPorId = useMemo(() => {
+    const m = {};
+    for (const l of lancs) m[l.id] = l;
+    return m;
+  }, [lancs]);
   const dataPorLanc = useMemo(() => {
     const m = {};
     for (const l of lancs) m[l.id] = l.data || '';
@@ -66,9 +73,26 @@ export default function AnaliseClassificacao() {
             {filtrados.length} vínculos no período
             {semClass > 0 && ` · ${semClass} sem classificação completa`}
           </div>
-          <MatrizClassificacao vinculos={filtrados} />
+          <MatrizClassificacao
+            vinculos={filtrados}
+            onSelecionar={(titulo, itens) => setDrill({
+              titulo,
+              itens: itens.map((v) => ({
+                ...v,
+                data: lancPorId[v.lancamento_bancario_id]?.data,
+                descricao: lancPorId[v.lancamento_bancario_id]?.descricao,
+              })),
+            })}
+          />
         </>
       )}
+
+      <DrilldownVinculos
+        open={!!drill}
+        onOpenChange={(o) => !o && setDrill(null)}
+        titulo={drill?.titulo}
+        itens={drill?.itens}
+      />
     </div>
   );
 }
