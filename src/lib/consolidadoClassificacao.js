@@ -69,6 +69,39 @@ export function desempenhoPorCategoria(linhas, meses, chave = 'tipo') {
     .sort((a, b) => b.total - a.total);
 }
 
+// Receita mensal a partir das notas fiscais (ignora anuladas e NF-espelho de CI)
+export function receitaMensal(notas, meses) {
+  const acc = {};
+  for (const n of notas || []) {
+    if (n.status === 'anulada' || n.is_espelho_ci) continue;
+    const mes = (n.data_emissao || '').slice(0, 7);
+    if (!meses.includes(mes)) continue;
+    acc[mes] = (acc[mes] || 0) + (n.valor_total || 0);
+  }
+  return acc;
+}
+
+// Comparativo mês a mês: receita x custos abertos por tipo de compra
+export function comparativoMensal(linhas, notas, meses) {
+  const receitas = receitaMensal(notas, meses);
+  const tipos = [...new Set(linhas.filter((r) => meses.includes(r.mes)).map((r) => r.tipo))].sort();
+
+  const dados = meses.map((mes) => {
+    const doMes = linhas.filter((r) => r.mes === mes);
+    const row = { mes, receita: receitas[mes] || 0, custoTotal: 0 };
+    for (const t of tipos) {
+      const v = doMes.filter((r) => r.tipo === t).reduce((s, r) => s + r.valor, 0);
+      row[t] = v;
+      row.custoTotal += v;
+    }
+    row.resultado = row.receita - row.custoTotal;
+    row.margem = row.receita ? row.resultado / row.receita : null;
+    return row;
+  });
+
+  return { dados, tipos };
+}
+
 export function serieMensal(linhas, meses) {
   return meses.map((mes) => ({
     mes,
