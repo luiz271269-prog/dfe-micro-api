@@ -8,10 +8,13 @@ const rotulo = (t) => TIPOS_COMPRA[t] || t.replace(/_/g, ' ');
 export default function TabelaMensalPorTipo({ dados, tipos }) {
   const totalTipo = (t) => dados.reduce((s, d) => s + (d[t] || 0), 0);
   const ordenados = [...tipos].sort((a, b) => totalTipo(b) - totalTipo(a));
+  const receitaTotal = dados.reduce((s, d) => s + d.receita, 0);
+  const pct = (v, base) => (base > 0 ? `${((v / base) * 100).toFixed(1)}%` : '—');
 
   return (
     <div className="rounded-xl border bg-card p-4">
-      <h3 className="text-sm font-semibold mb-3">Pagamentos mês a mês por tipo</h3>
+      <h3 className="text-sm font-semibold">Pagamentos mês a mês por tipo</h3>
+      <p className="text-xs text-muted-foreground mb-3">Valor em R$ e, abaixo, o percentual sobre o faturamento do mês</p>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -37,18 +40,30 @@ export default function TabelaMensalPorTipo({ dados, tipos }) {
               <tr key={t} className="border-b last:border-0">
                 <td className="py-2 pr-3 capitalize sticky left-0 bg-card">{rotulo(t)}</td>
                 {dados.map((d) => (
-                  <td key={d.mes} className="text-right py-2 px-2 whitespace-nowrap">{fmt(d[t])}</td>
+                  <td key={d.mes} className="text-right py-2 px-2 whitespace-nowrap">
+                    {fmt(d[t])}
+                    <div className="text-[10px] text-muted-foreground">{pct(d[t] || 0, d.receita)}</div>
+                  </td>
                 ))}
-                <td className="text-right py-2 pl-2 font-semibold whitespace-nowrap">{fmt(totalTipo(t))}</td>
+                <td className="text-right py-2 pl-2 font-semibold whitespace-nowrap">
+                  {fmt(totalTipo(t))}
+                  <div className="text-[10px] font-normal text-muted-foreground">{pct(totalTipo(t), receitaTotal)}</div>
+                </td>
               </tr>
             ))}
             <tr className="border-t">
               <td className="py-2 pr-3 font-semibold sticky left-0 bg-card">Total pago</td>
               {dados.map((d) => (
-                <td key={d.mes} className="text-right py-2 px-2 font-semibold text-red-600 whitespace-nowrap">{fmt(d.custoTotal)}</td>
+                <td key={d.mes} className="text-right py-2 px-2 font-semibold text-red-600 whitespace-nowrap">
+                  {fmt(d.custoTotal)}
+                  <div className="text-[10px] font-normal text-muted-foreground">{pct(d.custoTotal, d.receita)}</div>
+                </td>
               ))}
               <td className="text-right py-2 pl-2 font-bold text-red-600 whitespace-nowrap">
                 {fmt(dados.reduce((s, d) => s + d.custoTotal, 0))}
+                <div className="text-[10px] font-normal text-muted-foreground">
+                  {pct(dados.reduce((s, d) => s + d.custoTotal, 0), receitaTotal)}
+                </div>
               </td>
             </tr>
             <tr>
@@ -56,6 +71,7 @@ export default function TabelaMensalPorTipo({ dados, tipos }) {
               {dados.map((d) => (
                 <td key={d.mes} className={`text-right py-2 px-2 font-semibold whitespace-nowrap ${d.resultado >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {fmt(d.resultado)}
+                  <div className="text-[10px] font-normal text-muted-foreground">{pct(d.resultado, d.receita)}</div>
                 </td>
               ))}
               <td className="text-right py-2 pl-2 font-bold whitespace-nowrap">
