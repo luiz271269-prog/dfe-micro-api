@@ -4,6 +4,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import MonthNavigator from '@/components/shared/MonthNavigator';
 import MatrizClassificacao from '@/components/classificacao/MatrizClassificacao';
 import DrilldownVinculos from '@/components/classificacao/DrilldownVinculos';
+import CoberturaPeriodo from '@/components/classificacao/CoberturaPeriodo';
 
 export default function AnaliseClassificacao() {
   const [vinculos, setVinculos] = useState([]);
@@ -47,6 +48,16 @@ export default function AnaliseClassificacao() {
 
   const semClass = filtrados.filter((v) => !v.origem_compra || !v.tipo_compra).length;
 
+  const lancsPeriodo = useMemo(() => {
+    const ano = mes.slice(0, 4);
+    return lancs.filter((l) => (anual ? (l.data || '').startsWith(ano) : (l.data || '').startsWith(mes)));
+  }, [lancs, mes, anual]);
+
+  const idsComVinculo = useMemo(
+    () => new Set(vinculos.map((v) => v.lancamento_bancario_id)),
+    [vinculos]
+  );
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -60,6 +71,25 @@ export default function AnaliseClassificacao() {
         isAnnual={anual}
         onToggleAnnual={() => setAnual((a) => !a)}
       />
+
+      {!loading && (
+        <CoberturaPeriodo
+          lancsPeriodo={lancsPeriodo}
+          idsComVinculo={idsComVinculo}
+          onVerNaoCobertos={(itens) =>
+            setDrill({
+              titulo: 'Lançamentos do extrato sem vínculo (fora da matriz)',
+              itens: itens.map((l) => ({
+                id: l.id,
+                data: l.data,
+                descricao: l.descricao,
+                entidade_tipo: l.categoria || '—',
+                valor_alocado: Math.abs(l.valor || 0),
+              })),
+            })
+          }
+        />
+      )}
 
       {loading ? (
         <div className="p-8 text-center text-sm text-muted-foreground">Carregando…</div>
