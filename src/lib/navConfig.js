@@ -15,6 +15,7 @@ export const navGroups = [
       { path: '/fluxocaixa', label: 'Fluxo de Caixa', icon: BarChart3 },
       { path: '/extrato', label: 'Extrato Bancário', icon: Landmark },
       { path: '/analise-classificacao', label: 'Análise por Classificação', icon: PieChart },
+      { path: '/relatorio-gerencial', label: 'Relatório Gerencial', icon: BarChart3 },
     ],
   },
   {

@@ -40,6 +40,7 @@ import NFeRecebidas from './pages/NFeRecebidas';
 import PastasMonitoradas from './pages/PastasMonitoradas';
 import ExperimentarBadges from './pages/ExperimentarBadges';
 import AnaliseClassificacao from './pages/AnaliseClassificacao';
+import RelatorioGerencial from './pages/RelatorioGerencial';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -104,6 +105,7 @@ const AuthenticatedApp = () => {
         <Route path="/pastas-monitoradas" element={<PastasMonitoradas />} />
         <Route path="/experimentar-badges" element={<ExperimentarBadges />} />
         <Route path="/analise-classificacao" element={<AnaliseClassificacao />} />
+        <Route path="/relatorio-gerencial" element={<RelatorioGerencial />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
