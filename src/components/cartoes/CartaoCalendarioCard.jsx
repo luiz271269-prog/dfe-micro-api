@@ -25,7 +25,7 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
   return (
     <button
       onClick={onToggle}
-      className={`group relative w-full text-left rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex items-stretch aspect-[1.586/1] ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
+      className={`group relative w-[227px] h-[113px] shrink-0 text-left rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex items-stretch ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
 
       {/* Painel esquerdo (70%): gradiente da instituição com os dados */}
       <div className={`w-[70%] bg-gradient-to-br ${b.gradient} p-2.5 flex flex-col min-w-0`}>
