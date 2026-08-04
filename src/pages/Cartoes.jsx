@@ -286,7 +286,7 @@ export default function Cartoes() {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
           <Calendar className="w-4 h-4" /> Calendário de Vencimentos
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 items-start">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
           {cartoesAgrupados.map((c) => {
             const cardFaturas = getCardFaturas(c.ids);
             const latestFat = cardFaturas[0] || getUltimaFaturaGeral(c.ids);
