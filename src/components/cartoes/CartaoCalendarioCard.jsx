@@ -30,7 +30,10 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
       {/* Painel esquerdo (70%): gradiente da instituição com os dados */}
       <div className={`w-[70%] bg-gradient-to-br ${b.gradient} px-2.5 py-2 flex flex-col min-w-0`}>
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[9px] font-bold text-white/90 leading-none shrink-0">dia {c.dia_vencimento}</span>
+          <span className="shrink-0 flex items-baseline gap-0.5 rounded-md border border-white/70 bg-white/15 px-1.5 py-0.5 leading-none">
+            <span className="text-[8px] font-semibold text-white/80">dia</span>
+            <span className="text-[14px] font-extrabold text-white tabular-nums">{c.dia_vencimento}</span>
+          </span>
           <span className="text-[8px] font-bold px-1.5 py-px rounded-full bg-white/90 text-slate-700 leading-tight shrink-0">
             {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
           </span>
