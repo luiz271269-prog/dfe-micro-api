@@ -25,7 +25,7 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
   return (
     <button
       onClick={onToggle}
-      className={`group relative w-full text-left rounded-xl overflow-hidden bg-gradient-to-br px-10 ${b.gradient} shadow-md hover:shadow-lg transition-all ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
+      className={`group relative w-full text-left rounded-xl overflow-hidden bg-gradient-to-br px-16 ${b.gradient} shadow-md hover:shadow-lg transition-all ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
 
       {/* Topo compacto: dia + logo real do banco + tipo */}
       <div className="px-3 pt-2.5">
