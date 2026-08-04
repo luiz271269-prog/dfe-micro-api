@@ -25,7 +25,7 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
   return (
     <button
       onClick={onToggle}
-      className={`group relative w-full text-left rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex aspect-[1.586/1] ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
+      className={`group relative w-full text-left rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex items-stretch aspect-[1.586/1] ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
 
       {/* Painel esquerdo (70%): gradiente da instituição com os dados */}
       <div className={`w-[70%] bg-gradient-to-br ${b.gradient} p-2.5 flex flex-col min-w-0`}>
@@ -50,7 +50,7 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
       </div>
 
       {/* Painel direito (30%): miniatura da fatura + bandeira */}
-      <div className="w-[30%] bg-slate-50 p-1.5 flex flex-col items-center justify-between gap-1">
+      <div className="w-[30%] bg-slate-200 p-1.5 flex flex-col items-center justify-between gap-1">
         {fileUrl ? (
           <span
             role="button"
