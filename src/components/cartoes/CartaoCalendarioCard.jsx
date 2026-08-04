@@ -28,21 +28,26 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
       className={`group relative w-[227px] h-[113px] shrink-0 text-left rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all flex items-stretch ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
 
       {/* Painel esquerdo (70%): gradiente da instituição com os dados */}
-      <div className={`w-[70%] bg-gradient-to-br ${b.gradient} p-2.5 flex flex-col min-w-0`}>
-        <p className="text-[10px] font-semibold text-white/90 leading-none">{c.dia_vencimento} dia</p>
+      <div className={`w-[70%] bg-gradient-to-br ${b.gradient} px-2.5 py-2 flex flex-col min-w-0`}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[9px] font-bold text-white/90 leading-none shrink-0">dia {c.dia_vencimento}</span>
+          <span className="text-[8px] font-bold px-1.5 py-px rounded-full bg-white/90 text-slate-700 leading-tight shrink-0">
+            {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
+          </span>
+        </div>
         <p className="text-[11px] font-bold text-white leading-tight truncate mt-0.5" title={c.nome}>{c.nome}</p>
-        <span className="mt-1 self-start text-[8px] font-bold px-1.5 py-px rounded-full bg-white text-slate-700 leading-tight">
-          {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
-        </span>
         <div className="flex-1" />
         {latestFat ? (
           <>
-            <p className="text-[15px] font-extrabold text-white tracking-tight tabular-nums whitespace-nowrap leading-tight">
-              {formatCurrency(latestFat.valor_total)}
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <p className="text-[15px] font-extrabold text-white tracking-tight tabular-nums whitespace-nowrap leading-none">
+                {formatCurrency(latestFat.valor_total)}
+              </p>
+              {pill && <span className={`text-[8px] font-bold px-1.5 py-px rounded-full leading-tight shrink-0 ${pill.cls}`}>{pill.label}</span>}
+            </div>
+            <p className="text-[9px] text-white/90 tabular-nums mt-1 leading-tight truncate">
+              Venc. {formatDate(latestFat.data_vencimento)} · {latestFat.mes_referencia} · {faturasCount} fat.
             </p>
-            {pill && <span className={`mt-0.5 self-start text-[8px] font-bold px-1.5 py-px rounded-full leading-tight ${pill.cls}`}>{pill.label}</span>}
-            <p className="text-[9px] text-white/90 tabular-nums mt-0.5 leading-tight">Venc. {formatDate(latestFat.data_vencimento)}</p>
-            <p className="text-[9px] text-white/80 leading-tight">{latestFat.mes_referencia} · {faturasCount} fat.</p>
           </>
         ) : (
           <p className="text-[10px] text-white/90 font-medium">Sem fatura · vence dia {c.dia_vencimento}</p>
