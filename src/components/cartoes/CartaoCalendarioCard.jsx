@@ -7,13 +7,13 @@ const BANDEIRAS = {
   Sicredi: { gradient: 'from-green-500 to-green-700', logo: 'https://logo.clearbit.com/sicredi.com.br' },
   Acentra: { gradient: 'from-orange-400 to-orange-600', logo: 'https://logo.clearbit.com/acentra.coop.br' },
   Magalu: { gradient: 'from-blue-500 to-blue-700', logo: 'https://logo.clearbit.com/magazineluiza.com.br' },
-  default: { gradient: 'from-slate-500 to-slate-700', logo: null }
+  default: { gradient: 'from-slate-500 to-slate-700', logo: null },
 };
 
 const STATUS_PILL = {
-  aberta: { label: 'Aberta', cls: 'bg-teal-50 text-teal-800' },
+  aberta: { label: 'Aberta', cls: 'bg-white/25 text-white' },
   paga_total: { label: 'Paga', cls: 'bg-green-100 text-green-800' },
-  vencida: { label: 'Vencida', cls: 'bg-red-100 text-red-700' }
+  vencida: { label: 'Vencida', cls: 'bg-red-100 text-red-700' },
 };
 
 export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, faturasCount, isExpanded, onToggle, onViewFile }) {
@@ -25,62 +25,56 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
   return (
     <button
       onClick={onToggle}
-      className={`group relative w-full text-left rounded-xl overflow-hidden bg-gradient-to-br px-16 ${b.gradient} shadow-md hover:shadow-lg transition-all ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
+      className={`group relative w-full text-left rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all flex aspect-[1.586/1] ${isExpanded ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
 
-      {/* Topo compacto: dia + logo real do banco + tipo */}
-      <div className="px-3 pt-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-b from-white to-slate-200 border border-white/60 shadow flex flex-col items-center justify-center shrink-0 leading-none">
-              <span className="text-[11px] font-extrabold text-slate-800">{c.dia_vencimento}</span>
-              <span className="text-[7px] font-medium text-slate-600 -mt-0.5">dia</span>
-            </div>
-            <p className="text-xs font-bold text-white leading-tight truncate" title={c.nome}>{c.nome}</p>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full bg-white/25 text-white">
-              {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
-            </span>
-            {b.logo ?
-            <span className="h-7 w-7 rounded-md bg-white p-0.5 flex items-center justify-center shadow" title={c.bandeira}>
-                <img src={b.logo} alt={c.bandeira} className="max-h-full max-w-full object-contain rounded-sm" />
-              </span> :
-            <span className="text-xs font-extrabold text-white">{c.bandeira || '—'}</span>
-            }
-          </div>
-        </div>
+      {/* Painel esquerdo (70%): gradiente do banco com dados empilhados */}
+      <div className={`w-[70%] bg-gradient-to-br ${b.gradient} p-3 flex flex-col min-w-0`}>
+        <p className="text-[11px] font-semibold text-white/90">{c.dia_vencimento} dia</p>
+        <p className="text-xs font-bold text-white leading-tight truncate" title={c.nome}>{c.nome}</p>
+        <span className="mt-1 self-start text-[9px] font-bold px-2 py-0.5 rounded-full bg-white text-slate-700">
+          {c.tipo === 'empresarial' ? 'Emp' : 'Pess'}
+        </span>
+        <div className="flex-1" />
+        {latestFat ? (
+          <>
+            <p className="text-lg font-extrabold text-white tracking-tight tabular-nums whitespace-nowrap">
+              {formatCurrency(latestFat.valor_total)}
+            </p>
+            {pill && <span className={`self-start text-[9px] font-bold px-2 py-0.5 rounded-full ${pill.cls}`}>{pill.label}</span>}
+            <p className="text-[10px] text-white/90 tabular-nums mt-0.5">Venc. {formatDate(latestFat.data_vencimento)}</p>
+            <p className="text-[10px] text-white/80">{latestFat.mes_referencia} · {faturasCount} fat.</p>
+          </>
+        ) : (
+          <p className="text-[11px] text-white/90 font-medium">Sem fatura · vence dia {c.dia_vencimento}</p>
+        )}
       </div>
 
-      {/* Base: status, valor e vencimento */}
-      <div className="bg-black/15 px-3 pt-1.5 pb-2 mt-2">
-        {latestFat ?
-        <>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-base font-extrabold text-white tracking-tight tabular-nums whitespace-nowrap">
-                {formatCurrency(latestFat.valor_total)}
-              </p>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {pill && <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${pill.cls}`}>{pill.label}</span>}
-                {fileUrl &&
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {e.stopPropagation();onViewFile({ url: fileUrl, titulo: `${c.nome} — ${latestFat?.mes_referencia}` });}}
-                className="w-9 h-11 rounded bg-white shadow overflow-hidden flex items-center justify-center hover:scale-105 transition-transform"
-                title="Ver fatura original">
-                    {isImg ? <img src={fileUrl} alt="" className="w-full h-full object-cover" /> : <FileImage className="w-3.5 h-3.5 text-slate-400" />}
-                  </span>
-              }
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-2 mt-0.5">
-              <span className="text-[10px] text-white/80 tabular-nums">Venc. {formatDate(latestFat.data_vencimento)}</span>
-              <span className="text-[10px] text-white/80">{latestFat.mes_referencia} · {faturasCount} fat.</span>
-            </div>
-          </> :
-
-        <p className="text-[11px] text-white/90 font-medium py-1">Sem fatura · vence dia {c.dia_vencimento}</p>
-        }
+      {/* Painel direito (30%): miniatura da fatura + logo do banco */}
+      <div className="w-[30%] bg-slate-50 p-2 flex flex-col items-center justify-between gap-1.5">
+        {fileUrl ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {e.stopPropagation();onViewFile({ url: fileUrl, titulo: `${c.nome} — ${latestFat?.mes_referencia}` });}}
+            className="w-full flex-1 min-h-0 rounded-lg bg-white border border-slate-200 shadow-sm overflow-hidden flex items-center justify-center hover:scale-105 transition-transform"
+            title="Ver fatura original">
+            {isImg ? <img src={fileUrl} alt="Fatura" className="w-full h-full object-cover" /> : <FileImage className="w-5 h-5 text-slate-400" />}
+          </span>
+        ) : (
+          <span className="w-full flex-1 min-h-0 rounded-lg bg-white border border-dashed border-slate-200 flex items-center justify-center">
+            <FileImage className="w-5 h-5 text-slate-300" />
+          </span>
+        )}
+        <span className="flex items-center gap-1 shrink-0">
+          {b.logo &&
+            <img
+              src={b.logo}
+              alt=""
+              className="h-5 w-5 object-contain"
+              onError={(e) => {e.currentTarget.style.display = 'none';}} />
+          }
+          <span className="text-[10px] font-extrabold text-slate-600">{c.bandeira || '—'}</span>
+        </span>
       </div>
     </button>);
 
