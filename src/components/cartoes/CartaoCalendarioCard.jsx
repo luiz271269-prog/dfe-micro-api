@@ -3,11 +3,11 @@ import { formatCurrency, formatDate } from '../../lib/formatters';
 
 // Gradiente + logomarca real por bandeira/banco
 const BANDEIRAS = {
-  Sicoob: { gradient: 'from-teal-600 to-teal-800', logo: 'https://logo.clearbit.com/sicoob.com.br' },
-  Sicredi: { gradient: 'from-green-500 to-green-700', logo: 'https://logo.clearbit.com/sicredi.com.br' },
-  Acentra: { gradient: 'from-orange-400 to-orange-600', logo: 'https://logo.clearbit.com/acentra.coop.br' },
-  Magalu: { gradient: 'from-blue-500 to-blue-700', logo: 'https://logo.clearbit.com/magazineluiza.com.br' },
-  default: { gradient: 'from-slate-500 to-slate-700', logo: null },
+  Sicoob: { gradient: 'from-teal-600 to-teal-800', logo: 'https://logo.clearbit.com/sicoob.com.br', text: 'text-teal-700', dot: 'bg-teal-600' },
+  Sicredi: { gradient: 'from-green-500 to-green-700', logo: 'https://logo.clearbit.com/sicredi.com.br', text: 'text-green-700', dot: 'bg-green-600' },
+  Acentra: { gradient: 'from-orange-400 to-orange-600', logo: 'https://logo.clearbit.com/acentra.coop.br', text: 'text-orange-600', dot: 'bg-orange-500' },
+  Magalu: { gradient: 'from-blue-500 to-blue-700', logo: 'https://logo.clearbit.com/magazineluiza.com.br', text: 'text-blue-700', dot: 'bg-blue-600' },
+  default: { gradient: 'from-slate-500 to-slate-700', logo: null, text: 'text-slate-700', dot: 'bg-slate-500' },
 };
 
 const STATUS_PILL = {
@@ -58,13 +58,13 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
       </div>
 
       {/* Painel direito (30%): miniatura da fatura + bandeira */}
-      <div className="w-[30%] bg-slate-200 p-1.5 flex flex-col items-center justify-between gap-1">
+      <div className="w-[30%] bg-white p-1.5 flex flex-col items-center justify-between gap-1">
         {fileUrl ? (
           <span
             role="button"
             tabIndex={0}
             onClick={(e) => {e.stopPropagation();onViewFile({ url: fileUrl, titulo: `${c.nome} — ${latestFat?.mes_referencia}` });}}
-            className="w-full flex-1 min-h-0 rounded-md bg-white border border-slate-200 shadow-sm overflow-hidden flex items-center justify-center hover:scale-105 transition-transform"
+            className="w-full flex-1 min-h-0 rounded-lg bg-white border border-slate-300 shadow-sm overflow-hidden flex items-center justify-center hover:scale-105 transition-transform"
             title="Ver fatura original">
             {isImg ? <img src={fileUrl} alt="Fatura" className="w-full h-full object-cover" /> : <FileImage className="w-4 h-4 text-slate-400" />}
           </span>
@@ -74,14 +74,15 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
           </span>
         )}
         <span className="flex items-center gap-1 shrink-0">
-          {b.logo &&
+          {b.logo ?
             <img
               src={b.logo}
               alt=""
-              className="h-3.5 w-3.5 object-contain"
-              onError={(e) => {e.currentTarget.style.display = 'none';}} />
+              className="h-4 w-4 rounded-full object-contain"
+              onError={(e) => {e.currentTarget.outerHTML = '';}} /> :
+            <span className={`h-2 w-2 rounded-full ${b.dot}`} />
           }
-          <span className="text-[9px] font-extrabold text-slate-700">{c.bandeira || '—'}</span>
+          <span className={`text-[10px] font-extrabold ${b.text}`}>{c.bandeira || '—'}</span>
         </span>
       </div>
     </button>);
