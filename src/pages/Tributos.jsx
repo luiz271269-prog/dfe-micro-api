@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
+import SeletorClassificacao from '../components/shared/SeletorClassificacao';
+import CampoClassificacao from '../components/shared/CampoClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -29,7 +31,7 @@ export default function Tributos() {
   const [form, setForm] = useState({
     tipo: '', descricao: '', competencia: '', data_vencimento: '',
     valor_original: '', status: 'a_vencer', empresa: '', data_pagamento: '',
-    valor_pago: '0', juros_multa: '0'
+    valor_pago: '0', juros_multa: '0', origem_compra: 'empresa', tipo_compra: 'impostos'
   });
 
   async function loadData() {
@@ -54,7 +56,7 @@ export default function Tributos() {
       valor_pago: parseFloat(form.valor_pago) || 0,
       juros_multa: parseFloat(form.juros_multa) || 0,
     });
-    setForm({ tipo: '', descricao: '', competencia: '', data_vencimento: '', valor_original: '', status: 'a_vencer', empresa: '', data_pagamento: '', valor_pago: '0', juros_multa: '0' });
+    setForm({ tipo: '', descricao: '', competencia: '', data_vencimento: '', valor_original: '', status: 'a_vencer', empresa: '', data_pagamento: '', valor_pago: '0', juros_multa: '0', origem_compra: 'empresa', tipo_compra: 'impostos' });
     setShowForm(false);
     loadData();
   }
@@ -168,13 +170,15 @@ export default function Tributos() {
                 <th className="hidden md:table-cell text-left px-4 py-3 font-semibold">Competência</th>
                 <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">Vencimento</th>
                 <th className="hidden lg:table-cell text-left px-4 py-3 font-semibold">Empresa</th>
+                <th className="text-left px-4 py-3 font-semibold">Quem comprou</th>
+                <th className="text-left px-4 py-3 font-semibold">Tipo de compra</th>
                 <th className="text-right px-4 py-3 font-semibold">Valor</th>
                 <th className="text-left px-4 py-3 font-semibold">Status</th>
               </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 ? (
-                <tr><td colSpan="7" className="px-4 py-8 text-center text-muted-foreground">Nenhum tributo encontrado</td></tr>
+                <tr><td colSpan="9" className="px-4 py-8 text-center text-muted-foreground">Nenhum tributo encontrado</td></tr>
               ) : (
                 filtrados.map(t => (
                 <tr key={t.id} className={`border-b ${t.status === 'vencido' ? 'bg-red-50' : ''}`}>
@@ -183,6 +187,8 @@ export default function Tributos() {
                   <td className="hidden md:table-cell px-4 py-3 text-xs text-muted-foreground">{t.competencia}</td>
                   <td className="hidden sm:table-cell px-4 py-3 text-xs">{formatDate(t.data_vencimento)}</td>
                   <td className="hidden lg:table-cell px-4 py-3 text-xs">{t.empresa}</td>
+                  <td className="px-4 py-3"><SeletorClassificacao eixo="origem" entityName="Tributo" record={t} field="origem_compra" /></td>
+                  <td className="px-4 py-3"><SeletorClassificacao eixo="tipo" entityName="Tributo" record={t} field="tipo_compra" /></td>
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(t.valor_original)}</td>
                   <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
                   </tr>
@@ -215,6 +221,10 @@ export default function Tributos() {
               </div>
             </div>
             <div><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <CampoClassificacao eixo="origem" label="Quem comprou" value={form.origem_compra} onChange={v => setForm({...form, origem_compra: v})} />
+              <CampoClassificacao eixo="tipo" label="Tipo de compra" value={form.tipo_compra} onChange={v => setForm({...form, tipo_compra: v})} />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Competência</Label><Input type="month" value={form.competencia} onChange={e => setForm({...form, competencia: e.target.value})} required /></div>
               <div><Label>Vencimento</Label><Input type="date" value={form.data_vencimento} onChange={e => setForm({...form, data_vencimento: e.target.value})} required /></div>

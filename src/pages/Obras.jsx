@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
+import CampoClassificacao from '../components/shared/CampoClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -44,7 +45,8 @@ const ETAPAS = [
 const EMPTY_FORM = {
   data: '', local_obra: 'loja', tipo: 'mao_obra', tipo_profissional: 'pedreiro',
   responsavel: '', descricao: '', orcamento: '', valor: '',
-  forma_pagamento: '', numero_nota: '', etapa_obra: 'concluida', fornecedor_cnpj_cpf: ''
+  forma_pagamento: '', numero_nota: '', etapa_obra: 'concluida', fornecedor_cnpj_cpf: '',
+  origem_compra: 'empresa', tipo_compra: 'obras'
 };
 
 function LocalCard({ local, obras }) {
@@ -374,6 +376,10 @@ export default function Obras() {
             </div>
             <div><Label>Responsável / Fornecedor</Label><Input value={form.responsavel} onChange={e => setForm({...form, responsavel: e.target.value})} /></div>
             <div><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} required /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <CampoClassificacao eixo="origem" label="Quem comprou" value={form.origem_compra} onChange={v => setForm({...form, origem_compra: v})} />
+              <CampoClassificacao eixo="tipo" label="Tipo de compra" value={form.tipo_compra} onChange={v => setForm({...form, tipo_compra: v})} />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Valor Orçado (R$)</Label><Input type="number" step="0.01" value={form.orcamento} onChange={e => setForm({...form, orcamento: e.target.value})} /></div>
               <div><Label>Valor Realizado (R$)</Label><Input type="number" step="0.01" value={form.valor} onChange={e => setForm({...form, valor: e.target.value})} required /></div>

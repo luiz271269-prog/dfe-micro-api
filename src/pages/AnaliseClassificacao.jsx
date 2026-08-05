@@ -8,6 +8,7 @@ import CoberturaPeriodo from '@/components/classificacao/CoberturaPeriodo';
 import RodarPipelineButton from '@/components/classificacao/RodarPipelineButton';
 import ExportarCSVButton from '@/components/classificacao/ExportarCSVButton';
 import ClassificarNaoCobertos from '@/components/classificacao/ClassificarNaoCobertos';
+import PlanilhaCoberturaModulos from '@/components/classificacao/PlanilhaCoberturaModulos';
 
 export default function AnaliseClassificacao() {
   const [vinculos, setVinculos] = useState([]);
@@ -108,6 +109,8 @@ export default function AnaliseClassificacao() {
           nomeArquivo={`classificacao-${anual ? mes.slice(0, 4) : mes}`}
         />
       </PageHeader>
+
+      <PlanilhaCoberturaModulos />
 
       <MonthNavigator
         selectedMonth={mes}

@@ -12,6 +12,7 @@ import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
+import CampoClassificacao from '../components/shared/CampoClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -33,7 +34,8 @@ const categoriaColors = {
 const EMPTY_FORM = {
   data: '', descricao: '', fornecedor: '', categoria: 'aluguel',
   valor: '', forma_pagamento: 'pix', status: 'pago',
-  data_vencimento: '', empresa: 'NeuralTec', recorrente: false, observacoes: ''
+  data_vencimento: '', empresa: 'NeuralTec', recorrente: false, observacoes: '',
+  origem_compra: 'empresa', tipo_compra: 'despesas'
 };
 
 export default function Despesas() {
@@ -258,6 +260,10 @@ export default function Despesas() {
                   <SelectContent>{FORMAS_PAG.map(f => <SelectItem key={f} value={f}>{f.replace(/_/g,' ')}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <CampoClassificacao eixo="origem" label="Quem comprou" value={form.origem_compra} onChange={v => setForm({...form, origem_compra: v})} />
+              <CampoClassificacao eixo="tipo" label="Tipo de compra" value={form.tipo_compra} onChange={v => setForm({...form, tipo_compra: v})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Valor *</Label><Input type="number" step="0.01" value={form.valor} onChange={e => setForm({...form, valor: e.target.value})} required /></div>
