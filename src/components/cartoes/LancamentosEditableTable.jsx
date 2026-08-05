@@ -125,7 +125,6 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
             <th className={`text-left ${headerCls}`} onClick={() => toggleSort('data_lancamento')}>Data <SortIcon field="data_lancamento" /></th>
             <th className={`text-left ${headerCls}`} onClick={() => toggleSort('estabelecimento')}>Estabelecimento <SortIcon field="estabelecimento" /></th>
             <th className={`text-left ${headerCls}`} onClick={() => toggleSort('categoria')}>Categoria <SortIcon field="categoria" /></th>
-            <th className={`text-left ${headerCls}`} onClick={() => toggleSort('natureza')}>Natureza <SortIcon field="natureza" /></th>
             <th className="text-left py-2 font-semibold text-muted-foreground">Quem comprou</th>
             <th className="text-left py-2 font-semibold text-muted-foreground">Tipo de compra</th>
             <th className={`text-right ${headerCls}`} onClick={() => toggleSort('valor')}>Valor <SortIcon field="valor" /></th>
@@ -136,7 +135,6 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
           {sortedRows.map((l) => {
             const isExcluded = l.observacao?.includes('Não faz parte');
             const editingCat = editing?.id === l.id && editing?.field === 'categoria';
-            const editingNat = editing?.id === l.id && editing?.field === 'natureza';
             return (
               <tr key={l.id} className={`border-b last:border-b-0 ${isExcluded ? 'opacity-40' : ''}`}>
                 <td className="py-1.5 whitespace-nowrap">{formatDate(l.data_lancamento)}</td>
@@ -177,33 +175,18 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
                     </span>
                   )}
                 </td>
-                <td className="py-1.5">
-                  {editingNat ? (
-                    <Select
-                      value={l.natureza || ''}
-                      onValueChange={(v) => update(l.id, 'natureza', v)}
-                      open
-                      onOpenChange={(open) => { if (!open) setEditing(null); }}
-                    >
-                      <SelectTrigger className="h-6 text-[10px] px-1.5 w-[110px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="empresarial">empresarial</SelectItem>
-                        <SelectItem value="pessoal">pessoal</SelectItem>
-                        <SelectItem value="reembolso">reembolso</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <span
-                      onClick={() => setEditing({ id: l.id, field: 'natureza' })}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${l.natureza === 'empresarial' ? 'bg-blue-100 text-blue-700' : l.natureza === 'reembolso' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}
-                      title="Clique para editar"
-                    >
-                      {l.natureza || '—'}
-                    </span>
-                  )}
-                </td>
                 <td className="py-1.5 pr-2">
-                  <SeletorClassificacao eixo="origem" entityName="LancamentoCartao" record={l} field="origem_compra" />
+                  <SeletorClassificacao
+                    eixo="origem"
+                    entityName="LancamentoCartao"
+                    record={l}
+                    field="origem_compra"
+                    onChange={(id, f, v) => {
+                      // Mantém a natureza (empresarial/pessoal) sincronizada com "Quem comprou"
+                      const nat = (v === 'pessoal' || v === 'pro_labore') ? 'pessoal' : 'empresarial';
+                      if (l.natureza !== nat) update(id, 'natureza', nat);
+                    }}
+                  />
                 </td>
                 <td className="py-1.5 pr-2">
                   <SeletorClassificacao eixo="tipo" entityName="LancamentoCartao" record={l} field="tipo_compra" />
@@ -220,7 +203,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
         </tbody>
         <tfoot>
           <tr className="border-t-2 border-foreground/20 font-bold">
-            <td className="py-2 uppercase text-[10px] tracking-wider text-muted-foreground" colSpan={6}>
+            <td className="py-2 uppercase text-[10px] tracking-wider text-muted-foreground" colSpan={5}>
               Total ({localRows.length} lançamentos)
             </td>
             <td className="py-2 text-right tabular-nums text-sm">{formatCurrency(totalValor)}</td>
