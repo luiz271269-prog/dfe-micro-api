@@ -29,20 +29,15 @@
     },
     "categoria": {
       "type": "string",
-      "enum": [
-        "aluguel",
-        "energia",
-        "agua",
-        "internet",
-        "telefone",
-        "software",
-        "contabilidade",
-        "seguro",
-        "manutencao",
-        "marketing",
-        "outro"
-      ],
-      "title": "Categoria"
+      "title": "Categoria (plano de contas unificado \u2014 aceita categorias customizadas)"
+    },
+    "origem_compra": {
+      "type": "string",
+      "title": "Quem comprou (classifica\u00e7\u00e3o unificada: empresa, pro_labore, condominio, pessoal)"
+    },
+    "tipo_compra": {
+      "type": "string",
+      "title": "Tipo de compra (classifica\u00e7\u00e3o unificada: estoque, fretes, impostos, despesas, folha, pro_labore, obras, financeiro, outro)"
     },
     "empresa": {
       "type": "string",

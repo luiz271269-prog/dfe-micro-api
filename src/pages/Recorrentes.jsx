@@ -9,14 +9,16 @@ import { Repeat, Plus, Sparkles, Edit, Trash2, Power, AlertTriangle, CheckCircle
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { aprenderPadroes, aplicarRegra } from '../lib/recurringEngine';
+import SeletorClassificacao from '../components/shared/SeletorClassificacao';
+import CampoClassificacao from '../components/shared/CampoClassificacao';
 
-const CATEGORIAS = ['aluguel','energia','agua','internet','telefone','software','contabilidade','seguro','manutencao','marketing','outro'];
 const EMPRESAS = ['NeuralTec','Liesch'];
 const FORMAS = ['pix','boleto','debito_automatico','cartao','transferencia'];
 
 const vazio = {
   nome: '', padrao_descricao: '', fornecedor: '', valor_esperado: '',
   tolerancia_percentual: 5, dia_vencimento: '', categoria: 'outro',
+  origem_compra: 'empresa', tipo_compra: 'despesas',
   empresa: 'NeuralTec', forma_pagamento: 'pix', is_ativa: true, observacoes: '',
 };
 
@@ -134,6 +136,7 @@ export default function Recorrentes() {
               <thead>
                 <tr className="border-b bg-muted/30">
                   <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Regra</th>
+                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Classificação</th>
                   <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Padrão</th>
                   <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Valor esperado</th>
                   <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Tol.</th>
@@ -151,7 +154,14 @@ export default function Recorrentes() {
                     <tr key={r.id} className={`border-b hover:bg-muted/20 ${!r.is_ativa ? 'opacity-50' : ''}`}>
                       <td className="px-3 py-2">
                         <p className="font-semibold">{r.nome}</p>
-                        <p className="text-[10px] text-muted-foreground">{r.categoria} · {r.empresa || '—'}</p>
+                        <p className="text-[10px] text-muted-foreground">{r.empresa || '—'}</p>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <SeletorClassificacao eixo="origem" entityName="RegraRecorrente" record={r} field="origem_compra" />
+                          <SeletorClassificacao eixo="tipo" entityName="RegraRecorrente" record={r} field="tipo_compra" />
+                          <SeletorClassificacao eixo="categoria" entityName="RegraRecorrente" record={r} field="categoria" />
+                        </div>
                       </td>
                       <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground max-w-[180px] truncate">{r.padrao_descricao}</td>
                       <td className="px-3 py-2 text-right font-bold tabular-nums">{formatCurrency(r.valor_esperado)}</td>
@@ -224,13 +234,9 @@ export default function Recorrentes() {
               <Label className="text-xs">Dia do mês esperado</Label>
               <Input type="number" min="1" max="31" value={form.dia_vencimento} onChange={e => setForm({ ...form, dia_vencimento: e.target.value })} />
             </div>
-            <div>
-              <Label className="text-xs">Categoria</Label>
-              <Select value={form.categoria} onValueChange={v => setForm({ ...form, categoria: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
+            <CampoClassificacao eixo="origem" label="Quem comprou (centro de custo)" value={form.origem_compra} onChange={v => setForm({ ...form, origem_compra: v })} />
+            <CampoClassificacao eixo="tipo" label="Tipo de compra" value={form.tipo_compra} onChange={v => setForm({ ...form, tipo_compra: v })} />
+            <CampoClassificacao eixo="categoria" label="Categoria (plano de contas)" value={form.categoria} onChange={v => setForm({ ...form, categoria: v })} />
             <div>
               <Label className="text-xs">Empresa</Label>
               <Select value={form.empresa} onValueChange={v => setForm({ ...form, empresa: v })}>
