@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Calendar, Link2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
+import SeletorClassificacao from '../shared/SeletorClassificacao';
+import { mapearTipoEntidade } from '../../lib/contasPagarEngine';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700', label: 'Despesa', href: '/despesas' },
@@ -87,6 +89,21 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
             ) : (
               <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> Pendente</span>
             )}
+          </div>
+          {/* Classificação unificada — mesma dos Cartões e do Extrato */}
+          <div className="flex items-center gap-1.5 mt-1">
+            <SeletorClassificacao
+              eixo="origem"
+              entityName={mapearTipoEntidade(i.origem_tipo)}
+              record={{ id: i.origem_id, origem_compra: i.origem_compra }}
+              field="origem_compra"
+            />
+            <SeletorClassificacao
+              eixo="tipo"
+              entityName={mapearTipoEntidade(i.origem_tipo)}
+              record={{ id: i.origem_id, tipo_compra: i.tipo_compra }}
+              field="tipo_compra"
+            />
           </div>
         </div>
         <div className="flex flex-col items-end gap-1">

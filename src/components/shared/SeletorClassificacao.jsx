@@ -66,12 +66,17 @@ export default function SeletorClassificacao({ eixo, entityName, record, field, 
   }
 
   return (
-    <span
-      onClick={() => setEditing(true)}
-      title="Clique para classificar"
-      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${getCor(eixo, valor)}`}
-    >
-      {opcoes[valor] || '—'}
+    <span className="inline-flex items-center gap-1">
+      <span
+        onClick={() => setEditing(true)}
+        title="Clique para classificar"
+        className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${getCor(eixo, valor)}`}
+      >
+        {opcoes[valor] || '—'}
+      </span>
+      <button type="button" onClick={() => setAdding(true)} title="Adicionar nova opção" className="text-muted-foreground/50 hover:text-primary">
+        <Plus className="w-3 h-3" />
+      </button>
     </span>
   );
 }

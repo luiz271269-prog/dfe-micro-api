@@ -293,7 +293,7 @@ export async function executarBaixaAutomatica(base44, { despesas, tributos, folh
   };
 }
 
-function mapearTipoEntidade(origem_tipo) {
+export function mapearTipoEntidade(origem_tipo) {
   return {
     despesa: 'DespesaOperacional',
     tributo: 'Tributo',
