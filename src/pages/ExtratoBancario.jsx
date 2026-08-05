@@ -15,11 +15,11 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
-import StatusBadge from '../components/shared/StatusBadge';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
-import { ORIGENS_COMPRA, TIPOS_COMPRA } from '../lib/classificacaoUnificada';
-import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
+import CampoClassificacao from '../components/shared/CampoClassificacao';
+import { getOpcoes, loadCustom } from '../lib/classificacaoUnificada';
+import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizacao';
 
@@ -28,7 +28,6 @@ export default function ExtratoBancario() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('all');
-  const [editingCategoria, setEditingCategoria] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
@@ -93,15 +92,16 @@ export default function ExtratoBancario() {
 
   const totalGeral = filtered.reduce((s, l) => s + (l.valor || 0), 0);
 
+  // Plano de contas unificado (compartilhado com Cartões e Contas a Pagar)
+  const opcoesCategoria = useMemo(() => getOpcoes('categoria', loadCustom()), []);
+
+  // Chamado após o SeletorClassificacao já ter persistido a mudança no banco
   async function handleCategoriaChange(id, newCat) {
     const lanc = lancamentos.find(l => l.id === id);
-    setEditingCategoria(null);
     if (lanc?.categoria === newCat) return; // nada mudou
 
     // Atualização dinâmica: muda só o campo no estado local, sem recarregar a lista
-    // (mantém o scroll na mesma posição). Persiste no banco em segundo plano.
     setLancamentos(prev => prev.map(l => (l.id === id ? { ...l, categoria: newCat } : l)));
-    await base44.entities.LancamentoBancario.update(id, { categoria: newCat });
 
     // Aprende regra e aplica a lançamentos semelhantes ainda na categoria antiga
     if (lanc?.descricao) {
@@ -238,7 +238,7 @@ export default function ExtratoBancario() {
           return (
             <GradientCard
               key={cat}
-              title={categoriaLabels[cat] || cat}
+              title={opcoesCategoria[cat] || cat}
               value={formatCurrency(val)}
               gradient={val >= 0 ? 'green' : 'red'}
               active={isActive}
@@ -269,7 +269,7 @@ export default function ExtratoBancario() {
                 <SelectTrigger><SelectValue placeholder="Todas" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas Categorias</SelectItem>
-                  {Object.entries(categoriaLabels).map(([k, v]) => (
+                  {Object.entries(opcoesCategoria).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
                   ))}
                 </SelectContent>
@@ -282,7 +282,7 @@ export default function ExtratoBancario() {
             <SelectTrigger className="w-[180px]"><Filter className="w-4 h-4 mr-2" /><SelectValue placeholder="Categoria" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Categorias</SelectItem>
-              {Object.entries(categoriaLabels).map(([k, v]) => (
+              {Object.entries(opcoesCategoria).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v}</SelectItem>
               ))}
             </SelectContent>
@@ -305,27 +305,9 @@ export default function ExtratoBancario() {
             meta={l.saldo_apos != null ? `Saldo: ${formatCurrency(l.saldo_apos)}` : null}
             footer={<ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} />}
             badge={
-              <button
-                onClick={e => { e.stopPropagation(); setEditingCategoria(editingCategoria === l.id ? null : l.id); }}
-                className="hover:opacity-70 transition-opacity"
-              >
-                {editingCategoria === l.id ? (
-                  <select
-                    autoFocus
-                    defaultValue={l.categoria}
-                    onClick={e => e.stopPropagation()}
-                    onBlur={e => handleCategoriaChange(l.id, e.target.value)}
-                    onChange={e => handleCategoriaChange(l.id, e.target.value)}
-                    className="text-xs border rounded px-2 py-1 bg-background"
-                  >
-                    {Object.entries(categoriaLabels).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <StatusBadge status={l.categoria} />
-                )}
-              </button>
+              <span onClick={e => e.stopPropagation()}>
+                <SeletorClassificacao eixo="categoria" entityName="LancamentoBancario" record={l} field="categoria" onChange={(id, f, v) => handleCategoriaChange(id, v)} />
+              </span>
             }
           />
         )}
@@ -367,27 +349,7 @@ export default function ExtratoBancario() {
                       {l.detalhe && <p className="text-xs text-muted-foreground">{l.detalhe}</p>}
                     </td>
                     <td className="px-4 py-3">
-                      {editingCategoria === l.id ? (
-                        <select
-                          autoFocus
-                          defaultValue={l.categoria}
-                          onBlur={e => handleCategoriaChange(l.id, e.target.value)}
-                          onChange={e => handleCategoriaChange(l.id, e.target.value)}
-                          className="text-xs border rounded px-2 py-1 bg-background"
-                        >
-                          {Object.entries(categoriaLabels).map(([k, v]) => (
-                            <option key={k} value={k}>{v}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <button
-                          onClick={e => { e.stopPropagation(); setEditingCategoria(l.id); }}
-                          title="Clique para editar"
-                          className="hover:opacity-70 transition-opacity"
-                        >
-                          <StatusBadge status={l.categoria} />
-                        </button>
-                      )}
+                      <SeletorClassificacao eixo="categoria" entityName="LancamentoBancario" record={l} field="categoria" onChange={(id, f, v) => handleCategoriaChange(id, v)} />
                     </td>
                     <td className="px-4 py-3">
                       <SeletorClassificacao eixo="origem" entityName="LancamentoBancario" record={l} field="origem_compra" />
@@ -428,36 +390,12 @@ export default function ExtratoBancario() {
             </div>
             <div><Label>Descrição</Label><Input value={form.descricao} onChange={e => setForm({...form, descricao: e.target.value})} required /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Categoria</Label>
-                <Select value={form.categoria} onValueChange={v => setForm({...form, categoria: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(categoriaLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <CampoClassificacao eixo="categoria" label="Categoria" value={form.categoria} onChange={v => setForm({...form, categoria: v})} />
               <div><Label>Mês Referência</Label><Input placeholder="ex: 2025-03" value={form.mes_referencia} onChange={e => setForm({...form, mes_referencia: e.target.value})} /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Quem comprou</Label>
-                <Select value={form.origem_compra} onValueChange={v => setForm({...form, origem_compra: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(ORIGENS_COMPRA).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Tipo de compra</Label>
-                <Select value={form.tipo_compra} onValueChange={v => setForm({...form, tipo_compra: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(TIPOS_COMPRA).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <CampoClassificacao eixo="origem" label="Quem comprou (centro de custo)" value={form.origem_compra} onChange={v => setForm({...form, origem_compra: v})} />
+              <CampoClassificacao eixo="tipo" label="Tipo de compra" value={form.tipo_compra} onChange={v => setForm({...form, tipo_compra: v})} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label>Saldo Após</Label><Input type="number" step="0.01" value={form.saldo_apos} onChange={e => setForm({...form, saldo_apos: e.target.value})} /></div>

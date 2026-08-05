@@ -17,20 +17,7 @@
     },
     "categoria": {
       "type": "string",
-      "enum": [
-        "recebimento",
-        "fornecedor",
-        "pessoal",
-        "pro_labore",
-        "tributo",
-        "despesa_operacional",
-        "financeiro",
-        "saque",
-        "obras_reforma",
-        "transferencia",
-        "interno"
-      ],
-      "title": "Categoria"
+      "title": "Categoria (plano de contas unificado \u2014 aceita categorias customizadas)"
     },
     "origem_compra": {
       "type": "string",

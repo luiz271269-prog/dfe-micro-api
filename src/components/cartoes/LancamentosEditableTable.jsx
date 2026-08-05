@@ -6,44 +6,16 @@ import { formatCurrency, formatDate } from '../../lib/formatters';
 import { aprenderEAplicarRegra } from '../../lib/autoCategorizacao';
 import ComprovantePicker from '../shared/ComprovantePicker';
 import SeletorClassificacao from '../shared/SeletorClassificacao';
+import { CATEGORIAS_CONTAS, CATEGORIA_COLORS, getCor, loadCustom, saveCustom, slugify } from '../../lib/classificacaoUnificada';
 
-const CATEGORIAS_PADRAO = {
-  alimentacao: 'Alimentação', combustivel: 'Combustível', lazer: 'Lazer',
-  tecnologia: 'Tecnologia', servico_pessoal: 'Serviço Pessoal', saude_bem_estar: 'Saúde/Bem-Estar',
-  beleza: 'Beleza', farmacia: 'Farmácia', transporte: 'Transporte',
-  financeiro: 'Financeiro', seguro: 'Seguro',
-  produtos: 'Produtos', estoque: 'Estoque',
-  outro: 'Outro',
-};
-
-const CATEGORIAS_CUSTOM_KEY = 'neuralfin_categorias_cartao_custom';
-
-function loadCustomCategorias() {
-  try {
-    const raw = localStorage.getItem(CATEGORIAS_CUSTOM_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-export const categoriaLabels = CATEGORIAS_PADRAO;
-
-export const categoriaColors = {
-  alimentacao: 'bg-green-100 text-green-700', combustivel: 'bg-orange-100 text-orange-700',
-  lazer: 'bg-purple-100 text-purple-700', tecnologia: 'bg-blue-100 text-blue-700',
-  servico_pessoal: 'bg-pink-100 text-pink-700', saude_bem_estar: 'bg-teal-100 text-teal-700',
-  beleza: 'bg-rose-100 text-rose-700', farmacia: 'bg-cyan-100 text-cyan-700',
-  transporte: 'bg-slate-100 text-slate-700', financeiro: 'bg-red-100 text-red-700',
-  seguro: 'bg-gray-100 text-gray-700',
-  produtos: 'bg-indigo-100 text-indigo-700', estoque: 'bg-emerald-100 text-emerald-700',
-  outro: 'bg-amber-100 text-amber-700',
-};
+// Plano de contas unificado (compartilhado com Extrato e Contas a Pagar)
+export const categoriaLabels = CATEGORIAS_CONTAS;
+export const categoriaColors = CATEGORIA_COLORS;
 
 export default function LancamentosEditableTable({ lancamentos, onReload }) {
   const [editing, setEditing] = useState(null);
   const [localRows, setLocalRows] = useState(lancamentos || []);
-  const [customCats, setCustomCats] = useState(loadCustomCategorias);
+  const [custom, setCustom] = useState(loadCustom);
   const [addingCat, setAddingCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [sort, setSort] = useState({ field: 'data_lancamento', dir: 'asc' });
@@ -51,23 +23,22 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
   // Sincroniza com props quando lista externa muda (carregamento silencioso, novo mês, etc.)
   useEffect(() => { setLocalRows(lancamentos || []); }, [lancamentos]);
 
-  const allCategorias = useMemo(() => ({ ...CATEGORIAS_PADRAO, ...customCats }), [customCats]);
+  const allCategorias = useMemo(() => ({ ...CATEGORIAS_CONTAS, ...(custom.categoria || {}) }), [custom]);
 
   function catLabel(k) {
     return allCategorias[k] || k || '—';
   }
   function catColor(k) {
-    return categoriaColors[k] || 'bg-slate-100 text-slate-700';
+    return getCor('categoria', k);
   }
 
   function addCategoria() {
     const label = newCatName.trim();
-    if (!label) return;
-    const key = label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    const key = slugify(label);
     if (!key) return;
-    const next = { ...customCats, [key]: label };
-    setCustomCats(next);
-    try { localStorage.setItem(CATEGORIAS_CUSTOM_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+    const next = { ...custom, categoria: { ...(custom.categoria || {}), [key]: label } };
+    setCustom(next);
+    saveCustom(next);
     setNewCatName('');
     setAddingCat(false);
   }

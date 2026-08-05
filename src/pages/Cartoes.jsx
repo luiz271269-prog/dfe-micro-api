@@ -22,6 +22,7 @@ import { FileImage } from 'lucide-react';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
+import { getOpcoes, getCor, loadCustom } from '../lib/classificacaoUnificada';
 
 const SEED_CARDS = [
 { nome: 'Acentra — Luiz Carlos', bandeira: 'Acentra', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
@@ -33,14 +34,8 @@ const SEED_CARDS = [
 { nome: 'Magalu / LuizaCred', bandeira: 'Magalu', titular: 'pessoal', tipo: 'pessoal', dia_vencimento: 27, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'Sicredi 36092-2', is_ativo: true }];
 
 
-const categoriaLabels = {
-  alimentacao: 'Alimentação', combustivel: 'Combustível', lazer: 'Lazer',
-  tecnologia: 'Tecnologia', servico_pessoal: 'Serviço Pessoal', saude_bem_estar: 'Saúde/Bem-Estar',
-  beleza: 'Beleza', farmacia: 'Farmácia', transporte: 'Transporte',
-  financeiro: 'Financeiro', seguro: 'Seguro',
-  produtos: 'Produtos', estoque: 'Estoque',
-  outro: 'Outro'
-};
+// Plano de contas unificado (compartilhado com Extrato e Contas a Pagar)
+const categoriaLabels = getOpcoes('categoria', loadCustom());
 
 // Pagamento da fatura do mês anterior (crédito no cartão) — não é despesa real, não deve entrar em totais
 function isPagamentoFatura(l) {
@@ -49,16 +44,7 @@ function isPagamentoFatura(l) {
   return /pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento/.test(desc);
 }
 
-const categoriaColors = {
-  alimentacao: 'bg-green-100 text-green-700', combustivel: 'bg-orange-100 text-orange-700',
-  lazer: 'bg-purple-100 text-purple-700', tecnologia: 'bg-blue-100 text-blue-700',
-  servico_pessoal: 'bg-pink-100 text-pink-700', saude_bem_estar: 'bg-teal-100 text-teal-700',
-  beleza: 'bg-rose-100 text-rose-700', farmacia: 'bg-cyan-100 text-cyan-700',
-  transporte: 'bg-slate-100 text-slate-700', financeiro: 'bg-red-100 text-red-700',
-  seguro: 'bg-gray-100 text-gray-700',
-  produtos: 'bg-indigo-100 text-indigo-700', estoque: 'bg-emerald-100 text-emerald-700',
-  outro: 'bg-amber-100 text-amber-700'
-};
+// Cores das categorias vêm do vocabulário unificado (getCor)
 
 // Estilo por bandeira/banco — cor própria de cada instituição
 const BANDEIRAS = {
@@ -88,7 +74,7 @@ function CategoriaBreakdown({ lancamentos }) {
         {sorted.map(([cat, val]) =>
         <div key={cat} className="flex items-center justify-between bg-background rounded-md px-2 py-1.5 border">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${categoriaColors[cat] || 'bg-slate-100 text-slate-700'}`}>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${getCor('categoria', cat)}`}>
                 {categoriaLabels[cat] || cat}
               </span>
             </div>

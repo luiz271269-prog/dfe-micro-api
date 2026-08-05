@@ -1,5 +1,7 @@
 // Vocabulário único de classificação usado em Extrato, Cartões e Contas a Pagar.
-// Eixo 1 — Quem comprou (origem_compra) | Eixo 2 — Tipo de compra (tipo_compra)
+// Eixo 1 — Quem comprou / Centro de custo (origem_compra)
+// Eixo 2 — Tipo de compra (tipo_compra)
+// Eixo 3 — Plano de contas / Categoria (categoria)
 
 export const ORIGENS_COMPRA = {
   empresa: 'Empresa',
@@ -17,6 +19,34 @@ export const TIPOS_COMPRA = {
   pro_labore: 'Pró-labore',
   obras: 'Obras/Reforma',
   financeiro: 'Financeiro',
+  outro: 'Outro',
+};
+
+// Plano de contas único — união das categorias do Extrato e dos Cartões
+export const CATEGORIAS_CONTAS = {
+  recebimento: 'Recebimento',
+  fornecedor: 'Fornecedor',
+  pessoal: 'Pessoal',
+  pro_labore: 'Pró-labore',
+  tributo: 'Tributo',
+  despesa_operacional: 'Despesa Operacional',
+  financeiro: 'Financeiro',
+  saque: 'Saque',
+  obras_reforma: 'Obras/Reforma',
+  transferencia: 'Transferência',
+  interno: 'Interno',
+  alimentacao: 'Alimentação',
+  combustivel: 'Combustível',
+  lazer: 'Lazer',
+  tecnologia: 'Tecnologia',
+  servico_pessoal: 'Serviço Pessoal',
+  saude_bem_estar: 'Saúde/Bem-Estar',
+  beleza: 'Beleza',
+  farmacia: 'Farmácia',
+  transporte: 'Transporte',
+  seguro: 'Seguro',
+  produtos: 'Produtos',
+  estoque: 'Estoque',
   outro: 'Outro',
 };
 
@@ -39,7 +69,35 @@ export const TIPO_COLORS = {
   outro: 'bg-gray-100 text-gray-700',
 };
 
+export const CATEGORIA_COLORS = {
+  recebimento: 'bg-green-100 text-green-700',
+  fornecedor: 'bg-red-100 text-red-700',
+  pessoal: 'bg-purple-100 text-purple-700',
+  pro_labore: 'bg-violet-100 text-violet-700',
+  tributo: 'bg-orange-100 text-orange-700',
+  despesa_operacional: 'bg-yellow-100 text-yellow-800',
+  financeiro: 'bg-red-100 text-red-700',
+  saque: 'bg-slate-100 text-slate-700',
+  obras_reforma: 'bg-amber-100 text-amber-700',
+  transferencia: 'bg-blue-100 text-blue-700',
+  interno: 'bg-gray-100 text-gray-700',
+  alimentacao: 'bg-green-100 text-green-700',
+  combustivel: 'bg-orange-100 text-orange-700',
+  lazer: 'bg-purple-100 text-purple-700',
+  tecnologia: 'bg-blue-100 text-blue-700',
+  servico_pessoal: 'bg-pink-100 text-pink-700',
+  saude_bem_estar: 'bg-teal-100 text-teal-700',
+  beleza: 'bg-rose-100 text-rose-700',
+  farmacia: 'bg-cyan-100 text-cyan-700',
+  transporte: 'bg-slate-100 text-slate-700',
+  seguro: 'bg-gray-100 text-gray-700',
+  produtos: 'bg-indigo-100 text-indigo-700',
+  estoque: 'bg-emerald-100 text-emerald-700',
+  outro: 'bg-amber-100 text-amber-700',
+};
+
 const CUSTOM_KEY = 'neuralfin_classificacao_custom';
+const LEGACY_CARTAO_KEY = 'neuralfin_categorias_cartao_custom';
 
 export function slugify(label) {
   return label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -47,24 +105,37 @@ export function slugify(label) {
 }
 
 export function loadCustom() {
+  let data;
   try {
     const raw = localStorage.getItem(CUSTOM_KEY);
-    return raw ? JSON.parse(raw) : { origem: {}, tipo: {} };
+    data = raw ? JSON.parse(raw) : { origem: {}, tipo: {}, categoria: {} };
   } catch {
-    return { origem: {}, tipo: {} };
+    data = { origem: {}, tipo: {}, categoria: {} };
   }
+  if (!data.categoria) data.categoria = {};
+  // Migração: categorias custom antigas dos cartões entram no plano de contas único
+  try {
+    const legacy = localStorage.getItem(LEGACY_CARTAO_KEY);
+    if (legacy) {
+      data.categoria = { ...JSON.parse(legacy), ...data.categoria };
+      localStorage.removeItem(LEGACY_CARTAO_KEY);
+      localStorage.setItem(CUSTOM_KEY, JSON.stringify(data));
+    }
+  } catch { /* ignore */ }
+  return data;
 }
 
 export function saveCustom(next) {
   try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(next)); } catch { /* ignore */ }
 }
 
+const BASES = { origem: ORIGENS_COMPRA, tipo: TIPOS_COMPRA, categoria: CATEGORIAS_CONTAS };
+const COLORS = { origem: ORIGEM_COLORS, tipo: TIPO_COLORS, categoria: CATEGORIA_COLORS };
+
 export function getOpcoes(eixo, custom) {
-  const base = eixo === 'origem' ? ORIGENS_COMPRA : TIPOS_COMPRA;
-  return { ...base, ...(custom?.[eixo] || {}) };
+  return { ...(BASES[eixo] || {}), ...(custom?.[eixo] || {}) };
 }
 
 export function getCor(eixo, valor) {
-  const map = eixo === 'origem' ? ORIGEM_COLORS : TIPO_COLORS;
-  return map[valor] || 'bg-slate-100 text-slate-600';
+  return (COLORS[eixo] || {})[valor] || 'bg-slate-100 text-slate-600';
 }
