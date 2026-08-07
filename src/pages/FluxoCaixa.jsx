@@ -46,7 +46,7 @@ export default function FluxoCaixa() {
   async function loadData() {
     const [fx, tit, lanc, despesas, tributos, folhas, faturas, cartoes, compras] = await Promise.all([
       base44.entities.FluxoCaixa.list('-data_prevista', 500),
-      base44.entities.TituloCobranca.list('-data_vencimento', 1000),
+      base44.entities.TituloCobranca.list('-data_vencimento', 3000),
       base44.entities.LancamentoBancario.list('-data', 1000),
       base44.entities.DespesaOperacional.list('-data', 1000),
       base44.entities.Tributo.list('-data_vencimento', 1000),
@@ -89,7 +89,7 @@ export default function FluxoCaixa() {
         data_prevista: t.data_vencimento,
         tipo: 'entrada',
         categoria: 'recebimento_cobranca',
-        descricao: `Cobrança Sicredi — ${t.cliente || t.seu_numero || t.nosso_numero}`,
+        descricao: t.cliente || t.seu_numero || t.nosso_numero,
         valor_previsto: (t.valor_titulo || 0) - (t.valor_pago || 0),
         status: t.status === 'vencido' ? 'vencido' : 'previsto',
         origem_tipo: 'titulo_cobranca',
@@ -144,7 +144,9 @@ export default function FluxoCaixa() {
   }, [fluxosCombinados]);
 
   const filtrados = fluxosCombinados.filter(f => {
-    if (!isAnnual && !f.data_prevista?.startsWith(selectedMonth)) return false;
+    if (isAnnual) {
+      if (!f.data_prevista?.startsWith(selectedMonth.slice(0, 4))) return false;
+    } else if (!f.data_prevista?.startsWith(selectedMonth)) return false;
     if (filterTipo && f.tipo !== filterTipo) return false;
     if (filterStatus && f.status !== filterStatus) return false;
     if (filterCategoria && f.categoria !== filterCategoria) return false;
