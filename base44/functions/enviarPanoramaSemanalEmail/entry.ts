@@ -124,6 +124,12 @@ async function calcularPanorama(svc, hoje) {
   };
 }
 
+function esc(v) {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 function linhasItens(itens, campoNF) {
   if (!itens || itens.length === 0) {
     return '<tr><td colspan="3" style="padding:8px;color:#888;font-style:italic;">Nenhum lançamento na janela.</td></tr>';
@@ -131,7 +137,7 @@ function linhasItens(itens, campoNF) {
   return itens.map((i) => `
     <tr>
       <td style="padding:6px 8px;border-bottom:1px solid #eee;">${dataBR(i.data_vencimento)}</td>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${(i.cliente || i.fornecedor || i.descricao || '—')}${campoNF && i.nf ? ` <span style="color:#888;">(${i.nf})</span>` : ''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${esc(i.cliente || i.fornecedor || i.descricao || '—')}${campoNF && i.nf ? ` <span style="color:#888;">(${esc(i.nf)})</span>` : ''}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${brl(i.valor)}</td>
     </tr>`).join('');
 }
@@ -142,7 +148,7 @@ function montarHtml(p) {
   const inad = p.inadimplencia;
   const rankInad = (inad.ranking || []).slice(0, 8).map((c) => `
     <tr>
-      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${c.cliente}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;">${esc(c.cliente)}</td>
       <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${c.dias_atraso}d</td>
       <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;color:#dc2626;">${brl(c.valor)}</td>
     </tr>`).join('');
