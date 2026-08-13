@@ -24,10 +24,21 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole.entities;
 
-    // 1. Roda cada motor em sequência via HTTP direto com token interno
-    // (funciona tanto em automação agendada quanto em chamada manual)
     const appId = Deno.env.get('BASE44_APP_ID');
     const token = Deno.env.get('NEXUS_HUB_TOKEN');
+
+    // Segurança: só admin autenticado (inclui automação agendada) ou chamada interna com token
+    const payload = await req.clone().json().catch(() => ({}));
+    const internoOk = token && payload.internal_token === token;
+    if (!internoOk) {
+      const user = await base44.auth.me().catch(() => null);
+      if (!user || user.role !== 'admin') {
+        return Response.json({ success: false, error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
+    // 1. Roda cada motor em sequência via HTTP direto com token interno
+    // (funciona tanto em automação agendada quanto em chamada manual)
     const resultadosEngines = {};
     for (const nome of ENGINES) {
       try {
