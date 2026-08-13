@@ -163,6 +163,15 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    // Somente admin logado ou automação interna com token
+    const body = await req.json().catch(() => ({}));
+    const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
+    if (!internoOk) {
+      const user = await base44.auth.me().catch(() => null);
+      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     // A automação agendada roda SEM usuário logado → getCurrentAppUserConnection falha
     // ("No active connection found"). Usa a conexão compartilhada do builder (SHARED,
     // keyed por integration_type), com fallback para a conexão do usuário atual (connector
