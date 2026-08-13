@@ -100,6 +100,13 @@ Acesse o painel NeuralFin para revisar essa NF-e no módulo "Análise XML NF-e".
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
+
+    // Segurança: só admin autenticado (inclui a automação de entidade) pode disparar
+    const user = await base44.auth.me().catch(() => null);
+    if (!user || user.role !== 'admin') {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const payload = await req.json().catch(() => ({}));
 
     // Pode ser chamada pela automation (traz data/old_data) OU manualmente (traz nfe_analise_id)
