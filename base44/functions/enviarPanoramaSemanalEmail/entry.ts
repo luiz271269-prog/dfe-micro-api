@@ -204,13 +204,13 @@ function montarHtml(p) {
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const destinatarios = Array.isArray(body.destinatarios) && body.destinatarios.length
-      ? body.destinatarios
-      : DESTINATARIOS_PADRAO;
+    // Destinatários nunca vêm do request: lista fixa do servidor (+ o próprio admin, se solicitado)
+    const destinatarios = body.enviar_para_mim && user.email ? [user.email] : DESTINATARIOS_PADRAO;
 
     const hoje = body.data_referencia || new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
     const p = await calcularPanorama(base44.asServiceRole.entities, hoje);
