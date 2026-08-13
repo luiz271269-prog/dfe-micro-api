@@ -52,6 +52,12 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
+    // Segurança: apenas administradores autenticados (inclui automações agendadas) podem disparar
+    const user = await base44.auth.me().catch(() => null);
+    if (!user || user.role !== 'admin') {
+      return Response.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
+
     const HUB_URL = Deno.env.get('NEXUS_HUB_URL');
     const HUB_TOKEN = Deno.env.get('NEXUS_HUB_TOKEN');
     if (!HUB_URL || !HUB_TOKEN) {
