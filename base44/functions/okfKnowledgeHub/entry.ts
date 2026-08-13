@@ -145,16 +145,18 @@ Deno.serve(async (req) => {
     // Autenticação: token de hub OU usuário logado
     const hubToken = Deno.env.get('NEXUS_HUB_TOKEN');
     const tokenValido = token && hubToken && token === hubToken;
-    let usuarioValido = false;
+    let user = null;
     if (!tokenValido) {
-      const user = await base44.auth.me().catch(() => null);
-      usuarioValido = !!user;
-    }
-    if (!tokenValido && !usuarioValido) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      user = await base44.auth.me().catch(() => null);
+      if (!user) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
-    const svc = base44.asServiceRole.entities;
+    // Service role só para token de hub ou admin; usuário comum lê via RLS
+    const svc = tokenValido || user?.role === 'admin'
+      ? base44.asServiceRole.entities
+      : base44.entities;
 
     // action=get — busca por id em uma fonte específica
     if (action === 'get') {
