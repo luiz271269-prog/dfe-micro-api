@@ -4,6 +4,7 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
   const lancamentos = await base44.asServiceRole.entities.LancamentoBancario.list('-data', 1000);
   const abril = lancamentos.filter(l => (l.mes_referencia || (l.data || '').slice(0, 7)) === '2026-04');
