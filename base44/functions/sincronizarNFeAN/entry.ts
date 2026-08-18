@@ -1,10 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 import forge from 'npm:node-forge@1.3.1';
+import { getCertSecret } from '../../shared/certSecrets.ts';
 
-const SOAP_ACTION = 'http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe/nfeDistDFeInteresse';
-const ENDPOINT_PROD = 'https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx';
-const ENDPOINT_HOM = 'https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx';
-const COD_UF_SC = '42';
 const COOLDOWN_MS = 60 * 60 * 1000; // 1 hora
 const MAX_LOOPS_POR_EXECUCAO = 5; // máx 5 batches por chamada (até 250 docs)
 
@@ -28,82 +25,18 @@ const MAX_LOOPS_POR_EXECUCAO = 5; // máx 5 batches por chamada (até 250 docs)
 //   }
 //
 // Implementações disponíveis:
-//   - consultarDistribuicaoDFeBase44  → Plano A: mTLS direto em Deno
+//   - consultarDistribuicaoDFeBase44  → Plano A: mTLS direto (indisponível no runtime → retorna plano_b)
 //   - consultarDistribuicaoDFeMock    → Plano TESTE: simula 137/138 sem rede
 //   - (futuro) consultarDistribuicaoDFeMicroApi → Plano B: micro-API externa
 //
 // ============================================================
-async function consultarDistribuicaoDFeBase44({ certPem, keyPem, ambiente, cnpj, ultNSU }) {
-  if (typeof Deno.createHttpClient !== 'function') {
-    return { ok: false, plano_b_necessario: true, motivo: 'Deno.createHttpClient indisponível no runtime.' };
-  }
-  const tpAmb = ambiente === 'producao' ? '1' : '2';
-  const endpoint = ambiente === 'producao' ? ENDPOINT_PROD : ENDPOINT_HOM;
-  const envelope = `<?xml version="1.0" encoding="UTF-8"?>
-<soap12:Envelope xmlns:soap12="http://www.w3.org/2003/05/soap-envelope">
-  <soap12:Body>
-    <nfeDistDFeInteresse xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeDistribuicaoDFe">
-      <nfeDadosMsg>
-        <distDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01">
-          <tpAmb>${tpAmb}</tpAmb>
-          <cUFAutor>${COD_UF_SC}</cUFAutor>
-          <CNPJ>${cnpj}</CNPJ>
-          <distNSU><ultNSU>${ultNSU}</ultNSU></distNSU>
-        </distDFeInt>
-      </nfeDadosMsg>
-    </nfeDistDFeInteresse>
-  </soap12:Body>
-</soap12:Envelope>`;
-
-  let client;
-  try {
-    client = Deno.createHttpClient({ cert: certPem, key: keyPem });
-  } catch (e) {
-    return { ok: false, plano_b_necessario: true, motivo: `createHttpClient falhou: ${e.message}` };
-  }
-
-  let httpStatus, responseXml;
-  try {
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/soap+xml; charset=utf-8',
-        'SOAPAction': SOAP_ACTION,
-      },
-      body: envelope,
-      client,
-    });
-    httpStatus = resp.status;
-    responseXml = await resp.text();
-  } catch (e) {
-    return { ok: false, motivo: `Erro de rede/TLS: ${e.message}`, endpoint };
-  }
-
-  // Parse cStat e NSUs
-  const pick = (re) => { const x = responseXml.match(re); return x ? x[1] : null; };
-  const cstat = parseInt(pick(/<cStat>(\d+)<\/cStat>/) || '0') || null;
-  const xMotivo = pick(/<xMotivo>([^<]+)<\/xMotivo>/);
-  const ultNsuResp = pick(/<ultNSU>(\d+)<\/ultNSU>/);
-  const maxNsuResp = pick(/<maxNSU>(\d+)<\/maxNSU>/);
-
-  // Extrair todos os docZip da resposta (apenas em cStat 138)
-  const docZips = [];
-  const docZipRegex = /<docZip\s+NSU="(\d+)"\s+schema="([^"]+)"[^>]*>([^<]+)<\/docZip>/g;
-  let m;
-  while ((m = docZipRegex.exec(responseXml)) !== null) {
-    docZips.push({ nsu: m[1], schema: m[2], data: m[3] });
-  }
-
+async function consultarDistribuicaoDFeBase44() {
+  // O runtime de backend functions do Base44 não expõe cliente HTTP mTLS,
+  // então a consulta direta à SEFAZ AN não é possível daqui.
   return {
-    ok: cstat === 137 || cstat === 138,
-    cstat,
-    xMotivo,
-    ultNSU: ultNsuResp,
-    maxNSU: maxNsuResp,
-    docZips,
-    endpoint,
-    http_status: httpStatus,
-    response_xml: responseXml,
+    ok: false,
+    plano_b_necessario: true,
+    motivo: 'Cliente HTTP mTLS indisponível no runtime — necessário Plano B (micro-API externa Node + mTLS).',
   };
 }
 
@@ -255,9 +188,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Senha do secret
-    const senha = Deno.env.get(cdoc.senha_secret_name);
-    if (!senha) return Response.json({ ok: false, motivo: `Secret ${cdoc.senha_secret_name} não configurado` }, { status: 400 });
+    // 4. Senha do secret — apenas via allowlist estática, nunca acesso dinâmico ao env
+    const { key: secretKey, senha, permitido } = getCertSecret(cdoc.senha_secret_name);
+    if (!permitido || !senha) return Response.json({ ok: false, motivo: `Secret ${secretKey} ${permitido ? 'não configurado' : 'não permitido'}` }, { status: 400 });
 
     // 5. PFX → PEM (pulado no modo mock — não precisa de certificado)
     let certPem = null, keyPem = null;

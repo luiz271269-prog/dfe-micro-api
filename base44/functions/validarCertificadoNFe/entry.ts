@@ -1,6 +1,7 @@
 // redeploy: 2026-06-06 (força re-injeção de secrets do runtime)
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 import forge from 'npm:node-forge@1.3.1';
+import { getCertSecret } from '../../shared/certSecrets.ts';
 
 function maskCnpj(cnpj) {
   const d = (cnpj || '').replace(/\D/g, '');
@@ -24,15 +25,18 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, motivo: 'Campos obrigatórios: empresa, cnpj, file_uri, senha_secret_name' }, { status: 400 });
     }
 
-    // Normaliza nome do secret (remove caracteres invisíveis e espaços que podem vir do body)
-    const secretNameNormalizado = String(senha_secret_name || '').trim().replace(/[^A-Z0-9_]/gi, '');
-    const senha = Deno.env.get(secretNameNormalizado);
+    // Resolve a senha apenas via allowlist estática — nunca acesso dinâmico ao env
+    const { key: secretNameNormalizado, senha, permitido } = getCertSecret(senha_secret_name);
+    if (!permitido) {
+      return Response.json({
+        ok: false,
+        motivo: `Secret "${secretNameNormalizado}" não é um secret de certificado permitido (use CERT_PFX_NEURALTEC ou CERT_PFX_LIESCH).`,
+      }, { status: 400 });
+    }
     if (!senha) {
-      const todasKeys = Object.keys(Deno.env.toObject()).sort();
       return Response.json({
         ok: false,
         motivo: `Secret "${secretNameNormalizado}" não configurado no Base44. Cadastre a senha do .pfx em Settings → Secrets.`,
-        debug: { secret_recebido: senha_secret_name, secret_normalizado: secretNameNormalizado, env_keys_disponiveis: todasKeys }
       }, { status: 400 });
     }
 
