@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ ok: false, etapa: 'auth', motivo: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ ok: false, etapa: 'auth', motivo: 'Forbidden: admin required' }, { status: 403 });
     step('auth', true, { user_id: user.id });
 
     const body = await req.json().catch(() => ({}));
