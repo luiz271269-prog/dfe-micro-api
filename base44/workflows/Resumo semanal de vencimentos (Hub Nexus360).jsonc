@@ -1,0 +1,44 @@
+{
+  "name": "Resumo semanal de vencimentos (Hub Nexus360)",
+  "description": "Toda segunda-feira \u00e0s 8h (hor\u00e1rio de Bras\u00edlia) envia a agenda da semana (vencimentos nos pr\u00f3ximos 7 dias) ao Hub do Nexus360.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 11 * * 1",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "resumo_semanal_de_vencimentos_hub_nexus360",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "dispararVencimentosHub",
+            "args": {
+              "dias": 7,
+              "modo": "semanal"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}

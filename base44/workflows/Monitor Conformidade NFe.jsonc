@@ -1,0 +1,35 @@
+{
+  "name": "Monitor Conformidade NFe",
+  "description": "Dispara alertas autom\u00e1ticos quando NFeAnalise \u00e9 criada/atualizada com score &lt; 60 ou diverg\u00eancias de alta severidade",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create",
+        "update"
+      ],
+      "entity_name": "NFeAnalise"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "monitor_conformidade_nfe",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "monitorarConformidadeNFe",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}

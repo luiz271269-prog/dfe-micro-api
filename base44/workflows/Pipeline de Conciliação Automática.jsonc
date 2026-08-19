@@ -1,0 +1,41 @@
+{
+  "name": "Pipeline de Concilia\u00e7\u00e3o Autom\u00e1tica",
+  "description": "Roda todos os motores de concilia\u00e7\u00e3o (contas a pagar, cobran\u00e7as, folha, faturas, cart\u00f5es, obras) e auto-aprova sugest\u00f5es com confian\u00e7a \u2265 90%.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 10 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pipeline_de_concilia_o_autom_tica",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "pipelineConciliacao",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "Varredura Di\u00e1ria do Drive (10h)",
+  "description": "Varre diariamente as pastas vinculadas do Google Drive (XMLs de NF-e e comprovantes), importando apenas arquivos novos, deduplicados.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 13 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "varredura_di_ria_do_drive_10h",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "varreduraDiariaDrive",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}

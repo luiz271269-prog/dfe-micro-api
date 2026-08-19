@@ -1,0 +1,44 @@
+{
+  "name": "Lembretes di\u00e1rios de vencimentos (Hub Nexus360)",
+  "description": "Todo dia \u00e0s 8h (hor\u00e1rio de Bras\u00edlia) varre tributos, faturas de cart\u00e3o e cobran\u00e7as que vencem nos pr\u00f3ximos 3 dias e dispara avisos ao Hub do Nexus360.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 11 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "lembretes_di_rios_de_vencimentos_hub_nexus360",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "dispararVencimentosHub",
+            "args": {
+              "dias": 3,
+              "modo": "diario"
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
