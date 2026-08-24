@@ -1,15 +1,16 @@
 import { Link } from 'react-router-dom';
 
 const ORIGENS = [
-  { label: 'Compras', color: '#0EA5E9' },
-  { label: 'Despesas fixas/variáveis', color: '#10B981' },
-  { label: 'Impostos (vendas + folha)', color: '#F97316' },
-  { label: 'Folha', color: '#6366F1' },
+  { label: 'Compras (estoque/revenda)', color: '#0EA5E9', href: '/compras' },
+  { label: 'Despesas fixas/variáveis', color: '#10B981', href: '/despesas' },
+  { label: 'Impostos (vendas + folha)', color: '#F97316', href: '/tributos' },
+  { label: 'Folha', color: '#6366F1', href: '/funcionarios' },
+  { label: 'Obras / Reformas', color: '#F59E0B', href: '/obras' },
   { label: 'Pró-labore', color: '#A855F7', href: '/prolabore' },
 ];
 
 const H = 180;
-const YS = [18, 54, 90, 126, 162];
+const YS = [15, 45, 75, 105, 135, 165];
 const CX = 55;
 const CY = 90;
 
@@ -17,20 +18,20 @@ export default function PipelineFluxo() {
   return (
     <div
       className="bg-white border rounded-lg px-4 py-3 overflow-x-auto"
-      title='Item comprado no cartão não fica "a pagar" individualmente — a obrigação evapora para a fatura do cartão, que é paga no extrato. Pró-labore (retirada de lucros) é identificado no extrato e nos cartões pessoais.'
+      title='Item comprado no cartão não fica "a pagar" individualmente — a obrigação evapora para a fatura do cartão, que é paga no extrato. Compras são produtos para estoque/revenda (não são despesas operacionais). Pró-labore (retirada de lucros) é identificado no extrato e nos cartões pessoais, com projeção pela média dos últimos 3 meses.'
     >
       <div className="flex items-center justify-center min-w-[640px]">
         {/* Origens */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
+        <div className="flex flex-col items-end gap-1 shrink-0" style={{ height: H, justifyContent: 'center' }}>
           {ORIGENS.map(o => o.href ? (
             <Link key={o.label} to={o.href}
-              className="h-7 flex items-center px-3.5 rounded-full text-[10px] font-bold uppercase tracking-wide text-white whitespace-nowrap hover:opacity-90"
+              className="h-6 flex items-center px-3 rounded-full text-[10px] font-bold uppercase tracking-wide text-white whitespace-nowrap hover:opacity-90"
               style={{ backgroundColor: o.color }}>
               {o.label}
             </Link>
           ) : (
             <span key={o.label}
-              className="h-7 flex items-center px-3.5 rounded-full text-[10px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
+              className="h-6 flex items-center px-3 rounded-full text-[10px] font-bold uppercase tracking-wide text-white whitespace-nowrap"
               style={{ backgroundColor: o.color }}>
               {o.label}
             </span>

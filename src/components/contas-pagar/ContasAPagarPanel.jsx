@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Wallet, Landmark, Users, CreditCard, ShoppingCart, AlertTriangle, CheckCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Hammer, Briefcase, AlertTriangle, CheckCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
-import { consolidarContasPagar, calcularAging, executarBaixaAutomatica } from '../../lib/contasPagarEngine';
+import { consolidarContasPagar, calcularAging, contarEvaporados } from '../../lib/contasPagarEngine';
 import CalendarioSemanal from './CalendarioSemanal';
 import PainelDDA from './PainelDDA';
 import FluxoContasAPagar from './FluxoContasAPagar';
@@ -14,6 +14,8 @@ const ORIGEM_CONFIG = {
   folha:   { icon: Users,      color: 'bg-indigo-100 text-indigo-700 border-indigo-200',   label: 'Folha',   href: '/funcionarios' },
   fatura:  { icon: CreditCard, color: 'bg-purple-100 text-purple-700 border-purple-200',   label: 'Cartão',  href: '/cartoes' },
   compra:  { icon: ShoppingCart, color: 'bg-sky-100 text-sky-700 border-sky-200',          label: 'Compra',  href: '/compras' },
+  obra:    { icon: Hammer,     color: 'bg-amber-100 text-amber-700 border-amber-200',     label: 'Obra',    href: '/obras' },
+  pro_labore: { icon: Briefcase, color: 'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200', label: 'Pró-labore', href: '/prolabore' },
 };
 
 function mesAtualISO() {
@@ -37,17 +39,20 @@ export default function ContasAPagarPanel() {
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [mesReferencia, setMesReferencia] = useState(mesAtualISO());
-  const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [], compras: [] });
+  const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [], compras: [], obras: [], lancamentos: [], lancamentosCartao: [] });
   const [vinculos, setVinculos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
 
+  // Baixa automática unificada — roda no backend (conciliarContasAPagarExtrato),
+  // cobrindo despesa, compra, obra, tributo e fatura numa única implementação.
   async function executarBaixa() {
     if (conciliando) return;
     setConciliando(true);
     setResultadoBaixa(null);
     try {
-      const res = await executarBaixaAutomatica(base44, dados);
-      setResultadoBaixa(res);
+      const { data } = await base44.functions.conciliarContasAPagarExtrato({});
+      if (data?.error) throw new Error(data.error);
+      setResultadoBaixa(data);
       await load();
       window.dispatchEvent(new Event('neuralfinRefresh'));
     } catch (err) {
@@ -58,17 +63,19 @@ export default function ContasAPagarPanel() {
 
   async function load() {
     setLoading(true);
-    const [despesas, tributos, folhas, faturas, cartoes, compras, vincs, lancs] = await Promise.all([
+    const [despesas, tributos, folhas, faturas, cartoes, compras, obras, lancsCartao, vincs, lancs] = await Promise.all([
       base44.entities.DespesaOperacional.list('-data_vencimento', 500),
       base44.entities.Tributo.list('-data_vencimento', 200),
       base44.entities.FolhaPagamento.list('-competencia', 500),
       base44.entities.FaturaCartao.list('-data_vencimento', 200),
       base44.entities.ContaCartao.filter({ is_ativo: true }),
       base44.entities.ItemCompra.list('-data_emissao', 1000),
+      base44.entities.ObraReforma.list('-data', 500),
+      base44.entities.LancamentoCartao.list('-data_lancamento', 3000),
       base44.entities.VinculoExtrato.list('-created_date', 5000),
       base44.entities.LancamentoBancario.list('-data', 1000),
     ]);
-    setDados({ despesas, tributos, folhas, faturas, cartoes, compras });
+    setDados({ despesas, tributos, folhas, faturas, cartoes, compras, obras, lancamentos: lancs, lancamentosCartao: lancsCartao });
     setVinculos(vincs);
     setLancamentos(lancs);
     setLoading(false);
@@ -106,7 +113,7 @@ export default function ContasAPagarPanel() {
 
   // Set de itens já conciliados (têm VinculoExtrato apontando)
   const conciliadosSet = useMemo(() => {
-    const m = { despesa: 'DespesaOperacional', tributo: 'Tributo', folha: 'FolhaPagamento', fatura: 'FaturaCartao', compra: 'ItemCompra' };
+    const m = { despesa: 'DespesaOperacional', tributo: 'Tributo', folha: 'FolhaPagamento', fatura: 'FaturaCartao', compra: 'ItemCompra', obra: 'ObraReforma' };
     const s = new Set();
     vinculos.forEach(v => s.add(`${v.entidade_tipo}-${v.entidade_id}`));
     return { has: (item) => s.has(`${m[item.origem_tipo]}-${item.origem_id}`) };
@@ -118,10 +125,12 @@ export default function ContasAPagarPanel() {
   const totalMes = [...aging.hoje, ...aging.semana, ...aging.ate15, ...aging.ate30].reduce((a, i) => a + (i.valor || 0), 0);
 
   const totaisPorOrigem = useMemo(() => {
-    const t = { despesa: 0, tributo: 0, folha: 0, fatura: 0, compra: 0 };
+    const t = { despesa: 0, tributo: 0, folha: 0, fatura: 0, compra: 0, obra: 0, pro_labore: 0 };
     itensRaw.forEach(i => { t[i.origem_tipo] = (t[i.origem_tipo] || 0) + i.valor; });
     return t;
   }, [itensRaw]);
+
+  const evaporados = useMemo(() => contarEvaporados(dados), [dados]);
 
   if (loading) return <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>;
 
@@ -149,8 +158,8 @@ export default function ContasAPagarPanel() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle className="w-4 h-4" />
-                <span className="font-semibold">{resultadoBaixa.conciliados} conta(s) baixada(s) automaticamente</span>
-                <span className="text-xs opacity-80">· {resultadoBaixa.totalLancamentos} débitos analisados · {resultadoBaixa.totalContas} contas em aberto</span>
+                <span className="font-semibold">{resultadoBaixa.baixas_automaticas || 0} conta(s) baixada(s) automaticamente</span>
+                <span className="text-xs opacity-80">· {resultadoBaixa.sugestoes_criadas || 0} sugestão(ões) · {resultadoBaixa.total_debitos_analisados || 0} débitos analisados · {resultadoBaixa.total_contas_abertas || 0} contas em aberto</span>
               </div>
               <button onClick={() => setResultadoBaixa(null)} className="text-xs opacity-70 hover:opacity-100">×</button>
             </div>
@@ -158,7 +167,7 @@ export default function ContasAPagarPanel() {
         </div>
       )}
 
-      <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} />
+      <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} evaporados={evaporados} />
 
       {/* Totais principais — linha compacta de KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
@@ -181,7 +190,7 @@ export default function ContasAPagarPanel() {
       </div>
 
       {/* Filtro por origem — grade compacta */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-4">
         <button onClick={() => setFiltroOrigem('todos')} title={`${itensRaw.length} itens`}
           className={`rounded-lg border px-3 py-2 text-left transition-all ${filtroOrigem === 'todos' ? 'ring-2 ring-primary bg-primary/5' : 'bg-card hover:bg-muted/30'}`}>
           <p className="text-[10px] font-bold uppercase text-muted-foreground">Todas as origens</p>

@@ -10,7 +10,7 @@ import { classificarNaturezaExtrato, ehSaidaContasPagar } from '../../lib/extrat
 //   → pagas no CARTÃO: o item "evapora" para a fatura (só a fatura fica a pagar)
 //   → pagas no BANCO: cruzam com o extrato bancário (baixa automática)
 //  Sinaliza gaps: faturas de contas não monitoradas, fatura sem cartão, duplicidades.
-export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamentos = [], mesReferencia }) {
+export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamentos = [], mesReferencia, evaporados = null }) {
   const [aberto, setAberto] = useState(true);
 
   const diag = useMemo(() => {
@@ -91,6 +91,16 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
           </div>
           {/* Mapa do fluxo — pipeline conectado */}
           <PipelineFluxo />
+
+          {evaporados && evaporados.total > 0 && (
+            <div className="border border-purple-200 bg-purple-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2"
+              title={`${evaporados.despesas} despesa(s), ${evaporados.compras} compra(s) e ${evaporados.obras} obra(s) foram pagas no cartão — a obrigação vive na fatura, por isso saíram do Contas a Pagar (evita dupla contagem).`}>
+              <p className="text-[10px] font-bold uppercase text-purple-700">
+                Evaporados p/ fatura do cartão · {evaporados.total} item(ns)
+              </p>
+              <p className="text-sm font-bold text-purple-800 whitespace-nowrap">{formatCurrency(evaporados.valor)}</p>
+            </div>
+          )}
           {/* Sinais */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="border border-emerald-200 bg-emerald-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2" title={`${diag.monitoradas.length} fatura(s) de contas monitoradas — a baixa automática resolve`}>

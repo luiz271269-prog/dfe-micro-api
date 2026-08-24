@@ -11,6 +11,7 @@
  */
 
 import { ehSaidaContasPagar } from './extratoNatureza';
+import { calcularProLabore } from './proLaboreContasPagar';
 
 // Tipo de compra padrão por origem, quando o registro ainda não foi classificado
 const TIPO_COMPRA_PADRAO = {
@@ -19,7 +20,33 @@ const TIPO_COMPRA_PADRAO = {
   folha: 'folha',
   fatura: 'financeiro',
   compra: 'estoque',
+  obra: 'obras',
+  pro_labore: 'pro_labore',
 };
+
+/**
+ * REGRA DO CANAL CARTÃO ("evapora"):
+ * item pago no cartão não é conta a pagar individual — a obrigação vira a fatura do cartão.
+ * Logo, qualquer registro com lancamento_cartao_id preenchido sai do Contas a Pagar,
+ * independentemente do status, para não somar o mesmo gasto duas vezes.
+ */
+function evaporou(reg) {
+  return !!reg?.lancamento_cartao_id;
+}
+
+/** Quantos itens saíram do Contas a Pagar por já estarem absorvidos numa fatura de cartão. */
+export function contarEvaporados({ despesas = [], compras = [], obras = [] }) {
+  const dsp = despesas.filter(d => d.status === 'pendente' && evaporou(d));
+  const cmp = compras.filter(c => ['pendente', 'parcial', 'nao_identificado'].includes(c.status_pagamento) && evaporou(c));
+  const obr = obras.filter(o => !o.lancamento_bancario_id && evaporou(o));
+  return {
+    total: dsp.length + cmp.length + obr.length,
+    valor: [...dsp, ...cmp, ...obr].reduce((a, x) => a + (x.valor || x.valor_total || 0), 0),
+    despesas: dsp.length,
+    compras: cmp.length,
+    obras: obr.length,
+  };
+}
 
 function eixos(reg, origem_tipo) {
   return {
@@ -28,10 +55,10 @@ function eixos(reg, origem_tipo) {
   };
 }
 
-export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [], compras = [] }) {
+export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [], compras = [], obras = [], lancamentos = [], lancamentosCartao = [] }) {
   const itens = [];
 
-  despesas.filter(d => d.status === 'pendente').forEach(d => {
+  despesas.filter(d => d.status === 'pendente' && !evaporou(d)).forEach(d => {
     itens.push({
       id: `desp-${d.id}`,
       origem_id: d.id,
@@ -99,9 +126,10 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  // Compras (ItemCompra) ainda não pagas — compras a pagar
+  // Compras (ItemCompra) ainda não pagas — produtos para estoque/revenda (origem própria, não é despesa)
   compras
     .filter(c => c.status_pagamento === 'pendente' || c.status_pagamento === 'parcial' || c.status_pagamento === 'nao_identificado')
+    .filter(c => !evaporou(c))
     .forEach(c => {
       const valorAberto = (c.valor_total || 0) - (c.valor_pago || 0);
       if (valorAberto <= 0.01) return;
@@ -120,6 +148,31 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
         ...eixos(c, 'compra'),
       });
     });
+
+  // Obras / Reformas ainda não pagas pelo banco (e não absorvidas por cartão)
+  obras
+    .filter(o => !o.lancamento_bancario_id && !evaporou(o))
+    .forEach(o => {
+      const valor = o.valor || 0;
+      if (valor <= 0.01) return;
+      itens.push({
+        id: `obra-${o.id}`,
+        origem_id: o.id,
+        origem_tipo: 'obra',
+        descricao: o.descricao,
+        fornecedor: o.responsavel || 'Prestador',
+        categoria: o.tipo_profissional || o.tipo || 'obra',
+        valor,
+        data_vencimento: o.data_vencimento || o.data,
+        empresa: o.empresa || '—',
+        forma_pagamento: o.forma_pagamento,
+        ...eixos(o, 'obra'),
+      });
+    });
+
+  // Pró-labore projetado (média dos últimos 3 meses) — item planejado, sem entidade de origem
+  const proLabore = calcularProLabore({ lancamentos, lancamentosCartao });
+  if (proLabore.projetado) itens.push(proLabore.projetado);
 
   return itens;
 }
@@ -193,7 +246,7 @@ function bonusAfinidade(lanc, conta) {
     return 0;
   }
 
-  if (conta.origem_tipo === 'despesa' || conta.origem_tipo === 'compra') {
+  if (conta.origem_tipo === 'despesa' || conta.origem_tipo === 'compra' || conta.origem_tipo === 'obra') {
     const fornecedor = norm(conta.fornecedor);
     if (fornecedor && fornecedor.length >= 4 && texto.includes(fornecedor)) return -40;
     // tenta palavras significativas do fornecedor
@@ -216,6 +269,7 @@ export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias =
 
   const candidatos = contasPagar
     .map(c => {
+      if (c.is_planejado) return null; // projeções não têm entidade — nunca são baixadas
       if (Math.abs(c.valor - valor) > toleranciaValor) return null;
       if (!c.data_vencimento) return null;
       // Folha e cartão podem ter variação maior de data
@@ -241,8 +295,8 @@ export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias =
  *
  * Retorna: { conciliados, totalLancamentos, totalContas, baixas: [...] }
  */
-export async function executarBaixaAutomatica(base44, { despesas, tributos, folhas, faturas, cartoes }) {
-  const itens = consolidarContasPagar({ despesas, tributos, folhas, faturas, cartoes });
+export async function executarBaixaAutomatica(base44, dadosOrigem) {
+  const itens = consolidarContasPagar(dadosOrigem).filter(i => !i.is_planejado);
 
   // Buscar débitos do extrato não conciliados (valor negativo)
   // Limitar aos últimos 90 dias para performance
@@ -300,6 +354,7 @@ export function mapearTipoEntidade(origem_tipo) {
     folha: 'FolhaPagamento',
     fatura: 'FaturaCartao',
     compra: 'ItemCompra',
+    obra: 'ObraReforma',
   }[origem_tipo];
 }
 
@@ -335,6 +390,10 @@ async function aplicarBaixa(base44, lanc, conta) {
       status_pagamento: 'pago',
       lancamento_bancario_id: lanc.id,
       valor_pago: valorAlocado,
+    });
+  } else if (conta.origem_tipo === 'obra') {
+    await base44.entities.ObraReforma.update(conta.origem_id, {
+      lancamento_bancario_id: lanc.id,
     });
   }
 

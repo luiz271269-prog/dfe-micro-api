@@ -15,18 +15,72 @@ function mapearTipoEntidade(origem) {
     despesa: 'DespesaOperacional',
     tributo: 'Tributo',
     fatura: 'FaturaCartao',
+    compra: 'ItemCompra',
+    obra: 'ObraReforma',
   }[origem];
 }
 
-function consolidarContasAbertas({ despesas, tributos, faturas, cartoes }) {
+// REGRA DO CANAL CARTÃO ("evapora"): item com lancamento_cartao_id já virou fatura — sai do Contas a Pagar.
+function evaporou(reg) {
+  return !!reg?.lancamento_cartao_id;
+}
+
+// Afinidade textual entre o extrato e a conta a pagar (bônus negativo = match melhor)
+function bonusAfinidade(lanc, conta) {
+  const texto = norm(`${lanc.descricao || ''} ${lanc.detalhe || ''}`);
+  if (!texto) return 0;
+
+  if (conta.origem_tipo === 'fatura') {
+    if (['cartao', 'fatura', 'credito'].some(p => texto.includes(p))) return -30;
+    const partes = norm(conta.fornecedor).split(/[\s\-—–]+/).filter(p => p.length >= 4);
+    if (partes.some(p => texto.includes(p))) return -40;
+    return 0;
+  }
+  if (conta.origem_tipo === 'tributo') {
+    const tags = ['das', 'darf', 'gps', 'icms', 'iss', 'inss', 'fgts', 'simples', 'tributo', 'gov', 'receita', 'federal'];
+    if (tags.some(t => texto.includes(t))) return -40;
+    return 0;
+  }
+  const fornecedor = norm(conta.fornecedor);
+  if (fornecedor && fornecedor.length >= 4 && texto.includes(fornecedor)) return -40;
+  const partes = fornecedor.split(/\s+/).filter(p => p.length >= 5);
+  if (partes.some(p => texto.includes(p))) return -25;
+  return 0;
+}
+
+function consolidarContasAbertas({ despesas, tributos, faturas, cartoes, compras = [], obras = [] }) {
   const itens = [];
-  despesas.filter(d => d.status === 'pendente').forEach(d => {
+  despesas.filter(d => d.status === 'pendente' && !evaporou(d)).forEach(d => {
     itens.push({
       origem_id: d.id, origem_tipo: 'despesa',
       descricao: d.descricao, fornecedor: d.fornecedor || '—',
       valor: d.valor, data_vencimento: d.data_vencimento || d.data,
     });
   });
+  // Compras (estoque/revenda) — origem própria, não é despesa operacional
+  compras
+    .filter(c => ['pendente', 'parcial', 'nao_identificado'].includes(c.status_pagamento) && !evaporou(c))
+    .forEach(c => {
+      const aberto = (c.valor_total || 0) - (c.valor_pago || 0);
+      if (aberto <= 0.01) return;
+      itens.push({
+        origem_id: c.id, origem_tipo: 'compra',
+        descricao: c.descricao_produto || `Compra NF ${c.numero_nota || ''}`.trim(),
+        fornecedor: c.fornecedor || '—',
+        valor: aberto, data_vencimento: c.data_emissao,
+      });
+    });
+  // Obras / reformas ainda não pagas pelo banco
+  obras
+    .filter(o => !o.lancamento_bancario_id && !evaporou(o))
+    .forEach(o => {
+      if ((o.valor || 0) <= 0.01) return;
+      itens.push({
+        origem_id: o.id, origem_tipo: 'obra',
+        descricao: o.descricao, fornecedor: o.responsavel || 'Prestador',
+        valor: o.valor, data_vencimento: o.data_vencimento || o.data,
+      });
+    });
   tributos.filter(t => t.status === 'a_vencer' || t.status === 'vencido').forEach(t => {
     itens.push({
       origem_id: t.id, origem_tipo: 'tributo',
@@ -62,17 +116,19 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole.entities;
 
-    const [despesas, tributos, faturas, cartoes, lancamentos, vinculos, sugestoesAntigas] = await Promise.all([
+    const [despesas, tributos, faturas, cartoes, compras, obras, lancamentos, vinculos, sugestoesAntigas] = await Promise.all([
       svc.DespesaOperacional.list('-data', 2000),
       svc.Tributo.list('-data_vencimento', 2000),
       svc.FaturaCartao.list('-data_vencimento', 1000),
       svc.ContaCartao.list(),
+      svc.ItemCompra.list('-data_emissao', 2000),
+      svc.ObraReforma.list('-data', 1000),
       svc.LancamentoBancario.list('-data', 3000),
       svc.VinculoExtrato.list('-created_date', 5000),
       svc.SugestaoConciliacao.filter({ status: 'pendente' }),
     ]);
 
-    const itens = consolidarContasAbertas({ despesas, tributos, faturas, cartoes });
+    const itens = consolidarContasAbertas({ despesas, tributos, faturas, cartoes, compras, obras });
 
     // Excluir contas já vinculadas e lançamentos já vinculados/em sugestão
     const lancsVinculados = new Set(vinculos.map(v => v.lancamento_bancario_id));
@@ -184,6 +240,10 @@ Deno.serve(async (req) => {
           await svc.Tributo.update(match.origem_id, { status: 'pago', data_pagamento: lanc.data, valor_pago: valorAlocado, lancamento_bancario_id: lanc.id });
         } else if (match.origem_tipo === 'fatura') {
           await svc.FaturaCartao.update(match.origem_id, { status: 'paga_total', data_pagamento: lanc.data, valor_pago: valorAlocado, lancamento_bancario_id: lanc.id });
+        } else if (match.origem_tipo === 'compra') {
+          await svc.ItemCompra.update(match.origem_id, { status_pagamento: 'pago', valor_pago: valorAlocado, lancamento_bancario_id: lanc.id });
+        } else if (match.origem_tipo === 'obra') {
+          await svc.ObraReforma.update(match.origem_id, { lancamento_bancario_id: lanc.id });
         }
         // Cria vínculo
         await svc.VinculoExtrato.create({
@@ -224,15 +284,16 @@ Deno.serve(async (req) => {
           const diff = Math.abs((new Date(c.data_vencimento) - dataLanc) / 86400000);
           return diff > 0 && diff <= JANELA_SUGESTAO;
         })
-        .map(c => ({
-          c,
-          diff: Math.abs((new Date(c.data_vencimento) - dataLanc) / 86400000),
-        }))
-        .sort((a, b) => a.diff - b.diff);
+        .map(c => {
+          const diff = Math.abs((new Date(c.data_vencimento) - dataLanc) / 86400000);
+          const bonus = bonusAfinidade(lanc, c);
+          return { c, diff, bonus, score: diff * 10 + bonus };
+        })
+        .sort((a, b) => a.score - b.score);
 
       if (candidatos.length === 0) continue;
 
-      const { c: match, diff } = candidatos[0];
+      const { c: match, diff, bonus } = candidatos[0];
 
       try {
         await svc.SugestaoConciliacao.create({
@@ -247,8 +308,8 @@ Deno.serve(async (req) => {
           data_extrato: lanc.data,
           descricao_extrato: lanc.descricao,
           diff_dias: Math.round(diff),
-          confianca: diff <= 3 ? 85 : diff <= 7 ? 70 : 55,
-          motivo: `Valor bate (R$ ${valor.toFixed(2)}), mas pago ${Math.round(diff)} dia(s) ${dataLanc < new Date(match.data_vencimento) ? 'antes' : 'depois'} do vencimento`,
+          confianca: Math.min(98, (diff <= 3 ? 85 : diff <= 7 ? 70 : 55) + (bonus < 0 ? 10 : 0)),
+          motivo: `Valor bate (R$ ${valor.toFixed(2)})${bonus < 0 ? ', descrição confere' : ''}, mas pago ${Math.round(diff)} dia(s) ${dataLanc < new Date(match.data_vencimento) ? 'antes' : 'depois'} do vencimento`,
           status: 'pendente',
         });
         contasUsadas.add(match.origem_id);
@@ -266,6 +327,7 @@ Deno.serve(async (req) => {
       sugestoes_criadas: sugestoesCriadas,
       total_debitos_analisados: debitos.length,
       total_contas_abertas: contasAbertas.length,
+      origens_cobertas: ['despesa', 'compra', 'obra', 'tributo', 'fatura'],
     });
   } catch (error) {
     console.error('Erro conciliação:', error);

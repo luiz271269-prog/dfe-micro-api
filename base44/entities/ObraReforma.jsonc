@@ -5,7 +5,12 @@
     "data": {
       "type": "string",
       "format": "date",
-      "title": "Data"
+      "title": "Data de execu\u00e7\u00e3o"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data de vencimento do pagamento (planejamento \u2014 fallback: data de execu\u00e7\u00e3o)"
     },
     "descricao": {
       "type": "string",
