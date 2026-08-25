@@ -8,6 +8,7 @@ import CalendarioSemanal from './CalendarioSemanal';
 import PainelDDA from './PainelDDA';
 import FluxoContasAPagar from './FluxoContasAPagar';
 import SincronizarComprasButton from './SincronizarComprasButton';
+import PainelComprasImportadas from './PainelComprasImportadas';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Despesa', href: '/despesas' },
@@ -170,6 +171,8 @@ export default function ContasAPagarPanel() {
       )}
 
       <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} evaporados={evaporados} />
+
+      <PainelComprasImportadas compras={dados.compras} />
 
       {/* Totais principais — linha compacta de KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
