@@ -100,6 +100,15 @@
       "type": "number",
       "title": "Valor efetivamente pago (R$)",
       "default": 0
+    },
+    "pedido_central_id": {
+      "type": "string",
+      "title": "N\u00ba do pedido na Central de Compras (ex: PC-2026-064) \u2014 chave de sincroniza\u00e7\u00e3o entre apps"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "title": "Previs\u00e3o de pagamento / vencimento (usado no Contas a Pagar)"
     }
   },
   "required": [

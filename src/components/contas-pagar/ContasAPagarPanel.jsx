@@ -7,6 +7,7 @@ import { consolidarContasPagar, calcularAging, contarEvaporados } from '../../li
 import CalendarioSemanal from './CalendarioSemanal';
 import PainelDDA from './PainelDDA';
 import FluxoContasAPagar from './FluxoContasAPagar';
+import SincronizarComprasButton from './SincronizarComprasButton';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Despesa', href: '/despesas' },
@@ -137,7 +138,8 @@ export default function ContasAPagarPanel() {
   return (
     <>
       {/* Header da aba — ações */}
-      <div className="flex items-center justify-end gap-2 mb-4">
+      <div className="flex items-center justify-end gap-2 mb-4 flex-wrap">
+        <SincronizarComprasButton onDone={load} />
         <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
           {conciliando ? (
             <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Conciliando...</>
