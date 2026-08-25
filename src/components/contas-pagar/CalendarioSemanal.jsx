@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Calendar, Link2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Hammer, Briefcase, Calendar, Link2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import SeletorClassificacao from '../shared/SeletorClassificacao';
 import { mapearTipoEntidade } from '../../lib/contasPagarEngine';
@@ -11,7 +11,10 @@ const ORIGEM_CONFIG = {
   folha:   { icon: Users,      color: 'bg-indigo-100 text-indigo-700',   label: 'Folha',   href: '/funcionarios' },
   fatura:  { icon: CreditCard, color: 'bg-purple-100 text-purple-700',   label: 'Cartão',  href: '/cartoes' },
   compra:  { icon: ShoppingCart, color: 'bg-sky-100 text-sky-700',        label: 'Compra',  href: '/compras' },
+  obra:    { icon: Hammer,     color: 'bg-amber-100 text-amber-700',     label: 'Obra',    href: '/obras' },
+  pro_labore: { icon: Briefcase, color: 'bg-fuchsia-100 text-fuchsia-700', label: 'Pró-labore', href: '/prolabore' },
 };
+const ORIGEM_FALLBACK = { icon: Wallet, color: 'bg-muted text-muted-foreground', label: 'Outro', href: '/contas-a-pagar' };
 
 // dado um YYYY-MM, retorna semanas do mês (cada uma com ISO start/end)
 function gerarSemanasDoMes(mesRef) {
@@ -71,8 +74,9 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
   }, [itens, mesReferencia, hoje]);
 
   function renderItem(i) {
-    const cfg = ORIGEM_CONFIG[i.origem_tipo];
+    const cfg = ORIGEM_CONFIG[i.origem_tipo] || ORIGEM_FALLBACK;
     const OIcon = cfg.icon;
+    const entityName = mapearTipoEntidade(i.origem_tipo);
     const ok = conciliadosSet.has(i);
     return (
       <div key={i.id} className="flex items-start gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-muted/30">
@@ -90,21 +94,23 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
               <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> Pendente</span>
             )}
           </div>
-          {/* Classificação unificada — mesma dos Cartões e do Extrato */}
-          <div className="flex items-center gap-1.5 mt-1">
-            <SeletorClassificacao
-              eixo="origem"
-              entityName={mapearTipoEntidade(i.origem_tipo)}
-              record={{ id: i.origem_id, origem_compra: i.origem_compra }}
-              field="origem_compra"
-            />
-            <SeletorClassificacao
-              eixo="tipo"
-              entityName={mapearTipoEntidade(i.origem_tipo)}
-              record={{ id: i.origem_id, tipo_compra: i.tipo_compra }}
-              field="tipo_compra"
-            />
-          </div>
+          {/* Classificação unificada — só para itens com entidade real (projeções não têm) */}
+          {entityName && !i.is_planejado && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <SeletorClassificacao
+                eixo="origem"
+                entityName={entityName}
+                record={{ id: i.origem_id, origem_compra: i.origem_compra }}
+                field="origem_compra"
+              />
+              <SeletorClassificacao
+                eixo="tipo"
+                entityName={entityName}
+                record={{ id: i.origem_id, tipo_compra: i.tipo_compra }}
+                field="tipo_compra"
+              />
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className="text-xs font-bold text-rose-600 tabular-nums whitespace-nowrap">{formatCurrency(i.valor)}</span>
