@@ -9,7 +9,7 @@ import PainelDDA from './PainelDDA';
 import FluxoContasAPagar from './FluxoContasAPagar';
 import SincronizarComprasButton from './SincronizarComprasButton';
 import PainelComprasImportadas from './PainelComprasImportadas';
-import ModoContasToggle from './ModoContasToggle';
+import ChipsStatusContas from './ChipsStatusContas';
 import { consolidarContasPagas } from '../../lib/contasPagasEngine';
 
 const ORIGEM_CONFIG = {
@@ -40,7 +40,8 @@ export default function ContasAPagarPanel() {
   const [loading, setLoading] = useState(true);
   const [conciliando, setConciliando] = useState(false);
   const [resultadoBaixa, setResultadoBaixa] = useState(null);
-  const [modo, setModo] = useState('aberto'); // 'aberto' = por vencimento · 'pagos' = por emissão
+  const [filtroStatus, setFiltroStatus] = useState('todos'); // todos · aberto · semana · vencidos · pagos
+  const modo = filtroStatus === 'pagos' ? 'pagos' : 'aberto';
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [mesReferencia, setMesReferencia] = useState(mesAtualISO());
@@ -105,11 +106,32 @@ export default function ContasAPagarPanel() {
     };
   }, []);
 
+  const abertosRaw = useMemo(() => consolidarContasPagar(dados), [dados]);
+  // Pagos: o eixo temporal passa a ser a emissão do documento
+  const pagosRaw = useMemo(
+    () => consolidarContasPagas(dados).map(i => ({ ...i, data_vencimento: i.data_emissao })),
+    [dados]
+  );
+
+  const contagens = useMemo(() => {
+    const ag = calcularAging(abertosRaw);
+    return {
+      todos: abertosRaw.length + pagosRaw.length,
+      aberto: abertosRaw.length,
+      semana: ag.hoje.length + ag.semana.length,
+      vencidos: ag.vencidos.length,
+      pagos: pagosRaw.length,
+    };
+  }, [abertosRaw, pagosRaw]);
+
   const itensRaw = useMemo(() => {
-    if (modo === 'aberto') return consolidarContasPagar(dados);
-    // Modo pagos: o eixo temporal passa a ser a emissão do documento
-    return consolidarContasPagas(dados).map(i => ({ ...i, data_vencimento: i.data_emissao }));
-  }, [dados, modo]);
+    if (filtroStatus === 'pagos') return pagosRaw;
+    if (filtroStatus === 'todos') return [...abertosRaw, ...pagosRaw];
+    const ag = calcularAging(abertosRaw);
+    if (filtroStatus === 'semana') return [...ag.hoje, ...ag.semana];
+    if (filtroStatus === 'vencidos') return ag.vencidos;
+    return abertosRaw;
+  }, [abertosRaw, pagosRaw, filtroStatus]);
   const itens = useMemo(() => {
     return itensRaw.filter(i => {
       if (filtroOrigem !== 'todos' && i.origem_tipo !== filtroOrigem) return false;
@@ -147,7 +169,7 @@ export default function ContasAPagarPanel() {
     <>
       {/* Header da aba — ações */}
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-        <ModoContasToggle modo={modo} onChange={(m) => { setModo(m); setFiltroOrigem('todos'); }} />
+        <ChipsStatusContas status={filtroStatus} onChange={(s) => { setFiltroStatus(s); setFiltroOrigem('todos'); }} contagens={contagens} />
         <div className="flex items-center gap-2 flex-wrap">
         <SincronizarComprasButton onDone={load} />
         {modo === 'aberto' && <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
