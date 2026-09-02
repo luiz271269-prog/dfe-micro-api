@@ -1,0 +1,45 @@
+{
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "gerar_folha_proximo_mes",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "gerar_folhas": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "gerarFolhasPendentes",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Gerar folhas pendentes",
+            "description": "Clona a \u00faltima folha at\u00e9 o m\u00eas seguinte"
+          }
+        }
+      }
+    ]
+  },
+  "description": "Todo dia 1\u00ba \u00e0s 06h (Bras\u00edlia) pr\u00e9-gera a folha de pagamento do m\u00eas seguinte para cada funcion\u00e1rio ativo, clonando a \u00faltima folha (comiss\u00e3o e horas extras zeradas, status pendente). Idempotente \u2014 nunca duplica compet\u00eancia j\u00e1 existente.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 6 1 * *",
+      "one_time_date": null,
+      "timezone": "America/Sao_Paulo",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "name": "Gerar Folha do Pr\u00f3ximo M\u00eas (virada do m\u00eas)"
+}

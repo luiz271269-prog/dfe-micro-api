@@ -1,10 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 // Gera folhas de pagamento pendentes clonando sempre a última folha do funcionário.
-// Regra de negócio: a folha de competência M é paga no 5º dia útil de M+1,
-// portanto a última competência que deve existir é o MÊS ANTERIOR ao atual.
+// Regra de negócio: a folha é praticamente idêntica à anterior, então a competência
+// do MÊS SEGUINTE ao atual já nasce pré-gerada (virada do mês via workflow ou botão manual).
 // - Para cada funcionário ativo (ou de férias), gera as competências faltantes
-//   desde a última folha registrada até o mês anterior ao atual.
+//   desde a última folha registrada até o mês seguinte ao atual.
 // - Clona salário bruto, descontos, FGTS e empresa da última folha mensal.
 //   Comissão e horas extras (variáveis) começam zeradas.
 // - Idempotente: nunca duplica competência já existente (qualquer tipo).
@@ -37,9 +37,10 @@ Deno.serve(async (req) => {
       svc.FolhaPagamento.list('-competencia', 1000),
     ]);
 
-    // Competência alvo = mês anterior ao atual (folha de M é paga em M+1)
+    // Competência alvo = MÊS SEGUINTE ao atual: a próxima folha nasce pré-preenchida
+    // (clone da anterior) para o RH ajustar proventos/descontos ao longo do mês.
     const hoje = new Date();
-    const alvoDate = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - 1, 1));
+    const alvoDate = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + 1, 1));
     const competenciaAlvo = `${alvoDate.getUTCFullYear()}-${String(alvoDate.getUTCMonth() + 1).padStart(2, '0')}`;
 
     const ativos = funcionarios.filter(f => f.status === 'ativo' || f.status === 'ferias');
