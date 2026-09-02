@@ -61,7 +61,7 @@ export default function FolhaEventosDialog({ folha, folhas = [], onClose, onSave
 
   return (
     <Dialog open={!!folha} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-base">Eventos Detalhados da Folha</DialogTitle>
           <p className="text-sm text-muted-foreground">{folha.funcionario_nome} · <span className="font-semibold">{folha.competencia}</span></p>
@@ -76,7 +76,7 @@ export default function FolhaEventosDialog({ folha, folhas = [], onClose, onSave
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+        <div className="grid grid-cols-2 gap-4 items-start">
           <section>
             <h4 className="text-sm font-bold flex items-center gap-1.5 text-emerald-700 mb-1"><TrendingUp className="w-4 h-4" /> Proventos (Créditos)</h4>
             <div className="rounded-lg border px-3">
