@@ -67,9 +67,13 @@ Deno.serve(async (req) => {
         guarda++;
         if (!competenciasExistentes.has(comp)) {
           const bruto = modelo?.salario_bruto ?? func.salario_base ?? 0;
-          const descontos = modelo
+          // Eventos avulsos: só os marcados como recorrentes seguem para o mês seguinte
+          const eventos = (modelo?.eventos || []).filter((e) => e.recorrente).map((e) => ({ ...e }));
+          const somaEv = (tipo) => eventos.filter((e) => e.tipo === tipo).reduce((s, e) => s + (e.valor || 0), 0);
+          const descontos = (modelo
             ? (modelo.desconto_inss || 0) + (modelo.desconto_irrf || 0) + (modelo.desconto_vt || 0) + (modelo.desconto_vr || 0) + (modelo.outros_descontos || 0)
-            : 0;
+            : 0) + somaEv('desconto');
+          const proventosEv = somaEv('provento');
           const nova = {
             funcionario_id: func.id,
             funcionario_nome: modelo?.funcionario_nome || func.nome,
@@ -83,7 +87,8 @@ Deno.serve(async (req) => {
             outros_descontos: modelo?.outros_descontos || 0,
             horas_extras: 0,
             comissao: 0,
-            salario_liquido: bruto - descontos,
+            eventos,
+            salario_liquido: Math.round((bruto + proventosEv - descontos) * 100) / 100,
             status: 'pendente',
             fgts_valor: modelo?.fgts_valor || 0,
             empresa: modelo?.empresa || func.empresa,

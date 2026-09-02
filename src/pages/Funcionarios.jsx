@@ -12,6 +12,8 @@ import RelatorioPixFuncionarios from '../components/funcionarios/RelatorioPixFun
 import ControleFerias from '../components/funcionarios/ControleFerias';
 import BancoHorasTab from '../components/funcionarios/BancoHorasTab';
 import RescisoesTab from '../components/funcionarios/RescisoesTab';
+import FolhaEventosDialog from '../components/funcionarios/FolhaEventosDialog';
+import { calcularTotaisFolha } from '../lib/folhaEventos';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
@@ -172,6 +174,7 @@ export default function Funcionarios() {
   const [showFuncForm, setShowFuncForm] = useState(false);
   const [showFolhaForm, setShowFolhaForm] = useState(false);
   const [selectedFunc, setSelectedFunc] = useState(null);
+  const [folhaEventos, setFolhaEventos] = useState(null); // folha aberta no painel de eventos
   const [competencia, setCompetencia] = useState(getCurrentMonth());
   const [funcForm, setFuncForm] = useState({
     nome: '', cpf: '', cargo: '', setor: '', data_admissao: '', status: 'ativo', salario_base: '', tipo_contrato: 'CLT', empresa: 'NeuralTec'
@@ -335,7 +338,7 @@ export default function Funcionarios() {
       '',
       'Funcionário,Bruto,Comissão,Descontos,Líquido,Status',
       ...folhasMes.map(f => {
-        const desc = (f.desconto_inss||0)+(f.desconto_irrf||0)+(f.desconto_vt||0)+(f.desconto_vr||0)+(f.outros_descontos||0);
+        const desc = calcularTotaisFolha(f).descontos;
         return `${f.funcionario_nome},${f.salario_bruto},${f.comissao||0},${desc},${f.salario_liquido},${f.status}`;
       }),
       '',
@@ -533,7 +536,9 @@ export default function Funcionarios() {
                           </thead>
                           <tbody>
                             {itens.map(f => {
-                              const desc = (f.desconto_inss||0)+(f.desconto_irrf||0)+(f.desconto_vt||0)+(f.desconto_vr||0)+(f.outros_descontos||0);
+                              const tot = calcularTotaisFolha(f);
+                              const desc = tot.descontos;
+                              const extras = (f.horas_extras||0) + tot.proventosEventos;
                               const pagoVinculos = vinculosFolha[f.id] || 0;
                               const pago = f.status === 'pago' ? f.salario_liquido : pagoVinculos;
                               const saldo = (f.salario_liquido||0) - pago;
@@ -542,15 +547,17 @@ export default function Funcionarios() {
                                 ? { label: 'Parcial', color: 'bg-yellow-100 text-yellow-700' }
                                 : (FOLHA_STATUS[f.status] || FOLHA_STATUS.pendente);
                               return (
-                                <tr key={f.id} className="border-b hover:bg-muted/20 transition-colors">
+                                <tr key={f.id} onClick={() => setFolhaEventos(f)} title="Toque para lançar eventos (horas extras, comissão, proventos e descontos)"
+                                  className="border-b hover:bg-muted/20 transition-colors cursor-pointer">
                                   <td className="px-4 py-2.5 font-semibold">
                                     {f.funcionario_nome}
+                                    {(f.eventos?.length || 0) > 0 && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">{f.eventos.length} evento{f.eventos.length > 1 ? 's' : ''}</span>}
                                     {f.tipo === 'ferias' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold inline-flex items-center gap-1"><Palmtree className="w-3 h-3" /> Férias</span>}
                                     {f.tipo === 'decimo_terceiro' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">13º</span>}
                                     {f.tipo === 'rescisao' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">Rescisão</span>}
                                   </td>
                                   <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(f.salario_bruto)}</td>
-                                  <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{f.horas_extras > 0 ? formatCurrency(f.horas_extras) : '—'}</td>
+                                  <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{extras > 0 ? formatCurrency(extras) : '—'}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{f.comissao > 0 ? formatCurrency(f.comissao) : '—'}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums text-red-600">{desc > 0 ? formatCurrency(-desc) : '—'}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums font-bold text-green-700">{formatCurrency(f.salario_liquido)}</td>
@@ -612,6 +619,9 @@ export default function Funcionarios() {
 
       {/* Modal detalhe funcionário */}
       <FuncModal func={selectedFunc} folhas={folhas} onClose={() => setSelectedFunc(null)} />
+
+      {/* Painel de eventos da folha (abre ao tocar na linha) */}
+      <FolhaEventosDialog folha={folhaEventos} folhas={folhas} onClose={() => setFolhaEventos(null)} onSaved={loadData} />
 
       {/* Form novo funcionário */}
       <Dialog open={showFuncForm} onOpenChange={setShowFuncForm}>
