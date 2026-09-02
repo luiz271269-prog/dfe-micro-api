@@ -72,6 +72,36 @@
       "title": "Comiss\u00e3o",
       "default": 0
     },
+    "eventos": {
+      "type": "array",
+      "title": "Eventos detalhados da folha (proventos e descontos avulsos al\u00e9m dos campos fixos)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "title": "Descri\u00e7\u00e3o (ex: B\u00f4nus, Vale Alimenta\u00e7\u00e3o, Falta, Adiantamento)"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "provento",
+              "desconto"
+            ],
+            "title": "Provento (cr\u00e9dito) ou Desconto (d\u00e9bito)"
+          },
+          "valor": {
+            "type": "number",
+            "title": "Valor (R$)"
+          },
+          "recorrente": {
+            "type": "boolean",
+            "default": false,
+            "title": "Repete todo m\u00eas (herdado na gera\u00e7\u00e3o autom\u00e1tica)"
+          }
+        }
+      }
+    },
     "salario_liquido": {
       "type": "number",
       "title": "Sal\u00e1rio L\u00edquido"
