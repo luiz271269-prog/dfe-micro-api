@@ -18,6 +18,7 @@ import EvolucaoFolha from '../components/funcionarios/folha/EvolucaoFolha';
 import FolhaPorDepartamento from '../components/funcionarios/folha/FolhaPorDepartamento';
 import { mesesAnteriores, resumoCompetencia } from '../lib/folhaDashboardEngine';
 import FolhaEventosDialog from '../components/funcionarios/FolhaEventosDialog';
+import FolhaEventosPanel from '../components/funcionarios/FolhaEventosPanel';
 import { calcularTotaisFolha } from '../lib/folhaEventos';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
@@ -180,6 +181,13 @@ export default function Funcionarios() {
   const [showFolhaForm, setShowFolhaForm] = useState(false);
   const [selectedFunc, setSelectedFunc] = useState(null);
   const [folhaEventos, setFolhaEventos] = useState(null); // folha aberta no painel de eventos
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 1024px)');
+    const onChange = e => setIsDesktop(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
   const [competencia, setCompetencia] = useState(getCurrentMonth());
   const [funcForm, setFuncForm] = useState({
     nome: '', cpf: '', cargo: '', setor: '', data_admissao: '', status: 'ativo', salario_base: '', tipo_contrato: 'CLT', empresa: 'NeuralTec'
@@ -498,14 +506,20 @@ export default function Funcionarios() {
 
           <KPIsFolha atual={resumoAtual} anterior={resumoAnterior} totalPago={totalPago} totalSaldo={totalSaldo} />
 
-          {/* Tabela por setor */}
+          {/* Tabela por setor + coluna lateral de eventos (desktop) */}
           {folhasMes.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground border rounded-xl bg-card">
               <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Nenhuma folha para {competencia}</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className={folhaEventos ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-4 lg:items-start' : ''}>
+            {folhaEventos && (
+              <aside className="hidden lg:block lg:order-2 lg:sticky lg:top-4 bg-card border rounded-xl p-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
+                <FolhaEventosPanel key={folhaEventos.id} folha={folhaEventos} folhas={folhas} onClose={() => setFolhaEventos(null)} onSaved={loadData} showClose />
+              </aside>
+            )}
+            <div className="space-y-6 lg:order-1 min-w-0">
               {Object.entries(gruposFolha).sort().map(([setor, itens]) => {
                 const sc = SETOR_CONFIG[setor] || { label: setor, color: 'bg-slate-100 text-slate-700' };
                 const setorBruto  = itens.reduce((s,f)=>s+(f.salario_bruto||0),0);
@@ -547,7 +561,7 @@ export default function Funcionarios() {
                                 : (FOLHA_STATUS[f.status] || FOLHA_STATUS.pendente);
                               return (
                                 <tr key={f.id} onClick={() => setFolhaEventos(f)} title="Toque para lançar eventos (horas extras, comissão, proventos e descontos)"
-                                  className="border-b hover:bg-muted/20 transition-colors cursor-pointer">
+                                  className={`border-b hover:bg-muted/20 transition-colors cursor-pointer ${folhaEventos?.id === f.id ? 'bg-primary/5 ring-1 ring-inset ring-primary/30' : ''}`}>
                                   <td className="px-4 py-2.5 font-semibold">
                                     {f.funcionario_nome}
                                     {(f.eventos?.length || 0) > 0 && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">{f.eventos.length} evento{f.eventos.length > 1 ? 's' : ''}</span>}
@@ -600,6 +614,7 @@ export default function Funcionarios() {
                 </div>
               </div>
             </div>
+            </div>
           )}
         </>
       )}
@@ -613,8 +628,8 @@ export default function Funcionarios() {
       {/* Modal detalhe funcionário */}
       <FuncModal func={selectedFunc} folhas={folhas} onClose={() => setSelectedFunc(null)} />
 
-      {/* Painel de eventos da folha (abre ao tocar na linha) */}
-      <FolhaEventosDialog folha={folhaEventos} folhas={folhas} onClose={() => setFolhaEventos(null)} onSaved={loadData} />
+      {/* Painel de eventos em janela — só em telas pequenas (no desktop fica em coluna ao lado da folha) */}
+      {!isDesktop && <FolhaEventosDialog folha={folhaEventos} folhas={folhas} onClose={() => setFolhaEventos(null)} onSaved={loadData} />}
 
       {/* Form novo funcionário */}
       <Dialog open={showFuncForm} onOpenChange={setShowFuncForm}>
