@@ -12,6 +12,11 @@ import RelatorioPixFuncionarios from '../components/funcionarios/RelatorioPixFun
 import ControleFerias from '../components/funcionarios/ControleFerias';
 import BancoHorasTab from '../components/funcionarios/BancoHorasTab';
 import RescisoesTab from '../components/funcionarios/RescisoesTab';
+import NavegacaoTemporalFolha from '../components/funcionarios/folha/NavegacaoTemporalFolha';
+import KPIsFolha from '../components/funcionarios/folha/KPIsFolha';
+import EvolucaoFolha from '../components/funcionarios/folha/EvolucaoFolha';
+import FolhaPorDepartamento from '../components/funcionarios/folha/FolhaPorDepartamento';
+import { mesesAnteriores, resumoCompetencia } from '../lib/folhaDashboardEngine';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
@@ -288,8 +293,13 @@ export default function Funcionarios() {
   // Folha do mês selecionado
   const folhasMes = useMemo(() => folhas.filter(f => f.competencia === competencia), [folhas, competencia]);
 
-  // Competências disponíveis
-  const competencias = useMemo(() => [...new Set(folhas.map(f=>f.competencia))].sort().reverse(), [folhas]);
+  // Últimos 12 meses até a competência selecionada (dashboard)
+  const resumos12 = useMemo(
+    () => mesesAnteriores(competencia, 12).map(c => resumoCompetencia(folhas, funcionarios, c)),
+    [folhas, funcionarios, competencia]
+  );
+  const resumoAtual = resumos12[resumos12.length - 1];
+  const resumoAnterior = resumos12[resumos12.length - 2];
 
   // Totais folha
   const totalBruto   = folhasMes.reduce((s,f)=>s+(f.salario_bruto||0),0);
@@ -466,34 +476,13 @@ export default function Funcionarios() {
       {/* ABA 2 — Folha de Pagamento */}
       {activeTab === 'folha' && (
         <>
-          {/* Filtro competência */}
-          <div className="flex items-center gap-3 mb-5">
-            <p className="text-sm font-semibold text-muted-foreground">Competência:</p>
-            <div className="flex gap-2 flex-wrap">
-              {competencias.map(c => (
-                <button key={c} onClick={() => setCompetencia(c)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${competencia === c ? 'bg-primary text-primary-foreground shadow' : 'border hover:bg-muted text-muted-foreground'}`}>
-                  {c}
-                </button>
-              ))}
-              <Input type="month" value={competencia} onChange={e => setCompetencia(e.target.value)} className="h-8 text-xs w-36" />
-            </div>
-          </div>
+          <NavegacaoTemporalFolha resumos={resumos12} competencia={competencia} onChange={setCompetencia} />
 
-          {/* Resumo totais */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-            {[
-              { label: 'Total Bruto', value: totalBruto, color: 'text-foreground' },
-              { label: 'Comissões', value: totalComissao, color: 'text-blue-700' },
-              { label: 'Total Líquido', value: totalLiquido, color: 'text-foreground' },
-              { label: 'Total Pago', value: totalPago, color: 'text-green-700' },
-              { label: 'Saldo a Pagar', value: totalSaldo, color: totalSaldo > 0 ? 'text-orange-700' : 'text-green-700' },
-            ].map(item => (
-              <div key={item.label} className="bg-card rounded-xl border p-3">
-                <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
-                <p className={`text-base font-bold tabular-nums ${item.color}`}>{formatCurrency(item.value)}</p>
-              </div>
-            ))}
+          <KPIsFolha atual={resumoAtual} anterior={resumoAnterior} totalPago={totalPago} totalSaldo={totalSaldo} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            <EvolucaoFolha resumos={resumos12} />
+            <FolhaPorDepartamento porSetor={resumoAtual.porSetor} setorConfig={SETOR_CONFIG} />
           </div>
 
           {/* Tabela por setor */}
