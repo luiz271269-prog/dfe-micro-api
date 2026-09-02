@@ -141,8 +141,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
         fornecedor: c.fornecedor || '—',
         categoria: c.categoria_produto || 'compra',
         valor: valorAberto,
-        // ItemCompra não tem vencimento próprio — usa a data de emissão como referência
-        data_vencimento: c.data_emissao,
+        // Vencimento próprio (sincronizado da Central de Compras) com fallback na emissão
+        data_vencimento: c.data_vencimento || c.data_emissao,
         empresa: c.empresa || '—',
         forma_pagamento: c.forma_pagamento,
         ...eixos(c, 'compra'),

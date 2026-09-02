@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Calendar, Link2, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Hammer, Briefcase, Calendar, Link2, AlertTriangle, ArrowRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import SeletorClassificacao from '../shared/SeletorClassificacao';
 import { mapearTipoEntidade } from '../../lib/contasPagarEngine';
@@ -11,7 +11,10 @@ const ORIGEM_CONFIG = {
   folha:   { icon: Users,      color: 'bg-indigo-100 text-indigo-700',   label: 'Folha',   href: '/funcionarios' },
   fatura:  { icon: CreditCard, color: 'bg-purple-100 text-purple-700',   label: 'Cartão',  href: '/cartoes' },
   compra:  { icon: ShoppingCart, color: 'bg-sky-100 text-sky-700',        label: 'Compra',  href: '/compras' },
+  obra:    { icon: Hammer,     color: 'bg-amber-100 text-amber-700',     label: 'Obra',    href: '/obras' },
+  pro_labore: { icon: Briefcase, color: 'bg-fuchsia-100 text-fuchsia-700', label: 'Pró-labore', href: '/prolabore' },
 };
+const ORIGEM_FALLBACK = { icon: Wallet, color: 'bg-muted text-muted-foreground', label: 'Outro', href: '/contas-a-pagar' };
 
 // dado um YYYY-MM, retorna semanas do mês (cada uma com ISO start/end)
 function gerarSemanasDoMes(mesRef) {
@@ -39,7 +42,8 @@ function gerarSemanasDoMes(mesRef) {
   return semanas;
 }
 
-export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia }) {
+export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia, modo = 'aberto' }) {
+  const porEmissao = modo === 'pagos';
   const hoje = new Date().toISOString().slice(0, 10);
 
   const grupos = useMemo(() => {
@@ -71,8 +75,9 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
   }, [itens, mesReferencia, hoje]);
 
   function renderItem(i) {
-    const cfg = ORIGEM_CONFIG[i.origem_tipo];
+    const cfg = ORIGEM_CONFIG[i.origem_tipo] || ORIGEM_FALLBACK;
     const OIcon = cfg.icon;
+    const entityName = mapearTipoEntidade(i.origem_tipo);
     const ok = conciliadosSet.has(i);
     return (
       <div key={i.id} className="flex items-start gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-muted/30">
@@ -85,26 +90,28 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
             <span>{i.data_vencimento ? formatDate(i.data_vencimento) : 'Sem data'}</span>
             {i.fornecedor && <span className="truncate">· {i.fornecedor}</span>}
             {ok ? (
-              <span className="inline-flex items-center gap-0.5 text-emerald-700 font-semibold"><Link2 className="w-2.5 h-2.5" /> OK</span>
+              <span className="inline-flex items-center gap-0.5 text-emerald-700 font-semibold"><Link2 className="w-2.5 h-2.5" /> {porEmissao ? 'Conciliado' : 'OK'}</span>
             ) : (
               <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> Pendente</span>
             )}
           </div>
-          {/* Classificação unificada — mesma dos Cartões e do Extrato */}
-          <div className="flex items-center gap-1.5 mt-1">
-            <SeletorClassificacao
-              eixo="origem"
-              entityName={mapearTipoEntidade(i.origem_tipo)}
-              record={{ id: i.origem_id, origem_compra: i.origem_compra }}
-              field="origem_compra"
-            />
-            <SeletorClassificacao
-              eixo="tipo"
-              entityName={mapearTipoEntidade(i.origem_tipo)}
-              record={{ id: i.origem_id, tipo_compra: i.tipo_compra }}
-              field="tipo_compra"
-            />
-          </div>
+          {/* Classificação unificada — só para itens com entidade real (projeções não têm) */}
+          {entityName && !i.is_planejado && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <SeletorClassificacao
+                eixo="origem"
+                entityName={entityName}
+                record={{ id: i.origem_id, origem_compra: i.origem_compra }}
+                field="origem_compra"
+              />
+              <SeletorClassificacao
+                eixo="tipo"
+                entityName={entityName}
+                record={{ id: i.origem_id, tipo_compra: i.tipo_compra }}
+                field="tipo_compra"
+              />
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className="text-xs font-bold text-rose-600 tabular-nums whitespace-nowrap">{formatCurrency(i.valor)}</span>
@@ -134,10 +141,12 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
     <div className="bg-card rounded-xl border overflow-hidden flex flex-col">
       <div className="bg-slate-50 border-b px-4 py-3">
         <h3 className="font-bold text-sm flex items-center gap-2"><Calendar className="w-4 h-4" /> Calendário do Mês — por Semana</h3>
-        <p className="text-[11px] text-muted-foreground mt-0.5">Obrigações distribuídas semana a semana de {mesReferencia}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {porEmissao ? 'Pagos, distribuídos pela data de emissão' : 'Obrigações distribuídas semana a semana'} de {mesReferencia}
+        </p>
       </div>
       <div className="overflow-y-auto max-h-[600px]">
-        {renderBucket('Vencidos (meses anteriores)', grupos.vencidos, 'bg-red-50 text-red-700')}
+        {renderBucket(porEmissao ? 'Meses anteriores' : 'Vencidos (meses anteriores)', grupos.vencidos, porEmissao ? 'bg-muted/40' : 'bg-red-50 text-red-700')}
         {grupos.semanas.map(s => renderBucket(
           `Semana ${s.idx} · ${formatDate(s.inicio)} → ${formatDate(s.fim)}`,
           s.itens,
@@ -145,7 +154,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
         ))}
         {renderBucket('Sem data de vencimento', grupos.semData, 'bg-muted/40')}
         {grupos.vencidos.length === 0 && grupos.semData.length === 0 && grupos.semanas.every(s => s.itens.length === 0) && (
-          <div className="text-center py-12 text-muted-foreground text-sm">Nenhuma conta a pagar neste mês.</div>
+          <div className="text-center py-12 text-muted-foreground text-sm">{porEmissao ? 'Nenhum pagamento com emissão neste mês.' : 'Nenhuma conta a pagar neste mês.'}</div>
         )}
       </div>
     </div>

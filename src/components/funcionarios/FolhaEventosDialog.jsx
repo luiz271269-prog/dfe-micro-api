@@ -9,6 +9,7 @@ import { formatCurrency } from '@/lib/formatters';
 import { CAMPOS_PROVENTO, CAMPOS_DESCONTO, PRESETS_PROVENTO, PRESETS_DESCONTO, calcularTotaisFolha, competenciaAnterior } from '@/lib/folhaEventos';
 import EventoLinha from './EventoLinha';
 import AdicionarEvento from './AdicionarEvento';
+import NovoTipoEvento from './NovoTipoEvento';
 
 const CAMPOS_NUM = [...CAMPOS_PROVENTO, ...CAMPOS_DESCONTO].map(([k]) => k);
 
@@ -60,7 +61,7 @@ export default function FolhaEventosDialog({ folha, folhas = [], onClose, onSave
 
   return (
     <Dialog open={!!folha} onOpenChange={o => !o && onClose()}>
-      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-base">Eventos Detalhados da Folha</DialogTitle>
           <p className="text-sm text-muted-foreground">{folha.funcionario_nome} · <span className="font-semibold">{folha.competencia}</span></p>
@@ -75,29 +76,33 @@ export default function FolhaEventosDialog({ folha, folhas = [], onClose, onSave
           </Button>
         </div>
 
-        <section>
-          <h4 className="text-sm font-bold flex items-center gap-1.5 text-emerald-700 mb-1"><TrendingUp className="w-4 h-4" /> Proventos (Créditos)</h4>
-          <div className="rounded-lg border px-3">
-            {CAMPOS_PROVENTO.map(([k, l]) => <EventoLinha key={k} label={l} valor={form[k]} onChange={v => set(k, v)} tone="provento" />)}
-            {idx('provento').map(([e, i]) => (
-              <EventoLinha key={i} label={e.descricao} valor={e.valor} tone="provento" recorrente={e.recorrente}
-                onChange={v => setEvento(i, { valor: v })} onRemove={() => rmEvento(i)} onToggleRecorrente={() => setEvento(i, { recorrente: !e.recorrente })} />
-            ))}
-          </div>
-          <AdicionarEvento presets={PRESETS_PROVENTO} usados={form.eventos.map(e => e.descricao)} onAdd={addEvento('provento')} tone="provento" />
-        </section>
+        <div className="grid grid-cols-2 gap-4 items-start">
+          <section>
+            <h4 className="text-sm font-bold flex items-center gap-1.5 text-emerald-700 mb-1"><TrendingUp className="w-4 h-4" /> Proventos (Créditos)</h4>
+            <div className="rounded-lg border px-3">
+              {CAMPOS_PROVENTO.map(([k, l]) => <EventoLinha key={k} label={l} valor={form[k]} onChange={v => set(k, v)} tone="provento" />)}
+              {idx('provento').map(([e, i]) => (
+                <EventoLinha key={i} label={e.descricao} valor={e.valor} tone="provento" recorrente={e.recorrente}
+                  onChange={v => setEvento(i, { valor: v })} onRemove={() => rmEvento(i)} onToggleRecorrente={() => setEvento(i, { recorrente: !e.recorrente })} />
+              ))}
+            </div>
+            <AdicionarEvento presets={PRESETS_PROVENTO} usados={form.eventos.map(e => e.descricao)} onAdd={addEvento('provento')} tone="provento" />
+          </section>
 
-        <section>
-          <h4 className="text-sm font-bold flex items-center gap-1.5 text-red-700 mb-1"><TrendingDown className="w-4 h-4" /> Descontos (Débitos)</h4>
-          <div className="rounded-lg border px-3">
-            {CAMPOS_DESCONTO.map(([k, l]) => <EventoLinha key={k} label={l} valor={form[k]} onChange={v => set(k, v)} tone="desconto" />)}
-            {idx('desconto').map(([e, i]) => (
-              <EventoLinha key={i} label={e.descricao} valor={e.valor} tone="desconto" recorrente={e.recorrente}
-                onChange={v => setEvento(i, { valor: v })} onRemove={() => rmEvento(i)} onToggleRecorrente={() => setEvento(i, { recorrente: !e.recorrente })} />
-            ))}
-          </div>
-          <AdicionarEvento presets={PRESETS_DESCONTO} usados={form.eventos.map(e => e.descricao)} onAdd={addEvento('desconto')} tone="desconto" />
-        </section>
+          <section>
+            <h4 className="text-sm font-bold flex items-center gap-1.5 text-red-700 mb-1"><TrendingDown className="w-4 h-4" /> Descontos (Débitos)</h4>
+            <div className="rounded-lg border px-3">
+              {CAMPOS_DESCONTO.map(([k, l]) => <EventoLinha key={k} label={l} valor={form[k]} onChange={v => set(k, v)} tone="desconto" />)}
+              {idx('desconto').map(([e, i]) => (
+                <EventoLinha key={i} label={e.descricao} valor={e.valor} tone="desconto" recorrente={e.recorrente}
+                  onChange={v => setEvento(i, { valor: v })} onRemove={() => rmEvento(i)} onToggleRecorrente={() => setEvento(i, { recorrente: !e.recorrente })} />
+              ))}
+            </div>
+            <AdicionarEvento presets={PRESETS_DESCONTO} usados={form.eventos.map(e => e.descricao)} onAdd={addEvento('desconto')} tone="desconto" />
+          </section>
+        </div>
+
+        <NovoTipoEvento onAdd={(tipo, descricao) => addEvento(tipo)(descricao)} />
 
         <div className="rounded-xl bg-muted/50 border p-3 grid grid-cols-3 gap-2 text-center">
           <div><p className="text-[10px] font-bold uppercase text-emerald-700">Proventos</p><p className="text-sm font-bold tabular-nums text-emerald-700">+{formatCurrency(totais.proventos)}</p></div>

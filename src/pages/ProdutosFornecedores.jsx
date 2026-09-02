@@ -8,6 +8,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import PageHeader from '../components/shared/PageHeader';
+import BannerCentralCompras from '../components/produtos/BannerCentralCompras';
+import { buscarComprasCentral } from '@/functions/buscarComprasCentral';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -34,6 +36,8 @@ export default function ProdutosFornecedores() {
   const [compras, setCompras] = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [statusCentral, setStatusCentral] = useState(null);
+  const [fornLive, setFornLive] = useState([]);
 
   // Produto filters
   const [searchProd, setSearchProd] = useState('');
@@ -51,11 +55,14 @@ export default function ProdutosFornecedores() {
 
   async function loadAll() {
     setLoading(true);
-    const [c, f] = await Promise.all([
-      base44.entities.ItemCompra.list('-data_emissao', 1000),
+    const [res, f] = await Promise.all([
+      buscarComprasCentral({}),
       base44.entities.Fornecedor.list('nome', 200),
     ]);
-    setCompras(c);
+    const d = res.data || {};
+    setStatusCentral(d);
+    setCompras(d.itens || []);
+    setFornLive(d.fornecedores || []);
     setFornecedores(f);
     setLoading(false);
   }
@@ -117,17 +124,26 @@ export default function ProdutosFornecedores() {
   }, [compras, periodoInicio, periodoFim]);
   const maxRank = rankingForn[0]?.[1] || 1;
 
-  // Totais por fornecedor cadastrado
-  const totaisFornecedor = useMemo(() => {
-    const t = {};
-    compras.forEach(c => { if (c.fornecedor) t[c.fornecedor] = (t[c.fornecedor] || 0) + (c.valor_total || 0); });
-    return t;
-  }, [compras]);
-  const contagemFornecedor = useMemo(() => {
-    const t = {};
-    compras.forEach(c => { if (c.fornecedor) t[c.fornecedor] = (t[c.fornecedor] || 0) + 1; });
-    return t;
-  }, [compras]);
+  // Agregados live indexados por nome normalizado
+  const aggLive = useMemo(() => {
+    const m = {};
+    fornLive.forEach(f => { m[(f.nome || '').toLowerCase().trim()] = f; });
+    return m;
+  }, [fornLive]);
+
+  // Fornecedores locais + os da Central que não estão cadastrados aqui
+  const listaFornecedores = useMemo(() => {
+    const cadastrados = fornecedores.map(f => ({
+      ...f,
+      _total: aggLive[(f.nome || '').toLowerCase().trim()]?.total || 0,
+      _qtd: aggLive[(f.nome || '').toLowerCase().trim()]?.pedidos || 0,
+    }));
+    const nomesLocais = new Set(fornecedores.map(f => (f.nome || '').toLowerCase().trim()));
+    const somenteCentral = fornLive
+      .filter(f => !nomesLocais.has((f.nome || '').toLowerCase().trim()))
+      .map(f => ({ id: `central-${f.nome}`, nome: f.nome, _total: f.total, _qtd: f.pedidos, _daCentral: true }));
+    return [...cadastrados, ...somenteCentral];
+  }, [fornecedores, fornLive, aggLive]);
 
   async function handleSaveForn(e) {
     e.preventDefault();
@@ -147,6 +163,8 @@ export default function ProdutosFornecedores() {
           <Plus className="w-4 h-4" /> Novo Fornecedor
         </Button>
       </PageHeader>
+
+      <BannerCentralCompras status={statusCentral} onRetry={loadAll} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
@@ -316,7 +334,7 @@ export default function ProdutosFornecedores() {
           {/* Cards fornecedores */}
           {loading ? (
             <p className="text-center py-12 text-muted-foreground">Carregando...</p>
-          ) : fornecedores.length === 0 ? (
+          ) : listaFornecedores.length === 0 ? (
             <div className="text-center py-16 border-2 border-dashed rounded-2xl text-muted-foreground">
               <Building2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p className="font-medium">Nenhum fornecedor cadastrado</p>
@@ -324,9 +342,9 @@ export default function ProdutosFornecedores() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {fornecedores.map(f => {
-                const total = totaisFornecedor[f.nome] || 0;
-                const qtd = contagemFornecedor[f.nome] || 0;
+              {listaFornecedores.map(f => {
+                const total = f._total;
+                const qtd = f._qtd;
                 return (
                   <div key={f.id} className="bg-card border rounded-xl p-4 space-y-3 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between gap-2">
@@ -334,9 +352,13 @@ export default function ProdutosFornecedores() {
                         <p className="font-semibold text-sm truncate">{f.nome}</p>
                         {f.cnpj && <p className="text-xs text-muted-foreground">{f.cnpj}</p>}
                       </div>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${f.is_ativo !== false ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                        {f.is_ativo !== false ? 'Ativo' : 'Inativo'}
-                      </span>
+                      {f._daCentral ? (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 bg-sky-100 text-sky-700">Central</span>
+                      ) : (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${f.is_ativo !== false ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {f.is_ativo !== false ? 'Ativo' : 'Inativo'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {f.categoria && (
@@ -354,7 +376,7 @@ export default function ProdutosFornecedores() {
                         <p className="font-bold text-sm text-red-600">{formatCurrency(total)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Nº Compras</p>
+                        <p className="text-xs text-muted-foreground">Nº Pedidos</p>
                         <p className="font-bold text-sm">{qtd}</p>
                       </div>
                     </div>

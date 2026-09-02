@@ -7,6 +7,10 @@ import { consolidarContasPagar, calcularAging, contarEvaporados } from '../../li
 import CalendarioSemanal from './CalendarioSemanal';
 import PainelDDA from './PainelDDA';
 import FluxoContasAPagar from './FluxoContasAPagar';
+import SincronizarComprasButton from './SincronizarComprasButton';
+import PainelComprasImportadas from './PainelComprasImportadas';
+import ChipsStatusContas from './ChipsStatusContas';
+import { consolidarContasPagas } from '../../lib/contasPagasEngine';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Despesa', href: '/despesas' },
@@ -36,6 +40,8 @@ export default function ContasAPagarPanel() {
   const [loading, setLoading] = useState(true);
   const [conciliando, setConciliando] = useState(false);
   const [resultadoBaixa, setResultadoBaixa] = useState(null);
+  const [filtroStatus, setFiltroStatus] = useState('todos'); // todos · aberto · semana · vencidos · pagos
+  const modo = filtroStatus === 'pagos' ? 'pagos' : 'aberto';
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [mesReferencia, setMesReferencia] = useState(mesAtualISO());
@@ -100,7 +106,32 @@ export default function ContasAPagarPanel() {
     };
   }, []);
 
-  const itensRaw = useMemo(() => consolidarContasPagar(dados), [dados]);
+  const abertosRaw = useMemo(() => consolidarContasPagar(dados), [dados]);
+  // Pagos: o eixo temporal passa a ser a emissão do documento
+  const pagosRaw = useMemo(
+    () => consolidarContasPagas(dados).map(i => ({ ...i, data_vencimento: i.data_emissao })),
+    [dados]
+  );
+
+  const contagens = useMemo(() => {
+    const ag = calcularAging(abertosRaw);
+    return {
+      todos: abertosRaw.length + pagosRaw.length,
+      aberto: abertosRaw.length,
+      semana: ag.hoje.length + ag.semana.length,
+      vencidos: ag.vencidos.length,
+      pagos: pagosRaw.length,
+    };
+  }, [abertosRaw, pagosRaw]);
+
+  const itensRaw = useMemo(() => {
+    if (filtroStatus === 'pagos') return pagosRaw;
+    if (filtroStatus === 'todos') return [...abertosRaw, ...pagosRaw];
+    const ag = calcularAging(abertosRaw);
+    if (filtroStatus === 'semana') return [...ag.hoje, ...ag.semana];
+    if (filtroStatus === 'vencidos') return ag.vencidos;
+    return abertosRaw;
+  }, [abertosRaw, pagosRaw, filtroStatus]);
   const itens = useMemo(() => {
     return itensRaw.filter(i => {
       if (filtroOrigem !== 'todos' && i.origem_tipo !== filtroOrigem) return false;
@@ -137,15 +168,19 @@ export default function ContasAPagarPanel() {
   return (
     <>
       {/* Header da aba — ações */}
-      <div className="flex items-center justify-end gap-2 mb-4">
-        <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+        <ChipsStatusContas status={filtroStatus} onChange={(s) => { setFiltroStatus(s); setFiltroOrigem('todos'); }} contagens={contagens} />
+        <div className="flex items-center gap-2 flex-wrap">
+        <SincronizarComprasButton onDone={load} />
+        {modo === 'aberto' && <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
           {conciliando ? (
             <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Conciliando...</>
           ) : (
             <><Zap className="w-3.5 h-3.5" /> Baixa Automática</>
           )}
-        </Button>
+        </Button>}
         <Button variant="outline" onClick={load} size="sm">Atualizar</Button>
+        </div>
       </div>
 
       {resultadoBaixa && (
@@ -169,12 +204,20 @@ export default function ContasAPagarPanel() {
 
       <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} evaporados={evaporados} />
 
+      <PainelComprasImportadas compras={dados.compras} />
+
       {/* Totais principais — linha compacta de KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
-        <div className="bg-gradient-to-br from-slate-700 to-slate-900 text-white rounded-xl px-3 py-2 shadow" title={`${itens.length} itens em aberto`}>
-          <p className="text-[10px] font-bold uppercase opacity-80">Total a pagar</p>
+        <div className="bg-gradient-to-br from-slate-700 to-slate-900 text-white rounded-xl px-3 py-2 shadow" title={`${itens.length} itens`}>
+          <p className="text-[10px] font-bold uppercase opacity-80">{modo === 'aberto' ? 'Total a pagar' : 'Total pago'}</p>
           <p className="text-xl font-bold">{formatCurrency(total)}</p>
         </div>
+        {modo === 'pagos' ? (
+          <div className="bg-emerald-50 rounded-xl px-3 py-2 border border-emerald-200 lg:col-span-3" title="Obrigações já liquidadas, agrupadas pela data de emissão do documento">
+            <p className="text-[10px] font-bold uppercase text-emerald-700">Itens liquidados</p>
+            <p className="text-lg font-bold text-emerald-700">{itens.length} item(ns)</p>
+          </div>
+        ) : (<>
         <div className="bg-red-50 rounded-xl px-3 py-2 border border-red-200" title={`${aging.vencidos.length} item(ns) em atraso`}>
           <p className="text-[10px] font-bold uppercase text-red-700">Vencido</p>
           <p className="text-lg font-bold text-red-700">{formatCurrency(totalVencido)}</p>
@@ -187,6 +230,7 @@ export default function ContasAPagarPanel() {
           <p className="text-[10px] font-bold uppercase text-blue-700">Este mês (30d)</p>
           <p className="text-lg font-bold text-blue-700">{formatCurrency(totalMes)}</p>
         </div>
+        </>)}
       </div>
 
       {/* Filtro por origem — grade compacta */}
@@ -237,6 +281,7 @@ export default function ContasAPagarPanel() {
           itens={itens}
           conciliadosSet={conciliadosSet}
           mesReferencia={mesReferencia}
+          modo={modo}
         />
         <PainelDDA
           lancamentos={lancamentos}
