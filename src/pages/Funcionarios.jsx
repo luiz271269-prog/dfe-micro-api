@@ -427,7 +427,7 @@ export default function Funcionarios() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b">
-        {[['funcionarios','Funcionários'],['folha','Folha de Pagamento'],['ferias','Férias'],['banco_horas','Banco de Horas'],['rescisoes','Rescisões'],['rastreio','Rastreio PIX']].map(([key, label]) => (
+        {[['funcionarios','Funcionários'],['folha','Folha de Pagamento'],['rescisoes','Rescisões'],['rastreio','Rastreio PIX']].map(([key, label]) => (
           <button key={key} onClick={() => setActiveTab(key)}
             className={`px-5 py-2.5 font-semibold text-sm transition-colors ${activeTab === key ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
             {label}
@@ -438,6 +438,11 @@ export default function Funcionarios() {
       {/* ABA 1 — Funcionários */}
       {activeTab === 'funcionarios' && (
         <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <EvolucaoFolha resumos={resumos12} />
+            <FolhaPorDepartamento porSetor={resumoAtual.porSetor} setorConfig={SETOR_CONFIG} />
+          </div>
+
           {Object.entries(gruposFunc).sort().map(([setor, funcs]) => {
             const sc = SETOR_CONFIG[setor] || { label: setor, color: 'bg-slate-100 text-slate-700' };
             return (
@@ -473,6 +478,16 @@ export default function Funcionarios() {
               <p>Nenhum funcionário ativo cadastrado</p>
             </div>
           )}
+
+          <div className="border-t pt-6">
+            <h3 className="text-base font-bold mb-3 flex items-center gap-2"><Palmtree className="w-4 h-4 text-blue-500" /> Férias</h3>
+            <ControleFerias funcionarios={funcionarios} />
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-base font-bold mb-3 flex items-center gap-2"><Clock className="w-4 h-4 text-orange-500" /> Banco de Horas</h3>
+            <BancoHorasTab funcionarios={funcionarios} />
+          </div>
         </div>
       )}
 
@@ -482,11 +497,6 @@ export default function Funcionarios() {
           <NavegacaoTemporalFolha resumos={resumos12} competencia={competencia} onChange={setCompetencia} />
 
           <KPIsFolha atual={resumoAtual} anterior={resumoAnterior} totalPago={totalPago} totalSaldo={totalSaldo} />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-            <EvolucaoFolha resumos={resumos12} />
-            <FolhaPorDepartamento porSetor={resumoAtual.porSetor} setorConfig={SETOR_CONFIG} />
-          </div>
 
           {/* Tabela por setor */}
           {folhasMes.length === 0 ? (
@@ -593,12 +603,6 @@ export default function Funcionarios() {
           )}
         </>
       )}
-
-      {/* ABA 3 — Férias */}
-      {activeTab === 'ferias' && <ControleFerias funcionarios={funcionarios} />}
-
-      {/* ABA 4 — Banco de Horas */}
-      {activeTab === 'banco_horas' && <BancoHorasTab funcionarios={funcionarios} />}
 
       {/* ABA 5 — Rescisões */}
       {activeTab === 'rescisoes' && <RescisoesTab funcionarios={funcionarios} onChanged={loadData} />}
