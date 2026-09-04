@@ -13,6 +13,7 @@ import StatusBadge from '../components/shared/StatusBadge';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
+import LancarDespesaFotoButton from '../components/despesas/LancarDespesaFotoButton';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -119,6 +120,7 @@ export default function Despesas() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
+        <LancarDespesaFotoButton onSaved={loadData} size="default" variant="outline" />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Despesa</Button>
       </PageHeader>
 

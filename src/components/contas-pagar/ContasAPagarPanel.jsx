@@ -11,6 +11,7 @@ import SincronizarComprasButton from './SincronizarComprasButton';
 import PainelComprasImportadas from './PainelComprasImportadas';
 import ChipsStatusContas from './ChipsStatusContas';
 import { consolidarContasPagas } from '../../lib/contasPagasEngine';
+import LancarDespesaFotoButton from '../despesas/LancarDespesaFotoButton';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Despesa', href: '/despesas' },
@@ -171,6 +172,7 @@ export default function ContasAPagarPanel() {
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
         <ChipsStatusContas status={filtroStatus} onChange={(s) => { setFiltroStatus(s); setFiltroOrigem('todos'); }} contagens={contagens} />
         <div className="flex items-center gap-2 flex-wrap">
+        <LancarDespesaFotoButton onSaved={load} />
         <SincronizarComprasButton onDone={load} />
         {modo === 'aberto' && <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
           {conciliando ? (
