@@ -1,7 +1,6 @@
 import { MessageCircle } from 'lucide-react';
 import VincularTelefone from './VincularTelefone';
-
-const CHAT_URL = 'https://nexus360.neuraltec360.com.br/chat?tel=';
+import { CHAT_URL, abrirJanelaChat } from '@/lib/chatWindow';
 
 // Normaliza telefone BR → dígitos com DDI 55. Retorna null se inválido.
 export function normalizarTelefone(phone) {
@@ -15,7 +14,7 @@ export function normalizarTelefone(phone) {
 
 export function abrirChat(phone) {
   const tel = normalizarTelefone(phone);
-  if (tel) window.open(`${CHAT_URL}${tel}`, '_blank', 'noopener,noreferrer');
+  if (tel) abrirJanelaChat(tel);
 }
 
 // Botão estilo WhatsApp: abre a conversa no Nexus360 em nova aba.
@@ -36,7 +35,7 @@ export default function MensagemLink({ phone, onVincular, compact = false, class
   }
   return (
     <a href={`${CHAT_URL}${tel}`} target="_blank" rel="noopener noreferrer" title="Enviar mensagem"
-      onClick={e => e.stopPropagation()}
+      onClick={e => { e.stopPropagation(); e.preventDefault(); abrirJanelaChat(tel); }}
       className={`${base} bg-emerald-500 text-white hover:bg-emerald-600 ${className}`}>
       <MessageCircle className="w-3.5 h-3.5" />{!compact && 'Mensagem'}
     </a>
