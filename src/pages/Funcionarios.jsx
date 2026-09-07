@@ -22,6 +22,7 @@ import FolhaEventosPanel from '../components/funcionarios/FolhaEventosPanel';
 import { calcularTotaisFolha } from '../lib/folhaEventos';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import MensagemLink from '../components/shared/MensagemLink';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
 import { calcularINSS, calcularFGTS } from '../lib/encargosEngine';
 import { gerarFolhasPendentes } from '@/functions/gerarFolhasPendentes';
@@ -90,6 +91,7 @@ function FuncRow({ func, folhas, onClick }) {
       <td className="px-3 py-3">
         <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${status.color}`}>{status.label}</span>
       </td>
+      <td className="px-3 py-3"><MensagemLink phone={func.telefone} compact /></td>
     </tr>
   );
 }
@@ -107,6 +109,7 @@ function FuncModal({ func, folhas, onClose }) {
               {func.nome?.split(' ').map(n => n[0]).slice(0,2).join('')}
             </div>
             {func.nome}
+            <MensagemLink phone={func.telefone} className="ml-auto" />
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3 text-sm mb-4">
@@ -190,7 +193,7 @@ export default function Funcionarios() {
   }, []);
   const [competencia, setCompetencia] = useState(getCurrentMonth());
   const [funcForm, setFuncForm] = useState({
-    nome: '', cpf: '', cargo: '', setor: '', data_admissao: '', status: 'ativo', salario_base: '', tipo_contrato: 'CLT', empresa: 'NeuralTec'
+    nome: '', cpf: '', telefone: '', cargo: '', setor: '', data_admissao: '', status: 'ativo', salario_base: '', tipo_contrato: 'CLT', empresa: 'NeuralTec'
   });
   const [folhaForm, setFolhaForm] = useState({
     funcionario_nome: '', competencia: '', tipo: 'mensal', salario_bruto: '', desconto_inss: '0', desconto_irrf: '0',
@@ -275,7 +278,7 @@ export default function Funcionarios() {
     e.preventDefault();
     await base44.entities.Funcionario.create({ ...funcForm, salario_base: parseFloat(funcForm.salario_base) });
     setShowFuncForm(false);
-    setFuncForm({ nome:'',cpf:'',cargo:'',setor:'',data_admissao:'',status:'ativo',salario_base:'',tipo_contrato:'CLT',empresa:'NeuralTec' });
+    setFuncForm({ nome:'',cpf:'',telefone:'',cargo:'',setor:'',data_admissao:'',status:'ativo',salario_base:'',tipo_contrato:'CLT',empresa:'NeuralTec' });
     loadData();
   }
 
@@ -470,6 +473,7 @@ export default function Funcionarios() {
                         <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Tempo</th>
                         <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Folhas</th>
                         <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Status</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Contato</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -639,6 +643,9 @@ export default function Funcionarios() {
             <div><Label>Nome</Label><Input value={funcForm.nome} onChange={e => setFuncForm({...funcForm, nome: e.target.value})} required /></div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>CPF</Label><Input value={funcForm.cpf} onChange={e => setFuncForm({...funcForm, cpf: e.target.value})} /></div>
+              <div><Label>Telefone / WhatsApp</Label><Input placeholder="(51) 99999-9999" value={funcForm.telefone} onChange={e => setFuncForm({...funcForm, telefone: e.target.value})} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div><Label>Cargo</Label><Input value={funcForm.cargo} onChange={e => setFuncForm({...funcForm, cargo: e.target.value})} required /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">

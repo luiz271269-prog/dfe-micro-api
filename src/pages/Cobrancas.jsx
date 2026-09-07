@@ -15,6 +15,7 @@ import DedupTitulosButton from '../components/cobrancas/DedupTitulosButton';
 import ReconciliarOrfaosButton from '../components/cobrancas/ReconciliarOrfaosButton';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import MensagemLink from '../components/shared/MensagemLink';
 
 const statusRowColors = {
   em_aberto: 'bg-orange-50/50',
@@ -50,7 +51,7 @@ export default function Cobrancas() {
     });
   }
   const [form, setForm] = useState({
-    nosso_numero: '', seu_numero: '', cliente: '', data_vencimento: '',
+    nosso_numero: '', seu_numero: '', cliente: '', cliente_telefone: '', data_vencimento: '',
     data_pagamento: '', valor_titulo: '', valor_pago: '0', status: 'em_aberto',
     canal_cobranca: '', nota_fiscal_id: '', parcela_numero: '', parcela_total: ''
   });
@@ -144,7 +145,7 @@ export default function Cobrancas() {
       parcela_total: form.parcela_total ? parseInt(form.parcela_total) : null
     });
     setShowForm(false);
-    setForm({ nosso_numero: '', seu_numero: '', cliente: '', data_vencimento: '', data_pagamento: '', valor_titulo: '', valor_pago: '0', status: 'em_aberto', canal_cobranca: '', nota_fiscal_id: '', parcela_numero: '', parcela_total: '' });
+    setForm({ nosso_numero: '', seu_numero: '', cliente: '', cliente_telefone: '', data_vencimento: '', data_pagamento: '', valor_titulo: '', valor_pago: '0', status: 'em_aberto', canal_cobranca: '', nota_fiscal_id: '', parcela_numero: '', parcela_total: '' });
     loadData();
   }
 
@@ -279,7 +280,9 @@ export default function Cobrancas() {
                 return (
                   <tr key={t.id} className={`border-b transition-colors ${rowClass}`}>
                     <td className={`px-4 py-3 font-medium ${vencendoCritico ? 'text-red-800' : ''}`}>{t.nosso_numero}</td>
-                    <td className={`px-4 py-3 ${vencendoCritico ? 'text-red-800 font-semibold' : ''}`}>{t.cliente}</td>
+                    <td className={`px-4 py-3 ${vencendoCritico ? 'text-red-800 font-semibold' : ''}`}>
+                      <div className="flex items-center gap-2">{t.cliente}<MensagemLink phone={t.cliente_telefone} compact /></div>
+                    </td>
                     <td className={`px-4 py-3 whitespace-nowrap ${vencendoCritico ? 'text-red-700 font-bold' : ''}`}>
                       {formatDate(t.data_vencimento)}
                       {(vencida || vencendoCritico) &&
@@ -340,7 +343,10 @@ export default function Cobrancas() {
               <div><Label>Nosso Número</Label><Input value={form.nosso_numero} onChange={(e) => setForm({ ...form, nosso_numero: e.target.value })} required /></div>
               <div><Label>Seu Número</Label><Input value={form.seu_numero} onChange={(e) => setForm({ ...form, seu_numero: e.target.value })} /></div>
             </div>
-            <div><Label>Cliente</Label><Input value={form.cliente} onChange={(e) => setForm({ ...form, cliente: e.target.value })} required /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Cliente</Label><Input value={form.cliente} onChange={(e) => setForm({ ...form, cliente: e.target.value })} required /></div>
+              <div><Label>WhatsApp do cliente</Label><Input placeholder="(51) 99999-9999" value={form.cliente_telefone} onChange={(e) => setForm({ ...form, cliente_telefone: e.target.value })} /></div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Data Vencimento</Label><Input type="date" value={form.data_vencimento} onChange={(e) => setForm({ ...form, data_vencimento: e.target.value })} required /></div>
               <div><Label>Valor Título</Label><Input type="number" step="0.01" value={form.valor_titulo} onChange={(e) => setForm({ ...form, valor_titulo: e.target.value })} required /></div>

@@ -14,6 +14,10 @@
       "type": "string",
       "title": "Cliente"
     },
+    "cliente_telefone": {
+      "type": "string",
+      "title": "Telefone / WhatsApp do cliente (com DDD)"
+    },
     "data_vencimento": {
       "type": "string",
       "format": "date",

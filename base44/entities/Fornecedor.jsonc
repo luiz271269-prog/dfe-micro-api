@@ -26,6 +26,10 @@
       "type": "string",
       "description": "Telefone ou email"
     },
+    "telefone": {
+      "type": "string",
+      "description": "Telefone / WhatsApp com DDD (para envio de mensagem)"
+    },
     "prazo_medio_entrega": {
       "type": "number",
       "description": "Prazo m\u00e9dio de entrega em dias"

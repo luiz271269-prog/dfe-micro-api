@@ -11,6 +11,7 @@ import PageHeader from '../components/shared/PageHeader';
 import BannerCentralCompras from '../components/produtos/BannerCentralCompras';
 import { buscarComprasCentral } from '@/functions/buscarComprasCentral';
 import { formatCurrency, formatDate } from '../lib/formatters';
+import MensagemLink from '../components/shared/MensagemLink';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
@@ -29,7 +30,7 @@ const fornCategColors = {
   material: 'bg-yellow-100 text-yellow-700', outro: 'bg-slate-100 text-slate-700',
 };
 
-const FORN_FORM_INIT = { nome: '', cnpj: '', categoria: 'distribuidor', contato: '', prazo_medio_entrega: '', condicao_pagamento: '', observacoes: '', is_ativo: true };
+const FORN_FORM_INIT = { nome: '', cnpj: '', categoria: 'distribuidor', contato: '', telefone: '', prazo_medio_entrega: '', condicao_pagamento: '', observacoes: '', is_ativo: true };
 
 export default function ProdutosFornecedores() {
   const [activeTab, setActiveTab] = useState('produtos');
@@ -380,7 +381,10 @@ export default function ProdutosFornecedores() {
                         <p className="font-bold text-sm">{qtd}</p>
                       </div>
                     </div>
-                    {f.contato && <p className="text-xs text-muted-foreground">📞 {f.contato}</p>}
+                    <div className="flex items-center justify-between gap-2">
+                      {f.contato ? <p className="text-xs text-muted-foreground truncate">📞 {f.contato}</p> : <span />}
+                      {!f._daCentral && <MensagemLink phone={f.telefone || f.contato} />}
+                    </div>
                   </div>
                 );
               })}
@@ -408,7 +412,8 @@ export default function ProdutosFornecedores() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Contato</Label><Input value={fornForm.contato} onChange={e => setFornForm({...fornForm, contato: e.target.value})} /></div>
+              <div><Label>Contato (email / telefone)</Label><Input value={fornForm.contato} onChange={e => setFornForm({...fornForm, contato: e.target.value})} /></div>
+              <div><Label>WhatsApp (com DDD)</Label><Input placeholder="(51) 99999-9999" value={fornForm.telefone} onChange={e => setFornForm({...fornForm, telefone: e.target.value})} /></div>
               <div><Label>Prazo Entrega (dias)</Label><Input type="number" value={fornForm.prazo_medio_entrega} onChange={e => setFornForm({...fornForm, prazo_medio_entrega: e.target.value})} /></div>
               <div className="col-span-2"><Label>Condição de Pagamento</Label><Input placeholder="Ex: 30 dias, à vista" value={fornForm.condicao_pagamento} onChange={e => setFornForm({...fornForm, condicao_pagamento: e.target.value})} /></div>
               <div className="col-span-2"><Label>Observações</Label><Input value={fornForm.observacoes} onChange={e => setFornForm({...fornForm, observacoes: e.target.value})} /></div>
