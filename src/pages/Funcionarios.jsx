@@ -91,7 +91,7 @@ function FuncRow({ func, folhas, onClick }) {
       <td className="px-3 py-3">
         <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${status.color}`}>{status.label}</span>
       </td>
-      <td className="px-3 py-3"><MensagemLink phone={func.telefone} compact /></td>
+      <td className="px-3 py-3"><MensagemLink phone={func.telefone} compact onVincular={(tel) => base44.entities.Funcionario.update(func.id, { telefone: tel })} /></td>
     </tr>
   );
 }
@@ -109,7 +109,7 @@ function FuncModal({ func, folhas, onClose }) {
               {func.nome?.split(' ').map(n => n[0]).slice(0,2).join('')}
             </div>
             {func.nome}
-            <MensagemLink phone={func.telefone} className="ml-auto" />
+            <MensagemLink phone={func.telefone} className="ml-auto" onVincular={(tel) => base44.entities.Funcionario.update(func.id, { telefone: tel })} />
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3 text-sm mb-4">

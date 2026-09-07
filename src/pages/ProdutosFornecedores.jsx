@@ -383,7 +383,7 @@ export default function ProdutosFornecedores() {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       {f.contato ? <p className="text-xs text-muted-foreground truncate">📞 {f.contato}</p> : <span />}
-                      {!f._daCentral && <MensagemLink phone={f.telefone || f.contato} />}
+                      {!f._daCentral && <MensagemLink phone={f.telefone || f.contato} onVincular={async (tel) => { await base44.entities.Fornecedor.update(f.id, { telefone: tel }); loadAll(); }} />}
                     </div>
                   </div>
                 );

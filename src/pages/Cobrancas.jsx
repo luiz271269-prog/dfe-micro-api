@@ -149,6 +149,12 @@ export default function Cobrancas() {
     loadData();
   }
 
+  // Vincula o WhatsApp a todos os títulos do mesmo cliente
+  async function vincularTelefoneCliente(cliente, tel) {
+    await base44.entities.TituloCobranca.updateMany({ cliente }, { $set: { cliente_telefone: tel } });
+    setTitulos(prev => prev.map(t => t.cliente === cliente ? { ...t, cliente_telefone: tel } : t));
+  }
+
   async function darBaixa() {
     if (!baixaId || !baixaValor) return;
     await base44.entities.TituloCobranca.update(baixaId, {
@@ -281,7 +287,7 @@ export default function Cobrancas() {
                   <tr key={t.id} className={`border-b transition-colors ${rowClass}`}>
                     <td className={`px-4 py-3 font-medium ${vencendoCritico ? 'text-red-800' : ''}`}>{t.nosso_numero}</td>
                     <td className={`px-4 py-3 ${vencendoCritico ? 'text-red-800 font-semibold' : ''}`}>
-                      <div className="flex items-center gap-2">{t.cliente}<MensagemLink phone={t.cliente_telefone} compact /></div>
+                      <div className="flex items-center gap-2">{t.cliente}<MensagemLink phone={t.cliente_telefone} compact onVincular={(tel) => vincularTelefoneCliente(t.cliente, tel)} /></div>
                     </td>
                     <td className={`px-4 py-3 whitespace-nowrap ${vencendoCritico ? 'text-red-700 font-bold' : ''}`}>
                       {formatDate(t.data_vencimento)}
