@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Check, XIcon, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Sparkles, Check, XIcon, ChevronDown, ChevronUp, AlertTriangle, SearchCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
 import ResolverManualDialog from './ResolverManualDialog';
+import AnalisarPagtosExtratoDialog from './AnalisarPagtosExtratoDialog';
 
 export default function SugestoesConciliacaoBanner() {
   const [sugestoes, setSugestoes] = useState([]);
@@ -12,6 +13,7 @@ export default function SugestoesConciliacaoBanner() {
   const [expanded, setExpanded] = useState(false);
   const [processandoId, setProcessandoId] = useState(null);
   const [resolverManual, setResolverManual] = useState(null);
+  const [analisarOpen, setAnalisarOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -93,11 +95,16 @@ export default function SugestoesConciliacaoBanner() {
             </p>
           </div>
         </div>
-        {sugestoes.length > 3 && (
-          <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)} className="gap-1 text-yellow-800 hover:bg-yellow-200">
-            {expanded ? <><ChevronUp className="w-4 h-4" /> Recolher</> : <><ChevronDown className="w-4 h-4" /> Ver todas ({sugestoes.length})</>}
+        <div className="flex items-center gap-2 shrink-0">
+          <Button size="sm" variant="outline" onClick={() => setAnalisarOpen(true)} className="gap-1.5 h-8 border-yellow-400 bg-white text-yellow-900 hover:bg-yellow-100">
+            <SearchCheck className="w-4 h-4" /> Analisar pagtos × extrato
           </Button>
-        )}
+          {sugestoes.length > 3 && (
+            <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)} className="gap-1 text-yellow-800 hover:bg-yellow-200">
+              {expanded ? <><ChevronUp className="w-4 h-4" /> Recolher</> : <><ChevronDown className="w-4 h-4" /> Ver todas ({sugestoes.length})</>}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="divide-y divide-yellow-200">
@@ -140,6 +147,12 @@ export default function SugestoesConciliacaoBanner() {
           </div>
         ))}
       </div>
+
+      <AnalisarPagtosExtratoDialog
+        open={analisarOpen}
+        onClose={() => setAnalisarOpen(false)}
+        onResolved={load}
+      />
 
       <ResolverManualDialog
         sugestao={resolverManual}
