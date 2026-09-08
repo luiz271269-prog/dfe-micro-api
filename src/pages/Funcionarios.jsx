@@ -521,7 +521,7 @@ export default function Funcionarios() {
             <div className={folhaEventos ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-4 lg:items-start' : ''}>
             {folhaEventos && (
               <aside className="hidden lg:block lg:order-2 lg:sticky lg:top-4 bg-card border rounded-xl p-4 max-h-[calc(100vh-2rem)] overflow-y-auto">
-                <FolhaEventosPanel key={folhaEventos.id} folha={folhaEventos} folhas={folhas} onClose={() => setFolhaEventos(null)} onSaved={loadData} showClose />
+                <FolhaEventosPanel key={folhaEventos.id} folha={folhaEventos} folhas={folhas} funcionario={funcionarios.find(fn => fn.nome === folhaEventos.funcionario_nome) || null} onClose={() => setFolhaEventos(null)} onSaved={loadData} showClose />
               </aside>
             )}
             <div className="space-y-6 lg:order-1 min-w-0">
@@ -634,7 +634,7 @@ export default function Funcionarios() {
       <FuncModal func={selectedFunc} folhas={folhas} onClose={() => setSelectedFunc(null)} />
 
       {/* Painel de eventos em janela — só em telas pequenas (no desktop fica em coluna ao lado da folha) */}
-      {!isDesktop && <FolhaEventosDialog folha={folhaEventos} folhas={folhas} onClose={() => setFolhaEventos(null)} onSaved={loadData} />}
+      {!isDesktop && <FolhaEventosDialog folha={folhaEventos} folhas={folhas} funcionario={folhaEventos ? (funcionarios.find(fn => fn.nome === folhaEventos.funcionario_nome) || null) : null} onClose={() => setFolhaEventos(null)} onSaved={loadData} />}
 
       {/* Form novo funcionário */}
       <Dialog open={showFuncForm} onOpenChange={setShowFuncForm}>

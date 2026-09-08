@@ -64,6 +64,11 @@ export default function FolhaEventosPanel({ folha, folhas = [], funcionario = nu
         <div>
           <h3 className="text-base font-semibold">Eventos Detalhados da Folha</h3>
           <p className="text-sm text-muted-foreground">{folha.funcionario_nome} · <span className="font-semibold">{folha.competencia}</span></p>
+          {funcionario && (
+            <p className="text-[11px] text-muted-foreground">
+              {funcionario.cargo || 'sem cargo'} · setor {funcionario.setor || '—'} · CPF {funcionario.cpf || 'não informado'}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1">
         <Button type="button" variant="outline" size="sm" className="gap-1.5" title="Imprimir folha + recibo por fora"
