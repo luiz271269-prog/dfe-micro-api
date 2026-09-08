@@ -20,6 +20,7 @@ import { mesesAnteriores, resumoCompetencia } from '../lib/folhaDashboardEngine'
 import FolhaEventosDialog from '../components/funcionarios/FolhaEventosDialog';
 import FolhaEventosPanel from '../components/funcionarios/FolhaEventosPanel';
 import { calcularTotaisFolha } from '../lib/folhaEventos';
+import BaixaFolhaPopover from '../components/funcionarios/BaixaFolhaPopover';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import MensagemLink from '../components/shared/MensagemLink';
@@ -529,7 +530,7 @@ export default function Funcionarios() {
                 const setorBruto  = itens.reduce((s,f)=>s+(f.salario_bruto||0),0);
                 const setorLiq    = itens.reduce((s,f)=>s+(f.salario_liquido||0),0);
                 const setorComiss = itens.reduce((s,f)=>s+(f.comissao||0),0);
-                const setorPago   = itens.reduce((s,f) => f.status==='pago' ? s+(f.salario_liquido||0) : s+(vinculosFolha[f.id]||0), 0);
+                const setorPago   = itens.reduce((s,f) => s + (f.valor_pago || (f.status==='pago' ? (f.salario_liquido||0) : (vinculosFolha[f.id]||0))), 0);
                 return (
                   <div key={setor}>
                     <div className="flex items-center gap-2 mb-2">
@@ -557,7 +558,7 @@ export default function Funcionarios() {
                               const desc = tot.descontos;
                               const extras = (f.horas_extras||0) + tot.proventosEventos;
                               const pagoVinculos = vinculosFolha[f.id] || 0;
-                              const pago = f.status === 'pago' ? f.salario_liquido : pagoVinculos;
+                              const pago = f.valor_pago || (f.status === 'pago' ? f.salario_liquido : pagoVinculos);
                               const saldo = (f.salario_liquido||0) - pago;
                               const isParcial = f.status !== 'pago' && pagoVinculos > 0;
                               const sc2 = isParcial
@@ -580,8 +581,8 @@ export default function Funcionarios() {
                                   <td className="px-3 py-2.5 text-right tabular-nums font-bold text-green-700">{formatCurrency(f.salario_liquido)}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums text-green-600">{pago > 0 ? formatCurrency(pago) : '—'}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums text-orange-600">{saldo > 0 ? formatCurrency(saldo) : '—'}</td>
-                                  <td className="px-3 py-2.5 text-center">
-                                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${sc2.color}`}>{sc2.label}</span>
+                                  <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                                    <BaixaFolhaPopover folha={f} statusLabel={sc2.label} statusColor={sc2.color} onSaved={loadData} />
                                   </td>
                                 </tr>
                               );

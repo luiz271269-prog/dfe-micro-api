@@ -111,6 +111,23 @@
       "format": "date",
       "title": "Data Pagamento"
     },
+    "valor_pago": {
+      "type": "number",
+      "title": "Valor efetivamente pago (R$) \u2014 informado na baixa direto na folha",
+      "default": 0
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "enum": [
+        "pix",
+        "transferencia",
+        "dinheiro",
+        "cheque",
+        "cartao",
+        "deposito"
+      ],
+      "title": "Como foi pago"
+    },
     "status": {
       "type": "string",
       "enum": [
