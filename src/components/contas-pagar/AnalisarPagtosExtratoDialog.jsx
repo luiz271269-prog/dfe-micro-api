@@ -9,7 +9,7 @@ import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
 import { carregarObrigacoesAbertas, conciliarObrigacaoComLancamento } from '@/lib/obrigacoesAbertas';
 import ColunaSelecao from './ColunaSelecao';
 
-export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved }) {
+export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved, lancamentoIdInicial }) {
   const [obrigacoes, setObrigacoes] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,14 +25,15 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved 
       carregarObrigacoesAbertas(),
       base44.entities.LancamentoBancario.list('-data', 2000),
     ]);
+    const pendentes = lancs.filter(l => ehSaidaContasPagar(l) && l.status_conciliacao !== 'conciliado' && l.status_conciliacao !== 'ignorar');
     setObrigacoes(obr);
-    setLancamentos(lancs.filter(l => ehSaidaContasPagar(l) && l.status_conciliacao !== 'conciliado' && l.status_conciliacao !== 'ignorar'));
+    setLancamentos(pendentes);
     setSelObrig(null);
-    setSelLanc(null);
+    setSelLanc(lancamentoIdInicial ? pendentes.find(l => l.id === lancamentoIdInicial) || null : null);
     setLoading(false);
   }
 
-  useEffect(() => { if (open) load(); }, [open]);
+  useEffect(() => { if (open) load(); }, [open, lancamentoIdInicial]);
 
   const q = busca.toLowerCase().trim();
 

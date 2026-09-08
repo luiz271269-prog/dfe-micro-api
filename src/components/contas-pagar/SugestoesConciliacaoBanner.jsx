@@ -14,6 +14,7 @@ export default function SugestoesConciliacaoBanner() {
   const [processandoId, setProcessandoId] = useState(null);
   const [resolverManual, setResolverManual] = useState(null);
   const [analisarOpen, setAnalisarOpen] = useState(false);
+  const [analisarLancId, setAnalisarLancId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -96,7 +97,7 @@ export default function SugestoesConciliacaoBanner() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button size="sm" variant="outline" onClick={() => setAnalisarOpen(true)} className="gap-1.5 h-8 border-yellow-400 bg-white text-yellow-900 hover:bg-yellow-100">
+          <Button size="sm" variant="outline" onClick={() => { setAnalisarLancId(null); setAnalisarOpen(true); }} className="gap-1.5 h-8 border-yellow-400 bg-white text-yellow-900 hover:bg-yellow-100">
             <SearchCheck className="w-4 h-4" /> Analisar pagtos × extrato
           </Button>
           {sugestoes.length > 3 && (
@@ -137,6 +138,16 @@ export default function SugestoesConciliacaoBanner() {
               <Button
                 size="sm"
                 variant="outline"
+                onClick={() => { setAnalisarLancId(s.lancamento_bancario_id); setAnalisarOpen(true); }}
+                disabled={processandoId === s.id}
+                className="gap-1 h-8 border-yellow-400 text-yellow-900 hover:bg-yellow-100"
+                title="Analisar este débito contra as contas a pagar"
+              >
+                <SearchCheck className="w-3.5 h-3.5" /> Analisar
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => rejeitar(s)}
                 disabled={processandoId === s.id}
                 className="gap-1 h-8 border-red-300 text-red-700 hover:bg-red-50"
@@ -150,7 +161,8 @@ export default function SugestoesConciliacaoBanner() {
 
       <AnalisarPagtosExtratoDialog
         open={analisarOpen}
-        onClose={() => setAnalisarOpen(false)}
+        lancamentoIdInicial={analisarLancId}
+        onClose={() => { setAnalisarOpen(false); setAnalisarLancId(null); }}
         onResolved={load}
       />
 
