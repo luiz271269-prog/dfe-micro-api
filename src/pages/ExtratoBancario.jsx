@@ -15,6 +15,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
+import SortableTh from '../components/shared/SortableTh';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
@@ -29,6 +30,8 @@ export default function ExtratoBancario() {
   const [showForm, setShowForm] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState('data');
+  const [sortDir, setSortDir] = useState('desc');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [deduping, setDeduping] = useState(false);
@@ -81,6 +84,24 @@ export default function ExtratoBancario() {
       return true;
     });
   }, [lancamentos, filterCategoria, searchTerm, selectedMonth, isAnnual]);
+
+  function handleSort(field) {
+    if (sortField === field) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortField(field); setSortDir(field === 'data' || field === 'valor' || field === 'saldo_apos' ? 'desc' : 'asc'); }
+  }
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    const numeric = sortField === 'valor' || sortField === 'saldo_apos';
+    arr.sort((a, b) => {
+      const av = a[sortField], bv = b[sortField];
+      let cmp;
+      if (numeric) cmp = (av || 0) - (bv || 0);
+      else cmp = String(av || '').localeCompare(String(bv || ''), 'pt-BR');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [filtered, sortField, sortDir]);
 
   const totais = useMemo(() => {
     const cats = {};
@@ -325,13 +346,20 @@ export default function ExtratoBancario() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Quem comprou</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Tipo de compra</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Saldo</th>
+                {[
+                  ['data', 'Data', 'left'],
+                  ['descricao', 'Descrição', 'left'],
+                  ['categoria', 'Categoria', 'left'],
+                  ['origem_compra', 'Quem comprou', 'left'],
+                  ['tipo_compra', 'Tipo de compra', 'left'],
+                  ['valor', 'Valor', 'right'],
+                  ['saldo_apos', 'Saldo', 'right'],
+                ].map(([field, label, align]) => (
+                  <SortableTh key={field} field={field} align={align} className="py-3"
+                    sortField={sortField} sortDir={sortDir} onSort={handleSort}>
+                    {label}
+                  </SortableTh>
+                ))}
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Comprovante</th>
               </tr>
             </thead>
@@ -341,7 +369,7 @@ export default function ExtratoBancario() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhum lançamento encontrado</td></tr>
               ) : (
-                filtered.map(l => (
+                sorted.map(l => (
                   <tr key={l.id} className="border-b hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(l.data)}</td>
                     <td className="px-4 py-3">
