@@ -14,7 +14,7 @@ import NovoTipoEvento from './NovoTipoEvento';
 const CAMPOS_NUM = [...CAMPOS_PROVENTO, ...CAMPOS_DESCONTO].map(([k]) => k);
 
 // Conteúdo do painel "Eventos Detalhados da Folha" — usado inline (coluna lateral) ou dentro de um Dialog.
-export default function FolhaEventosPanel({ folha, folhas = [], onClose, onSaved, showClose = false }) {
+export default function FolhaEventosPanel({ folha, folhas = [], funcionario = null, onClose, onSaved, showClose = false }) {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -67,7 +67,7 @@ export default function FolhaEventosPanel({ folha, folhas = [], onClose, onSaved
         </div>
         <div className="flex items-center gap-1">
         <Button type="button" variant="outline" size="sm" className="gap-1.5" title="Imprimir folha + recibo por fora"
-          onClick={() => imprimirFolha({ ...folha, ...form, salario_bruto: parseFloat(form.salario_bruto) || 0 })}>
+          onClick={() => imprimirFolha({ ...folha, ...form, salario_bruto: parseFloat(form.salario_bruto) || 0 }, funcionario)}>
           <Printer className="w-3.5 h-3.5" /> Imprimir
         </Button>
         {showClose && (
