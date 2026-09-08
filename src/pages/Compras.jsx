@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
+import SortableTh from '../components/shared/SortableTh';
+import useTableSort from '@/hooks/useTableSort';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import ConciliacaoDDAvsContas from '../components/contas-pagar/ConciliacaoDDAvsContas';
@@ -122,6 +124,8 @@ export default function Compras() {
     return true;
   }), [comprasMes, filterFornecedor, filterCategoriaC, searchC]);
 
+  const sortC = useTableSort(filteredC, 'data_emissao', 'desc');
+
   const totaisFornecedor = useMemo(() => { const t={}; comprasMes.forEach(c => { t[c.fornecedor]=(t[c.fornecedor]||0)+(c.valor_total||0); }); return t; }, [comprasMes]);
   const grandTotalC = comprasMes.reduce((s,c) => s+(c.valor_total||0), 0);
 
@@ -145,6 +149,8 @@ export default function Compras() {
     if (searchD && !d.descricao?.toLowerCase().includes(searchD.toLowerCase()) && !d.fornecedor?.toLowerCase().includes(searchD.toLowerCase())) return false;
     return true;
   }), [despesasMes, filterCategoriaD, filterStatus, searchD]);
+
+  const sortD = useTableSort(filteredD, 'data', 'desc');
 
   const totalMesD = despesasMes.reduce((s,d) => s+(d.valor||0), 0);
   const totalPago = despesasMes.filter(d=>d.status==='pago').reduce((s,d) => s+(d.valor||0), 0);
@@ -261,18 +267,23 @@ export default function Compras() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Produto</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Fornecedor</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Qtd</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Unit.</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Total</th>
+                  {[
+                    ['data_emissao', 'Data', 'left'],
+                    ['descricao_produto', 'Produto', 'left'],
+                    ['fornecedor', 'Fornecedor', 'left'],
+                    ['categoria_produto', 'Categoria', 'left'],
+                    ['quantidade', 'Qtd', 'right'],
+                    ['valor_unitario', 'Unit.', 'right'],
+                    ['valor_total', 'Total', 'right'],
+                  ].map(([field, label, align]) => (
+                    <SortableTh key={field} field={field} align={align} className="py-3"
+                      sortField={sortC.sortField} sortDir={sortC.sortDir} onSort={sortC.handleSort}>{label}</SortableTh>
+                  ))}
                 </tr></thead>
                 <tbody>
                   {loadingC ? <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
                   : filteredC.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Nenhuma compra encontrada</td></tr>
-                  : filteredC.map(c => (
+                  : sortC.sorted.map(c => (
                     <tr key={c.id} className="border-b hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(c.data_emissao)}</td>
                       <td className="px-4 py-3"><p className="font-medium">{c.descricao_produto}</p>{c.numero_nota && <p className="text-xs text-muted-foreground">NF {c.numero_nota}</p>}</td>
@@ -336,19 +347,24 @@ export default function Compras() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Fornecedor</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Empresa</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden lg:table-cell">Forma Pag.</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
-                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
+                  {[
+                    ['data', 'Data', 'left', 'py-3'],
+                    ['descricao', 'Descrição', 'left', 'py-3'],
+                    ['fornecedor', 'Fornecedor', 'left', 'py-3 hidden sm:table-cell'],
+                    ['categoria', 'Categoria', 'left', 'py-3'],
+                    ['empresa', 'Empresa', 'left', 'py-3 hidden md:table-cell'],
+                    ['forma_pagamento', 'Forma Pag.', 'left', 'py-3 hidden lg:table-cell'],
+                    ['valor', 'Valor', 'right', 'py-3'],
+                    ['status', 'Status', 'left', 'py-3'],
+                  ].map(([field, label, align, cls]) => (
+                    <SortableTh key={field} field={field} align={align} className={cls}
+                      sortField={sortD.sortField} sortDir={sortD.sortDir} onSort={sortD.handleSort}>{label}</SortableTh>
+                  ))}
                 </tr></thead>
                 <tbody>
                   {loadingD ? <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
                   : filteredD.length===0 ? <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhuma despesa encontrada</td></tr>
-                  : filteredD.map(d => (
+                  : sortD.sorted.map(d => (
                     <tr key={d.id} className={`border-b hover:bg-muted/30 transition-colors ${d.status==='vencido'?'bg-red-50':''}`}>
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(d.data)}</td>
                       <td className="px-4 py-3"><p className="font-medium">{d.descricao}</p>{d.recorrente&&<p className="text-xs text-muted-foreground">🔄 Recorrente</p>}</td>

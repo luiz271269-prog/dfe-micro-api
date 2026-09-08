@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Repeat, Plus, Sparkles, Edit, Trash2, Power, AlertTriangle, CheckCircle } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
+import SortableTh from '../components/shared/SortableTh';
+import useTableSort from '@/hooks/useTableSort';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { aprenderPadroes, aplicarRegra } from '../lib/recurringEngine';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
@@ -56,6 +58,8 @@ export default function Recorrentes() {
     });
     return mapa;
   }, [regras, lancs]);
+
+  const { sorted, sortField, sortDir, handleSort } = useTableSort(regras, 'nome', 'asc');
 
   function abrirNovo() { setForm(vazio); setEditando('novo'); }
   function abrirEditar(r) {
@@ -135,12 +139,12 @@ export default function Recorrentes() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Regra</th>
-                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Classificação</th>
-                  <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Padrão</th>
-                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Valor esperado</th>
-                  <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Tol.</th>
-                  <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Dia</th>
+                  <SortableTh field="nome" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Regra</SortableTh>
+                  <SortableTh field="categoria" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Classificação</SortableTh>
+                  <SortableTh field="padrao_descricao" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Padrão</SortableTh>
+                  <SortableTh field="valor_esperado" align="right" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Valor esperado</SortableTh>
+                  <SortableTh field="tolerancia_percentual" align="center" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Tol.</SortableTh>
+                  <SortableTh field="dia_vencimento" align="center" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Dia</SortableTh>
                   <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Ocorrências</th>
                   <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Última</th>
                   <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Status</th>
@@ -148,7 +152,7 @@ export default function Recorrentes() {
                 </tr>
               </thead>
               <tbody>
-                {regras.map(r => {
+                {sorted.map(r => {
                   const s = statsPorRegra[r.id] || {};
                   return (
                     <tr key={r.id} className={`border-b hover:bg-muted/20 ${!r.is_ativa ? 'opacity-50' : ''}`}>

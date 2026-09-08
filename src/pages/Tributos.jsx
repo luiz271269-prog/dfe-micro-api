@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
+import SortableTh from '../components/shared/SortableTh';
+import useTableSort from '@/hooks/useTableSort';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
@@ -77,6 +79,8 @@ export default function Tributos() {
     if (filterMes && t.competencia !== filterMes) return false;
     return true;
   });
+
+  const { sorted, sortField, sortDir, handleSort } = useTableSort(filtrados, 'data_vencimento', 'desc');
 
   const totalAPagar = filtrados.filter(t => t.status === 'a_vencer' || t.status === 'vencido').reduce((s, t) => s + (t.valor_original || 0), 0);
   const totalPago = filtrados.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
@@ -165,22 +169,27 @@ export default function Tributos() {
           <table className="w-full text-sm">
             <thead className="border-b">
               <tr className="bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-4 py-3 font-semibold">Tipo</th>
-                <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">Descrição</th>
-                <th className="hidden md:table-cell text-left px-4 py-3 font-semibold">Competência</th>
-                <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">Vencimento</th>
-                <th className="hidden lg:table-cell text-left px-4 py-3 font-semibold">Empresa</th>
-                <th className="text-left px-4 py-3 font-semibold">Quem comprou</th>
-                <th className="text-left px-4 py-3 font-semibold">Tipo de compra</th>
-                <th className="text-right px-4 py-3 font-semibold">Valor</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
+                {[
+                  ['tipo', 'Tipo', 'left', 'py-3'],
+                  ['descricao', 'Descrição', 'left', 'py-3 hidden sm:table-cell'],
+                  ['competencia', 'Competência', 'left', 'py-3 hidden md:table-cell'],
+                  ['data_vencimento', 'Vencimento', 'left', 'py-3 hidden sm:table-cell'],
+                  ['empresa', 'Empresa', 'left', 'py-3 hidden lg:table-cell'],
+                  ['origem_compra', 'Quem comprou', 'left', 'py-3'],
+                  ['tipo_compra', 'Tipo de compra', 'left', 'py-3'],
+                  ['valor_original', 'Valor', 'right', 'py-3'],
+                  ['status', 'Status', 'left', 'py-3'],
+                ].map(([field, label, align, cls]) => (
+                  <SortableTh key={field} field={field} align={align} className={cls}
+                    sortField={sortField} sortDir={sortDir} onSort={handleSort}>{label}</SortableTh>
+                ))}
               </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 ? (
                 <tr><td colSpan="9" className="px-4 py-8 text-center text-muted-foreground">Nenhum tributo encontrado</td></tr>
               ) : (
-                filtrados.map(t => (
+                sorted.map(t => (
                 <tr key={t.id} className={`border-b ${t.status === 'vencido' ? 'bg-red-50' : ''}`}>
                   <td className="px-4 py-3 font-semibold">{t.tipo}</td>
                   <td className="hidden sm:table-cell px-4 py-3">{t.descricao || '—'}</td>

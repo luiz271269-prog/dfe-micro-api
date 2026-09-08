@@ -9,6 +9,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
+import SortableTh from '../components/shared/SortableTh';
+import useTableSort from '@/hooks/useTableSort';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
@@ -155,6 +157,8 @@ export default function Obras() {
     });
   }, [obras, filterLocal, filterProf, filterEtapa, filterMes, search, selectedMonth, isAnnual]);
 
+  const { sorted, sortField, sortDir, handleSort } = useTableSort(filtered, 'data', 'desc');
+
   const totalRealizado = filtered.reduce((s, o) => s + (o.valor || 0), 0);
   const totalOrcado = filtered.reduce((s, o) => s + (o.orcamento || 0), 0);
 
@@ -274,18 +278,24 @@ export default function Obras() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Data</th>
-                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Local</th>
-                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Profissional</th>
-                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Tipo</th>
-                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Responsável</th>
-                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Descrição</th>
-                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Quem comprou</th>
-                <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Tipo de compra</th>
-                <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Orçado</th>
-                <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Realizado</th>
+                {[
+                  ['data', 'Data', 'left'],
+                  ['local_obra', 'Local', 'left'],
+                  ['tipo_profissional', 'Profissional', 'left'],
+                  ['tipo', 'Tipo', 'left'],
+                  ['responsavel', 'Responsável', 'left'],
+                  ['descricao', 'Descrição', 'left'],
+                  ['origem_compra', 'Quem comprou', 'left'],
+                  ['tipo_compra', 'Tipo de compra', 'left'],
+                  ['orcamento', 'Orçado', 'right'],
+                  ['valor', 'Realizado', 'right'],
+                ].map(([field, label, align]) => (
+                  <SortableTh key={field} field={field} align={align} className="py-3"
+                    sortField={sortField} sortDir={sortDir} onSort={handleSort}>{label}</SortableTh>
+                ))}
                 <th className="text-right px-3 py-3 font-semibold text-muted-foreground">Dif.</th>
-                <th className="text-center px-3 py-3 font-semibold text-muted-foreground">Etapa</th>
+                <SortableTh field="etapa_obra" align="center" className="py-3"
+                  sortField={sortField} sortDir={sortDir} onSort={handleSort}>Etapa</SortableTh>
                 <th className="text-left px-3 py-3 font-semibold text-muted-foreground">Pgto</th>
               </tr>
             </thead>
@@ -294,7 +304,7 @@ export default function Obras() {
                 <tr><td colSpan={13} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={13} className="text-center py-12 text-muted-foreground">Nenhum registro encontrado</td></tr>
-              ) : filtered.map(o => {
+              ) : sorted.map(o => {
                 const dif = (o.orcamento || 0) - (o.valor || 0);
                 return (
                   <tr key={o.id} className="border-b hover:bg-muted/30 transition-colors">

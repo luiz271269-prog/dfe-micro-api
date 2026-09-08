@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
+import SortableTh from '../components/shared/SortableTh';
+import useTableSort from '@/hooks/useTableSort';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
@@ -86,6 +88,8 @@ export default function Despesas() {
       return true;
     });
   }, [despesasMes, filterCategoria, filterStatus, searchTerm]);
+
+  const { sorted, sortField, sortDir, handleSort } = useTableSort(filtered, 'data', 'desc');
 
   const totalMes = despesasMes.reduce((s, d) => s + (d.valor || 0), 0);
   const totalPago = despesasMes.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
@@ -172,16 +176,21 @@ export default function Despesas() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Data</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Descrição</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Fornecedor</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Categoria</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Quem comprou</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Tipo de compra</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Empresa</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden lg:table-cell">Forma Pag.</th>
-                <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Valor</th>
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Status</th>
+                {[
+                  ['data', 'Data', 'left', 'py-3'],
+                  ['descricao', 'Descrição', 'left', 'py-3'],
+                  ['fornecedor', 'Fornecedor', 'left', 'py-3 hidden sm:table-cell'],
+                  ['categoria', 'Categoria', 'left', 'py-3'],
+                  ['origem_compra', 'Quem comprou', 'left', 'py-3'],
+                  ['tipo_compra', 'Tipo de compra', 'left', 'py-3'],
+                  ['empresa', 'Empresa', 'left', 'py-3 hidden md:table-cell'],
+                  ['forma_pagamento', 'Forma Pag.', 'left', 'py-3 hidden lg:table-cell'],
+                  ['valor', 'Valor', 'right', 'py-3'],
+                  ['status', 'Status', 'left', 'py-3'],
+                ].map(([field, label, align, cls]) => (
+                  <SortableTh key={field} field={field} align={align} className={cls}
+                    sortField={sortField} sortDir={sortDir} onSort={handleSort}>{label}</SortableTh>
+                ))}
                 <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Comprovante</th>
               </tr>
             </thead>
@@ -190,7 +199,7 @@ export default function Despesas() {
                 <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">Nenhuma despesa encontrada</td></tr>
-              ) : filtered.map(d => (
+              ) : sorted.map(d => (
                 <tr key={d.id} className={`border-b hover:bg-muted/30 transition-colors ${d.status === 'vencido' ? 'bg-red-50' : ''}`}>
                   <td className="px-4 py-3 whitespace-nowrap text-sm">{formatDate(d.data)}</td>
                   <td className="px-4 py-3">
