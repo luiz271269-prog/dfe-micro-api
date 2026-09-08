@@ -53,6 +53,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Lê toda a carteira de cobrança via service role — restrito a admin, inclusive no dry_run
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     let body = {};
     try { body = await req.json(); } catch { /* sem body */ }
@@ -137,11 +139,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // EXECUÇÃO REAL — admin-only quando vai apagar
-    if (user.role !== 'admin') {
-      return Response.json({ error: 'Forbidden — apenas admin pode executar deduplicação real' }, { status: 403 });
-    }
-
+    // EXECUÇÃO REAL (apaga registros) — admin já validado no início
     let apagados = 0, atualizados = 0, erros = 0;
     for (const g of dupGroups) {
       // 1. Atualiza winner se há merge

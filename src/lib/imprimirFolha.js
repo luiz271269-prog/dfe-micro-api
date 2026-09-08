@@ -1,5 +1,8 @@
 import { CAMPOS_PROVENTO, CAMPOS_DESCONTO } from './folhaEventos';
 
+// Escapa HTML — nomes de funcionário, cargo, setor e descrições de eventos são dados
+// editáveis pelo usuário e vão para dentro do HTML do recibo.
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
 const brl = (v) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const n = (v) => Number(v) || 0;
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -40,7 +43,7 @@ const tabela = (titulo, cor, list, totalLabel, total) => `
   <h3 class="${cor}">${titulo}</h3>
   <table>
     <thead><tr><th class="cod">Cód.</th><th>Descrição</th><th>Referência</th><th class="r">Valor (R$)</th></tr></thead>
-    <tbody>${list.length ? list.map((e, i) => `<tr><td class="cod">${String(i + 1).padStart(3, '0')}</td><td>${e.descricao}</td><td class="ref">${e.referencia || '-'}</td><td class="r ${cor}">${brl(e.valor)}</td></tr>`).join('')
+    <tbody>${list.length ? list.map((e, i) => `<tr><td class="cod">${String(i + 1).padStart(3, '0')}</td><td>${esc(e.descricao)}</td><td class="ref">${esc(e.referencia || '-')}</td><td class="r ${cor}">${brl(e.valor)}</td></tr>`).join('')
       : '<tr><td colspan="4" class="ref">Nenhum lançamento</td></tr>'}</tbody>
     <tfoot><tr class="tot ${cor}-bg"><td colspan="3">${totalLabel}</td><td class="r">${brl(total)}</td></tr></tfoot>
   </table>
@@ -55,7 +58,7 @@ export function imprimirFolha(f, funcionario = null) {
   const temFora = b.foraProventos.length || b.foraDescontos.length;
 
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
-<title>Recibo ${f.funcionario_nome} — ${f.competencia}</title>
+<title>Recibo ${esc(f.funcionario_nome)} — ${esc(f.competencia)}</title>
 <style>
   *{box-sizing:border-box}
   body{font-family:Arial,Helvetica,sans-serif;color:#1f2937;margin:0;padding:24px;font-size:11px}
@@ -97,19 +100,19 @@ export function imprimirFolha(f, funcionario = null) {
 </style></head><body>
 
 <div class="page">
-  <div class="empresa"><h1>${f.empresa || 'FINANCEIRO PRO'}</h1><p>Gestão e Fluxos ADM e Financeiro</p></div>
-  <div class="titulo"><h2>Recibo de Pagamento de Salário</h2><p>Competência: ${compExtenso(f.competencia)}</p></div>
+  <div class="empresa"><h1>${esc(f.empresa || 'FINANCEIRO PRO')}</h1><p>Gestão e Fluxos ADM e Financeiro</p></div>
+  <div class="titulo"><h2>Recibo de Pagamento de Salário</h2><p>Competência: ${esc(compExtenso(f.competencia))}</p></div>
 
   <div class="box"><h4>Dados do Funcionário</h4>
     <div class="grid4">
-      <div><div class="lbl">Nome:</div><div class="val">${f.funcionario_nome}</div></div>
-      <div><div class="lbl">Cargo:</div><div class="val">${funcionario?.cargo || 'Não informado'}</div></div>
-      <div><div class="lbl">Setor:</div><div class="val">${funcionario?.setor || 'Não informado'}</div></div>
-      <div><div class="lbl">Contrato:</div><div class="val">${funcionario?.tipo_contrato || 'Não informado'}</div></div>
-      <div><div class="lbl">CPF:</div><div class="val">${funcionario?.cpf || 'Não informado'}</div></div>
+      <div><div class="lbl">Nome:</div><div class="val">${esc(f.funcionario_nome)}</div></div>
+      <div><div class="lbl">Cargo:</div><div class="val">${esc(funcionario?.cargo || 'Não informado')}</div></div>
+      <div><div class="lbl">Setor:</div><div class="val">${esc(funcionario?.setor || 'Não informado')}</div></div>
+      <div><div class="lbl">Contrato:</div><div class="val">${esc(funcionario?.tipo_contrato || 'Não informado')}</div></div>
+      <div><div class="lbl">CPF:</div><div class="val">${esc(funcionario?.cpf || 'Não informado')}</div></div>
       <div><div class="lbl">Admissão:</div><div class="val">${dataBR(funcionario?.data_admissao)}</div></div>
       <div><div class="lbl">Salário Base:</div><div class="val">${brl(f.salario_bruto)}</div></div>
-      <div><div class="lbl">Tipo de Folha:</div><div class="val">${f.tipo || 'mensal'}</div></div>
+      <div><div class="lbl">Tipo de Folha:</div><div class="val">${esc(f.tipo || 'mensal')}</div></div>
     </div>
   </div>
 
@@ -141,15 +144,15 @@ export function imprimirFolha(f, funcionario = null) {
   </div>
 
   <div class="rodape">
-    <div>Recibo gerado em: ${new Date().toLocaleString('pt-BR')}<br>Pagamento: ${f.forma_pagamento || '—'} · Valor pago: ${brl(f.valor_pago)}</div>
+    <div>Recibo gerado em: ${new Date().toLocaleString('pt-BR')}<br>Pagamento: ${esc(f.forma_pagamento || '—')} · Valor pago: ${brl(f.valor_pago)}</div>
     <div class="assin">Assinatura do Funcionário</div>
   </div>
 </div>
 
 ${temFora ? `
 <div class="page quebra">
-  <div class="empresa"><h1>${f.empresa || 'FINANCEIRO PRO'}</h1><p>Gestão e Fluxos ADM e Financeiro</p></div>
-  <div class="titulo"><h2>Recibo Complementar <span class="tag d">POR FORA</span></h2><p>Competência: ${compExtenso(f.competencia)} · ${f.funcionario_nome}</p></div>
+  <div class="empresa"><h1>${esc(f.empresa || 'FINANCEIRO PRO')}</h1><p>Gestão e Fluxos ADM e Financeiro</p></div>
+  <div class="titulo"><h2>Recibo Complementar <span class="tag d">POR FORA</span></h2><p>Competência: ${esc(compExtenso(f.competencia))} · ${esc(f.funcionario_nome)}</p></div>
   <p class="ref">Valores pagos fora da folha registrada — não integram o holerite oficial, bases de cálculo ou provisões.</p>
   <div class="cols">
     ${tabela('Valores Recebidos', 'g', b.foraProventos, 'Total Recebido', b.totalForaV)}

@@ -31,6 +31,8 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Lê toda a carteira de cobrança via service role — restrito a admin, inclusive no dry_run
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     let body = {};
     try { body = await req.json(); } catch { /* sem body */ }
@@ -97,11 +99,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // EXECUÇÃO REAL — admin-only (apaga registros)
-    if (user.role !== 'admin') {
-      return Response.json({ error: 'Forbidden — apenas admin pode aplicar a conciliação' }, { status: 403 });
-    }
-
+    // EXECUÇÃO REAL (apaga registros) — admin já validado no início
     let parcelasBaixadas = 0;
     let boletosRemovidos = 0;
     let erros = 0;
