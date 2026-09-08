@@ -3,7 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TrendingUp, TrendingDown, History, Save, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, History, Save, X, Printer } from 'lucide-react';
+import { imprimirFolha } from '@/lib/imprimirFolha';
 import { formatCurrency } from '@/lib/formatters';
 import { CAMPOS_PROVENTO, CAMPOS_DESCONTO, PRESETS_PROVENTO, PRESETS_DESCONTO, calcularTotaisFolha, competenciaAnterior } from '@/lib/folhaEventos';
 import EventoLinha from './EventoLinha';
@@ -64,11 +65,17 @@ export default function FolhaEventosPanel({ folha, folhas = [], onClose, onSaved
           <h3 className="text-base font-semibold">Eventos Detalhados da Folha</h3>
           <p className="text-sm text-muted-foreground">{folha.funcionario_nome} · <span className="font-semibold">{folha.competencia}</span></p>
         </div>
+        <div className="flex items-center gap-1">
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" title="Imprimir folha + recibo por fora"
+          onClick={() => imprimirFolha({ ...folha, ...form, salario_bruto: parseFloat(form.salario_bruto) || 0 })}>
+          <Printer className="w-3.5 h-3.5" /> Imprimir
+        </Button>
         {showClose && (
           <button type="button" onClick={onClose} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted" title="Fechar">
             <X className="w-4 h-4" />
           </button>
         )}
+        </div>
       </div>
 
       <div className="flex items-end gap-3">
