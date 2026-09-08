@@ -28,11 +28,11 @@ export function calcularTotaisFolha(f) {
   const descontosFixos = CAMPOS_DESCONTO.reduce((s, [k]) => s + n(f[k]), 0);
   const proventosEventos = somaEventos(f.eventos, 'provento');
   const descontosEventos = somaEventos(f.eventos, 'desconto');
-  const proventos = proventosFixos + proventosEventos;
+  const proventos = n(f.salario_bruto) + proventosFixos + proventosEventos;
   const descontos = descontosFixos + descontosEventos;
   return {
     proventos, descontos, proventosEventos, descontosEventos,
-    liquido: n(f.salario_bruto) + proventos - descontos,
+    liquido: proventos - descontos,
   };
 }
 
