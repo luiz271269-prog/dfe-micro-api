@@ -29,8 +29,7 @@ export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual,
   const monthIdx = months.indexOf(selectedMonth);
   const canPrev = monthIdx > 0;
   const canNext = monthIdx >= 0 && monthIdx < months.length - 1;
-  const windowStart = Math.max(0, Math.min(monthIdx - 2, months.length - 5));
-  const visibleMonths = months.slice(windowStart, windowStart + 5);
+  const visibleMonths = months;
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
@@ -40,7 +39,7 @@ export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual,
         className="w-7 h-7 rounded-lg border flex items-center justify-center hover:bg-muted disabled:opacity-30 transition-colors shrink-0">
         <ChevronLeft className="w-3.5 h-3.5" /></button>
 
-      <div className="flex items-center gap-1 overflow-x-auto">
+      <div className="flex items-center gap-1 overflow-x-auto max-w-full flex-1">
         {visibleMonths.map((m) => {
           const isActive = !isAnnual && selectedMonth === m;
           const total = monthTotals?.[m];
