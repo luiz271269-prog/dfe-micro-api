@@ -27,14 +27,13 @@ function normalizeCliente(c) {
 }
 
 function tituloKey(r) {
-  const nfRef = extractNFCIRef(r.seu_numero) || extractNFCIRef(r.nosso_numero);
-  const parcela = r.parcela_numero || extractParcelaFromNosso(r.nosso_numero);
-  const totalParcelas = r.parcela_total || parcela;
+  const nfRef = r.nota_fiscal_id || extractNFCIRef(r.seu_numero) || extractNFCIRef(r.nosso_numero);
+  const parcela = r.parcela_numero || extractParcelaFromNosso(r.seu_numero) || extractParcelaFromNosso(r.nosso_numero);
   if (!r.cliente || !nfRef || !parcela || !r.data_vencimento || r.valor_titulo == null) return null;
   return [
     `cli:${normalizeCliente(r.cliente)}`,
     `nf:${nfRef}`,
-    `p:${parcela}/${totalParcelas}`,
+    `p:${parcela}`,
     `v:${r.data_vencimento}`,
     `val:${Math.round(Number(r.valor_titulo) * 100)}`,
   ].join('|');
