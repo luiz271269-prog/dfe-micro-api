@@ -13,7 +13,7 @@ export default function TabsNexus({ tabs, active, onChange }) {
               key={key}
               type="button"
               onClick={() => onChange(key)}
-              className={`relative flex items-center gap-3 text-base font-bold transition-colors whitespace-nowrap px-4 ${
+              className={`relative flex items-center gap-3 text-base font-bold transition-colors whitespace-nowrap px-6 my-2 ${
               isActive ?
               'bg-gradient-to-r from-[#f2c230] via-[#e0b02a] to-[#0b1a33] text-[#0b1a33]' :
               'text-white hover:bg-white/5'}`
