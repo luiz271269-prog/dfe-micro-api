@@ -165,7 +165,7 @@ export default function Cartoes() {
   }, [faturas]);
 
   const filteredFaturas = useMemo(() => {
-    if (isAnnual) return faturas;
+    if (isAnnual) return faturas.filter((f) => f.mes_referencia?.slice(0, 4) === selectedMonth.slice(0, 4));
     return faturas.filter((f) => f.mes_referencia === selectedMonth);
   }, [faturas, selectedMonth, isAnnual]);
 
@@ -307,8 +307,7 @@ export default function Cartoes() {
       {filteredFaturas.length > 0 &&
       <ConciliacaoCartoes
         lancamentos={lancamentos.filter((l) =>
-        l.fatura_id &&
-        faturas.find((f) => f.id === l.fatura_id && (isAnnual || f.mes_referencia === selectedMonth))
+        l.fatura_id && filteredFaturas.some((f) => f.id === l.fatura_id)
         )}
         selectedMonth={selectedMonth}
         isAnnual={isAnnual}

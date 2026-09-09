@@ -72,8 +72,6 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
     { label: 'Folha', key: 'folha', bg: 'bg-indigo-50', border: 'border-indigo-300', text: 'text-indigo-700', activeBg: 'bg-indigo-100' },
     { label: 'Obras / Reformas', key: 'obras', bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700', activeBg: 'bg-orange-100' },
     { label: 'Pró-labore', key: 'pro_labore', bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-700', activeBg: 'bg-purple-100' },
-    { label: 'Não classificado', key: 'nao_classificado', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', activeBg: 'bg-amber-100' },
-    { label: 'Não contabilizado', key: 'excluido', bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-600', activeBg: 'bg-slate-100' },
   ];
 
 
@@ -89,7 +87,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
         <AlertCircle className="w-5 h-5 text-white" />
         <h3 className="text-sm font-bold text-white uppercase tracking-widest">Conciliação de Cartões</h3>
         <span className="ml-auto text-[11px] font-semibold text-white/90 bg-white/15 px-2 py-0.5 rounded-full">
-          {isAnnual ? 'Anual' : formatMesLabel(selectedMonth)}
+          {isAnnual ? selectedMonth.slice(0, 4) : formatMesLabel(selectedMonth)}
         </span>
       </div>
 
@@ -103,7 +101,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
       }
 
       {/* Grid de cards lado a lado */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 px-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 px-4">
         {items.map((item) => {
           const value = classificacao[item.key] || 0;
           const pct = total > 0 ? (value / total * 100).toFixed(1) : '0.0';
