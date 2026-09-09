@@ -195,7 +195,7 @@ export default function Dashboard() {
       const listSafe = async (entity, tentativas = 4) => {
         for (let i = 0; i < tentativas; i++) {
           try {
-            return await base44.entities[entity].list();
+            return await base44.entities[entity].list('-created_date', 5000);
           } catch (e) {
             const isRateLimit = e?.status === 429 || (e?.message || '').toLowerCase().includes('rate limit');
             if (isRateLimit && i < tentativas - 1) {
@@ -246,9 +246,7 @@ export default function Dashboard() {
         faturas: faturasArr,
         fluxo: Array.isArray(fluxoRaw) ? fluxoRaw : []
       });
-      if (saldoReal > 0) {
-        setData((prev) => ({ ...prev, bankBalance: saldoReal, saldoProjetado: saldoReal }));
-      }
+      setData((prev) => ({ ...prev, bankBalance: saldoReal, saldoProjetado: saldoReal }));
       setLoading(false);
     }
     load();
@@ -256,14 +254,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     const { lanc, nfs, tit, comp, obras, trib, func, folhas, faturas, fluxo } = rawData;
-    // Correção 2: filtrar lançamentos por data para pegar registros com mes_referencia null
-    const inicio = selectedMonth + '-01';
-    const fim = selectedMonth + '-31';
-    const lancF = isAnnual ? lanc : lanc.filter((r) => {
-      if (!r.data) return false;
-      return r.data >= inicio && r.data <= fim;
-    });
-    const f = (arr, field) => isAnnual ? arr : arr.filter((r) => (r[field] || '').startsWith(selectedMonth));
+    // Período selecionado: mês ou ano civil correspondente ao mês ativo.
+    const selectedYear = selectedMonth.slice(0, 4);
+    const lancF = lanc.filter((r) => (r.data || '').startsWith(isAnnual ? selectedYear : selectedMonth));
+    const f = (arr, field) => arr.filter((r) => (r[field] || '').startsWith(isAnnual ? selectedYear : selectedMonth));
     const nfsF = f(nfs, 'data_emissao'),titF = f(tit, 'data_vencimento');
     const compF = f(comp, 'data_emissao'),obrasF = f(obras, 'data');
     setData((prev) => {
@@ -283,11 +277,9 @@ export default function Dashboard() {
       if (tit.length) {
         // Emitido: títulos com vencimento no mês selecionado
         d.emitido = titF.reduce((s, t) => s + (t.valor_titulo || 0), 0);
-        // Recebido: títulos pagos no mês selecionado (filtra por data_pagamento, não por vencimento)
-        const recebidosNoMes = isAnnual ?
-        tit.filter((t) => t.status === 'pago') :
-        tit.filter((t) => t.status === 'pago' && (t.data_pagamento || '').startsWith(selectedMonth));
-        d.recebido = recebidosNoMes.reduce((s, t) => s + (t.valor_pago || 0), 0);
+        // Recebido da mesma carteira: títulos pagos cujo vencimento pertence ao período.
+        const recebidosDaCarteira = titF.filter((t) => t.status === 'pago');
+        d.recebido = recebidosDaCarteira.reduce((s, t) => s + (t.valor_pago || 0), 0);
         // Em Aberto: TOTAL GERAL de títulos em aberto (independente do mês — controle por dia do vencimento)
         d.emAberto = tit.filter((t) => t.status !== 'pago').reduce((s, t) => s + (t.valor_titulo || 0), 0);
       }
@@ -313,7 +305,7 @@ export default function Dashboard() {
         d.saldoProjetado = d.bankBalance + d.fluxoEntradas30 - d.fluxoSaidas30;
       }
       if (faturas.length) {
-        const faturasF = isAnnual ? faturas : faturas.filter((f) => (f.mes_referencia || '').startsWith(selectedMonth));
+        const faturasF = faturas.filter((f) => (f.mes_referencia || '').startsWith(isAnnual ? selectedYear : selectedMonth));
         d.totalCartoes = faturasF.reduce((s, f) => s + (f.valor_total || 0), 0);
         d.nCartoes = new Set(faturasF.map((f) => f.conta_cartao_id).filter(Boolean)).size;
         // Próx vencimento: menor data_vencimento entre faturas não pagas
@@ -373,8 +365,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Conta Sicredi 36092-2" icon={Landmark} gradient="sky" onClick={() => openDrill('saldo')} />
         <MetricCard title="Total Faturado" value={formatCurrency(data.totalFat)} sub={isAnnual ? 'Acumulado anual' : fmtMesLong(selectedMonth)} icon={TrendingUp} gradient="green" onClick={() => openDrill('totalFat')} />
-        <MetricCard title="A Receber" value={formatCurrency(data.aReceber)} sub="Em aberto NFs" icon={Wallet} gradient="orange" onClick={() => openDrill('aReceber')} />
-        <MetricCard title="Cobranças Recebidas" value={`${percCob}%`} sub={`${formatCurrency(data.recebido)} de ${formatCurrency(data.emitido)}`} icon={PiggyBank} gradient="teal" onClick={() => openDrill('recebido')} />
+        <MetricCard title="Carteira em Aberto" value={formatCurrency(data.emAberto)} sub="Todos os títulos não pagos" icon={Wallet} gradient="orange" onClick={() => openDrill('emAberto')} />
+        <MetricCard title="Adimplência da Carteira" value={`${percCob}%`} sub={`${formatCurrency(data.recebido)} de ${formatCurrency(data.emitido)}`} icon={PiggyBank} gradient="teal" onClick={() => openDrill('recebido')} />
       </div>
 
       {/* ─── CTA CONTAS A PAGAR ─── */}
@@ -415,7 +407,7 @@ export default function Dashboard() {
           <Bell className="w-4 h-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-bold text-amber-900">Itens que precisam de atenção — {isAnnual ? '2026 (Anual)' : fmtMesLong(selectedMonth)}</p>
+          <p className="text-sm font-bold text-amber-900">Itens que precisam de atenção — {isAnnual ? `${selectedMonth.slice(0, 4)} (Anual)` : fmtMesLong(selectedMonth)}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <DASAlertBadge selectedMonth={selectedMonth} />
             <FeriasAlertBadge />
@@ -445,7 +437,7 @@ export default function Dashboard() {
       {/* ─── GRUPO 3: COBRANÇAS ─── */}
       <Section icon={Receipt} label="Cobranças Sicredi" gradient="teal" cols={3}>
         <SectionMetric title="Total Emitido" value={formatCurrency(data.emitido)} sub="Boletos gerados" icon={Receipt} valueColor="blue" onClick={() => openDrill('emitido')} />
-        <SectionMetric title="Recebido" value={formatCurrency(data.recebido)} sub={`${percCob}% de taxa de recebimento`} icon={TrendingUp} valueColor="green" onClick={() => openDrill('recebido')} />
+        <SectionMetric title="Recebido da Carteira" value={formatCurrency(data.recebido)} sub={`${percCob}% dos títulos com vencimento no período`} icon={TrendingUp} valueColor="green" onClick={() => openDrill('recebido')} />
         <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Total geral — todos os vencimentos" icon={AlertTriangle} valueColor="orange" onClick={() => openDrill('emAberto')} />
       </Section>
 
@@ -462,7 +454,7 @@ export default function Dashboard() {
       {/* ─── GRUPO 5: CARTÕES + TRIBUTOS ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Section icon={CreditCard} label="Cartões de Crédito" gradient="purple" cols={2}>
-          <SectionMetric title="Pago no Banco" value={formatCurrency(-data.totalCartoes)} sub={`${data.nCartoes || '—'} cartões no período`} icon={CreditCard} valueColor="purple" onClick={() => openDrill('cartoes')} />
+          <SectionMetric title="Total das Faturas" value={formatCurrency(-data.totalCartoes)} sub={`${data.nCartoes || '—'} cartões no período`} icon={CreditCard} valueColor="purple" onClick={() => openDrill('cartoes')} />
           <SectionMetric title="Próx. Vencimento" value={formatCurrency(data.proxVenc)} sub="Próxima fatura em aberto" icon={DollarSign} valueColor="amber" onClick={() => openDrill('proxVenc')} />
         </Section>
         <Section icon={AlertTriangle} label="Tributos" gradient="red" cols={2}>

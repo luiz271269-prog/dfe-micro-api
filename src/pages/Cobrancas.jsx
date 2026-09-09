@@ -58,7 +58,7 @@ export default function Cobrancas() {
 
   async function loadData() {
     setLoading(true);
-    const data = await base44.entities.TituloCobranca.list('-data_vencimento', 500);
+    const data = await base44.entities.TituloCobranca.list('-data_vencimento', 5000);
     setTitulos(data);
     setLoading(false);
   }
@@ -95,6 +95,8 @@ export default function Cobrancas() {
         const d = diasAteVenc(t.data_vencimento);
         if (d === null || d < 0 || d > 7) return false;
       } else {
+        const selectedYear = selectedMonth.slice(0, 4);
+        if (isAnnual && !t.data_vencimento?.startsWith(selectedYear)) return false;
         if (quickFilter !== 'vencidos' && !isAnnual && !t.data_vencimento?.startsWith(selectedMonth)) return false;
         const status = effectiveStatus(t);
         if (quickFilter === 'pagos' && status !== 'pago') return false;

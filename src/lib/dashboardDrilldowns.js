@@ -4,14 +4,14 @@
 const money = (v) => ({ money: true, value: v });
 
 function filtroMes(arr, field, selectedMonth, isAnnual) {
-  return isAnnual ? arr : arr.filter((r) => (r[field] || '').startsWith(selectedMonth));
+  const periodo = isAnnual ? selectedMonth.slice(0, 4) : selectedMonth;
+  return arr.filter((r) => (r[field] || '').startsWith(periodo));
 }
 
 export function getDrilldown(key, { rawData, selectedMonth, isAnnual }) {
   const { lanc, nfs, tit, comp, obras, trib, func, folhas, faturas, fluxo } = rawData;
-  const inicio = selectedMonth + '-01';
-  const fim = selectedMonth + '-31';
-  const lancF = isAnnual ? lanc : lanc.filter((r) => r.data && r.data >= inicio && r.data <= fim);
+  const periodo = isAnnual ? selectedMonth.slice(0, 4) : selectedMonth;
+  const lancF = lanc.filter((r) => (r.data || '').startsWith(periodo));
   const nfsValidas = filtroMes(nfs, 'data_emissao', selectedMonth, isAnnual).filter((n) => !n.is_espelho_ci && n.status !== 'anulada');
 
   const colsLanc = [
@@ -96,11 +96,10 @@ export function getDrilldown(key, { rawData, selectedMonth, isAnnual }) {
       };
     }
     case 'recebido': {
-      const rows = isAnnual
-        ? tit.filter((t) => t.status === 'pago')
-        : tit.filter((t) => t.status === 'pago' && (t.data_pagamento || '').startsWith(selectedMonth));
+      const rows = filtroMes(tit, 'data_vencimento', selectedMonth, isAnnual)
+        .filter((t) => t.status === 'pago');
       return {
-        title: 'Cobranças Recebidas', subtitle: 'Títulos pagos no período (por data de pagamento)',
+        title: 'Recebidos da Carteira', subtitle: 'Títulos pagos com vencimento no período selecionado',
         columns: colsTit, rows,
         total: rows.reduce((s, t) => s + (t.valor_pago || 0), 0), link: '/cobrancas',
       };
@@ -141,7 +140,7 @@ export function getDrilldown(key, { rawData, selectedMonth, isAnnual }) {
       };
     }
     case 'cartoes': {
-      const rows = isAnnual ? faturas : faturas.filter((f) => (f.mes_referencia || '').startsWith(selectedMonth));
+      const rows = filtroMes(faturas, 'mes_referencia', selectedMonth, isAnnual);
       return {
         title: 'Faturas de Cartão no Período',
         columns: [
