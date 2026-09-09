@@ -3,10 +3,12 @@ import { consolidarDREOperacional } from '@/functions/consolidarDREOperacional';
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, FileDown, Scale } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
-import MonthNavigator from '@/components/shared/MonthNavigator';
 import DRELinhaDupla from '@/components/dre/DRELinhaDupla';
 import DrilldownDREDialog from '@/components/dre/DrilldownDREDialog';
+import PeriodoDREControls from '@/components/dre/PeriodoDREControls';
+import CoberturaDRE from '@/components/dre/CoberturaDRE';
 import { formatCurrency } from '@/lib/formatters';
+import { getCurrentMonth } from '@/lib/currentMonth';
 
 const ROTULOS = {
   receita_bruta: 'Receita Bruta de Vendas',
@@ -20,8 +22,8 @@ const ROTULOS = {
 };
 
 export default function DREOperacional() {
-  const [mes, setMes] = useState(null);
-  const [anual, setAnual] = useState(false);
+  const [mes, setMes] = useState(getCurrentMonth());
+  const [modoPeriodo, setModoPeriodo] = useState('mensal');
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState(null);
@@ -31,7 +33,7 @@ export default function DREOperacional() {
     setLoading(true);
     setErro(null);
     try {
-      const res = await consolidarDREOperacional({ mes_referencia: mes, meses: anual ? 12 : 1 });
+      const res = await consolidarDREOperacional({ mes_referencia: mes, modo_periodo: modoPeriodo });
       setDados(res?.data || null);
     } catch (e) {
       setErro(e.message);
@@ -41,7 +43,7 @@ export default function DREOperacional() {
 
   useEffect(() => {
     carregar();
-  }, [mes, anual]); // eslint-disable-line
+  }, [mes, modoPeriodo]); // eslint-disable-line
 
   function exportarCSV() {
     if (!dados) return;
@@ -76,7 +78,7 @@ export default function DREOperacional() {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dre_operacional_${dados.mes_inicio}_${dados.mes_referencia}.csv`;
+    a.download = `dre_operacional_${dados.mes_inicio}_${dados.mes_fim || dados.mes_referencia}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -87,9 +89,11 @@ export default function DREOperacional() {
   const c = dados?.competencia;
   const k = dados?.caixa;
   const periodoLabel = dados
-    ? dados.meses > 1
-      ? `${dados.mes_inicio} a ${dados.mes_referencia} (${dados.meses} meses)`
-      : dados.mes_referencia
+    ? dados.modo_periodo === 'ano_civil'
+      ? `Ano civil de ${dados.mes_referencia.slice(0, 4)}`
+      : dados.modo_periodo === 'ultimos_12'
+        ? `${dados.mes_inicio} a ${dados.mes_fim} (últimos 12 meses)`
+        : dados.mes_referencia
     : '';
 
   return (
@@ -98,11 +102,11 @@ export default function DREOperacional() {
         title="DRE Operacional"
         subtitle="Resultado consolidado do grupo (NeuralTec + Liesch) — Simples Nacional, competência × caixa"
       >
-        <MonthNavigator
-          selectedMonth={mes}
-          onSelectMonth={setMes}
-          isAnnual={anual}
-          onToggleAnnual={() => setAnual((v) => !v)}
+        <PeriodoDREControls
+          mes={mes}
+          onMesChange={setMes}
+          modo={modoPeriodo}
+          onModoChange={setModoPeriodo}
         />
         <Button variant="outline" onClick={carregar} className="gap-2">
           <RefreshCw className="w-4 h-4" /> Atualizar
@@ -136,6 +140,7 @@ export default function DREOperacional() {
 
       {!loading && dados?.tem_dados && (
         <div className="space-y-5">
+          <CoberturaDRE cobertura={dados.cobertura} cmvProvisorio={dados.cmv_provisorio} />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
               <p className="text-[10px] font-bold uppercase text-blue-700">Receita bruta</p>
@@ -176,7 +181,7 @@ export default function DREOperacional() {
             </div>
             <div className="bg-card border rounded-xl p-3">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                Resultado no caixa
+                Resultado operacional pelo caixa
               </p>
               <p className="text-xl font-bold">{formatCurrency(k.lucro_operacional)}</p>
               <p className="text-[10px] text-muted-foreground">efetivamente pago/recebido</p>
@@ -192,12 +197,12 @@ export default function DREOperacional() {
                 </p>
                 <p className="text-[10px] opacity-90">
                   Grupo consolidado · Simples Nacional · CMV a partir de{' '}
-                  {dados.origem_cmv === 'nfe_analise' ? 'XMLs de NF-e (com ICMS-ST e IPI)' : 'compras registradas e lançamentos classificados nos cartões'}
+                  {dados.origem_cmv === 'nfe_analise' ? 'XMLs de NF-e (com ICMS-ST e IPI)' : 'compras e entradas de estoque registradas — valor provisório'}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-2 bg-muted/50 border-b text-[10px] font-bold uppercase">
+            <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-2 bg-muted/50 border-b text-[10px] font-bold uppercase">
               <span>Linha</span>
               <span className="w-40 text-right text-blue-700">Competência</span>
               <span className="w-40 text-right text-emerald-700">Caixa</span>

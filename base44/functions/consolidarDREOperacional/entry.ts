@@ -48,17 +48,27 @@ export default async function (req) {
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const mes = body.mes_referencia || new Date().toISOString().slice(0, 7);
-    // Período: um único mês, ou os últimos N meses terminando em `mes` (visão anual = 12)
-    const janela = Math.max(1, Number(body.meses) || 1);
-    let [ay, am] = mes.split('-').map(Number);
-    am -= janela - 1;
-    while (am < 1) {
-      am += 12;
-      ay -= 1;
+    const mesSelecionado = body.mes_referencia || new Date().toISOString().slice(0, 7);
+    const modoPeriodo = body.modo_periodo || (Number(body.meses) > 1 ? 'ultimos_12' : 'mensal');
+    const [anoSelecionado] = mesSelecionado.split('-').map(Number);
+    let mesInicio = mesSelecionado;
+    let mesFim = mesSelecionado;
+    let janela = 1;
+    if (modoPeriodo === 'ano_civil') {
+      mesInicio = `${anoSelecionado}-01`;
+      mesFim = `${anoSelecionado}-12`;
+      janela = 12;
+    } else if (modoPeriodo === 'ultimos_12') {
+      janela = 12;
+      let [ay, am] = mesSelecionado.split('-').map(Number);
+      am -= 11;
+      while (am < 1) {
+        am += 12;
+        ay -= 1;
+      }
+      mesInicio = `${ay}-${String(am).padStart(2, '0')}`;
     }
-    const mesInicio = `${ay}-${String(am).padStart(2, '0')}`;
-    const dentro = (m) => !!m && m >= mesInicio && m <= mes;
+    const dentro = (m) => !!m && m >= mesInicio && m <= mesFim;
 
     const sr = base44.asServiceRole.entities;
     const [notas, titulos, analises, itens, despesas, folhas, tributos, obras, vinculos, lancs, lancCartao, faturas] =
@@ -80,6 +90,13 @@ export default async function (req) {
     const comp = {};
     const cx = {};
     const itensOut = {};
+    const coberturaIds = {
+      vinculados: new Set(),
+      fallbacks: new Set(),
+      semComprovacao: new Set(),
+      cartoesSemClassificacao: new Set(),
+      semEmpresa: new Set(),
+    };
     for (const l of LINHAS) {
       comp[l] = 0;
       cx[l] = 0;
@@ -91,6 +108,7 @@ export default async function (req) {
       if (!v) return;
       if (col === 'competencia') comp[linha] += v;
       else cx[linha] += v;
+      if (item?.empresa === '—' && item?.id) coberturaIds.semEmpresa.add(`${item.origem}:${item.id}`);
       if (itensOut[linha][col].length < 300) itensOut[linha][col].push({ ...item, valor: v });
     }
 
@@ -206,7 +224,12 @@ export default async function (req) {
     // Gastos classificados diretamente nos cartões. Se o lançamento já originou uma
     // compra, despesa ou obra, a entidade de destino já foi contabilizada acima.
     for (const r of lancCartao) {
-      if (!dentro(mesDe(r.data_lancamento)) || !entraNoDreCartao(r) || cartaoEspelhado.has(r.id)) continue;
+      if (!dentro(mesDe(r.data_lancamento))) continue;
+      const pessoalForaDre = r.natureza === 'pessoal' && r.tipo_compra !== 'pro_labore';
+      if ((r.valor || 0) > 0 && !linhaPorTipoCartao[r.tipo_compra] && !pessoalForaDre && !ehPagamentoFatura(r)) {
+        coberturaIds.cartoesSemClassificacao.add(r.id);
+      }
+      if (!entraNoDreCartao(r) || cartaoEspelhado.has(r.id)) continue;
       add('competencia', linhaPorTipoCartao[r.tipo_compra], r.valor, {
         data: r.data_lancamento,
         descricao: `${r.estabelecimento} — cartão`,
@@ -255,6 +278,7 @@ export default async function (req) {
         linha = 'receita_bruta';
       }
       if (!linha) continue;
+      coberturaIds.vinculados.add(l.id);
 
       if (!comVinculo[v.entidade_tipo]) comVinculo[v.entidade_tipo] = new Set();
       comVinculo[v.entidade_tipo].add(v.entidade_id);
@@ -314,6 +338,7 @@ export default async function (req) {
     for (const t of titulos) {
       if (t.status !== 'pago' || !dentro(mesDe(t.data_pagamento))) continue;
       if (jaContado('TituloCobranca', t.id)) continue;
+      coberturaIds.fallbacks.add(`TituloCobranca:${t.id}`);
       add('caixa', 'receita_bruta', t.valor_pago || t.valor_titulo, {
         data: t.data_pagamento,
         descricao: `Título ${t.nosso_numero} — ${t.cliente}`,
@@ -326,6 +351,7 @@ export default async function (req) {
     for (const t of tributos) {
       if (!dentro(mesDe(t.data_pagamento))) continue;
       if (jaContado('Tributo', t.id)) continue;
+      coberturaIds.fallbacks.add(`Tributo:${t.id}`);
       add('caixa', t.tipo === 'DAS' ? 'das' : 'outros_tributos', t.valor_pago || t.valor_original, {
         data: t.data_pagamento,
         descricao: `${t.tipo}${t.descricao ? ' — ' + t.descricao : ''}`,
@@ -338,6 +364,7 @@ export default async function (req) {
     for (const f of folhas) {
       if (f.status !== 'pago' || !dentro(mesDe(f.data_pagamento))) continue;
       if (jaContado('FolhaPagamento', f.id)) continue;
+      coberturaIds.fallbacks.add(`FolhaPagamento:${f.id}`);
       add('caixa', ehProLabore(f) ? 'prolabore' : 'folha', f.valor_pago || f.salario_liquido, {
         data: f.data_pagamento,
         descricao: `${f.funcionario_nome} — ${f.tipo || 'mensal'}`,
@@ -347,28 +374,16 @@ export default async function (req) {
       });
     }
 
+    // Despesas e obras sem vínculo bancário não entram no caixa: a data de execução
+    // comprova a competência, mas não comprova o pagamento.
     for (const d of despesas) {
       if (d.lancamento_cartao_id || d.status !== 'pago' || !dentro(mesDe(d.data))) continue;
-      if (jaContado('DespesaOperacional', d.id)) continue;
-      add('caixa', ehProLabore(d) ? 'prolabore' : 'despesas', d.valor, {
-        data: d.data,
-        descricao: `${d.descricao}${d.fornecedor ? ' — ' + d.fornecedor : ''}`,
-        empresa: d.empresa || '—',
-        origem: 'DespesaOperacional',
-        id: d.id,
-      });
+      if (!jaContado('DespesaOperacional', d.id)) coberturaIds.semComprovacao.add(`DespesaOperacional:${d.id}`);
     }
 
     for (const o of obras) {
       if (o.lancamento_cartao_id || !dentro(mesDe(o.data))) continue;
-      if (jaContado('ObraReforma', o.id)) continue;
-      add('caixa', 'obras', o.valor, {
-        data: o.data,
-        descricao: `${o.descricao} — ${o.local_obra || ''}`,
-        empresa: '—',
-        origem: 'ObraReforma',
-        id: o.id,
-      });
+      if (!jaContado('ObraReforma', o.id)) coberturaIds.semComprovacao.add(`ObraReforma:${o.id}`);
     }
 
     // ───────────────────── Estrutura do DRE ─────────────────────
@@ -399,13 +414,23 @@ export default async function (req) {
       caixa.total_despesas_operacionais !== 0;
 
     return Response.json({
-      mes_referencia: mes,
+      mes_referencia: mesSelecionado,
       mes_inicio: mesInicio,
+      mes_fim: mesFim,
       meses: janela,
+      modo_periodo: modoPeriodo,
       regime: 'simples_nacional',
       escopo: 'grupo_consolidado',
       tem_dados: temDados,
-      origem_cmv: analisesMes.length > 0 ? 'nfe_analise' : 'compras_cartao',
+      origem_cmv: analisesMes.length > 0 ? 'nfe_analise' : 'compras_registradas',
+      cmv_provisorio: analisesMes.length === 0,
+      cobertura: {
+        vinculados: coberturaIds.vinculados.size,
+        fallbacks: coberturaIds.fallbacks.size,
+        sem_comprovacao: coberturaIds.semComprovacao.size,
+        cartoes_sem_classificacao: coberturaIds.cartoesSemClassificacao.size,
+        sem_empresa: coberturaIds.semEmpresa.size,
+      },
       competencia,
       caixa,
       itens: itensOut,
