@@ -5,7 +5,7 @@ import SugestoesConciliacaoBanner from '../components/contas-pagar/SugestoesConc
 export default function ContasAPagar() {
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
-      <PageHeader title="Contas a Pagar" subtitle="Visão consolidada: despesas, tributos, folha e faturas de cartão" />
+      <PageHeader title="Contas a Pagar" subtitle="Despesas fixas, despesas variáveis e compras para estoque/revenda" />
       <SugestoesConciliacaoBanner />
       <ContasAPagarPanel />
     </div>

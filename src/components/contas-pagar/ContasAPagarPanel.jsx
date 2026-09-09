@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Hammer, Briefcase, AlertTriangle, CheckCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import { consolidarContasPagar, calcularAging, contarEvaporados } from '../../lib/contasPagarEngine';
-import CalendarioSemanal from './CalendarioSemanal';
+import ColunasContasAPagar from './ColunasContasAPagar';
 import PainelDDA from './PainelDDA';
 import FluxoContasAPagar from './FluxoContasAPagar';
 import SincronizarComprasButton from './SincronizarComprasButton';
@@ -257,19 +257,9 @@ export default function ContasAPagarPanel() {
         <MonthNavigator selectedMonth={mesReferencia} onSelectMonth={setMesReferencia} monthTotals={totaisPorMes} />
       </div>
 
-      {/* Duas colunas: Calendário (sistema) × DDA (banco) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <CalendarioSemanal
-          itens={itens}
-          conciliadosSet={conciliadosSet}
-          mesReferencia={mesReferencia}
-          modo={modo}
-        />
-        <PainelDDA
-          lancamentos={lancamentos}
-          contasPagar={itensRaw}
-          mesReferencia={mesReferencia}
-        />
+      <ColunasContasAPagar itens={itens} conciliadosSet={conciliadosSet} mesReferencia={mesReferencia} modo={modo} />
+      <div className="mt-4">
+        <PainelDDA lancamentos={lancamentos} contasPagar={itensRaw} mesReferencia={mesReferencia} />
       </div>
     </>
   );
