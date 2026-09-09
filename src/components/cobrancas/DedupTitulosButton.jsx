@@ -95,7 +95,7 @@ export default function DedupTitulosButton({ onComplete }) {
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    {preview.grupos_com_duplicatas} grupo(s) com duplicatas detectados. Para cada grupo, o registro mais informativo é mantido (vencedor) e os outros são apagados. Dados de pagamento são preservados automaticamente.
+                    {preview.grupos_com_duplicatas} grupo(s) com mesmo cliente, valor, número da NFE, parcela e vencimento. O registro mais informativo é mantido e os demais são apagados, preservando os dados de pagamento.
                   </p>
                   <div className="space-y-2 max-h-80 overflow-y-auto border rounded-lg p-2">
                     {preview.grupos.slice(0, 30).map((g, i) => (
