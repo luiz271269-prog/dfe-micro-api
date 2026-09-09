@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertCircle, HelpCircle, XIcon } from 'lucide-react';
+import { AlertCircle, XIcon } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import LancamentosEditableTable from './LancamentosEditableTable';
 
@@ -12,21 +12,15 @@ function formatMesLabel(m) {
 }
 
 export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnual, totalFaturas }) {
-  const [obras, setObras] = useState([]);
-  const [despesas, setDespesas] = useState([]);
   const [cartoes, setCartoes] = useState([]);
   const [faturas, setFaturas] = useState([]);
   const [activeKey, setActiveKey] = useState(null);
 
   useEffect(() => {
     Promise.all([
-    base44.entities.ObraReforma.list(),
-    base44.entities.DespesaOperacional.list(),
-    base44.entities.ContaCartao.list(),
-    base44.entities.FaturaCartao.list('-data_vencimento', 300)]
-    ).then(([obrasData, despesasData, cartoesData, faturasData]) => {
-      setObras(obrasData);
-      setDespesas(despesasData);
+      base44.entities.ContaCartao.list(),
+      base44.entities.FaturaCartao.list('-data_vencimento', 300),
+    ]).then(([cartoesData, faturasData]) => {
       setCartoes(cartoesData);
       setFaturas(faturasData);
     });
@@ -39,31 +33,13 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
     if (c) cartaoPorFatura[f.id] = { bandeira: c.bandeira || '—', dia: c.dia_vencimento, titular: (c.titular || '').split(' ')[0] };
   }
 
-  // Classificar cada lançamento individualmente (para filtro por categoria)
+  // O resumo usa a classificação financeira definida em cada lançamento do cartão.
+  const tiposGasto = new Set(['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore']);
   function classificarLanc(lanc) {
-    const { estabelecimento, categoria, natureza, valor, observacao } = lanc;
-    const desc = (estabelecimento || '').toUpperCase();
-
-    if (observacao?.includes('Não faz parte')) return 'excluido';
-
-    const mesmoValor = lancamentos.filter((l) => Math.abs((l.valor || 0) - (valor || 0)) < 0.01).length;
-    if (mesmoValor >= 2 && (desc.includes('FINANCEIRA') || desc.includes('BANCO'))) return 'parcelamento';
-
-    const obraVinculada = obras.some((o) =>
-    o.descricao?.toUpperCase().includes(desc.split(' ')[0]) || o.responsavel?.toUpperCase().includes(desc)
-    );
-    if (obraVinculada) return 'obra';
-
-    const despesaVinculada = despesas.some((d) =>
-    d.descricao?.toUpperCase().includes(desc.split(' ')[0]) || d.fornecedor?.toUpperCase().includes(desc)
-    );
-    const categoriasDespesa = ['aluguel', 'energia', 'agua', 'manutencao', 'limpeza', 'contabilidade', 'juridico', 'seguro'];
-    if (despesaVinculada || categoriasDespesa.includes(categoria)) return 'despesa';
-
-    const categoriassPessoais = ['alimentacao', 'combustivel', 'saude_bem_estar', 'beleza', 'farmacia', 'transporte', 'lazer'];
-    if (natureza === 'pessoal' || categoriassPessoais.includes(categoria)) return 'pessoal';
-
-    return 'nao_classificado';
+    const texto = `${lanc.estabelecimento || ''} ${lanc.observacao || ''}`.toLowerCase();
+    const pagamentoFatura = (lanc.valor || 0) < 0 || /pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento/.test(texto);
+    if (lanc.observacao?.includes('Não faz parte') || pagamentoFatura) return 'excluido';
+    return tiposGasto.has(lanc.tipo_compra) ? lanc.tipo_compra : 'nao_classificado';
   }
 
   // A base deve refletir o banco: classifica TODOS os lançamentos do mês
@@ -83,18 +59,22 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
   }, {});
 
   const totalClassificado = Object.values(classificacao).reduce((s, v) => s + v, 0);
-  const total = totalClassificado;
+  const chavesGasto = ['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore'];
+  const total = chavesGasto.reduce((s, key) => s + (classificacao[key] || 0), 0);
   const divergenciaFaturas = totalFaturas != null && Math.abs(totalFaturas - totalClassificado) > 1 ?
   totalClassificado - totalFaturas :
   0;
 
   const items = [
-  { label: '🏗️ Obra e Reforma', key: 'obra', bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700', activeBg: 'bg-orange-100' },
-  { label: '💼 Despesa Operacional', key: 'despesa', bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700', activeBg: 'bg-blue-100' },
-  { label: '👤 Gasto Pessoal', key: 'pessoal', bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-700', activeBg: 'bg-purple-100' },
-  { label: '📅 Parcelamento', key: 'parcelamento', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', activeBg: 'bg-amber-100' },
-  { label: '❓ Não Classificado', key: 'nao_classificado', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700', activeBg: 'bg-red-100' },
-  { label: '🚫 Excluído', key: 'excluido', bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-600', activeBg: 'bg-slate-100' }];
+    { label: 'Compras (estoque/revenda)', key: 'estoque', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-700', activeBg: 'bg-emerald-100' },
+    { label: 'Despesas fixas/variáveis', key: 'despesas', bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700', activeBg: 'bg-blue-100' },
+    { label: 'Impostos (vendas + folha)', key: 'impostos', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-700', activeBg: 'bg-red-100' },
+    { label: 'Folha', key: 'folha', bg: 'bg-indigo-50', border: 'border-indigo-300', text: 'text-indigo-700', activeBg: 'bg-indigo-100' },
+    { label: 'Obras / Reformas', key: 'obras', bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700', activeBg: 'bg-orange-100' },
+    { label: 'Pró-labore', key: 'pro_labore', bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-700', activeBg: 'bg-purple-100' },
+    { label: 'Não classificado', key: 'nao_classificado', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', activeBg: 'bg-amber-100' },
+    { label: 'Não contabilizado', key: 'excluido', bg: 'bg-slate-50', border: 'border-slate-300', text: 'text-slate-600', activeBg: 'bg-slate-100' },
+  ];
 
 
   const filteredLancs = activeKey ?
@@ -123,7 +103,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
       }
 
       {/* Grid de cards lado a lado */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 px-4">
         {items.map((item) => {
           const value = classificacao[item.key] || 0;
           const pct = total > 0 ? (value / total * 100).toFixed(1) : '0.0';
