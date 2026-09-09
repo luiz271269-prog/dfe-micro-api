@@ -20,8 +20,22 @@ import { getCurrentMonth } from '../lib/currentMonth';
 const TIPOS = ['DAS', 'ICMS', 'ISS', 'PIS', 'COFINS', 'IRPJ', 'CSLL', 'INSS', 'FGTS', 'GPS', 'DARF', 'IPTU', 'ALVARA', 'TAXA_BOMBEIRO', 'OUTRO'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
 
+function identificarTipoTributo(texto = '') {
+  const normalizado = texto.toUpperCase();
+  return TIPOS.find(tipo => tipo !== 'OUTRO' && new RegExp(`\\b${tipo}\\b`).test(normalizado)) || 'OUTRO';
+}
+
+function mesFinanceiro(tributo) {
+  const data = tributo.status === 'pago' && tributo.data_pagamento
+    ? tributo.data_pagamento
+    : tributo.data_vencimento || tributo.competencia;
+  return data?.slice(0, 7) || '';
+}
+
 export default function Tributos() {
   const [tributos, setTributos] = useState([]);
+  const [lancamentosExtrato, setLancamentosExtrato] = useState([]);
+  const [vinculos, setVinculos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -37,8 +51,14 @@ export default function Tributos() {
   });
 
   async function loadData() {
-    const data = await base44.entities.Tributo.list('-data_vencimento', 500);
+    const [data, extrato, vinculosData] = await Promise.all([
+      base44.entities.Tributo.list('-data_vencimento', 500),
+      base44.entities.LancamentoBancario.list('-data', 10000),
+      base44.entities.VinculoExtrato.filter({ entidade_tipo: 'Tributo' }, '-created_date', 10000),
+    ]);
     setTributos(data);
+    setLancamentosExtrato(extrato);
+    setVinculos(vinculosData);
     setLoading(false);
   }
 
@@ -63,16 +83,46 @@ export default function Tributos() {
     loadData();
   }
 
+  const todosTributos = useMemo(() => {
+    const idsVinculados = new Set([
+      ...tributos.map(t => t.lancamento_bancario_id).filter(Boolean),
+      ...vinculos.map(v => v.lancamento_bancario_id).filter(Boolean),
+    ]);
+    const pagamentosRegistrados = new Set(tributos
+      .filter(t => t.status === 'pago')
+      .map(t => `${t.data_pagamento || t.data_vencimento}|${Math.round((t.valor_pago || t.valor_original || 0) * 100)}`));
+    const vindosDoExtrato = lancamentosExtrato
+      .filter(l => (l.valor || 0) < 0 && (l.tipo_compra === 'impostos' || l.categoria === 'tributo') && l.status_conciliacao !== 'ignorar')
+      .filter(l => !idsVinculados.has(l.id) && !pagamentosRegistrados.has(`${l.data}|${Math.round(Math.abs(l.valor || 0) * 100)}`))
+      .map(l => ({
+        id: `extrato-${l.id}`,
+        tipo: identificarTipoTributo(`${l.descricao} ${l.detalhe || ''}`),
+        descricao: l.descricao,
+        competencia: l.mes_referencia || l.data?.slice(0, 7),
+        data_vencimento: l.data,
+        data_pagamento: l.data,
+        valor_original: Math.abs(l.valor || 0),
+        valor_pago: Math.abs(l.valor || 0),
+        status: 'pago',
+        empresa: /liesch|37101/i.test(`${l.conta_bancaria || ''} ${l.descricao || ''}`) ? 'Liesch' : 'NeuralTec',
+        origem_compra: l.origem_compra || 'empresa',
+        tipo_compra: 'impostos',
+        _lancamento: l,
+      }));
+    return [...tributos, ...vindosDoExtrato];
+  }, [tributos, lancamentosExtrato, vinculos]);
+
   const monthTotals = useMemo(() => {
     const t = {};
     ALL_MONTHS.forEach(m => {
-      t[m] = tributos.filter(tr => tr.data_vencimento?.startsWith(m)).reduce((s,tr) => s+(tr.valor_original||0), 0);
+      t[m] = todosTributos.filter(tr => mesFinanceiro(tr) === m).reduce((s,tr) => s+(tr.status === 'pago' ? tr.valor_pago || tr.valor_original || 0 : tr.valor_original || 0), 0);
     });
     return t;
-  }, [tributos]);
+  }, [todosTributos]);
 
-  const filtrados = tributos.filter(t => {
-    if (!isAnnual && !t.data_vencimento?.startsWith(selectedMonth)) return false;
+  const filtrados = todosTributos.filter(t => {
+    const mes = mesFinanceiro(t);
+    if (isAnnual ? mes.slice(0, 4) !== selectedMonth.slice(0, 4) : mes !== selectedMonth) return false;
     if (filterTipo && t.tipo !== filterTipo) return false;
     if (filterStatus && t.status !== filterStatus) return false;
     if (filterEmpresa && t.empresa !== filterEmpresa) return false;
@@ -85,7 +135,7 @@ export default function Tributos() {
   const totalAPagar = filtrados.filter(t => t.status === 'a_vencer' || t.status === 'vencido').reduce((s, t) => s + (t.valor_original || 0), 0);
   const totalPago = filtrados.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
   const vencidos = filtrados.filter(t => t.status === 'vencido').length;
-  const dasVencidos = tributos.filter(t => t.tipo === 'DAS' && t.status === 'vencido');
+  const dasVencidos = todosTributos.filter(t => t.tipo === 'DAS' && t.status === 'vencido');
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">
@@ -95,7 +145,7 @@ export default function Tributos() {
 
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
-      <PageHeader title="Gestão de Tributos" subtitle={`${tributos.length} tributos cadastrados`}>
+      <PageHeader title="Gestão de Tributos" subtitle={`${todosTributos.length} tributos no histórico`}>
         <MonthNavigator
           selectedMonth={selectedMonth}
           onSelectMonth={setSelectedMonth}
@@ -192,12 +242,15 @@ export default function Tributos() {
                 sorted.map(t => (
                 <tr key={t.id} className={`border-b ${t.status === 'vencido' ? 'bg-red-50' : ''}`}>
                   <td className="px-4 py-3 font-semibold">{t.tipo}</td>
-                  <td className="hidden sm:table-cell px-4 py-3">{t.descricao || '—'}</td>
+                  <td className="hidden sm:table-cell px-4 py-3">
+                    <p>{t.descricao || '—'}</p>
+                    {t._lancamento && <p className="text-[10px] text-muted-foreground">Pago pelo extrato · {t._lancamento.conta_bancaria || 'Conta corrente'}</p>}
+                  </td>
                   <td className="hidden md:table-cell px-4 py-3 text-xs text-muted-foreground">{t.competencia}</td>
                   <td className="hidden sm:table-cell px-4 py-3 text-xs">{formatDate(t.data_vencimento)}</td>
                   <td className="hidden lg:table-cell px-4 py-3 text-xs">{t.empresa}</td>
-                  <td className="px-4 py-3"><SeletorClassificacao eixo="origem" entityName="Tributo" record={t} field="origem_compra" /></td>
-                  <td className="px-4 py-3"><SeletorClassificacao eixo="tipo" entityName="Tributo" record={t} field="tipo_compra" /></td>
+                  <td className="px-4 py-3"><SeletorClassificacao eixo="origem" entityName={t._lancamento ? 'LancamentoBancario' : 'Tributo'} record={t._lancamento || t} field="origem_compra" onChange={loadData} /></td>
+                  <td className="px-4 py-3"><SeletorClassificacao eixo="tipo" entityName={t._lancamento ? 'LancamentoBancario' : 'Tributo'} record={t._lancamento || t} field="tipo_compra" onChange={loadData} /></td>
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(t.valor_original)}</td>
                   <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
                   </tr>
