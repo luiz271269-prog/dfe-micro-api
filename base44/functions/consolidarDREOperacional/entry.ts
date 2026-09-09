@@ -31,6 +31,16 @@ export default async function (req) {
 
     const body = await req.json().catch(() => ({}));
     const mes = body.mes_referencia || new Date().toISOString().slice(0, 7);
+    // Período: um único mês, ou os últimos N meses terminando em `mes` (visão anual = 12)
+    const janela = Math.max(1, Number(body.meses) || 1);
+    let [ay, am] = mes.split('-').map(Number);
+    am -= janela - 1;
+    while (am < 1) {
+      am += 12;
+      ay -= 1;
+    }
+    const mesInicio = `${ay}-${String(am).padStart(2, '0')}`;
+    const dentro = (m) => !!m && m >= mesInicio && m <= mes;
 
     const sr = base44.asServiceRole.entities;
     const [notas, titulos, analises, itens, despesas, folhas, tributos, obras, vinculos, lancs] =
@@ -69,7 +79,7 @@ export default async function (req) {
     // Receita bruta: notas emitidas no mês (exclui anuladas e NF-espelho de CI)
     for (const n of notas) {
       if (n.status === 'anulada' || n.is_espelho_ci) continue;
-      if (mesDe(n.data_emissao) !== mes) continue;
+      if (!dentro(mesDe(n.data_emissao))) continue;
       add('competencia', 'receita_bruta', n.valor_total, {
         data: n.data_emissao,
         descricao: `${n.tipo} ${n.numero} — ${n.cliente}`,
@@ -82,7 +92,7 @@ export default async function (req) {
     // Tributos por competência (DAS separado dos demais)
     for (const t of tributos) {
       const ref = t.competencia || mesDe(t.data_vencimento);
-      if (ref !== mes) continue;
+      if (!dentro(ref)) continue;
       add('competencia', t.tipo === 'DAS' ? 'das' : 'outros_tributos', t.valor_original, {
         data: t.data_vencimento,
         descricao: `${t.tipo}${t.descricao ? ' — ' + t.descricao : ''}`,
@@ -93,7 +103,7 @@ export default async function (req) {
     }
 
     // CMV: preferência para NFeAnalise (com ICMS-ST e IPI, não recuperáveis no Simples)
-    const analisesMes = analises.filter((a) => mesDe(a.data_emissao) === mes);
+    const analisesMes = analises.filter((a) => dentro(mesDe(a.data_emissao)));
     if (analisesMes.length > 0) {
       for (const a of analisesMes) {
         const custo =
@@ -113,7 +123,7 @@ export default async function (req) {
       }
     } else {
       for (const i of itens) {
-        if (mesDe(i.data_emissao) !== mes) continue;
+        if (!dentro(mesDe(i.data_emissao))) continue;
         add('competencia', 'cmv', i.valor_total, {
           data: i.data_emissao,
           descricao: `${i.descricao_produto || ''} — ${i.fornecedor || ''}`,
@@ -126,10 +136,10 @@ export default async function (req) {
 
     // Folha por competência: custo total (bruto + FGTS). Pró-labore em linha própria.
     for (const f of folhas) {
-      if (f.competencia !== mes) continue;
+      if (!dentro(f.competencia)) continue;
       const custo = (f.salario_bruto || 0) + (f.fgts_valor || 0);
       add('competencia', ehProLabore(f) ? 'prolabore' : 'folha', custo, {
-        data: f.data_pagamento || `${mes}-01`,
+        data: f.data_pagamento || `${f.competencia}-01`,
         descricao: `${f.funcionario_nome} — ${f.tipo || 'mensal'}`,
         empresa: f.empresa || '—',
         origem: 'FolhaPagamento',
@@ -139,7 +149,7 @@ export default async function (req) {
 
     // Despesas operacionais por data de competência (execução)
     for (const d of despesas) {
-      if (mesDe(d.data) !== mes) continue;
+      if (!dentro(mesDe(d.data))) continue;
       add('competencia', ehProLabore(d) ? 'prolabore' : 'despesas', d.valor, {
         data: d.data,
         descricao: `${d.descricao}${d.fornecedor ? ' — ' + d.fornecedor : ''}`,
@@ -151,7 +161,7 @@ export default async function (req) {
 
     // Obras e reformas por data de execução
     for (const o of obras) {
-      if (mesDe(o.data) !== mes) continue;
+      if (!dentro(mesDe(o.data))) continue;
       add('competencia', 'obras', o.valor, {
         data: o.data,
         descricao: `${o.descricao} — ${o.local_obra || ''}`,
@@ -165,7 +175,7 @@ export default async function (req) {
     // Fonte única da verdade: VinculoExtrato ligado a lançamentos do extrato no mês.
 
     const lancsMes = new Map();
-    for (const l of lancs) if (mesDe(l.data) === mes) lancsMes.set(l.id, l);
+    for (const l of lancs) if (dentro(mesDe(l.data))) lancsMes.set(l.id, l);
 
     const tributoById = new Map(tributos.map((t) => [t.id, t]));
     const folhaById = new Map(folhas.map((f) => [f.id, f]));
