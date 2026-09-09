@@ -184,7 +184,7 @@ export default function Recorrentes() {
                 {sorted.map(r => {
                   const s = statsPorRegra[r.id] || {};
                   return (
-                    <tr key={r.id} className={`border-b hover:bg-muted/20 ${!r.is_ativa ? 'opacity-50' : ''}`}>
+                    <tr key={r.id} className={`border-b transition-colors ${r.is_ativa ? 'bg-blue-50/80 hover:bg-blue-100/80' : 'bg-muted/20 opacity-50 hover:bg-muted/40'}`}>
                       <td className="px-3 py-2">
                         <p className="font-semibold">{r.nome}</p>
                         <p className="text-[10px] text-muted-foreground">{r.empresa || '—'}</p>
