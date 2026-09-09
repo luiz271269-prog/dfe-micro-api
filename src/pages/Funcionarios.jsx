@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2, CalendarPlus, Palmtree } from 'lucide-react';
+import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2, CalendarPlus, Palmtree, Wallet, UserMinus, ScanSearch } from 'lucide-react';
+import TabsNexus from '../components/funcionarios/TabsNexus';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -438,14 +439,16 @@ export default function Funcionarios() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b">
-        {[['funcionarios','Funcionários'],['folha','Folha de Pagamento'],['rescisoes','Rescisões'],['rastreio','Rastreio PIX']].map(([key, label]) => (
-          <button key={key} onClick={() => setActiveTab(key)}
-            className={`px-5 py-2.5 font-semibold text-sm transition-colors ${activeTab === key ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-            {label}
-          </button>
-        ))}
-      </div>
+      <TabsNexus
+        active={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          ['funcionarios', 'Funcionários', Users],
+          ['folha', 'Folha de Pagamento', Wallet],
+          ['rescisoes', 'Rescisões', UserMinus],
+          ['rastreio', 'Rastreio PIX', ScanSearch],
+        ]}
+      />
 
       {/* ABA 1 — Funcionários */}
       {activeTab === 'funcionarios' && (
