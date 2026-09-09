@@ -30,12 +30,18 @@
     "frequencia": {
       "type": "string",
       "enum": [
+        "semanal",
         "mensal",
         "trimestral",
         "anual"
       ],
       "default": "mensal",
       "title": "Frequ\u00eancia"
+    },
+    "data_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "Data inicial da recorr\u00eancia semanal"
     },
     "mes_inicio": {
       "type": "string",

@@ -28,7 +28,7 @@ const vazio = {
   tolerancia_percentual: 5, dia_vencimento: '', categoria: 'outro',
   origem_compra: 'empresa', tipo_compra: 'despesas',
   empresa: 'NeuralTec', forma_pagamento: 'pix', is_ativa: true, observacoes: '',
-  frequencia: 'mensal', mes_inicio: '', conta_bancaria: '',
+  frequencia: 'mensal', data_inicio: '', mes_inicio: '', conta_bancaria: '',
 };
 
 export default function Recorrentes() {
@@ -75,7 +75,7 @@ export default function Recorrentes() {
   function abrirNovo() { setFormErro(''); setForm({ ...vazio, mes_inicio: mes }); setEditando('novo'); }
   function criarPeloExtrato(l) {
     setFormErro('');
-    setForm({ ...vazio, nome: l.descricao, padrao_descricao: l.descricao, fornecedor: l.descricao, valor_esperado: Math.abs(l.valor), dia_vencimento: Number(l.data.slice(8, 10)), mes_inicio: l.data.slice(0, 7), conta_bancaria: l.conta_bancaria || '', origem_compra: l.origem_compra || 'empresa', tipo_compra: l.tipo_compra || 'despesas', categoria: l.categoria || 'outro' });
+    setForm({ ...vazio, nome: l.descricao, padrao_descricao: l.descricao, fornecedor: l.descricao, valor_esperado: Math.abs(l.valor), dia_vencimento: Number(l.data.slice(8, 10)), data_inicio: l.data, mes_inicio: l.data.slice(0, 7), conta_bancaria: l.conta_bancaria || '', origem_compra: l.origem_compra || 'empresa', tipo_compra: l.tipo_compra || 'despesas', categoria: l.categoria || 'outro' });
     setExtratoOpen(false); setEditando('novo');
   }
   function abrirEditar(r) {
@@ -100,7 +100,8 @@ export default function Recorrentes() {
   async function salvar() {
     setFormErro('');
     if (!(Number(form.valor_esperado) > 0) || !form.origem_compra || !['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore'].includes(form.tipo_compra)) { setFormErro('Informe um valor positivo e complete a classificação.'); return; }
-    if (form.frequencia !== 'mensal' && !/^\d{4}-(0[1-9]|1[0-2])$/.test(form.mes_inicio || '')) { setFormErro('Informe o mês inicial da recorrência.'); return; }
+    if (form.frequencia === 'semanal' && !/^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(form.data_inicio || '')) { setFormErro('Informe a data inicial da recorrência semanal.'); return; }
+    if (['trimestral', 'anual'].includes(form.frequencia) && !/^\d{4}-(0[1-9]|1[0-2])$/.test(form.mes_inicio || '')) { setFormErro('Informe o mês inicial da recorrência.'); return; }
     if (form.dia_vencimento && (Number(form.dia_vencimento) < 1 || Number(form.dia_vencimento) > 31)) { setFormErro('O dia esperado deve estar entre 1 e 31.'); return; }
     if (Number(form.tolerancia_percentual) < 0 || Number(form.tolerancia_percentual) > 100) { setFormErro('Use tolerância de 0 a 100%.'); return; }
     const normalizar = s => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -200,7 +201,7 @@ export default function Recorrentes() {
                       <td className="px-3 py-2 text-right font-bold tabular-nums">{formatCurrency(r.valor_esperado)}</td>
                       <td className="px-3 py-2 text-center">±{r.tolerancia_percentual}%</td>
                       <td className="px-3 py-2 text-center">{r.dia_vencimento || '—'}</td>
-                      <td className="px-3 py-2 text-center">{{ mensal: 'Mensal', trimestral: 'Trimestral', anual: 'Anual' }[r.frequencia || 'mensal']}</td>
+                      <td className="px-3 py-2 text-center">{{ semanal: 'Semanal', mensal: 'Mensal', trimestral: 'Trimestral', anual: 'Anual' }[r.frequencia || 'mensal']}</td>
                       <td className="px-3 py-2 text-right font-bold tabular-nums">{formatCurrency(s.valor || 0)}</td>
                       <td className="px-3 py-2 text-center font-bold">{s.total || 0}</td>
                       <td className="px-3 py-2 text-center text-muted-foreground">{s.ultimoMatch ? formatDate(s.ultimoMatch.data) : '—'}</td>
