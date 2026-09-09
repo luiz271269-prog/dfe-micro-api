@@ -4,7 +4,7 @@
   "properties": {
     "nome": {
       "type": "string",
-      "title": "Nome da Regra (ex: Aluguel Pavilh\u00e3o, Internet Vivo)"
+      "title": "Nome da Regra"
     },
     "padrao_descricao": {
       "type": "string",
@@ -26,6 +26,24 @@
     "dia_vencimento": {
       "type": "number",
       "title": "Dia do m\u00eas esperado"
+    },
+    "frequencia": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        "trimestral",
+        "anual"
+      ],
+      "default": "mensal",
+      "title": "Frequ\u00eancia"
+    },
+    "mes_inicio": {
+      "type": "string",
+      "title": "M\u00eas inicial da recorr\u00eancia (YYYY-MM)"
+    },
+    "conta_bancaria": {
+      "type": "string",
+      "title": "Conta do extrato (vazio = todas)"
     },
     "categoria": {
       "type": "string",

@@ -15,6 +15,15 @@ function normalize(str) {
  */
 export function aplicarRegra(lancamento, regra) {
   if (!regra.is_ativa) return { match: false };
+  if (regra.conta_bancaria && regra.conta_bancaria !== lancamento.conta_bancaria) return { match: false };
+  const intervalo = { mensal: 1, trimestral: 3, anual: 12 }[regra.frequencia || 'mensal'];
+  if (!intervalo || (intervalo > 1 && !regra.mes_inicio)) return { match: false };
+  if (regra.mes_inicio) {
+    const [ano, mes] = (lancamento.data || '').slice(0, 7).split('-').map(Number);
+    const [inicioAno, inicioMes] = regra.mes_inicio.split('-').map(Number);
+    const distancia = (ano - inicioAno) * 12 + mes - inicioMes;
+    if (!Number.isFinite(distancia) || distancia < 0 || distancia % intervalo !== 0) return { match: false };
+  }
   const desc = normalize(lancamento.descricao + ' ' + (lancamento.detalhe || ''));
   const padrao = normalize(regra.padrao_descricao);
 

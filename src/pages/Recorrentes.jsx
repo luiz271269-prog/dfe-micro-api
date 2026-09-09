@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { addMonths, format } from 'date-fns';
+import PeriodoRecorrentes from '@/components/recorrentes/PeriodoRecorrentes';
+import FrequenciaRecorrente from '@/components/recorrentes/FrequenciaRecorrente';
+import CriarRegraExtratoDialog from '@/components/recorrentes/CriarRegraExtratoDialog';
+import ConciliarRecorrentesDialog from '@/components/recorrentes/ConciliarRecorrentesDialog';
+import useRecorrentesData from '@/components/recorrentes/useRecorrentesData';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,26 +28,33 @@ const vazio = {
   tolerancia_percentual: 5, dia_vencimento: '', categoria: 'outro',
   origem_compra: 'empresa', tipo_compra: 'despesas',
   empresa: 'NeuralTec', forma_pagamento: 'pix', is_ativa: true, observacoes: '',
+  frequencia: 'mensal', mes_inicio: '', conta_bancaria: '',
 };
 
 export default function Recorrentes() {
-  const [regras, setRegras] = useState([]);
-  const [lancs, setLancs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [mes, setMes] = useState(() => format(new Date(), 'yyyy-MM'));
+  const [modo, setModo] = useState('mes');
+  const { regras, lancs, loading, error, load } = useRecorrentesData(mes);
+  const [extratoOpen, setExtratoOpen] = useState(false);
+  const [conciliarOpen, setConciliarOpen] = useState(false);
+  const [formErro, setFormErro] = useState('');
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(vazio);
   const [saving, setSaving] = useState(false);
   const [sugestoesOpen, setSugestoesOpen] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    const [r, l] = await Promise.all([
-      base44.entities.RegraRecorrente.list('-created_date', 200),
-      base44.entities.LancamentoBancario.list('-data', 1000),
-    ]);
-    setRegras(r); setLancs(l); setLoading(false);
-  }
-  useEffect(() => { load(); }, []);
+  const inicio = modo === 'ano' ? `${mes.slice(0, 4)}-01` : modo === '12meses' ? format(addMonths(new Date(`${mes}-01T12:00:00`), -11), 'yyyy-MM') : mes;
+  const fim = modo === 'ano' ? `${mes.slice(0, 4)}-12` : mes;
+  const lancsPeriodo = useMemo(() => lancs.filter(l => l.data?.slice(0, 7) >= inicio && l.data?.slice(0, 7) <= fim), [lancs, inicio, fim]);
+  const totaisMes = useMemo(() => {
+    const totais = {};
+    for (const l of lancs) {
+      if (l.valor >= 0 || !regras.some(r => aplicarRegra(l, r).match)) continue;
+      const m = l.data.slice(0, 7);
+      totais[m] = (totais[m] || 0) + Math.abs(l.valor);
+    }
+    return totais;
+  }, [lancs, regras]);
 
   const sugestoes = useMemo(() => aprenderPadroes(lancs, regras), [lancs, regras]);
 
@@ -49,24 +62,29 @@ export default function Recorrentes() {
   const statsPorRegra = useMemo(() => {
     const mapa = {};
     regras.forEach(r => {
-      const matches = lancs.filter(l => l.valor < 0).map(l => aplicarRegra(l, r)).filter(m => m.match);
-      const divergentes = matches.filter(m => m.status === 'divergente').length;
-      const ultimoMatch = matches.length > 0
-        ? lancs.filter(l => l.valor < 0).map((l, i) => ({ l, m: aplicarRegra(l, r) })).filter(x => x.m.match).sort((a, b) => (a.l.data > b.l.data ? -1 : 1))[0]?.l
-        : null;
-      mapa[r.id] = { total: matches.length, divergentes, ultimoMatch };
+      const ocorrencias = lancsPeriodo.filter(l => l.valor < 0).map(l => ({ l, m: aplicarRegra(l, r) })).filter(x => x.m.match);
+      const divergentes = ocorrencias.filter(x => x.m.status === 'divergente').length;
+      const ultimoMatch = ocorrencias.map(x => x.l).sort((a, b) => b.data.localeCompare(a.data))[0];
+      mapa[r.id] = { total: ocorrencias.length, divergentes, ultimoMatch, valor: ocorrencias.reduce((s, x) => s + Math.abs(x.l.valor), 0) };
     });
     return mapa;
-  }, [regras, lancs]);
+  }, [regras, lancsPeriodo]);
 
   const { sorted, sortField, sortDir, handleSort } = useTableSort(regras, 'nome', 'asc');
 
-  function abrirNovo() { setForm(vazio); setEditando('novo'); }
+  function abrirNovo() { setFormErro(''); setForm({ ...vazio, mes_inicio: mes }); setEditando('novo'); }
+  function criarPeloExtrato(l) {
+    setFormErro('');
+    setForm({ ...vazio, nome: l.descricao, padrao_descricao: l.descricao, fornecedor: l.descricao, valor_esperado: Math.abs(l.valor), dia_vencimento: Number(l.data.slice(8, 10)), mes_inicio: l.data.slice(0, 7), conta_bancaria: l.conta_bancaria || '', origem_compra: l.origem_compra || 'empresa', tipo_compra: l.tipo_compra || 'despesas', categoria: l.categoria || 'outro' });
+    setExtratoOpen(false); setEditando('novo');
+  }
   function abrirEditar(r) {
+    setFormErro('');
     setForm({ ...vazio, ...r });
     setEditando(r.id);
   }
   function aceitarSugestao(s) {
+    setFormErro('');
     setForm({
       ...vazio,
       nome: s.nome,
@@ -80,18 +98,23 @@ export default function Recorrentes() {
   }
 
   async function salvar() {
+    setFormErro('');
+    if (!(Number(form.valor_esperado) > 0) || !form.origem_compra || !['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore'].includes(form.tipo_compra)) { setFormErro('Informe um valor positivo e complete a classificação.'); return; }
+    if (form.frequencia !== 'mensal' && !/^\d{4}-(0[1-9]|1[0-2])$/.test(form.mes_inicio || '')) { setFormErro('Informe o mês inicial da recorrência.'); return; }
+    if (form.dia_vencimento && (Number(form.dia_vencimento) < 1 || Number(form.dia_vencimento) > 31)) { setFormErro('O dia esperado deve estar entre 1 e 31.'); return; }
+    if (Number(form.tolerancia_percentual) < 0 || Number(form.tolerancia_percentual) > 100) { setFormErro('Use tolerância de 0 a 100%.'); return; }
+    const normalizar = s => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (regras.some(r => r.id !== editando && normalizar(r.padrao_descricao) === normalizar(form.padrao_descricao) && (r.conta_bancaria || '') === (form.conta_bancaria || '') && (r.frequencia || 'mensal') === form.frequencia)) { setFormErro('Já existe uma regra com este padrão, conta e frequência. Edite a existente.'); return; }
     setSaving(true);
-    const data = {
-      ...form,
-      valor_esperado: parseFloat(form.valor_esperado) || 0,
-      tolerancia_percentual: parseFloat(form.tolerancia_percentual) || 5,
-      dia_vencimento: parseInt(form.dia_vencimento) || null,
-    };
-    if (editando === 'novo') await base44.entities.RegraRecorrente.create(data);
-    else await base44.entities.RegraRecorrente.update(editando, data);
-    setSaving(false);
-    setEditando(null);
-    load();
+    try {
+      const { id, created_date, updated_date, created_by, created_by_id, ...campos } = form;
+      const data = { ...campos, nome: form.nome.trim(), padrao_descricao: form.padrao_descricao.trim(), valor_esperado: Number(form.valor_esperado), tolerancia_percentual: Number(form.tolerancia_percentual), dia_vencimento: parseInt(form.dia_vencimento) || null };
+      if (editando === 'novo') await base44.entities.RegraRecorrente.create(data);
+      else await base44.entities.RegraRecorrente.update(editando, data);
+      setEditando(null);
+      await load();
+    } catch (e) { setFormErro(e.response?.data?.error || e.message); }
+    finally { setSaving(false); }
   }
 
   async function toggleAtiva(r) {
@@ -105,6 +128,7 @@ export default function Recorrentes() {
   }
 
   if (loading) return <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>;
+  if (error) return <div className="p-8 text-center text-destructive"><p>{error.message}</p><Button onClick={() => load()}>Tentar novamente</Button></div>;
 
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
@@ -112,8 +136,11 @@ export default function Recorrentes() {
         <Button variant="outline" onClick={() => setSugestoesOpen(true)} className="gap-2">
           <Sparkles className="w-4 h-4" /> Aprender do Extrato ({sugestoes.length})
         </Button>
+        <Button variant="outline" onClick={() => setExtratoOpen(true)}>Criar pelo extrato</Button>
+        <Button variant="outline" onClick={() => setConciliarOpen(true)}>Conciliar regras cadastradas</Button>
         <Button onClick={abrirNovo} className="gap-2"><Plus className="w-4 h-4" /> Nova Regra</Button>
       </PageHeader>
+      <PeriodoRecorrentes mes={mes} modo={modo} onMes={setMes} onModo={setModo} totais={totaisMes} />
 
       <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4">
         <p className="text-sm font-semibold text-indigo-900 mb-1 flex items-center gap-2">
@@ -121,7 +148,7 @@ export default function Recorrentes() {
         </p>
         <p className="text-xs text-indigo-800 leading-relaxed">
           Cada regra observa débitos do extrato que contenham a <strong>palavra-chave</strong> e estão próximos do <strong>valor esperado</strong> (dentro da tolerância).
-          O motor sugere o vínculo automaticamente na <strong>Conciliação 360°</strong> e alerta quando o valor vem divergente (ex: reajuste de aluguel).
+          A frequência e o mês inicial definem os meses previstos. Use <strong>Conciliar regras cadastradas</strong> para revisar os débitos do período e confirmar o vínculo com uma despesa; divergências ficam bloqueadas para revisão.
         </p>
       </div>
 
@@ -145,6 +172,8 @@ export default function Recorrentes() {
                   <SortableTh field="valor_esperado" align="right" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Valor esperado</SortableTh>
                   <SortableTh field="tolerancia_percentual" align="center" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Tol.</SortableTh>
                   <SortableTh field="dia_vencimento" align="center" className="py-2" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Dia</SortableTh>
+                  <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Frequência</th>
+                  <th className="text-right px-3 py-2 font-semibold text-muted-foreground">Valor no período</th>
                   <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Ocorrências</th>
                   <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Última</th>
                   <th className="text-center px-3 py-2 font-semibold text-muted-foreground">Status</th>
@@ -162,15 +191,17 @@ export default function Recorrentes() {
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex flex-wrap items-center gap-1">
-                          <SeletorClassificacao eixo="origem" entityName="RegraRecorrente" record={r} field="origem_compra" />
-                          <SeletorClassificacao eixo="tipo" entityName="RegraRecorrente" record={r} field="tipo_compra" />
-                          <SeletorClassificacao eixo="categoria" entityName="RegraRecorrente" record={r} field="categoria" />
+                          <SeletorClassificacao eixo="origem" entityName="RegraRecorrente" record={r} field="origem_compra" onChange={() => load()} />
+                          <SeletorClassificacao eixo="tipo" entityName="RegraRecorrente" record={r} field="tipo_compra" onChange={() => load()} />
+                          <SeletorClassificacao eixo="categoria" entityName="RegraRecorrente" record={r} field="categoria" onChange={() => load()} />
                         </div>
                       </td>
                       <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground max-w-[180px] truncate">{r.padrao_descricao}</td>
                       <td className="px-3 py-2 text-right font-bold tabular-nums">{formatCurrency(r.valor_esperado)}</td>
                       <td className="px-3 py-2 text-center">±{r.tolerancia_percentual}%</td>
                       <td className="px-3 py-2 text-center">{r.dia_vencimento || '—'}</td>
+                      <td className="px-3 py-2 text-center">{{ mensal: 'Mensal', trimestral: 'Trimestral', anual: 'Anual' }[r.frequencia || 'mensal']}</td>
+                      <td className="px-3 py-2 text-right font-bold tabular-nums">{formatCurrency(s.valor || 0)}</td>
                       <td className="px-3 py-2 text-center font-bold">{s.total || 0}</td>
                       <td className="px-3 py-2 text-center text-muted-foreground">{s.ultimoMatch ? formatDate(s.ultimoMatch.data) : '—'}</td>
                       <td className="px-3 py-2 text-center">
@@ -208,9 +239,11 @@ export default function Recorrentes() {
         </div>
       )}
 
+      <CriarRegraExtratoDialog key={`${inicio}-${fim}`} open={extratoOpen} onOpenChange={setExtratoOpen} lancamentos={lancsPeriodo} onEscolher={criarPeloExtrato} />
+      <ConciliarRecorrentesDialog key={`conciliar-${inicio}-${fim}`} open={conciliarOpen} onOpenChange={setConciliarOpen} lancamentos={lancsPeriodo} regras={regras} onRefresh={load} />
       {/* Modal Form */}
-      <Dialog open={!!editando} onOpenChange={() => setEditando(null)}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={!!editando} onOpenChange={() => { if (!saving) setEditando(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editando === 'novo' ? 'Nova Regra Recorrente' : 'Editar Regra'}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
@@ -238,6 +271,7 @@ export default function Recorrentes() {
               <Label className="text-xs">Dia do mês esperado</Label>
               <Input type="number" min="1" max="31" value={form.dia_vencimento} onChange={e => setForm({ ...form, dia_vencimento: e.target.value })} />
             </div>
+            <FrequenciaRecorrente form={form} onChange={setForm} />
             <CampoClassificacao eixo="origem" label="Quem comprou (centro de custo)" value={form.origem_compra} onChange={v => setForm({ ...form, origem_compra: v })} />
             <CampoClassificacao eixo="tipo" label="Tipo de compra" value={form.tipo_compra} onChange={v => setForm({ ...form, tipo_compra: v })} />
             <CampoClassificacao eixo="categoria" label="Categoria (plano de contas)" value={form.categoria} onChange={v => setForm({ ...form, categoria: v })} />
@@ -260,8 +294,9 @@ export default function Recorrentes() {
               <Input value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} />
             </div>
           </div>
+          {formErro && <p role="alert" className="text-xs text-destructive">{formErro}</p>}
           <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setEditando(null)}>Cancelar</Button>
+            <Button variant="outline" disabled={saving} onClick={() => setEditando(null)}>Cancelar</Button>
             <Button onClick={salvar} disabled={saving || !form.nome || !form.padrao_descricao}>{saving ? 'Salvando...' : 'Salvar'}</Button>
           </div>
         </DialogContent>
