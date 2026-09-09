@@ -88,8 +88,12 @@ Deno.serve(async (req) => {
       const winner = sorted[0];
       const losers = sorted.slice(1);
 
-      // Merge: se algum loser está "pago" e winner não, copia dados de pagamento
+      // Merge: preserva a baixa e, quando ambos estão pagos, prioriza a data real do registro bancário.
       let mergeUpdate = null;
+      const ehRegistroBancario = (r) =>
+        /^\d{2}\//.test(String(r.nosso_numero || '')) ||
+        !!r.seu_numero && !/^(NF|CI)[\s-]/i.test(String(r.seu_numero).trim());
+
       if (winner.status !== 'pago' || !winner.valor_pago) {
         const paid = losers.find(l => l.status === 'pago' && (l.valor_pago || 0) > 0);
         if (paid) {
@@ -97,6 +101,17 @@ Deno.serve(async (req) => {
             status: 'pago',
             data_pagamento: paid.data_pagamento,
             valor_pago: paid.valor_pago,
+          };
+        }
+      } else if (winner.data_pagamento) {
+        const paidBank = losers
+          .filter(l => l.status === 'pago' && (l.valor_pago || 0) > 0 && l.data_pagamento && ehRegistroBancario(l))
+          .sort((a, b) => a.data_pagamento.localeCompare(b.data_pagamento))[0];
+        if (paidBank && paidBank.data_pagamento < winner.data_pagamento) {
+          mergeUpdate = {
+            status: 'pago',
+            data_pagamento: paidBank.data_pagamento,
+            valor_pago: paidBank.valor_pago,
           };
         }
       }
