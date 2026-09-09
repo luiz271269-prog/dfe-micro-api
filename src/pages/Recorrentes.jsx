@@ -4,6 +4,7 @@ import PeriodoRecorrentes from '@/components/recorrentes/PeriodoRecorrentes';
 import FrequenciaRecorrente from '@/components/recorrentes/FrequenciaRecorrente';
 import CriarRegraExtratoDialog from '@/components/recorrentes/CriarRegraExtratoDialog';
 import ConciliarRecorrentesDialog from '@/components/recorrentes/ConciliarRecorrentesDialog';
+import ColunasDespesas from '@/components/recorrentes/ColunasDespesas';
 import useRecorrentesData from '@/components/recorrentes/useRecorrentesData';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ const vazio = {
 export default function Recorrentes() {
   const [mes, setMes] = useState(() => format(new Date(), 'yyyy-MM'));
   const [modo, setModo] = useState('mes');
-  const { regras, lancs, loading, error, load } = useRecorrentesData(mes);
+  const { regras, lancs, cartoes, loading, error, load } = useRecorrentesData(mes);
   const [extratoOpen, setExtratoOpen] = useState(false);
   const [conciliarOpen, setConciliarOpen] = useState(false);
   const [formErro, setFormErro] = useState('');
@@ -46,15 +47,24 @@ export default function Recorrentes() {
   const inicio = modo === 'ano' ? `${mes.slice(0, 4)}-01` : modo === '12meses' ? format(addMonths(new Date(`${mes}-01T12:00:00`), -11), 'yyyy-MM') : mes;
   const fim = modo === 'ano' ? `${mes.slice(0, 4)}-12` : mes;
   const lancsPeriodo = useMemo(() => lancs.filter(l => l.data?.slice(0, 7) >= inicio && l.data?.slice(0, 7) <= fim), [lancs, inicio, fim]);
+  const despesasConsolidadas = useMemo(() => {
+    const extrato = lancsPeriodo.filter(l => l.valor < 0 && l.tipo_compra === 'despesas').map(l => ({ key: `e-${l.id}`, descricao: l.descricao, data: l.data, valor: Math.abs(l.valor), categoria: l.categoria, fonte: 'Extrato', fixa: regras.some(r => r.is_ativa && aplicarRegra(l, r).match) }));
+    const cartao = cartoes.filter(l => l.data_lancamento?.slice(0, 7) >= inicio && l.data_lancamento?.slice(0, 7) <= fim && l.tipo_compra === 'despesas').map(l => {
+      const normalizado = { ...l, data: l.data_lancamento, descricao: l.estabelecimento, detalhe: l.observacao, valor: -Math.abs(l.valor), conta_bancaria: '' };
+      return { key: `c-${l.id}`, descricao: l.estabelecimento, data: l.data_lancamento, valor: Math.abs(l.valor), categoria: l.categoria, fonte: 'Cartão', fixa: regras.some(r => r.is_ativa && aplicarRegra(normalizado, r).match) };
+    });
+    const todos = [...extrato, ...cartao].sort((a, b) => b.data.localeCompare(a.data));
+    return { fixas: todos.filter(l => l.fixa), variaveis: todos.filter(l => !l.fixa) };
+  }, [lancsPeriodo, cartoes, inicio, fim, regras]);
   const totaisMes = useMemo(() => {
     const totais = {};
-    for (const l of lancs) {
-      if (l.valor >= 0 || !regras.some(r => aplicarRegra(l, r).match)) continue;
-      const m = l.data.slice(0, 7);
-      totais[m] = (totais[m] || 0) + Math.abs(l.valor);
-    }
+    const elegiveis = [
+      ...lancs.filter(l => l.valor < 0 && l.tipo_compra === 'despesas').map(l => ({ data: l.data, valor: Math.abs(l.valor) })),
+      ...cartoes.filter(l => l.tipo_compra === 'despesas').map(l => ({ data: l.data_lancamento, valor: Math.abs(l.valor) })),
+    ];
+    for (const l of elegiveis) if (l.data) totais[l.data.slice(0, 7)] = (totais[l.data.slice(0, 7)] || 0) + l.valor;
     return totais;
-  }, [lancs, regras]);
+  }, [lancs, cartoes]);
 
   const sugestoes = useMemo(() => aprenderPadroes(lancs, regras), [lancs, regras]);
 
@@ -153,6 +163,9 @@ export default function Recorrentes() {
         </p>
       </div>
 
+      <ColunasDespesas fixas={despesasConsolidadas.fixas} variaveis={despesasConsolidadas.variaveis} />
+
+      <h2 className="text-sm font-bold mb-2">Regras cadastradas</h2>
       {regras.length === 0 ? (
         <div className="bg-card rounded-xl border p-12 text-center">
           <Repeat className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />

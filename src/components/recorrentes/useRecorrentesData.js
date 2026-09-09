@@ -15,11 +15,12 @@ export default function useRecorrentesData(mes) {
   const query = useQuery({
     queryKey: ['recorrentes-periodo', ano],
     queryFn: async () => {
-      const [regras, lancs] = await Promise.all([
+      const [regras, lancs, cartoes] = await Promise.all([
         todos('RegraRecorrente', {}, 'id'),
         todos('LancamentoBancario', { data: { $gte: `${ano - 1}-01-01`, $lte: `${ano}-12-31` } }, '-data'),
+        todos('LancamentoCartao', { data_lancamento: { $gte: `${ano - 1}-01-01`, $lte: `${ano}-12-31` } }, '-data_lancamento'),
       ]);
-      return { regras, lancs };
+      return { regras, lancs, cartoes };
     },
   });
   useEffect(() => {
@@ -27,5 +28,5 @@ export default function useRecorrentesData(mes) {
     window.addEventListener('neuralfinRefresh', atualizar);
     return () => window.removeEventListener('neuralfinRefresh', atualizar);
   }, [query.refetch]);
-  return { regras: query.data?.regras || [], lancs: query.data?.lancs || [], loading: query.isPending, error: query.error, load: query.refetch };
+  return { regras: query.data?.regras || [], lancs: query.data?.lancs || [], cartoes: query.data?.cartoes || [], loading: query.isPending, error: query.error, load: query.refetch };
 }
