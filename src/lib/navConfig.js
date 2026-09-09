@@ -16,6 +16,7 @@ export const navGroups = [
       { path: '/extrato', label: 'Extrato Bancário', icon: Landmark },
       { path: '/analise-classificacao', label: 'Análise por Classificação', icon: PieChart },
       { path: '/relatorio-gerencial', label: 'Relatório Gerencial', icon: BarChart3 },
+      { path: '/dre-operacional', label: 'DRE Operacional', icon: Scale },
     ],
   },
   {

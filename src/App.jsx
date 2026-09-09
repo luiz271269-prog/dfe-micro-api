@@ -41,6 +41,7 @@ import PastasMonitoradas from './pages/PastasMonitoradas';
 import ExperimentarBadges from './pages/ExperimentarBadges';
 import AnaliseClassificacao from './pages/AnaliseClassificacao';
 import RelatorioGerencial from './pages/RelatorioGerencial';
+import DREOperacional from './pages/DREOperacional';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -106,6 +107,7 @@ const AuthenticatedApp = () => {
         <Route path="/experimentar-badges" element={<ExperimentarBadges />} />
         <Route path="/analise-classificacao" element={<AnaliseClassificacao />} />
         <Route path="/relatorio-gerencial" element={<RelatorioGerencial />} />
+        <Route path="/dre-operacional" element={<DREOperacional />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
