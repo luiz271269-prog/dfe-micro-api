@@ -192,7 +192,7 @@ export default function DREOperacional() {
                 </p>
                 <p className="text-[10px] opacity-90">
                   Grupo consolidado · Simples Nacional · CMV a partir de{' '}
-                  {dados.origem_cmv === 'nfe_analise' ? 'XMLs de NF-e (com ICMS-ST e IPI)' : 'compras registradas'}
+                  {dados.origem_cmv === 'nfe_analise' ? 'XMLs de NF-e (com ICMS-ST e IPI)' : 'compras registradas e lançamentos classificados nos cartões'}
                 </p>
               </div>
             </div>
@@ -300,7 +300,7 @@ export default function DREOperacional() {
             Clique em qualquer linha para ver os lançamentos que a compõem. A coluna Caixa usa os
             vínculos do extrato bancário como fonte da verdade, com as datas de pagamento próprias
             como complemento. Faturas de cartão são tratadas como meio de pagamento, não como
-            despesa, para evitar dupla contagem.
+            despesa, para evitar dupla contagem; no pagamento bancário da fatura, os valores são realizados no caixa conforme a classificação de cada lançamento do cartão.
           </p>
         </div>
       )}

@@ -21,6 +21,24 @@ const LINHAS = [
 
 const mesDe = (d) => (d || '').slice(0, 7);
 const ehProLabore = (r) => r?.origem_compra === 'pro_labore' || r?.tipo_compra === 'pro_labore';
+const linhaPorTipoCartao = {
+  estoque: 'cmv',
+  despesas: 'despesas',
+  impostos: 'outros_tributos',
+  folha: 'folha',
+  obras: 'obras',
+  pro_labore: 'prolabore',
+};
+const ehPagamentoFatura = (r) => {
+  if ((r?.valor || 0) < 0) return true;
+  const texto = `${r?.estabelecimento || ''} ${r?.observacao || ''}`.toLowerCase();
+  return /pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento/.test(texto);
+};
+const entraNoDreCartao = (r) =>
+  !!linhaPorTipoCartao[r?.tipo_compra] &&
+  !r?.observacao?.includes('Não faz parte') &&
+  !ehPagamentoFatura(r) &&
+  !(r?.natureza === 'pessoal' && r?.tipo_compra !== 'pro_labore');
 
 export default async function (req) {
   try {
@@ -43,7 +61,7 @@ export default async function (req) {
     const dentro = (m) => !!m && m >= mesInicio && m <= mes;
 
     const sr = base44.asServiceRole.entities;
-    const [notas, titulos, analises, itens, despesas, folhas, tributos, obras, vinculos, lancs] =
+    const [notas, titulos, analises, itens, despesas, folhas, tributos, obras, vinculos, lancs, lancCartao, faturas] =
       await Promise.all([
         sr.NotaFiscal.list('-data_emissao', 5000),
         sr.TituloCobranca.list('-data_vencimento', 5000),
@@ -55,6 +73,8 @@ export default async function (req) {
         sr.ObraReforma.list('-data', 5000),
         sr.VinculoExtrato.list('-created_date', 5000),
         sr.LancamentoBancario.list('-data', 5000),
+        sr.LancamentoCartao.list('-data_lancamento', 5000),
+        sr.FaturaCartao.list('-data_vencimento', 1000),
       ]);
 
     const comp = {};
@@ -73,6 +93,18 @@ export default async function (req) {
       else cx[linha] += v;
       if (itensOut[linha][col].length < 300) itensOut[linha][col].push({ ...item, valor: v });
     }
+
+    const cartaoEspelhado = new Set([
+      ...itens.map((r) => r.lancamento_cartao_id),
+      ...despesas.map((r) => r.lancamento_cartao_id),
+      ...obras.map((r) => r.lancamento_cartao_id),
+    ].filter(Boolean));
+    const lancCartaoPorFatura = new Map();
+    for (const r of lancCartao) {
+      if (!lancCartaoPorFatura.has(r.fatura_id)) lancCartaoPorFatura.set(r.fatura_id, []);
+      lancCartaoPorFatura.get(r.fatura_id).push(r);
+    }
+    const faturaById = new Map(faturas.map((f) => [f.id, f]));
 
     // ───────────────────────── COMPETÊNCIA ─────────────────────────
 
@@ -171,6 +203,19 @@ export default async function (req) {
       });
     }
 
+    // Gastos classificados diretamente nos cartões. Se o lançamento já originou uma
+    // compra, despesa ou obra, a entidade de destino já foi contabilizada acima.
+    for (const r of lancCartao) {
+      if (!dentro(mesDe(r.data_lancamento)) || !entraNoDreCartao(r) || cartaoEspelhado.has(r.id)) continue;
+      add('competencia', linhaPorTipoCartao[r.tipo_compra], r.valor, {
+        data: r.data_lancamento,
+        descricao: `${r.estabelecimento} — cartão`,
+        empresa: r.empresa_beneficiada || '—',
+        origem: 'LancamentoCartao',
+        id: r.id,
+      });
+    }
+
     // ─────────────────────────── CAIXA ───────────────────────────
     // Fonte única da verdade: VinculoExtrato ligado a lançamentos do extrato no mês.
 
@@ -185,10 +230,16 @@ export default async function (req) {
     // TituloCobranca. Acumula por lançamento e limita ao valor real do crédito no extrato,
     // para nunca contar o mesmo dinheiro duas vezes.
     const receitaPorLanc = new Map();
+    const pagamentosFatura = [];
 
     for (const v of vinculos) {
       const l = lancsMes.get(v.lancamento_bancario_id);
       if (!l) continue;
+
+      if (v.entidade_tipo === 'FaturaCartao') {
+        pagamentosFatura.push({ vinculo: v, lancamento: l });
+        continue;
+      }
 
       let linha = null;
       if (v.entidade_tipo === 'ItemCompra') linha = 'cmv';
@@ -234,6 +285,29 @@ export default async function (req) {
       });
     }
 
+    // O pagamento bancário da fatura realiza no caixa os gastos classificados no cartão.
+    // A fatura não vira uma nova despesa: o valor pago é distribuído proporcionalmente
+    // entre seus lançamentos, mantendo os mesmos seis tipos definidos na classificação.
+    for (const { vinculo, lancamento } of pagamentosFatura) {
+      const fatura = faturaById.get(vinculo.entidade_id);
+      if (!fatura) continue;
+      const todos = (lancCartaoPorFatura.get(fatura.id) || []).filter((r) =>
+        !r.observacao?.includes('Não faz parte') && !ehPagamentoFatura(r) && (r.valor || 0) > 0
+      );
+      const totalFatura = todos.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+      if (!totalFatura) continue;
+      const valorPago = Math.min(Math.abs(vinculo.valor_alocado || 0), Math.abs(lancamento.valor || 0));
+      for (const r of todos.filter(entraNoDreCartao)) {
+        add('caixa', linhaPorTipoCartao[r.tipo_compra], valorPago * (r.valor / totalFatura), {
+          data: lancamento.data,
+          descricao: `${r.estabelecimento} — fatura ${fatura.mes_referencia}`,
+          empresa: r.empresa_beneficiada || '—',
+          origem: 'Extrato → FaturaCartao',
+          id: r.id,
+        });
+      }
+    }
+
     const jaContado = (tipo, id) => comVinculo[tipo]?.has(id);
 
     // Fallbacks de caixa para pagamentos sem vínculo no extrato
@@ -274,7 +348,7 @@ export default async function (req) {
     }
 
     for (const d of despesas) {
-      if (d.status !== 'pago' || !dentro(mesDe(d.data))) continue;
+      if (d.lancamento_cartao_id || d.status !== 'pago' || !dentro(mesDe(d.data))) continue;
       if (jaContado('DespesaOperacional', d.id)) continue;
       add('caixa', ehProLabore(d) ? 'prolabore' : 'despesas', d.valor, {
         data: d.data,
@@ -286,7 +360,7 @@ export default async function (req) {
     }
 
     for (const o of obras) {
-      if (!dentro(mesDe(o.data))) continue;
+      if (o.lancamento_cartao_id || !dentro(mesDe(o.data))) continue;
       if (jaContado('ObraReforma', o.id)) continue;
       add('caixa', 'obras', o.valor, {
         data: o.data,
@@ -331,7 +405,7 @@ export default async function (req) {
       regime: 'simples_nacional',
       escopo: 'grupo_consolidado',
       tem_dados: temDados,
-      origem_cmv: analisesMes.length > 0 ? 'nfe_analise' : 'item_compra',
+      origem_cmv: analisesMes.length > 0 ? 'nfe_analise' : 'compras_cartao',
       competencia,
       caixa,
       itens: itensOut,
