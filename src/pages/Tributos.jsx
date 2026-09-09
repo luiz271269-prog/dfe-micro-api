@@ -16,6 +16,8 @@ import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import DASAlertBar from '@/components/dre/DASAlertBar';
+import TributoMobileCard from '@/components/tributos/TributoMobileCard';
 
 const TIPOS = ['DAS', 'ICMS', 'ISS', 'PIS', 'COFINS', 'IRPJ', 'CSLL', 'INSS', 'FGTS', 'GPS', 'DARF', 'IPTU', 'ALVARA', 'TAXA_BOMBEIRO', 'OUTRO'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -23,6 +25,11 @@ const EMPRESAS = ['NeuralTec', 'Liesch'];
 function identificarTipoTributo(texto = '') {
   const normalizado = texto.toUpperCase();
   return TIPOS.find(tipo => tipo !== 'OUTRO' && new RegExp(`\\b${tipo}\\b`).test(normalizado)) || 'OUTRO';
+}
+
+function statusEfetivo(tributo) {
+  if (tributo.status !== 'pago' && tributo.data_vencimento && tributo.data_vencimento < new Date().toISOString().slice(0, 10)) return 'vencido';
+  return tributo.status;
 }
 
 function mesFinanceiro(tributo) {
@@ -72,12 +79,14 @@ export default function Tributos() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    await base44.entities.Tributo.create({
+    const payload = {
       ...form,
       valor_original: parseFloat(form.valor_original),
-      valor_pago: parseFloat(form.valor_pago) || 0,
+      valor_pago: form.status === 'pago' ? parseFloat(form.valor_pago) || 0 : 0,
       juros_multa: parseFloat(form.juros_multa) || 0,
-    });
+    };
+    if (form.status !== 'pago') delete payload.data_pagamento;
+    await base44.entities.Tributo.create(payload);
     setForm({ tipo: '', descricao: '', competencia: '', data_vencimento: '', valor_original: '', status: 'a_vencer', empresa: '', data_pagamento: '', valor_pago: '0', juros_multa: '0', origem_compra: 'empresa', tipo_compra: 'impostos' });
     setShowForm(false);
     loadData();
@@ -124,18 +133,18 @@ export default function Tributos() {
     const mes = mesFinanceiro(t);
     if (isAnnual ? mes.slice(0, 4) !== selectedMonth.slice(0, 4) : mes !== selectedMonth) return false;
     if (filterTipo && t.tipo !== filterTipo) return false;
-    if (filterStatus && t.status !== filterStatus) return false;
+    if (filterStatus && statusEfetivo(t) !== filterStatus) return false;
     if (filterEmpresa && t.empresa !== filterEmpresa) return false;
     if (filterMes && t.competencia !== filterMes) return false;
     return true;
-  });
+  }).map(t => ({ ...t, status: statusEfetivo(t) }));
 
   const { sorted, sortField, sortDir, handleSort } = useTableSort(filtrados, 'data_vencimento', 'desc');
 
-  const totalAPagar = filtrados.filter(t => t.status === 'a_vencer' || t.status === 'vencido').reduce((s, t) => s + (t.valor_original || 0), 0);
-  const totalPago = filtrados.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || 0), 0);
+  const totalAPagar = filtrados.filter(t => ['a_vencer', 'vencido', 'parcelado'].includes(t.status)).reduce((s, t) => s + (t.valor_original || 0), 0);
+  const totalPago = filtrados.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || t.valor_original || 0), 0);
   const vencidos = filtrados.filter(t => t.status === 'vencido').length;
-  const dasVencidos = todosTributos.filter(t => t.tipo === 'DAS' && t.status === 'vencido');
+  const dasVencidos = todosTributos.filter(t => t.tipo === 'DAS' && statusEfetivo(t) === 'vencido');
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">
@@ -155,6 +164,8 @@ export default function Tributos() {
         />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Tributo</Button>
       </PageHeader>
+
+      <DASAlertBar mesReferencia={isAnnual ? null : selectedMonth} />
 
       {dasVencidos.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
@@ -176,7 +187,7 @@ export default function Tributos() {
           gradient="red"
         />
         <GradientCard
-          title="Pago no Mês"
+          title={isAnnual ? 'Pago no Ano' : 'Pago no Mês'}
           value={formatCurrency(totalPago)}
           sub={`${filtrados.filter(t=>t.status==='pago').length} itens quitados`}
           icon={CheckCircle}
@@ -193,28 +204,36 @@ export default function Tributos() {
 
       {/* Filtros */}
       <div className="bg-card rounded-xl border p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Select value={filterTipo} onValueChange={setFilterTipo}>
+        <Select value={filterTipo || 'todos'} onValueChange={v => setFilterTipo(v === 'todos' ? '' : v)}>
           <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tipo" /></SelectTrigger>
-          <SelectContent>{TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+          <SelectContent><SelectItem value="todos">Todos os tipos</SelectItem>{TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
         </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
+        <Select value={filterStatus || 'todos'} onValueChange={v => setFilterStatus(v === 'todos' ? '' : v)}>
           <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="todos">Todos os status</SelectItem>
             <SelectItem value="a_vencer">A Vencer</SelectItem>
             <SelectItem value="pago">Pago</SelectItem>
             <SelectItem value="vencido">Vencido</SelectItem>
             <SelectItem value="parcelado">Parcelado</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filterEmpresa} onValueChange={setFilterEmpresa}>
+        <Select value={filterEmpresa || 'todas'} onValueChange={v => setFilterEmpresa(v === 'todas' ? '' : v)}>
           <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Empresa" /></SelectTrigger>
-          <SelectContent>{EMPRESAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
+          <SelectContent><SelectItem value="todas">Todas as empresas</SelectItem>{EMPRESAS.map(e => <SelectItem key={e} value={e}>{e}</SelectItem>)}</SelectContent>
         </Select>
         <Input type="month" value={filterMes} onChange={e => setFilterMes(e.target.value)} placeholder="Competência" className="h-8 text-sm" />
       </div>
 
+      {/* Lista mobile */}
+      <div className="md:hidden space-y-2">
+        {sorted.length === 0
+          ? <div className="rounded-xl border bg-card py-8 text-center text-sm text-muted-foreground">Nenhum tributo encontrado</div>
+          : sorted.map(t => <TributoMobileCard key={t.id} tributo={t} onRefresh={loadData} />)}
+      </div>
+
       {/* Tabela */}
-      <div className="bg-card rounded-xl border overflow-hidden">
+      <div className="hidden md:block bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b">
@@ -302,11 +321,18 @@ export default function Tributos() {
                     <SelectItem value="a_vencer">A Vencer</SelectItem>
                     <SelectItem value="pago">Pago</SelectItem>
                     <SelectItem value="vencido">Vencido</SelectItem>
+                    <SelectItem value="parcelado">Parcelado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <Button type="submit" className="w-full">Salvar Tributo</Button>
+            {form.status === 'pago' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div><Label>Data do pagamento</Label><Input type="date" value={form.data_pagamento} onChange={e => setForm({...form, data_pagamento: e.target.value})} required /></div>
+                <div><Label>Valor pago</Label><Input type="number" step="0.01" value={form.valor_pago} onChange={e => setForm({...form, valor_pago: e.target.value})} required /></div>
+              </div>
+            )}
+            <Button type="submit" className="w-full" disabled={!form.tipo || !form.empresa}>Salvar Tributo</Button>
           </form>
         </DialogContent>
       </Dialog>

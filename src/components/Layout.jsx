@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ChevronLeft, ChevronRight, LogOut,
-  AlertTriangle, ChevronRight as BreadChevron, Menu, MessageCircle } from
+  ChevronRight as BreadChevron, Menu, MessageCircle } from
 'lucide-react';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -10,26 +10,6 @@ import SidebarNav from './SidebarNav';
 import MobileTabBar from './MobileTabBar';
 import DeleteAccountDialog from './DeleteAccountDialog';
 import { navItems } from '@/lib/navConfig';
-
-function AlertBar() {
-  // Alerta será alimentado dinamicamente por Tributo quando implementado
-  const alerts = [
-  { msg: 'DAS Março 2026: R$ 36.377 — verificar valor elevado', color: 'red' }].
-  filter(Boolean);
-
-  if (alerts.length === 0) return null;
-  return (
-    <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 flex items-center gap-4 flex-wrap">
-      <AlertTriangle className="w-4 h-4 text-yellow-600 shrink-0" />
-      {alerts.map((a, i) =>
-      <span key={i} className={`text-xs font-medium ${a.color === 'red' ? 'text-red-700' : 'text-yellow-800'}`}>
-          {a.msg}
-          {i < alerts.length - 1 && <span className="mx-2 text-yellow-400">·</span>}
-        </span>
-      )}
-    </div>);
-
-}
 
 function Breadcrumb({ location }) {
   const item = navItems.find((n) => n.path === location.pathname);
@@ -131,7 +111,6 @@ export default function Layout() {
           </div>
           <span className="text-sidebar-accent-foreground font-semibold text-sm">NeuralTec</span>
         </div>
-        <AlertBar />
         <div className="relative flex items-center justify-end h-9 border-b bg-card shrink-0 px-4 mx-4">
           <PainelNotificacoes />
         </div>

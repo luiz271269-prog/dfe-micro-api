@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import { getCurrentMonth } from '../../lib/currentMonth';
@@ -30,6 +31,11 @@ export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual,
   const canPrev = monthIdx > 0;
   const canNext = monthIdx >= 0 && monthIdx < months.length - 1;
   const visibleMonths = months;
+  const activeMonthRef = useRef(null);
+
+  useEffect(() => {
+    if (!isAnnual) activeMonthRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [selectedMonth, isAnnual]);
 
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
@@ -46,6 +52,7 @@ export default function MonthNavigator({ selectedMonth, onSelectMonth, isAnnual,
           return (
             <button
               key={m}
+              ref={isActive ? activeMonthRef : null}
               onClick={() => {if (onToggleAnnual && isAnnual) onToggleAnnual();onSelectMonth(m);}}
               className={`rounded-lg text-xs font-semibold transition-all flex flex-col items-center min-w-[60px] bg-[hsl(var(--sidebar-ring))] text-[hsl(var(--chart-4))] px-2 py-1 opacity-70 ${
               isActive ?
