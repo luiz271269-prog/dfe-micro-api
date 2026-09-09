@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
 
 // Concilia FolhaPagamento pendente com PIX do extrato bancário.
 // Regras de negócio (NeuralTec):
@@ -100,13 +101,19 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole.entities;
+    if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
 
-    const [folhasPendentes, funcionarios, lancamentos, vinculosExistentes] = await Promise.all([
+    const [folhasPendentesRaw, funcionarios, lancamentos, vinculosExistentes] = await Promise.all([
       svc.FolhaPagamento.filter({ status: 'pendente' }),
       svc.Funcionario.list('', 200),
       svc.LancamentoBancario.list('-data', 5000),
       svc.VinculoExtrato.list('-created_date', 5000),
     ]);
+
+    const folhasPendentes = folhasPendentesRaw.filter(folha => {
+      const funcionario = funcionarios.find(f => f.id === folha.funcionario_id);
+      return funcionario && nomeFolhaCompativel(folha.funcionario_nome, funcionario.nome);
+    });
 
     // PIX já usados em QUALQUER vínculo (de qualquer tipo) — um lançamento nunca paga duas obrigações além do seu valor
     const pixUsados = new Set(vinculosExistentes.map(v => v.lancamento_bancario_id));

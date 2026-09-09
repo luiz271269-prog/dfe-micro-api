@@ -28,6 +28,7 @@ import MensagemLink from '../components/shared/MensagemLink';
 import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
 import { calcularINSS, calcularFGTS } from '../lib/encargosEngine';
 import { gerarFolhasPendentes } from '@/functions/gerarFolhasPendentes';
+import { consolidarFolhasPorFuncionario } from '../lib/folhaIdentidade';
 
 const SETORES = ['vendas', 'assistencia', 'financeiro', 'compras', 'administrativo', 'telemarketing'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -306,13 +307,26 @@ export default function Funcionarios() {
     loadData();
   }
 
-  // Folha do mês selecionado
-  const folhasMes = useMemo(() => folhas.filter(f => f.competencia === competencia), [folhas, competencia]);
+  const folhasConsolidadas = useMemo(
+    () => consolidarFolhasPorFuncionario(folhas, funcionarios),
+    [folhas, funcionarios]
+  );
+  const folhasMes = useMemo(
+    () => folhasConsolidadas.filter(f => f.competencia === competencia),
+    [folhasConsolidadas, competencia]
+  );
+
+  function valorPagoFolha(folha) {
+    const porVinculos = (folha._idsGrupo || [folha.id]).reduce((s, id) => s + (vinculosFolha[id] || 0), 0);
+    const informado = folha._valorPagoGrupo || folha.valor_pago || 0;
+    const reconhecido = Math.max(porVinculos, informado, folha._algumaPaga ? folha.salario_liquido || 0 : 0);
+    return Math.min(folha.salario_liquido || 0, reconhecido);
+  }
 
   // Últimos 12 meses até a competência selecionada (dashboard)
   const resumos12 = useMemo(
-    () => mesesAnteriores(competencia, 12).map(c => resumoCompetencia(folhas, funcionarios, c)),
-    [folhas, funcionarios, competencia]
+    () => mesesAnteriores(competencia, 12).map(c => resumoCompetencia(folhasConsolidadas, funcionarios, c)),
+    [folhasConsolidadas, funcionarios, competencia]
   );
   const resumoAtual = resumos12[resumos12.length - 1];
   const resumoAnterior = resumos12[resumos12.length - 2];
@@ -321,11 +335,7 @@ export default function Funcionarios() {
   const totalBruto   = folhasMes.reduce((s,f)=>s+(f.salario_bruto||0),0);
   const totalLiquido = folhasMes.reduce((s,f)=>s+(f.salario_liquido||0),0);
   const totalComissao= folhasMes.reduce((s,f)=>s+(f.comissao||0),0);
-  // Pago = se status='pago' usa líquido total, senão usa soma dos vínculos (parciais)
-  const totalPago = folhasMes.reduce((s,f) => {
-    if (f.status === 'pago') return s + (f.salario_liquido || 0);
-    return s + (vinculosFolha[f.id] || 0);
-  }, 0);
+  const totalPago = folhasMes.reduce((s, f) => s + valorPagoFolha(f), 0);
   const totalSaldo = totalLiquido - totalPago;
 
   // Agrupar funcionários por setor
@@ -481,7 +491,7 @@ export default function Funcionarios() {
                       </tr>
                     </thead>
                     <tbody>
-                      {funcs.map(f => <FuncRow key={f.id} func={f} folhas={folhas} onClick={setSelectedFunc} />)}
+                      {funcs.map(f => <FuncRow key={f.id} func={f} folhas={folhasConsolidadas} onClick={setSelectedFunc} />)}
                     </tbody>
                   </table>
                 </div>
@@ -533,7 +543,7 @@ export default function Funcionarios() {
                 const setorBruto  = itens.reduce((s,f)=>s+(f.salario_bruto||0),0);
                 const setorLiq    = itens.reduce((s,f)=>s+(f.salario_liquido||0),0);
                 const setorComiss = itens.reduce((s,f)=>s+(f.comissao||0),0);
-                const setorPago   = itens.reduce((s,f) => s + (f.valor_pago || (f.status==='pago' ? (f.salario_liquido||0) : (vinculosFolha[f.id]||0))), 0);
+                const setorPago   = itens.reduce((s, f) => s + valorPagoFolha(f), 0);
                 return (
                   <div key={setor}>
                     <div className="flex items-center gap-2 mb-2">
@@ -560,10 +570,10 @@ export default function Funcionarios() {
                               const tot = calcularTotaisFolha(f);
                               const desc = tot.descontos;
                               const extras = (f.horas_extras||0) + tot.proventosEventos;
-                              const pagoVinculos = vinculosFolha[f.id] || 0;
-                              const pago = f.valor_pago || (f.status === 'pago' ? f.salario_liquido : pagoVinculos);
-                              const saldo = (f.salario_liquido||0) - pago;
-                              const isParcial = f.status !== 'pago' && pagoVinculos > 0;
+                              const pagoVinculos = (f._idsGrupo || [f.id]).reduce((s, id) => s + (vinculosFolha[id] || 0), 0);
+                              const pago = valorPagoFolha(f);
+                              const saldo = Math.max(0, (f.salario_liquido || 0) - pago);
+                              const isParcial = !f._algumaPaga && f.status !== 'pago' && pagoVinculos > 0;
                               const sc2 = isParcial
                                 ? { label: 'Parcial', color: 'bg-yellow-100 text-yellow-700' }
                                 : (FOLHA_STATUS[f.status] || FOLHA_STATUS.pendente);
@@ -634,7 +644,7 @@ export default function Funcionarios() {
       {activeTab === 'rastreio' && <RelatorioPixFuncionarios />}
 
       {/* Modal detalhe funcionário */}
-      <FuncModal func={selectedFunc} folhas={folhas} onClose={() => setSelectedFunc(null)} />
+      <FuncModal func={selectedFunc} folhas={folhasConsolidadas} onClose={() => setSelectedFunc(null)} />
 
       {/* Painel de eventos em janela — só em telas pequenas (no desktop fica em coluna ao lado da folha) */}
       {!isDesktop && <FolhaEventosDialog folha={folhaEventos} folhas={folhas} funcionario={folhaEventos ? (funcionarios.find(fn => fn.nome === folhaEventos.funcionario_nome) || null) : null} onClose={() => setFolhaEventos(null)} onSaved={loadData} />}

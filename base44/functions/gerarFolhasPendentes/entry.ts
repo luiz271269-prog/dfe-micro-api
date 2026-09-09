@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
 
 // Gera folhas de pagamento pendentes clonando sempre a última folha do funcionário.
 // Regra de negócio: a folha é praticamente idêntica à anterior, então a competência
@@ -31,6 +32,7 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole.entities;
+    if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
 
     const [funcionarios, folhas] = await Promise.all([
       svc.Funcionario.list('', 200),
@@ -49,11 +51,11 @@ Deno.serve(async (req) => {
 
     for (const func of ativos) {
       const nomeNorm = normalizar(func.nome);
-      // Folhas deste funcionário (match flexível de nome, igual ao motor de conciliação)
-      const folhasFunc = folhas.filter(fl => {
-        const n = normalizar(fl.funcionario_nome);
-        return n === nomeNorm || nomeNorm.includes(n) || n.includes(nomeNorm);
-      }).sort((a, b) => (b.competencia || '').localeCompare(a.competencia || ''));
+      // O identificador do cadastro é a fonte principal; nome exato atende apenas registros legados.
+      const folhasFunc = folhas.filter(fl =>
+        (fl.funcionario_id === func.id && nomeFolhaCompativel(fl.funcionario_nome, func.nome))
+        || (!fl.funcionario_id && normalizar(fl.funcionario_nome) === nomeNorm)
+      ).sort((a, b) => (b.competencia || '').localeCompare(a.competencia || ''));
 
       const competenciasExistentes = new Set(folhasFunc.filter(fl => (fl.tipo || 'mensal') === 'mensal').map(fl => fl.competencia));
       // Modelo = última folha MENSAL registrada (clona valores fixos)
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
           const proventosEv = somaEv('provento');
           const nova = {
             funcionario_id: func.id,
-            funcionario_nome: modelo?.funcionario_nome || func.nome,
+            funcionario_nome: func.nome,
             competencia: comp,
             tipo: 'mensal',
             salario_bruto: bruto,
@@ -114,8 +116,8 @@ Deno.serve(async (req) => {
       const nomeNorm = normalizar(func.nome);
       const jaExiste = folhas.some(fl => {
         if (fl.tipo !== 'ferias' || fl.competencia !== compFerias) return false;
-        const n = normalizar(fl.funcionario_nome);
-        return n === nomeNorm || nomeNorm.includes(n) || n.includes(nomeNorm);
+        return (fl.funcionario_id === func.id && nomeFolhaCompativel(fl.funcionario_nome, func.nome))
+          || (!fl.funcionario_id && normalizar(fl.funcionario_nome) === nomeNorm);
       });
       if (jaExiste) continue;
 

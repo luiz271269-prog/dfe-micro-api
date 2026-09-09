@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
 
 // Concilia o mês corrente usando o HISTÓRICO dos meses anteriores como gabarito.
 // Pagamentos recorrentes (folha, despesas, tributos, faturas) repetem beneficiário e valor
@@ -28,11 +29,13 @@ Deno.serve(async (req) => {
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
     const svc = base44.asServiceRole.entities;
+    if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
 
-    const [lancs, vincs, folhas, despesas, tributos, faturas] = await Promise.all([
+    const [lancs, vincs, folhas, funcionarios, despesas, tributos, faturas] = await Promise.all([
       svc.LancamentoBancario.list('-data', 5000),
       svc.VinculoExtrato.list('-created_date', 5000),
       svc.FolhaPagamento.list('-competencia', 2000),
+      svc.Funcionario.list('', 500),
       svc.DespesaOperacional.list('-data', 2000),
       svc.Tributo.list('-data_vencimento', 2000),
       svc.FaturaCartao.list('-data_vencimento', 500),
@@ -66,7 +69,11 @@ Deno.serve(async (req) => {
     );
 
     // 3. Registros elegíveis por tipo — sem vínculo bancário (abertos OU pagos sem FK)
-    const folhasLivres = folhas.filter(f => !f.lancamento_bancario_id);
+    const folhasLivres = folhas.filter(f => {
+      const funcionario = funcionarios.find(fn => fn.id === f.funcionario_id);
+      return f.status !== 'pago' && !f.lancamento_bancario_id
+        && funcionario && nomeFolhaCompativel(f.funcionario_nome, funcionario.nome);
+    });
     const despesasLivres = despesas.filter(d => !d.lancamento_bancario_id && !d.lancamento_cartao_id);
     const tributosLivres = tributos.filter(t => !t.lancamento_bancario_id);
     const faturasLivres = faturas.filter(f => !f.lancamento_bancario_id);
@@ -102,7 +109,8 @@ Deno.serve(async (req) => {
     };
 
     // 3b. Modelo histórico por termo — o registro mais recente já conciliado com aquele termo.
-    // Se o mês corrente não tem registro alvo, replica o do mês anterior (valores recorrentes).
+    // Se o mês corrente não tem registro alvo, replica despesas/tributos do mês anterior.
+    // Folha de pagamento exige obrigação previamente gerada a partir de funcionário cadastrado.
     const registroPorTipoId = new Map();
     for (const f of folhas) registroPorTipoId.set('FolhaPagamento:' + f.id, f);
     for (const d of despesas) registroPorTipoId.set('DespesaOperacional:' + d.id, d);
@@ -138,13 +146,8 @@ Deno.serve(async (req) => {
           observacoes: 'Gerado automaticamente — recorrência mensal (espelho do mês anterior)',
         });
       }
-      if (tipo === 'FolhaPagamento') {
-        return await svc.FolhaPagamento.create({
-          funcionario_id: m.funcionario_id, funcionario_nome: m.funcionario_nome, competencia: mes,
-          salario_bruto: m.salario_bruto || valor, salario_liquido: valor,
-          data_pagamento: lanc.data, status: 'pago', empresa: m.empresa,
-        });
-      }
+      // Folhas nunca são criadas pelo histórico bancário. Elas só podem nascer do cadastro de funcionários.
+      if (tipo === 'FolhaPagamento') return null;
       if (tipo === 'DespesaOperacional') {
         return await svc.DespesaOperacional.create({
           data: lanc.data, descricao: m.descricao || lanc.descricao, fornecedor: m.fornecedor,
