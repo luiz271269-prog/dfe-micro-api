@@ -62,7 +62,7 @@ export default function Despesas() {
       base44.entities.LancamentoBancario.list('-data', 10000),
       base44.entities.LancamentoCartao.list('-data_lancamento', 2000),
     ]);
-    setDespesas(Array.isArray(data) ? data : []);
+    setDespesas(Array.isArray(data) ? data.filter(d => !d.tipo_compra || d.tipo_compra === 'despesas') : []);
     setLancamentosExtrato(Array.isArray(extrato) ? extrato : []);
     setLancamentosCartao(Array.isArray(cartao) ? cartao : []);
     setLoading(false);

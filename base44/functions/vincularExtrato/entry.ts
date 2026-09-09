@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
+import { eixosDoVinculo, TIPO_POR_ENTIDADE } from '../../shared/classificacaoPadrao.ts';
 
 /**
  * SERVIÇO CENTRAL DE VÍNCULO (fonte única de verdade da conciliação).
@@ -39,6 +39,7 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole.entities;
+    if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
 
     async function recalcularCache(lancId) {
       if (!lancId) return null;
@@ -87,6 +88,18 @@ Deno.serve(async (req) => {
       if (!lanc) return Response.json({ error: 'Lançamento não encontrado' }, { status: 404 });
 
       const vincsAtuais = await svc.VinculoExtrato.filter({ lancamento_bancario_id });
+      const tiposExclusivos = new Set(['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore']);
+      const tipoDestino = TIPO_POR_ENTIDADE[entidade_tipo];
+      if (tiposExclusivos.has(tipoDestino) && lanc.tipo_compra && lanc.tipo_compra !== tipoDestino) {
+        return Response.json({ error: `Conciliação bloqueada: o extrato está classificado como ${lanc.tipo_compra} e este módulo aceita apenas ${tipoDestino}` }, { status: 409 });
+      }
+      const destinoConflitante = vincsAtuais.find(v => {
+        const tipoAtual = TIPO_POR_ENTIDADE[v.entidade_tipo];
+        return tiposExclusivos.has(tipoAtual) && tiposExclusivos.has(tipoDestino) && tipoAtual !== tipoDestino;
+      });
+      if (destinoConflitante) {
+        return Response.json({ error: 'Conciliação bloqueada: este lançamento já pertence a outro módulo financeiro' }, { status: 409 });
+      }
 
       // Vínculo duplicado
       if (vincsAtuais.some(v => v.entidade_tipo === entidade_tipo && v.entidade_id === entidade_id)) {

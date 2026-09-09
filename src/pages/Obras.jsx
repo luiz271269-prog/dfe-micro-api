@@ -125,7 +125,7 @@ export default function Obras() {
   async function loadData() {
     setLoading(true);
     const data = await base44.entities.ObraReforma.list('-data', 500);
-    setObras(data);
+    setObras(data.filter(o => !o.tipo_compra || o.tipo_compra === 'obras'));
     setLoading(false);
   }
 

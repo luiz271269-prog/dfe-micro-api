@@ -5,6 +5,7 @@ function normalizar(valor) {
 }
 
 function funcionarioValido(folha, funcionarios) {
+  if (folha.tipo_compra && folha.tipo_compra !== 'folha') return null;
   const funcionario = funcionarios.find(f => f.id === folha.funcionario_id);
   if (!funcionario) return null;
   const nomeFolha = normalizar(folha.funcionario_nome);

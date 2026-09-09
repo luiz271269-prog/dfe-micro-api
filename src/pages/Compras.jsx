@@ -88,12 +88,12 @@ export default function Compras() {
       base44.entities.ItemCompra.list('-data_emissao', 500),
       base44.entities.Fornecedor.list('nome', 200),
     ]);
-    setCompras(data); setFornecedores(forns); setLoadingC(false);
+    setCompras(data.filter(c => !c.tipo_compra || c.tipo_compra === 'estoque')); setFornecedores(forns); setLoadingC(false);
   }
   async function loadDespesas() {
     setLoadingD(true);
     const data = await base44.entities.DespesaOperacional.list('-data', 500);
-    setDespesas(Array.isArray(data) ? data : []); setLoadingD(false);
+    setDespesas(Array.isArray(data) ? data.filter(d => !d.tipo_compra || d.tipo_compra === 'despesas') : []); setLoadingD(false);
   }
   async function loadLancamentos() {
     setLoadingL(true);

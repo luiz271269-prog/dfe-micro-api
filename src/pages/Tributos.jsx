@@ -56,7 +56,7 @@ export default function Tributos() {
       base44.entities.LancamentoBancario.list('-data', 10000),
       base44.entities.VinculoExtrato.filter({ entidade_tipo: 'Tributo' }, '-created_date', 10000),
     ]);
-    setTributos(data);
+    setTributos(data.filter(t => !t.tipo_compra || t.tipo_compra === 'impostos'));
     setLancamentosExtrato(extrato);
     setVinculos(vinculosData);
     setLoading(false);

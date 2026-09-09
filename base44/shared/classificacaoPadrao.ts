@@ -37,11 +37,11 @@ export function eixosDoLancamento(lanc) {
   };
 }
 
-// Eixos de um vínculo: herda da origem, cai no padrão do tipo de entidade, depois no lançamento.
+// Eixos de um vínculo: o extrato é a fonte única; a entidade só completa dados ausentes.
 export function eixosDoVinculo(origem, entidadeTipo, lanc) {
   const doLanc = eixosDoLancamento(lanc);
   return {
-    origem_compra: origem?.origem_compra || doLanc.origem_compra,
-    tipo_compra: origem?.tipo_compra || TIPO_POR_ENTIDADE[entidadeTipo] || doLanc.tipo_compra,
+    origem_compra: doLanc.origem_compra || origem?.origem_compra,
+    tipo_compra: doLanc.tipo_compra || TIPO_POR_ENTIDADE[entidadeTipo],
   };
 }
