@@ -16,6 +16,7 @@ import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
 import LancarDespesaFotoButton from '../components/despesas/LancarDespesaFotoButton';
+import DespesasPorOrigem from '../components/despesas/DespesasPorOrigem';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 
@@ -43,6 +44,8 @@ const EMPTY_FORM = {
 
 export default function Despesas() {
   const [despesas, setDespesas] = useState([]);
+  const [lancamentosExtrato, setLancamentosExtrato] = useState([]);
+  const [lancamentosCartao, setLancamentosCartao] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -54,8 +57,14 @@ export default function Despesas() {
 
   async function loadData() {
     setLoading(true);
-    const data = await base44.entities.DespesaOperacional.list('-data', 500);
+    const [data, extrato, cartao] = await Promise.all([
+      base44.entities.DespesaOperacional.list('-data', 500),
+      base44.entities.LancamentoBancario.list('-data', 10000),
+      base44.entities.LancamentoCartao.list('-data_lancamento', 2000),
+    ]);
     setDespesas(Array.isArray(data) ? data : []);
+    setLancamentosExtrato(Array.isArray(extrato) ? extrato : []);
+    setLancamentosCartao(Array.isArray(cartao) ? cartao : []);
     setLoading(false);
   }
 
@@ -76,9 +85,22 @@ export default function Despesas() {
   }, [despesas]);
 
   const despesasMes = useMemo(() => {
-    if (isAnnual) return despesas;
+    if (isAnnual) return despesas.filter(d => d.data?.startsWith(selectedMonth.slice(0, 4)));
     return despesas.filter(d => d.data?.startsWith(selectedMonth));
   }, [despesas, selectedMonth, isAnnual]);
+
+  const despesasPorOrigem = useMemo(() => {
+    const noPeriodo = (data) => isAnnual
+      ? data?.startsWith(selectedMonth.slice(0, 4))
+      : data?.startsWith(selectedMonth);
+    const extrato = lancamentosExtrato
+      .filter(l => noPeriodo(l.data) && l.tipo_compra === 'despesas' && (l.valor || 0) < 0 && l.status_conciliacao !== 'ignorar')
+      .map(l => ({ id: l.id, data: l.data, descricao: l.descricao, conta: l.conta_bancaria, valor: Math.abs(l.valor || 0) }));
+    const cartoes = lancamentosCartao
+      .filter(l => noPeriodo(l.data_lancamento) && l.tipo_compra === 'despesas' && (l.valor || 0) > 0 && !l.observacao?.includes('Não faz parte'))
+      .map(l => ({ id: l.id, data: l.data_lancamento, descricao: l.estabelecimento, conta: 'Cartão de crédito', valor: l.valor || 0 }));
+    return { extrato, cartoes };
+  }, [lancamentosExtrato, lancamentosCartao, selectedMonth, isAnnual]);
 
   const filtered = useMemo(() => {
     return despesasMes.filter(d => {
@@ -127,6 +149,8 @@ export default function Despesas() {
         <LancarDespesaFotoButton onSaved={loadData} size="default" variant="outline" />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Despesa</Button>
       </PageHeader>
+
+      <DespesasPorOrigem extrato={despesasPorOrigem.extrato} cartoes={despesasPorOrigem.cartoes} />
 
       {/* Cards resumo */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
