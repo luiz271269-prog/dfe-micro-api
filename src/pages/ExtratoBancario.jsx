@@ -24,11 +24,21 @@ import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizacao';
 
+const TIPOS_TOTALIZADORES = [
+  ['estoque', 'Compras (estoque/revenda)'],
+  ['despesas', 'Despesas fixas/variáveis'],
+  ['impostos', 'Impostos (vendas + folha)'],
+  ['folha', 'Folha'],
+  ['obras', 'Obras / Reformas'],
+  ['pro_labore', 'Pró-labore'],
+];
+
 export default function ExtratoBancario() {
   const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('all');
+  const [filterTipo, setFilterTipo] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('data');
   const [sortDir, setSortDir] = useState('desc');
@@ -72,18 +82,18 @@ export default function ExtratoBancario() {
     return () => { window.removeEventListener('neuralfinRefresh', handler); };
   }, [selectedMonth, isAnnual]);
 
-  const filtered = useMemo(() => {
-    return lancamentos.filter(l => {
-      if (l.status_conciliacao === 'ignorar') return false;
-      if (!isAnnual) {
-        const mes = l.mes_referencia || l.data?.slice(0,7);
-        if (mes !== selectedMonth) return false;
-      }
-      if (filterCategoria !== 'all' && l.categoria !== filterCategoria) return false;
-      if (searchTerm && !l.descricao?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      return true;
-    });
-  }, [lancamentos, filterCategoria, searchTerm, selectedMonth, isAnnual]);
+  const periodoLancamentos = useMemo(() => lancamentos.filter(l => {
+    if (l.status_conciliacao === 'ignorar') return false;
+    const periodo = l.mes_referencia || l.data?.slice(0, 7);
+    return isAnnual ? periodo?.slice(0, 4) === selectedMonth.slice(0, 4) : periodo === selectedMonth;
+  }), [lancamentos, selectedMonth, isAnnual]);
+
+  const filtered = useMemo(() => periodoLancamentos.filter(l => {
+    if (filterCategoria !== 'all' && l.categoria !== filterCategoria) return false;
+    if (filterTipo !== 'all' && l.tipo_compra !== filterTipo) return false;
+    if (searchTerm && !l.descricao?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    return true;
+  }), [periodoLancamentos, filterCategoria, filterTipo, searchTerm]);
 
   function handleSort(field) {
     if (sortField === field) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -103,13 +113,13 @@ export default function ExtratoBancario() {
     return arr;
   }, [filtered, sortField, sortDir]);
 
-  const totais = useMemo(() => {
-    const cats = {};
-    filtered.forEach(l => {
-      cats[l.categoria] = (cats[l.categoria] || 0) + (l.valor || 0);
+  const totaisTipo = useMemo(() => {
+    const totais = Object.fromEntries(TIPOS_TOTALIZADORES.map(([tipo]) => [tipo, 0]));
+    periodoLancamentos.forEach(l => {
+      if (Object.prototype.hasOwnProperty.call(totais, l.tipo_compra)) totais[l.tipo_compra] += l.valor || 0;
     });
-    return cats;
-  }, [filtered]);
+    return totais;
+  }, [periodoLancamentos]);
 
   const totalGeral = filtered.reduce((s, l) => s + (l.valor || 0), 0);
 
@@ -207,7 +217,7 @@ export default function ExtratoBancario() {
     return totals;
   }, [lancamentos]);
 
-  const activeFilterCount = (filterCategoria !== 'all' ? 1 : 0) + (searchTerm ? 1 : 0);
+  const activeFilterCount = (filterCategoria !== 'all' ? 1 : 0) + (filterTipo !== 'all' ? 1 : 0) + (searchTerm ? 1 : 0);
 
   return (
     <div className="p-3 sm:p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
@@ -252,28 +262,20 @@ export default function ExtratoBancario() {
         </div>
       )}
 
-      {/* KPIs por categoria — carrossel no mobile, grid no desktop */}
-      <MobileKPICarousel desktopGridClass="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        {Object.entries(totais).map(([cat, val]) => {
-          const isActive = filterCategoria === cat;
-          return (
-            <GradientCard
-              key={cat}
-              title={opcoesCategoria[cat] || cat}
-              value={formatCurrency(val)}
-              gradient={val >= 0 ? 'green' : 'red'}
-              active={isActive}
-              onClick={() => setFilterCategoria(isActive ? 'all' : cat)}
-            />
-          );
+      {/* Totalizadores padronizados pelos seis tipos de gasto */}
+      <MobileKPICarousel desktopGridClass="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        {TIPOS_TOTALIZADORES.map(([tipo, titulo]) => {
+          const valor = totaisTipo[tipo] || 0;
+          const isActive = filterTipo === tipo;
+          return <GradientCard
+            key={tipo}
+            title={titulo}
+            value={formatCurrency(valor)}
+            gradient={valor > 0 ? 'green' : 'red'}
+            active={isActive}
+            onClick={() => setFilterTipo(isActive ? 'all' : tipo)}
+          />;
         })}
-        <GradientCard
-          title="Total"
-          value={formatCurrency(totalGeral)}
-          gradient={totalGeral >= 0 ? 'blue' : 'red'}
-          active={filterCategoria === 'all'}
-          onClick={() => setFilterCategoria('all')}
-        />
       </MobileKPICarousel>
 
       {/* Filtros — busca sempre visível, categoria no drawer no mobile */}
@@ -283,7 +285,7 @@ export default function ExtratoBancario() {
           <Input placeholder="Buscar descrição..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-9" />
         </div>
         <div className="md:hidden shrink-0 w-32">
-          <MobileFilterDrawer activeCount={filterCategoria !== 'all' ? 1 : 0}>
+          <MobileFilterDrawer activeCount={activeFilterCount}>
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">Categoria</Label>
               <Select value={filterCategoria} onValueChange={setFilterCategoria}>
