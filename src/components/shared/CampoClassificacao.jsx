@@ -25,7 +25,7 @@ export default function CampoClassificacao({ eixo, label, value, onChange }) {
 
   return (
     <div>
-      <Label>{label}</Label>
+      <Label>{eixo === 'tipo' ? 'Tipo de gasto' : label}</Label>
       {adding ? (
         <div className="flex items-center gap-1">
           <input
@@ -40,15 +40,15 @@ export default function CampoClassificacao({ eixo, label, value, onChange }) {
         </div>
       ) : (
         <div className="flex items-center gap-1">
-          <Select value={value || ''} onValueChange={onChange}>
-            <SelectTrigger className="flex-1 min-w-0"><SelectValue placeholder="—" /></SelectTrigger>
+          <Select value={opcoes[value] ? value : ''} onValueChange={onChange}>
+            <SelectTrigger className="flex-1 min-w-0"><SelectValue placeholder={eixo === 'tipo' ? 'Pendente de classificação' : '—'} /></SelectTrigger>
             <SelectContent>
               {Object.entries(opcoes).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
             </SelectContent>
           </Select>
-          <button type="button" onClick={() => setAdding(true)} title="Adicionar nova opção" className="h-9 w-8 shrink-0 flex items-center justify-center rounded-md border text-muted-foreground hover:text-primary hover:border-primary transition-colors">
+          {eixo !== 'tipo' && <button type="button" onClick={() => setAdding(true)} title="Adicionar nova opção" className="h-9 w-8 shrink-0 flex items-center justify-center rounded-md border text-muted-foreground hover:text-primary hover:border-primary transition-colors">
             <Plus className="w-4 h-4" />
-          </button>
+          </button>}
         </div>
       )}
     </div>

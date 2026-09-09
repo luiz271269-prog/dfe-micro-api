@@ -5,7 +5,7 @@ const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL
 export default function MatrizClassificacao({ vinculos, onSelecionar }) {
   const custom = loadCustom();
   const origens = getOpcoes('origem', custom);
-  const tipos = getOpcoes('tipo', custom);
+  const tipos = { ...getOpcoes('tipo', custom), __fatura__: 'Faturas (composição no cartão)' };
 
   const chaveO = Object.keys(origens).concat('__sem__');
   const chaveT = Object.keys(tipos).concat('__sem__');
@@ -15,7 +15,7 @@ export default function MatrizClassificacao({ vinculos, onSelecionar }) {
   let total = 0;
   for (const v of vinculos) {
     const o = origens[v.origem_compra] ? v.origem_compra : '__sem__';
-    const t = tipos[v.tipo_compra] ? v.tipo_compra : '__sem__';
+    const t = v.entidade_tipo === 'FaturaCartao' ? '__fatura__' : tipos[v.tipo_compra] ? v.tipo_compra : '__sem__';
     const k = `${o}|${t}`;
     matriz[k] = (matriz[k] || 0) + (v.valor_alocado || 0);
     (grupos[k] = grupos[k] || []).push(v);
@@ -24,7 +24,7 @@ export default function MatrizClassificacao({ vinculos, onSelecionar }) {
   const somaLinha = (o) => chaveT.reduce((s, t) => s + (matriz[`${o}|${t}`] || 0), 0);
   const somaCol = (t) => chaveO.reduce((s, o) => s + (matriz[`${o}|${t}`] || 0), 0);
 
-  const label = (map, k) => (k === '__sem__' ? 'Sem classificação' : map[k]);
+  const label = (map, k) => (k === '__sem__' ? 'Pendente de classificação' : map[k]);
   const linhasVisiveis = chaveO.filter((o) => somaLinha(o) > 0);
   const colsVisiveis = chaveT.filter((t) => somaCol(t) > 0);
 

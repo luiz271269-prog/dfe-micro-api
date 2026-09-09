@@ -9,6 +9,8 @@ import RodarPipelineButton from '@/components/classificacao/RodarPipelineButton'
 import ExportarCSVButton from '@/components/classificacao/ExportarCSVButton';
 import ClassificarNaoCobertos from '@/components/classificacao/ClassificarNaoCobertos';
 import PlanilhaCoberturaModulos from '@/components/classificacao/PlanilhaCoberturaModulos';
+import RevisaoTiposGasto from '@/components/classificacao/RevisaoTiposGasto';
+import { tipoGastoValido, exigeTipoGasto } from '@/lib/classificacaoUnificada';
 
 export default function AnaliseClassificacao() {
   const [vinculos, setVinculos] = useState([]);
@@ -47,11 +49,14 @@ export default function AnaliseClassificacao() {
     const ano = mes.slice(0, 4);
     return vinculos.filter((v) => {
       const d = dataPorLanc[v.lancamento_bancario_id] || '';
-      return anual ? d.startsWith(ano) : d.startsWith(mes);
+      const lanc = lancPorId[v.lancamento_bancario_id];
+      return lanc && exigeTipoGasto('LancamentoBancario', lanc) &&
+        (v.entidade_tipo === 'FaturaCartao' || exigeTipoGasto('VinculoExtrato', v)) &&
+        (anual ? d.startsWith(ano) : d.startsWith(mes));
     });
-  }, [vinculos, dataPorLanc, mes, anual]);
+  }, [vinculos, dataPorLanc, lancPorId, mes, anual]);
 
-  const semClass = filtrados.filter((v) => !v.origem_compra || !v.tipo_compra).length;
+  const semClass = filtrados.filter((v) => v.entidade_tipo !== 'FaturaCartao' && (!v.origem_compra || !tipoGastoValido(v.tipo_compra))).length;
 
   const lancsPeriodo = useMemo(() => {
     const ano = mes.slice(0, 4);
@@ -68,7 +73,7 @@ export default function AnaliseClassificacao() {
     () =>
       lancsPeriodo
         // só saídas: entradas (recebimentos) não são "compras" e distorceriam a matriz
-        .filter((l) => !idsComVinculo.has(l.id) && (l.valor || 0) < 0 && l.origem_compra && l.tipo_compra)
+        .filter((l) => !idsComVinculo.has(l.id) && exigeTipoGasto('LancamentoBancario', l) && l.origem_compra && l.tipo_compra)
         .map((l) => ({
           id: `direto-${l.id}`,
           lancamento_bancario_id: l.id,
@@ -89,7 +94,7 @@ export default function AnaliseClassificacao() {
   }, [idsComVinculo, diretos]);
 
   const naoCobertos = useMemo(
-    () => lancsPeriodo.filter((l) => (l.valor || 0) < 0 && !idsCobertos.has(l.id)),
+    () => lancsPeriodo.filter((l) => exigeTipoGasto('LancamentoBancario', l) && !idsCobertos.has(l.id)),
     [lancsPeriodo, idsCobertos]
   );
 
@@ -102,6 +107,7 @@ export default function AnaliseClassificacao() {
         title="Análise por Classificação"
         subtitle="Totais consolidados a partir dos vínculos do extrato (fonte única da verdade)"
       >
+        <RevisaoTiposGasto onSaved={carregar} />
         <RodarPipelineButton onConcluido={carregar} />
         <ExportarCSVButton
           vinculos={linhas}
@@ -121,7 +127,7 @@ export default function AnaliseClassificacao() {
 
       {!loading && (
         <CoberturaPeriodo
-          lancsPeriodo={lancsPeriodo.filter((l) => (l.valor || 0) < 0)}
+          lancsPeriodo={lancsPeriodo.filter((l) => exigeTipoGasto('LancamentoBancario', l))}
           idsComVinculo={idsCobertos}
           onVerNaoCobertos={() => setClassificando(true)}
         />

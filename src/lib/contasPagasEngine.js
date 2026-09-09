@@ -4,26 +4,19 @@
  * Usada no modo "Pagos por emissão" da tela de Contas a Pagar. Somente leitura.
  */
 
-const TIPO_COMPRA_PADRAO = {
-  despesa: 'despesas',
-  tributo: 'impostos',
-  folha: 'folha',
-  fatura: 'financeiro',
-  compra: 'estoque',
-  obra: 'obras',
-};
+// Não inferir tipos dos registros antigos: a classificação é manual.
 
 function eixos(reg, origem_tipo) {
   return {
     origem_compra: reg?.origem_compra || 'empresa',
-    tipo_compra: reg?.tipo_compra || TIPO_COMPRA_PADRAO[origem_tipo] || 'outro',
+    tipo_compra: reg?.tipo_compra || '',
   };
 }
 
 export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [], compras = [], obras = [] }) {
   const itens = [];
 
-  despesas.filter(d => d.status === 'pago').forEach(d => {
+  despesas.filter(d => d.status === 'pago' && !d.lancamento_cartao_id).forEach(d => {
     itens.push({
       id: `desp-${d.id}`, origem_id: d.id, origem_tipo: 'despesa',
       descricao: d.descricao, fornecedor: d.fornecedor || '—', categoria: d.categoria,
@@ -76,7 +69,7 @@ export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  compras.filter(c => c.status_pagamento === 'pago').forEach(c => {
+  compras.filter(c => c.status_pagamento === 'pago' && !c.lancamento_cartao_id).forEach(c => {
     itens.push({
       id: `compra-${c.id}`, origem_id: c.id, origem_tipo: 'compra',
       descricao: c.descricao_produto || `Compra NF ${c.numero_nota || ''}`.trim(),
@@ -89,7 +82,7 @@ export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  obras.filter(o => o.lancamento_bancario_id || o.lancamento_cartao_id).forEach(o => {
+  obras.filter(o => o.lancamento_bancario_id && !o.lancamento_cartao_id).forEach(o => {
     itens.push({
       id: `obra-${o.id}`, origem_id: o.id, origem_tipo: 'obra',
       descricao: o.descricao, fornecedor: o.responsavel || 'Prestador',

@@ -11,16 +11,30 @@ export const ORIGENS_COMPRA = {
 };
 
 export const TIPOS_COMPRA = {
-  estoque: 'Estoque',
-  fretes: 'Fretes',
-  impostos: 'Impostos',
-  despesas: 'Despesas',
+  estoque: 'Compras (estoque/revenda)',
+  despesas: 'Despesas fixas/variáveis',
+  impostos: 'Impostos (vendas + folha)',
   folha: 'Folha',
+  obras: 'Obras / Reformas',
   pro_labore: 'Pró-labore',
-  obras: 'Obras/Reforma',
-  financeiro: 'Financeiro',
-  outro: 'Outro',
 };
+
+export function tipoGastoValido(valor) {
+  return Object.prototype.hasOwnProperty.call(TIPOS_COMPRA, valor);
+}
+
+export function rotuloTipoGasto(valor) {
+  return tipoGastoValido(valor) ? TIPOS_COMPRA[valor] : 'Pendente de classificação';
+}
+
+export function exigeTipoGasto(entidade, registro) {
+  if (entidade === 'FaturaCartao') return false;
+  if (entidade === 'VinculoExtrato') return !['FaturaCartao', 'NotaFiscal', 'TituloCobranca', 'TransferenciaInterna', 'MovimentoFinanceiro'].includes(registro.entidade_tipo) && !['recebimento_integral', 'recebimento_parcial', 'estorno'].includes(registro.tipo_vinculo);
+  if (entidade !== 'LancamentoBancario') return true;
+  if (!(registro.valor < 0) || ['saque', 'transferencia', 'interno', 'recebimento'].includes(registro.categoria)) return false;
+  const texto = `${registro.descricao || ''} ${registro.detalhe || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return !/\b(saque|aplicacao|investimento|cdb|rdb|lci|lca|tesouro|poupanca|fundo|resgate)\b/.test(texto);
+}
 
 // Plano de contas único — união das categorias do Extrato e dos Cartões
 export const CATEGORIAS_CONTAS = {
@@ -133,6 +147,7 @@ const BASES = { origem: ORIGENS_COMPRA, tipo: TIPOS_COMPRA, categoria: CATEGORIA
 const COLORS = { origem: ORIGEM_COLORS, tipo: TIPO_COLORS, categoria: CATEGORIA_COLORS };
 
 export function getOpcoes(eixo, custom) {
+  if (eixo === 'tipo') return { ...TIPOS_COMPRA };
   return { ...(BASES[eixo] || {}), ...(custom?.[eixo] || {}) };
 }
 

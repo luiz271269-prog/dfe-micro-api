@@ -13,16 +13,7 @@
 import { ehSaidaContasPagar } from './extratoNatureza';
 import { calcularProLabore } from './proLaboreContasPagar';
 
-// Tipo de compra padrão por origem, quando o registro ainda não foi classificado
-const TIPO_COMPRA_PADRAO = {
-  despesa: 'despesas',
-  tributo: 'impostos',
-  folha: 'folha',
-  fatura: 'financeiro',
-  compra: 'estoque',
-  obra: 'obras',
-  pro_labore: 'pro_labore',
-};
+// Registros antigos sem tipo permanecem pendentes até a classificação manual.
 
 /**
  * REGRA DO CANAL CARTÃO ("evapora"):
@@ -51,7 +42,7 @@ export function contarEvaporados({ despesas = [], compras = [], obras = [] }) {
 function eixos(reg, origem_tipo) {
   return {
     origem_compra: reg?.origem_compra || 'empresa',
-    tipo_compra: reg?.tipo_compra || TIPO_COMPRA_PADRAO[origem_tipo] || 'outro',
+    tipo_compra: reg?.tipo_compra || '',
   };
 }
 

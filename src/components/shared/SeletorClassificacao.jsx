@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Plus } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { getOpcoes, getCor, loadCustom, saveCustom, slugify } from '@/lib/classificacaoUnificada';
+import TipoGastoSelector from '@/components/shared/TipoGastoSelector';
 
 // Badge editável para os eixos unificados: eixo="origem" (Quem comprou) ou "tipo" (Tipo de compra)
 export default function SeletorClassificacao({ eixo, entityName, record, field, onChange }) {
@@ -32,6 +33,8 @@ export default function SeletorClassificacao({ eixo, entityName, record, field, 
     setAdding(false);
     salvar(key);
   }
+
+  if (eixo === 'tipo') return <TipoGastoSelector entityName={entityName} record={record} onChange={onChange} />;
 
   if (adding) {
     return (
