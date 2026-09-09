@@ -12,6 +12,7 @@ import PainelComprasImportadas from './PainelComprasImportadas';
 import ChipsStatusContas from './ChipsStatusContas';
 import { consolidarContasPagas } from '../../lib/contasPagasEngine';
 import LancarDespesaFotoButton from '../despesas/LancarDespesaFotoButton';
+import MonthNavigator from '../shared/MonthNavigator';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Despesa', href: '/despesas' },
@@ -164,6 +165,16 @@ export default function ContasAPagarPanel() {
 
   const evaporados = useMemo(() => contarEvaporados(dados), [dados]);
 
+  // Totais por mês de vencimento — alimentam a barra de meses (inclui meses futuros)
+  const totaisPorMes = useMemo(() => {
+    const t = {};
+    itensRaw.forEach((i) => {
+      const m = (i.data_vencimento || '').slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(m)) t[m] = (t[m] || 0) + (i.valor || 0);
+    });
+    return t;
+  }, [itensRaw]);
+
   if (loading) return <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>;
 
   return (
@@ -267,14 +278,8 @@ export default function ContasAPagarPanel() {
       </div>
 
       {/* Seletor de mês para o calendário */}
-      <div className="flex items-center justify-between gap-2 mb-3 bg-card border rounded-xl px-3 py-2">
-        <Button variant="ghost" size="sm" className="gap-1" onClick={() => setMesReferencia(deslocarMes(mesReferencia, -1))}>
-          <ChevronLeft className="w-4 h-4" /> Mês anterior
-        </Button>
-        <span className="font-bold text-sm capitalize">{rotuloMes(mesReferencia)}</span>
-        <Button variant="ghost" size="sm" className="gap-1" onClick={() => setMesReferencia(deslocarMes(mesReferencia, 1))}>
-          Próximo mês <ChevronRight className="w-4 h-4" />
-        </Button>
+      <div className="mb-3 bg-card border rounded-xl px-3 py-2">
+        <MonthNavigator selectedMonth={mesReferencia} onSelectMonth={setMesReferencia} monthTotals={totaisPorMes} />
       </div>
 
       {/* Duas colunas: Calendário (sistema) × DDA (banco) */}
