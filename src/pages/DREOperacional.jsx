@@ -21,6 +21,7 @@ const ROTULOS = {
 
 export default function DREOperacional() {
   const [mes, setMes] = useState(null);
+  const [anual, setAnual] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState(null);
   const [erro, setErro] = useState(null);
@@ -30,7 +31,7 @@ export default function DREOperacional() {
     setLoading(true);
     setErro(null);
     try {
-      const res = await consolidarDREOperacional({ mes_referencia: mes });
+      const res = await consolidarDREOperacional({ mes_referencia: mes, meses: anual ? 12 : 1 });
       setDados(res?.data || null);
     } catch (e) {
       setErro(e.message);
@@ -40,7 +41,7 @@ export default function DREOperacional() {
 
   useEffect(() => {
     carregar();
-  }, [mes]); // eslint-disable-line
+  }, [mes, anual]); // eslint-disable-line
 
   function exportarCSV() {
     if (!dados) return;
@@ -49,7 +50,7 @@ export default function DREOperacional() {
     const linha = (label, campo) => [label, c[campo].toFixed(2), k[campo].toFixed(2)];
     const rows = [
       ['DRE OPERACIONAL CONSOLIDADO — NeuralTec + Liesch'],
-      ['Mês', dados.mes_referencia],
+      ['Período', periodoLabel],
       ['Regime', 'Simples Nacional'],
       [],
       ['LINHA', 'COMPETÊNCIA (R$)', 'CAIXA (R$)'],
@@ -75,7 +76,7 @@ export default function DREOperacional() {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dre_operacional_${dados.mes_referencia}.csv`;
+    a.download = `dre_operacional_${dados.mes_inicio}_${dados.mes_referencia}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -85,6 +86,11 @@ export default function DREOperacional() {
 
   const c = dados?.competencia;
   const k = dados?.caixa;
+  const periodoLabel = dados
+    ? dados.meses > 1
+      ? `${dados.mes_inicio} a ${dados.mes_referencia} (${dados.meses} meses)`
+      : dados.mes_referencia
+    : '';
 
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1400px] mx-auto">
@@ -92,7 +98,12 @@ export default function DREOperacional() {
         title="DRE Operacional"
         subtitle="Resultado consolidado do grupo (NeuralTec + Liesch) — Simples Nacional, competência × caixa"
       >
-        <MonthNavigator selectedMonth={mes} onSelectMonth={setMes} />
+        <MonthNavigator
+          selectedMonth={mes}
+          onSelectMonth={setMes}
+          isAnnual={anual}
+          onToggleAnnual={() => setAnual((v) => !v)}
+        />
         <Button variant="outline" onClick={carregar} className="gap-2">
           <RefreshCw className="w-4 h-4" /> Atualizar
         </Button>
@@ -118,7 +129,7 @@ export default function DREOperacional() {
       {!loading && dados && !dados.tem_dados && (
         <div className="bg-card border rounded-xl p-8 text-center">
           <p className="text-sm text-muted-foreground">
-            Nenhum movimento encontrado no mês {dados.mes_referencia}.
+            Nenhum movimento encontrado no período {periodoLabel}.
           </p>
         </div>
       )}
@@ -177,7 +188,7 @@ export default function DREOperacional() {
               <Scale className="w-5 h-5" />
               <div>
                 <p className="text-sm font-bold">
-                  Demonstração do Resultado — {dados.mes_referencia}
+                  Demonstração do Resultado — {periodoLabel}
                 </p>
                 <p className="text-[10px] opacity-90">
                   Grupo consolidado · Simples Nacional · CMV a partir de{' '}

@@ -238,7 +238,7 @@ export default async function (req) {
 
     // Fallbacks de caixa para pagamentos sem vínculo no extrato
     for (const t of titulos) {
-      if (t.status !== 'pago' || mesDe(t.data_pagamento) !== mes) continue;
+      if (t.status !== 'pago' || !dentro(mesDe(t.data_pagamento))) continue;
       if (jaContado('TituloCobranca', t.id)) continue;
       add('caixa', 'receita_bruta', t.valor_pago || t.valor_titulo, {
         data: t.data_pagamento,
@@ -250,7 +250,7 @@ export default async function (req) {
     }
 
     for (const t of tributos) {
-      if (mesDe(t.data_pagamento) !== mes) continue;
+      if (!dentro(mesDe(t.data_pagamento))) continue;
       if (jaContado('Tributo', t.id)) continue;
       add('caixa', t.tipo === 'DAS' ? 'das' : 'outros_tributos', t.valor_pago || t.valor_original, {
         data: t.data_pagamento,
@@ -262,7 +262,7 @@ export default async function (req) {
     }
 
     for (const f of folhas) {
-      if (f.status !== 'pago' || mesDe(f.data_pagamento) !== mes) continue;
+      if (f.status !== 'pago' || !dentro(mesDe(f.data_pagamento))) continue;
       if (jaContado('FolhaPagamento', f.id)) continue;
       add('caixa', ehProLabore(f) ? 'prolabore' : 'folha', f.valor_pago || f.salario_liquido, {
         data: f.data_pagamento,
@@ -274,7 +274,7 @@ export default async function (req) {
     }
 
     for (const d of despesas) {
-      if (d.status !== 'pago' || mesDe(d.data) !== mes) continue;
+      if (d.status !== 'pago' || !dentro(mesDe(d.data))) continue;
       if (jaContado('DespesaOperacional', d.id)) continue;
       add('caixa', ehProLabore(d) ? 'prolabore' : 'despesas', d.valor, {
         data: d.data,
@@ -286,7 +286,7 @@ export default async function (req) {
     }
 
     for (const o of obras) {
-      if (mesDe(o.data) !== mes) continue;
+      if (!dentro(mesDe(o.data))) continue;
       if (jaContado('ObraReforma', o.id)) continue;
       add('caixa', 'obras', o.valor, {
         data: o.data,
@@ -326,6 +326,8 @@ export default async function (req) {
 
     return Response.json({
       mes_referencia: mes,
+      mes_inicio: mesInicio,
+      meses: janela,
       regime: 'simples_nacional',
       escopo: 'grupo_consolidado',
       tem_dados: temDados,
