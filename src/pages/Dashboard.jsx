@@ -22,6 +22,7 @@ import CustosDiretosSection from '../components/dashboard/CustosDiretosSection';
 import OutrasSaidasSection from '../components/dashboard/OutrasSaidasSection';
 import LoopRIntegrityBadge from '../components/dashboard/LoopRIntegrityBadge';
 import ExcecoesLoopRTable from '../components/dashboard/ExcecoesLoopRTable';
+import OperacaoFinanceiraSection from '../components/dashboard/OperacaoFinanceiraSection';
 
 function fmtMesLong(m) {
   const [y, mo] = m.split('-');
@@ -464,7 +465,8 @@ export default function Dashboard() {
         <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Total geral — todos os vencimentos" icon={AlertTriangle} valueColor="orange" onClick={() => openDrill('emAberto')} />
       </Section>
 
-      {/* ─── GRUPOS 4–6: CONSOLIDADO LOOP-R ─── */}
+      {/* ─── GRUPOS 4–6: OPERAÇÃO + CONSOLIDADO LOOP-R ─── */}
+      <OperacaoFinanceiraSection summary={data} consolidated={consolidated} onDrill={openDrill} />
       <FluxoConsolidadoSection data={consolidated} regime={regime} onRegime={setRegime} onDrill={openDrill} />
       <FluxoConsolidadoChart data={consolidated} />
       <CustosDiretosSection data={consolidated} onDrill={openDrill} />
