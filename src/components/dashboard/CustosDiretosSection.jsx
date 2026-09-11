@@ -10,9 +10,9 @@ export default function CustosDiretosSection({ data, onDrill }) {
   return (
     <section className="space-y-3"><div><h2 className="font-bold">Custos Diretos sobre Faturamento</h2><p className="text-xs text-muted-foreground">Compras, despesas, impostos e folha</p></div><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       <Card title="Compras — estoque/revenda" data={data.compras} icon={ShoppingCart} detail={`${data.compras.count} compras · ticket ${formatCurrency(data.compras.ticket, true)}`} onClick={() => onDrill('comprasConsolidadas')}><CustoBucketBars buckets={data.compras.buckets} /></Card>
-      <Card title="Despesas fixas/variáveis" data={data.despesas} icon={ReceiptText} detail="por modalidade" onClick={() => onDrill('despesasConsolidadas')}><CustoBucketBars buckets={data.despesas.buckets} /></Card>
+      <Card title="Despesas fixas/variáveis" data={data.despesas} icon={ReceiptText} detail={`Fixas ${formatCurrency(data.despesas.fixas, true)} · Variáveis ${formatCurrency(data.despesas.variaveis, true)}`} onClick={() => onDrill('despesasConsolidadas')}><CustoBucketBars buckets={data.despesas.buckets} /></Card>
       <Card title="Impostos" data={data.impostos} icon={Landmark} detail={`Vendas ${formatCurrency(data.impostos.vendas, true)} · Folha ${formatCurrency(data.impostos.encargos, true)}`} onClick={() => onDrill('impostosConsolidados')}><div className="text-xs text-muted-foreground">Tributos de vendas e encargos separados</div></Card>
-      <Card title="Folha de pagamento" data={data.folha} icon={Users} detail={`${data.folha.ativos} ativos · média ${formatCurrency(data.folha.medio, true)}`} onClick={() => onDrill('folhaConsolidada')}><div className="text-xs text-muted-foreground">Custo por competência ou caixa realizado</div></Card>
+      <Card title="Folha de pagamento" data={data.folha} icon={Users} detail={`${data.folha.ativos} ativos · média ${formatCurrency(data.folha.medio, true)}`} onClick={() => onDrill('folhaConsolidada')}><div className="text-xs text-muted-foreground">Bruto {formatCurrency(data.folha.bruto, true)} · Líquido {formatCurrency(data.folha.liquido, true)} · Adicionais {formatCurrency(data.folha.adicionais, true)}</div></Card>
     </div></section>
   );
 }
