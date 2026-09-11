@@ -1,0 +1,99 @@
+{
+  "name": "IntegracaoFinanceira",
+  "type": "object",
+  "description": "Espelho sincronizado dos contratos, recebimentos, despesas e ordens de servi\u00e7o dos aplicativos de Loca\u00e7\u00f5es e Assist\u00eancia T\u00e9cnica.",
+  "properties": {
+    "app_origem": {
+      "type": "string",
+      "enum": [
+        "locacoes",
+        "assistencia"
+      ],
+      "title": "Aplicativo de origem"
+    },
+    "entidade_externa": {
+      "type": "string",
+      "title": "Entidade no aplicativo de origem"
+    },
+    "registro_externo_id": {
+      "type": "string",
+      "title": "ID do registro no aplicativo de origem"
+    },
+    "tipo_registro": {
+      "type": "string",
+      "enum": [
+        "contrato_locacao",
+        "recebimento_aluguel",
+        "despesa_condominio",
+        "ordem_servico",
+        "contrato_assistencia",
+        "recebimento_servico",
+        "cadastro"
+      ],
+      "title": "Tipo financeiro"
+    },
+    "descricao": {
+      "type": "string",
+      "title": "Descri\u00e7\u00e3o"
+    },
+    "contraparte": {
+      "type": "string",
+      "title": "Cliente, inquilino ou fornecedor"
+    },
+    "data_referencia": {
+      "type": "string",
+      "format": "date",
+      "title": "Data de refer\u00eancia"
+    },
+    "data_vencimento": {
+      "type": "string",
+      "format": "date",
+      "title": "Data de vencimento"
+    },
+    "valor": {
+      "type": "number",
+      "title": "Valor"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status original"
+    },
+    "campo_valor": {
+      "type": "string",
+      "title": "Campo de valor na origem"
+    },
+    "campo_status": {
+      "type": "string",
+      "title": "Campo de status na origem"
+    },
+    "payload_json": {
+      "type": "string",
+      "title": "C\u00f3pia JSON do registro externo"
+    },
+    "external_updated_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "\u00daltima altera\u00e7\u00e3o na origem"
+    },
+    "ultima_sincronizacao": {
+      "type": "string",
+      "format": "date-time",
+      "title": "\u00daltima sincroniza\u00e7\u00e3o"
+    },
+    "pendente_envio": {
+      "type": "boolean",
+      "default": false,
+      "title": "Altera\u00e7\u00e3o local aguardando envio"
+    },
+    "erro_sync": {
+      "type": "string",
+      "title": "\u00daltimo erro de sincroniza\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "app_origem",
+    "entidade_externa",
+    "registro_externo_id",
+    "tipo_registro"
+  ]
+}

@@ -76,6 +76,7 @@ export const navGroups = [
     label: 'Dados & Auditoria',
     items: [
       { path: '/importar', label: 'Importar Documento', icon: CloudUpload },
+      { path: '/integracoes-financeiras', label: 'Integrações Financeiras', icon: FolderSync },
       { path: '/auditoria', label: 'Auditoria de Arquivos', icon: FolderOpen },
     ],
   },

@@ -1,0 +1,45 @@
+{
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "sincronizar_aplicativos_financeiros",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sincronizar": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "sincronizarAppsFinanceiros",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Sincronizar aplicativos",
+            "description": "Atualiza dados nos dois sentidos"
+          }
+        }
+      }
+    ]
+  },
+  "name": "Sincronizar aplicativos financeiros",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Sao_Paulo",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "description": "Sincroniza loca\u00e7\u00f5es, condom\u00ednio, ordens de servi\u00e7o, contratos e recebimentos com o Nexus Finan\u00e7as."
+}
