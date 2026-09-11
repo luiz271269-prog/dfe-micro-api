@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import {
@@ -15,6 +15,13 @@ import DedupButton from '../components/shared/DedupButton';
 import SyncCalendarButton from '../components/shared/SyncCalendarButton';
 import DrilldownDialog from '../components/dashboard/DrilldownDialog';
 import { getDrilldown } from '../lib/dashboardDrilldowns';
+import { buildFluxoConsolidado, getConsolidatedDrill } from '../lib/fluxoConsolidadoEngine';
+import FluxoConsolidadoSection from '../components/dashboard/FluxoConsolidadoSection';
+import FluxoConsolidadoChart from '../components/dashboard/FluxoConsolidadoChart';
+import CustosDiretosSection from '../components/dashboard/CustosDiretosSection';
+import OutrasSaidasSection from '../components/dashboard/OutrasSaidasSection';
+import LoopRIntegrityBadge from '../components/dashboard/LoopRIntegrityBadge';
+import ExcecoesLoopRTable from '../components/dashboard/ExcecoesLoopRTable';
 
 function fmtMesLong(m) {
   const [y, mo] = m.split('-');
@@ -130,7 +137,8 @@ function SectionMetric({ title, value, sub, icon: Icon, valueColor, href, onClic
 export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
-  const [rawData, setRawData] = useState({ lanc: [], nfs: [], tit: [], comp: [], obras: [], trib: [], func: [], folhas: [], faturas: [], fluxo: [] });
+  const [regime, setRegime] = useState('competencia');
+  const [rawData, setRawData] = useState({ lanc: [], nfs: [], tit: [], comp: [], obras: [], trib: [], func: [], folhas: [], faturas: [], fluxo: [], despesas: [], lancCartoes: [], vinculos: [], movimentos: [], integracoes: [], transferencias: [], contasCartao: [] });
   const [data, setData] = useState({
     bankBalance: 0, liesch: 41, fundos: 100000,
     recYTD: 0, pagYTD: 0,
@@ -146,7 +154,7 @@ export default function Dashboard() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [drill, setDrill] = useState(null);
 
-  const openDrill = (key) => setDrill(getDrilldown(key, { rawData, selectedMonth, isAnnual }));
+  const openDrill = (key) => setDrill(getConsolidatedDrill(key, consolidated) || getDrilldown(key, { rawData, selectedMonth, isAnnual }));
 
   useEffect(() => {
     // Verificar refresh pendente ao montar (vindo de outra página após importação)
@@ -227,6 +235,12 @@ export default function Dashboard() {
       listSafe('FaturaCartao'),
       listSafe('FluxoCaixa')]
       );
+      await sleep(400);
+      const [despesasRaw, lancCartoesRaw, vinculosRaw, movimentosRaw] = await Promise.all([
+      listSafe('DespesaOperacional'), listSafe('LancamentoCartao'), listSafe('VinculoExtrato'), listSafe('MovimentoFinanceiro')]);
+      await sleep(400);
+      const [integracoesRaw, transferenciasRaw, contasCartaoRaw] = await Promise.all([
+      listSafe('IntegracaoFinanceira'), listSafe('TransferenciaInterna'), listSafe('ContaCartao')]);
       const lancArr = Array.isArray(lancRaw) ? lancRaw : [];
       // Calcular saldo real: último lançamento NeuralTec com saldo_apos
       const neuralLanc = lancArr.
@@ -244,7 +258,14 @@ export default function Dashboard() {
         func: Array.isArray(funcRaw) ? funcRaw : [],
         folhas: Array.isArray(folhasRaw) ? folhasRaw : [],
         faturas: faturasArr,
-        fluxo: Array.isArray(fluxoRaw) ? fluxoRaw : []
+        fluxo: Array.isArray(fluxoRaw) ? fluxoRaw : [],
+        despesas: asArray(despesasRaw),
+        lancCartoes: asArray(lancCartoesRaw),
+        vinculos: asArray(vinculosRaw),
+        movimentos: asArray(movimentosRaw),
+        integracoes: asArray(integracoesRaw),
+        transferencias: asArray(transferenciasRaw),
+        contasCartao: asArray(contasCartaoRaw)
       });
       setData((prev) => ({ ...prev, bankBalance: saldoReal, saldoProjetado: saldoReal }));
       setLoading(false);
@@ -315,6 +336,8 @@ export default function Dashboard() {
       return d;
     });
   }, [rawData, selectedMonth, isAnnual]);
+
+  const consolidated = useMemo(() => buildFluxoConsolidado(rawData, selectedMonth, isAnnual, regime), [rawData, selectedMonth, isAnnual, regime]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-full">
@@ -441,38 +464,14 @@ export default function Dashboard() {
         <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Total geral — todos os vencimentos" icon={AlertTriangle} valueColor="orange" onClick={() => openDrill('emAberto')} />
       </Section>
 
-      {/* ─── GRUPO 4: OPERACIONAL (Compras + Obras) ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Section icon={ShoppingCart} label="Compras" gradient="orange" cols={1}>
-          <SectionMetric title="Total de Compras" value={formatCurrency(-data.totalCompras)} sub={isAnnual ? 'Acumulado anual' : fmtMesLong(selectedMonth)} icon={ShoppingCart} valueColor="red" onClick={() => openDrill('compras')} />
-        </Section>
-        <Section icon={Hammer} label="Obras e Reformas" gradient="lime" cols={1}>
-          <SectionMetric title="Total de Obras" value={formatCurrency(-data.totalObras)} sub="Mão de obra + Material" icon={Hammer} valueColor="green" onClick={() => openDrill('obras')} />
-        </Section>
-      </div>
-
-      {/* ─── GRUPO 5: CARTÕES + TRIBUTOS ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Section icon={CreditCard} label="Cartões de Crédito" gradient="purple" cols={2}>
-          <SectionMetric title="Total das Faturas" value={formatCurrency(-data.totalCartoes)} sub={`${data.nCartoes || '—'} cartões no período`} icon={CreditCard} valueColor="purple" onClick={() => openDrill('cartoes')} />
-          <SectionMetric title="Próx. Vencimento" value={formatCurrency(data.proxVenc)} sub="Próxima fatura em aberto" icon={DollarSign} valueColor="amber" onClick={() => openDrill('proxVenc')} />
-        </Section>
-        <Section icon={AlertTriangle} label="Tributos" gradient="red" cols={2}>
-          <SectionMetric title="Total a Pagar" value={formatCurrency(data.totalTrib)} sub={`${data.tribVencer} a vencer`} icon={AlertTriangle} valueColor="blue" onClick={() => openDrill('tributos')} />
-          <SectionMetric title="Vencidos" value={data.tribVencidos} sub={data.tribVencidos > 0 ? '⚠ Ação imediata' : 'Em dia'} icon={AlertTriangle} valueColor={data.tribVencidos > 0 ? 'red' : 'green'} onClick={() => openDrill('tribVencidos')} />
-        </Section>
-      </div>
-
-      {/* ─── GRUPO 6: PESSOAS + FLUXO ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <Section icon={Users} label="Gestão de Pessoas" gradient="indigo" cols={2}>
-          <SectionMetric title="Colaboradores Ativos" value={data.funcAtivos} sub="funcionários" icon={Users} valueColor="blue" onClick={() => openDrill('funcAtivos')} />
-          <SectionMetric title="Folha do Mês" value={formatCurrency(data.folhaAtual)} sub="Total líquido pago" icon={DollarSign} valueColor="purple" onClick={() => openDrill('folhaAtual')} />
-        </Section>
-        <Section icon={BarChart3} label="Fluxo de Caixa" gradient="sky" cols={2}>
-          <SectionMetric title="Saldo Projetado" value={formatCurrency(data.saldoProjetado)} sub={`próximos 30 dias · +${formatCurrency(data.fluxoEntradas30 || 0)} / -${formatCurrency(data.fluxoSaidas30 || 0)}`} icon={BarChart3} valueColor={data.saldoProjetado < 0 ? 'red' : 'green'} onClick={() => openDrill('fluxo')} />
-          <SectionMetric title="Status do Caixa" value={data.saldoProjetado < 0 ? '⚠ Crítico' : '✓ OK'} sub="monitorar fluxo" icon={TrendingUp} valueColor={data.saldoProjetado < 0 ? 'red' : 'green'} href="/fluxocaixa" />
-        </Section>
+      {/* ─── GRUPOS 4–6: CONSOLIDADO LOOP-R ─── */}
+      <FluxoConsolidadoSection data={consolidated} regime={regime} onRegime={setRegime} onDrill={openDrill} />
+      <FluxoConsolidadoChart data={consolidated} />
+      <CustosDiretosSection data={consolidated} onDrill={openDrill} />
+      <OutrasSaidasSection data={consolidated} onDrill={openDrill} />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <LoopRIntegrityBadge integrity={consolidated.integrity} />
+        <div className="lg:col-span-2"><ExcecoesLoopRTable rows={consolidated.exceptions} /></div>
       </div>
 
       <DrilldownDialog drill={drill} onClose={() => setDrill(null)} />
