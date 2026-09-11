@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { getOpcoes, getCor, loadCustom, saveCustom, slugify } from '@/lib/classificacaoUnificada';
 import TipoGastoSelector from '@/components/shared/TipoGastoSelector';
+import { propagarClassificacaoVinculos } from '@/functions/propagarClassificacaoVinculos';
 
 // Badge editável para os eixos unificados: eixo="origem" (Quem comprou) ou "tipo" (Tipo de compra)
 export default function SeletorClassificacao({ eixo, entityName, record, field, onChange }) {
@@ -19,6 +20,7 @@ export default function SeletorClassificacao({ eixo, entityName, record, field, 
     setValor(v);
     setEditing(false);
     await base44.entities[entityName].update(record.id, { [field]: v });
+    if (entityName === 'LancamentoCartao') await propagarClassificacaoVinculos({ lancamento_cartao_id: record.id });
     if (onChange) onChange(record.id, field, v);
   }
 

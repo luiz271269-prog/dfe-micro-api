@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { AlertCircle, XIcon } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import LancamentosEditableTable from './LancamentosEditableTable';
+import { TIPOS_COMPRA, tipoGastoValido } from '@/lib/classificacaoUnificada';
 
 function formatMesLabel(m) {
   if (!m) return '';
@@ -33,13 +34,12 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
     if (c) cartaoPorFatura[f.id] = { bandeira: c.bandeira || '—', dia: c.dia_vencimento, titular: (c.titular || '').split(' ')[0] };
   }
 
-  // O resumo usa a classificação financeira definida em cada lançamento do cartão.
-  const tiposGasto = new Set(['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore']);
+  // O resumo usa o vocabulário financeiro central e deixa pendências explícitas.
   function classificarLanc(lanc) {
     const texto = `${lanc.estabelecimento || ''} ${lanc.observacao || ''}`.toLowerCase();
     const pagamentoFatura = (lanc.valor || 0) < 0 || /pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento/.test(texto);
     if (lanc.observacao?.includes('Não faz parte') || pagamentoFatura) return 'excluido';
-    return tiposGasto.has(lanc.tipo_compra) ? lanc.tipo_compra : 'nao_classificado';
+    return tipoGastoValido(lanc.tipo_compra) ? lanc.tipo_compra : 'nao_classificado';
   }
 
   // A base deve refletir o banco: classifica TODOS os lançamentos do mês
@@ -59,7 +59,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
   }, {});
 
   const totalClassificado = Object.values(classificacao).reduce((s, v) => s + v, 0);
-  const chavesGasto = ['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore'];
+  const chavesGasto = Object.keys(TIPOS_COMPRA);
   const total = chavesGasto.reduce((s, key) => s + (classificacao[key] || 0), 0);
   const divergenciaFaturas = totalFaturas != null && Math.abs(totalFaturas - totalClassificado) > 1 ?
   totalClassificado - totalFaturas :
@@ -72,6 +72,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
     { label: 'Folha', key: 'folha', bg: 'bg-indigo-50', border: 'border-indigo-300', text: 'text-indigo-700', activeBg: 'bg-indigo-100' },
     { label: 'Obras / Reformas', key: 'obras', bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700', activeBg: 'bg-orange-100' },
     { label: 'Pró-labore', key: 'pro_labore', bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-700', activeBg: 'bg-purple-100' },
+    { label: 'Pendente de classificação', key: 'nao_classificado', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700', activeBg: 'bg-amber-100' },
   ];
 
 
@@ -101,7 +102,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
       }
 
       {/* Grid de cards lado a lado */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 px-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2 px-4">
         {items.map((item) => {
           const value = classificacao[item.key] || 0;
           const pct = total > 0 ? (value / total * 100).toFixed(1) : '0.0';

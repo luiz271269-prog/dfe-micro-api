@@ -47,38 +47,39 @@ export default function Recorrentes() {
   const inicio = modo === 'ano' ? `${mes.slice(0, 4)}-01` : modo === '12meses' ? format(addMonths(new Date(`${mes}-01T12:00:00`), -11), 'yyyy-MM') : mes;
   const fim = modo === 'ano' ? `${mes.slice(0, 4)}-12` : mes;
   const lancsPeriodo = useMemo(() => lancs.filter(l => l.data?.slice(0, 7) >= inicio && l.data?.slice(0, 7) <= fim), [lancs, inicio, fim]);
+  const cartoesNormalizados = useMemo(() => cartoes.filter(l => (l.valor || 0) > 0).map(l => ({ ...l, data: l.data_lancamento, descricao: l.estabelecimento, detalhe: l.observacao, valor: -l.valor, conta_bancaria: '', fonte: 'Cartão' })), [cartoes]);
+  const baseRecorrencias = useMemo(() => [...lancs, ...cartoesNormalizados], [lancs, cartoesNormalizados]);
   const despesasConsolidadas = useMemo(() => {
-    const extrato = lancsPeriodo.filter(l => l.valor < 0 && l.tipo_compra === 'despesas').map(l => ({ key: `e-${l.id}`, descricao: l.descricao, data: l.data, valor: Math.abs(l.valor), categoria: l.categoria, fonte: 'Extrato', fixa: regras.some(r => r.is_ativa && aplicarRegra(l, r).match) }));
-    const cartao = cartoes.filter(l => l.data_lancamento?.slice(0, 7) >= inicio && l.data_lancamento?.slice(0, 7) <= fim && l.tipo_compra === 'despesas').map(l => {
-      const normalizado = { ...l, data: l.data_lancamento, descricao: l.estabelecimento, detalhe: l.observacao, valor: -Math.abs(l.valor), conta_bancaria: '' };
-      return { key: `c-${l.id}`, descricao: l.estabelecimento, data: l.data_lancamento, valor: Math.abs(l.valor), categoria: l.categoria, fonte: 'Cartão', fixa: regras.some(r => r.is_ativa && aplicarRegra(normalizado, r).match) };
+    const extrato = lancsPeriodo.filter(l => l.valor < 0).map(l => ({ key: `e-${l.id}`, descricao: l.descricao, data: l.data, valor: Math.abs(l.valor), categoria: l.categoria, fonte: 'Extrato', fixa: regras.some(r => r.is_ativa && aplicarRegra(l, r).match) }));
+    const cartao = cartoesNormalizados.filter(l => l.data?.slice(0, 7) >= inicio && l.data?.slice(0, 7) <= fim).map(l => {
+      return { key: `c-${l.id}`, descricao: l.descricao, data: l.data, valor: Math.abs(l.valor), categoria: l.categoria, fonte: 'Cartão', fixa: regras.some(r => r.is_ativa && aplicarRegra(l, r).match) };
     });
     const todos = [...extrato, ...cartao].sort((a, b) => b.data.localeCompare(a.data));
     return { fixas: todos.filter(l => l.fixa), variaveis: todos.filter(l => !l.fixa) };
-  }, [lancsPeriodo, cartoes, inicio, fim, regras]);
+  }, [lancsPeriodo, cartoesNormalizados, inicio, fim, regras]);
   const totaisMes = useMemo(() => {
     const totais = {};
     const elegiveis = [
-      ...lancs.filter(l => l.valor < 0 && l.tipo_compra === 'despesas').map(l => ({ data: l.data, valor: Math.abs(l.valor) })),
-      ...cartoes.filter(l => l.tipo_compra === 'despesas').map(l => ({ data: l.data_lancamento, valor: Math.abs(l.valor) })),
+      ...lancs.filter(l => l.valor < 0).map(l => ({ data: l.data, valor: Math.abs(l.valor) })),
+      ...cartoesNormalizados.map(l => ({ data: l.data, valor: Math.abs(l.valor) })),
     ];
     for (const l of elegiveis) if (l.data) totais[l.data.slice(0, 7)] = (totais[l.data.slice(0, 7)] || 0) + l.valor;
     return totais;
-  }, [lancs, cartoes]);
+  }, [lancs, cartoesNormalizados]);
 
-  const sugestoes = useMemo(() => aprenderPadroes(lancs, regras), [lancs, regras]);
+  const sugestoes = useMemo(() => aprenderPadroes(baseRecorrencias, regras), [baseRecorrencias, regras]);
 
   // Stats por regra no histórico atual
   const statsPorRegra = useMemo(() => {
     const mapa = {};
     regras.forEach(r => {
-      const ocorrencias = lancsPeriodo.filter(l => l.valor < 0).map(l => ({ l, m: aplicarRegra(l, r) })).filter(x => x.m.match);
+      const ocorrencias = baseRecorrencias.filter(l => l.valor < 0 && l.data?.slice(0, 7) >= inicio && l.data?.slice(0, 7) <= fim).map(l => ({ l, m: aplicarRegra(l, r) })).filter(x => x.m.match);
       const divergentes = ocorrencias.filter(x => x.m.status === 'divergente').length;
       const ultimoMatch = ocorrencias.map(x => x.l).sort((a, b) => b.data.localeCompare(a.data))[0];
       mapa[r.id] = { total: ocorrencias.length, divergentes, ultimoMatch, valor: ocorrencias.reduce((s, x) => s + Math.abs(x.l.valor), 0) };
     });
     return mapa;
-  }, [regras, lancsPeriodo]);
+  }, [regras, baseRecorrencias, inicio, fim]);
 
   const { sorted, sortField, sortDir, handleSort } = useTableSort(regras, 'nome', 'asc');
 
@@ -145,7 +146,7 @@ export default function Recorrentes() {
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Despesas Recorrentes" subtitle="Regras que o motor de conciliação usa para vincular automaticamente débitos repetitivos">
         <Button variant="outline" onClick={() => setSugestoesOpen(true)} className="gap-2">
-          <Sparkles className="w-4 h-4" /> Aprender do Extrato ({sugestoes.length})
+          <Sparkles className="w-4 h-4" /> Aprender do Extrato e Cartão ({sugestoes.length})
         </Button>
         <Button variant="outline" onClick={() => setExtratoOpen(true)}>Criar pelo extrato</Button>
         <Button variant="outline" onClick={() => setConciliarOpen(true)}>Conciliar regras cadastradas</Button>
@@ -320,10 +321,10 @@ export default function Recorrentes() {
       <Dialog open={sugestoesOpen} onOpenChange={setSugestoesOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5" /> Padrões aprendidos do extrato</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5" /> Padrões aprendidos do extrato e cartão</DialogTitle>
           </DialogHeader>
           <p className="text-xs text-muted-foreground mb-3">
-            Débitos com descrição similar e valor consistente em ≥2 meses. Clique em "Criar regra" para transformar em regra recorrente.
+            Débitos do extrato e compras do cartão com descrição similar e valor consistente em ≥2 meses. Estornos e pagamentos de fatura são ignorados.
           </p>
           {sugestoes.length === 0 ? (
             <p className="text-sm text-center text-muted-foreground py-8">Nenhum padrão novo detectado. Todas as recorrências já têm regra.</p>

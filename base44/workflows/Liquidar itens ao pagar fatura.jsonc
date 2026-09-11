@@ -1,11 +1,12 @@
 {
   "name": "Liquidar itens ao pagar fatura",
-  "description": "Quando uma fatura de cart\u00e3o vira paga_total, liquida em cascata as despesas, compras e obras vinculadas aos itens dessa fatura.",
+  "description": "Quando uma fatura de cart\u00e3o nasce ou muda para paga_total, liquida em cascata as despesas, compras e obras vinculadas.",
   "trigger": {
-    "condition": "${ ((.trigger.changed_fields | index(\"status\") != null) and (.trigger.data.status == \"paga_total\")) }",
+    "condition": "${ .trigger.data.status == \"paga_total\" and (.trigger.event_type == \"create\" or .trigger.old_data.status != \"paga_total\") }",
     "config": {
       "trigger_type": "entity",
       "events": [
+        "create",
         "update"
       ],
       "entity_name": "FaturaCartao"
@@ -15,18 +16,24 @@
     "document": {
       "dsl": "1.0.0",
       "name": "liquidar_itens_ao_pagar_fatura",
-      "version": "1.0",
+      "version": "2.0",
       "namespace": "base44"
     },
     "do": [
       {
-        "run_function": {
+        "liquidar_fatura": {
           "call": "invoke_backend_function",
           "with": {
             "function_name": "liquidarItensFaturaPaga",
-            "args": {}
+            "args": {
+              "fatura_id": "${ .trigger.entity_id }"
+            }
           },
-          "then": "end"
+          "then": "end",
+          "x-base44": {
+            "title": "Liquidar itens da fatura",
+            "description": "Baixa compras vinculadas"
+          }
         }
       }
     ]

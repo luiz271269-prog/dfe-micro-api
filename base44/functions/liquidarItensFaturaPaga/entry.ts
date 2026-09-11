@@ -1,102 +1,37 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 
-// Propagação de liquidação: quando uma FaturaCartao é paga (vinculada ao extrato),
-// todos os débitos ligados aos itens dessa fatura são liquidados em cascata:
-//   Extrato → Fatura (paga) → LancamentoCartao (fatura_id) → DespesaOperacional / ItemCompra / ObraReforma
-// Idempotente: só atualiza o que ainda está pendente. Pode rodar por automação
-// (fatura muda para paga_total) ou manualmente para o histórico (sem payload).
-
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
-    const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
-    const isAutomacao = !!body?.event;
-    if (!internoOk) {
-      const user = await base44.auth.me().catch(() => null);
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-      if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const svc = base44.asServiceRole.entities;
-
-    // Escopo: uma fatura específica (automação) ou todas as pagas (varredura)
-    let faturasPagas;
-    if (isAutomacao) {
-      const fat = body.data || await svc.FaturaCartao.get(body.event.entity_id);
-      if (!fat || fat.status !== 'paga_total') {
-        return Response.json({ success: true, ignorado: 'fatura não está paga_total' });
-      }
-      faturasPagas = [fat];
-    } else {
-      const todas = await svc.FaturaCartao.list('-data_vencimento', 500);
-      faturasPagas = todas.filter(f => f.status === 'paga_total');
-    }
-
-    const idsFaturas = new Set(faturasPagas.map(f => f.id));
-    const dataPagPorFatura = new Map(faturasPagas.map(f => [f.id, f.data_pagamento]));
-
-    const [lancCartao, despesas, compras, obras] = await Promise.all([
-      svc.LancamentoCartao.list('-data_lancamento', 5000),
-      svc.DespesaOperacional.list('-data', 3000),
-      svc.ItemCompra.list('-data_emissao', 3000),
-      svc.ObraReforma.list('-data', 2000),
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const { fatura_id, dry_run = false } = await req.json().catch(() => ({}));
+    const db = base44.entities;
+    const alvo = fatura_id ? await db.FaturaCartao.get(fatura_id).catch(() => null) : null;
+    if (fatura_id && !alvo) return Response.json({ error: 'Fatura não encontrada' }, { status: 404 });
+    const pagas = alvo ? (alvo.status === 'paga_total' ? [alvo] : []) : await db.FaturaCartao.filter({ status: 'paga_total' }, '-data_vencimento', 500);
+    if (!pagas.length) return Response.json({ success: true, dry_run, faturas_processadas: 0, filhos_atualizados: 0 });
+    const idsFaturas = new Set(pagas.map(f => f.id));
+    const [todosItens, despesas, compras, obras] = await Promise.all([
+      db.LancamentoCartao.list('id', 5000),
+      db.DespesaOperacional.list('id', 5000),
+      db.ItemCompra.list('id', 5000),
+      db.ObraReforma.list('id', 5000),
     ]);
-
-    const itensLiquidados = lancCartao.filter(l => idsFaturas.has(l.fatura_id));
-    const itemPorId = new Map(itensLiquidados.map(l => [l.id, l]));
-
-    let despesasBaixadas = 0, comprasBaixadas = 0, obrasConfirmadas = 0;
-    const detalhes = [];
-
-    // 1. Despesas pagas no cartão cuja fatura foi liquidada
-    for (const d of despesas) {
-      if (d.status === 'pago') continue;
-      if (!d.lancamento_cartao_id || !itemPorId.has(d.lancamento_cartao_id)) continue;
-      const item = itemPorId.get(d.lancamento_cartao_id);
-      await svc.DespesaOperacional.update(d.id, {
-        status: 'pago',
-        data: dataPagPorFatura.get(item.fatura_id) || d.data,
-        observacoes: `${d.observacoes ? d.observacoes + ' · ' : ''}Liquidada via pagamento da fatura do cartão`,
-      });
-      despesasBaixadas++;
-      detalhes.push({ tipo: 'despesa', descricao: d.descricao, valor: d.valor });
+    const itens = todosItens.filter(i => idsFaturas.has(i.fatura_id));
+    const porId = new Map(itens.map(i => [i.id, i]));
+    const classificacao = item => ({ ...(item.origem_compra ? { origem_compra: item.origem_compra } : {}), ...(item.tipo_compra ? { tipo_compra: item.tipo_compra } : {}) });
+    const despesasUpdate = despesas.filter(d => d.status !== 'pago' && porId.has(d.lancamento_cartao_id)).map(d => { const item = porId.get(d.lancamento_cartao_id); return { id: d.id, status: 'pago', ...classificacao(item), observacoes: `${d.observacoes ? d.observacoes + ' · ' : ''}Liquidada via pagamento da fatura do cartão` }; });
+    const comprasUpdate = compras.filter(c => c.status_pagamento !== 'pago').map(c => { const item = porId.get(c.lancamento_cartao_id) || itens.find(i => i.item_compra_id === c.id); return item ? { id: c.id, status_pagamento: 'pago', valor_pago: c.valor_total || 0, ...classificacao(item) } : null; }).filter(Boolean);
+    const obrasUpdate = obras.map(o => { const item = porId.get(o.lancamento_cartao_id); return item ? { id: o.id, ...classificacao(item) } : null; }).filter(o => o && Object.keys(o).length > 1);
+    if (!dry_run) {
+      if (despesasUpdate.length) await db.DespesaOperacional.bulkUpdate(despesasUpdate);
+      if (comprasUpdate.length) await db.ItemCompra.bulkUpdate(comprasUpdate);
+      if (obrasUpdate.length) await db.ObraReforma.bulkUpdate(obrasUpdate);
     }
-
-    // 2. Compras cujo item de cartão pertence a fatura liquidada
-    for (const item of itensLiquidados) {
-      if (!item.item_compra_id) continue;
-      const compra = compras.find(c => c.id === item.item_compra_id);
-      if (!compra || compra.status_pagamento === 'pago') continue;
-      await svc.ItemCompra.update(compra.id, {
-        status_pagamento: 'pago',
-        valor_pago: compra.valor_total || 0,
-      });
-      comprasBaixadas++;
-      detalhes.push({ tipo: 'compra', descricao: compra.descricao_produto || compra.numero_nota, valor: compra.valor_total });
-    }
-
-    // 3. Obras pagas no cartão — garante rastreio da data de liquidação via fatura
-    for (const o of obras) {
-      if (!o.lancamento_cartao_id || !itemPorId.has(o.lancamento_cartao_id)) continue;
-      if (o.lancamento_bancario_id) continue; // já rastreada até o extrato
-      const item = itemPorId.get(o.lancamento_cartao_id);
-      const fatura = faturasPagas.find(f => f.id === item.fatura_id);
-      if (!fatura?.lancamento_bancario_id) continue; // fatura paga em multi-débito: rastreio fica no VinculoExtrato da fatura
-      await svc.ObraReforma.update(o.id, { lancamento_bancario_id: fatura.lancamento_bancario_id });
-      obrasConfirmadas++;
-    }
-
-    return Response.json({
-      success: true,
-      faturas_processadas: faturasPagas.length,
-      itens_cartao_cobertos: itensLiquidados.length,
-      despesas_baixadas: despesasBaixadas,
-      compras_baixadas: comprasBaixadas,
-      obras_rastreadas: obrasConfirmadas,
-      detalhes: detalhes.slice(0, 50),
-    });
+    return Response.json({ success: true, dry_run, faturas_processadas: pagas.length, itens_cartao: itens.length, despesas_baixadas: despesasUpdate.length, compras_baixadas: comprasUpdate.length, obras_classificadas: obrasUpdate.length, filhos_atualizados: despesasUpdate.length + comprasUpdate.length + obrasUpdate.length });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

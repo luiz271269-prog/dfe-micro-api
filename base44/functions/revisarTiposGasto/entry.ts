@@ -35,7 +35,12 @@ export default async function(req) {
     if (links.length > 500) return Response.json({ error: 'Este registro tem mais de 500 vínculos e precisa ser revisado separadamente.' }, { status: 409 });
     if (links.length) await svc.VinculoExtrato.bulkUpdate(links.map(v => ({ id: v.id, tipo_compra: tipo })));
     await svc[entidade].update(id, { tipo_compra: tipo });
-    return Response.json({ success: true, tipo_compra: tipo, vinculos_atualizados: links.length });
+    let filhosAtualizados = 0;
+    if (entidade === 'LancamentoCartao') {
+      const propagacao = await base44.functions.invoke('propagarClassificacaoVinculos', { lancamento_cartao_id: id });
+      filhosAtualizados = propagacao.data?.filhos_atualizados || 0;
+    }
+    return Response.json({ success: true, tipo_compra: tipo, vinculos_atualizados: links.length, filhos_atualizados: filhosAtualizados });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

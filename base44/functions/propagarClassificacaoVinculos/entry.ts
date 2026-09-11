@@ -1,70 +1,40 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 
-// Saneamento: preenche origem_compra / tipo_compra nos VinculoExtrato existentes,
-// herdando a classificação unificada da entidade de origem.
-// Quando a origem também não tem classificação, infere um tipo_compra padrão pelo tipo de entidade.
-
-const PADRAO_POR_TIPO: Record<string, string> = {
-  Tributo: 'impostos',
-  FolhaPagamento: 'folha',
-  DespesaOperacional: 'despesas',
-  ObraReforma: 'obras',
-  ItemCompra: 'estoque',
-  FaturaCartao: 'financeiro',
-};
-
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
-    const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
-    if (!internoOk) {
-      const user = await base44.auth.me().catch(() => null);
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const { lancamento_cartao_id } = await req.json().catch(() => ({}));
+    if (!lancamento_cartao_id) return Response.json({ error: 'Informe o lançamento do cartão' }, { status: 400 });
+    const db = base44.entities;
+    const item = await db.LancamentoCartao.get(lancamento_cartao_id).catch(() => null);
+    if (!item) return Response.json({ error: 'Lançamento não encontrado' }, { status: 404 });
+    const classificacao = { ...(item.origem_compra ? { origem_compra: item.origem_compra } : {}), ...(item.tipo_compra ? { tipo_compra: item.tipo_compra } : {}) };
+    const [despesas, comprasDiretas, obras] = await Promise.all([
+      db.DespesaOperacional.filter({ lancamento_cartao_id }),
+      db.ItemCompra.filter({ lancamento_cartao_id }),
+      db.ObraReforma.filter({ lancamento_cartao_id }),
+    ]);
+    const compras = [...comprasDiretas];
+    if (item.item_compra_id && !compras.some(c => c.id === item.item_compra_id)) {
+      const compra = await db.ItemCompra.get(item.item_compra_id).catch(() => null);
+      if (compra) compras.push(compra);
     }
-    const svc = base44.asServiceRole.entities;
-    const dryRun = body?.dry_run === true;
-
-    const vinculos = await svc.VinculoExtrato.list('-created_date', 5000);
-    const pendentes = vinculos.filter((v: any) => !v.origem_compra || !v.tipo_compra);
-
-    // Carrega as origens necessárias, agrupadas por tipo
-    const tipos = [...new Set(pendentes.map((v: any) => v.entidade_tipo))];
-    const cache: Record<string, Record<string, any>> = {};
-    for (const tipo of tipos) {
-      if (!svc[tipo]) continue;
-      const registros = await svc[tipo].list('-created_date', 5000).catch(() => []);
-      cache[tipo] = Object.fromEntries(registros.map((r: any) => [r.id, r]));
+    if (!Object.keys(classificacao).length) return Response.json({ success: true, filhos_atualizados: 0 });
+    const grupos = [['DespesaOperacional', despesas], ['ItemCompra', compras], ['ObraReforma', obras]];
+    const afetados = [];
+    for (const [nome, registros] of grupos) {
+      if (registros.length) await db[nome].bulkUpdate(registros.map(r => ({ id: r.id, ...classificacao })));
+      registros.forEach(r => afetados.push({ tipo: nome, id: r.id }));
     }
-
-    const updates: any[] = [];
-    const semOrigem: string[] = [];
-    for (const v of pendentes) {
-      const origem = cache[v.entidade_tipo]?.[v.entidade_id];
-      if (!origem) { semOrigem.push(`${v.entidade_tipo}:${v.entidade_id}`); continue; }
-      const origem_compra = v.origem_compra || origem.origem_compra || 'empresa';
-      const tipo_compra = v.tipo_compra || origem.tipo_compra || PADRAO_POR_TIPO[v.entidade_tipo] || 'outro';
-      if (origem_compra === v.origem_compra && tipo_compra === v.tipo_compra) continue;
-      updates.push({ id: v.id, origem_compra, tipo_compra });
+    for (const alvo of afetados) {
+      const vinculos = await db.VinculoExtrato.filter({ entidade_tipo: alvo.tipo, entidade_id: alvo.id });
+      if (vinculos.length) await db.VinculoExtrato.bulkUpdate(vinculos.map(v => ({ id: v.id, ...classificacao })));
     }
-
-    if (!dryRun) {
-      for (let i = 0; i < updates.length; i += 100) {
-        await svc.VinculoExtrato.bulkUpdate(updates.slice(i, i + 100));
-      }
-    }
-
-    return Response.json({
-      success: true,
-      dry_run: dryRun,
-      total_vinculos: vinculos.length,
-      pendentes: pendentes.length,
-      atualizados: updates.length,
-      orfaos_sem_origem: semOrigem.length,
-      exemplos_orfaos: semOrigem.slice(0, 20),
-    });
+    return Response.json({ success: true, filhos_atualizados: afetados.length });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

@@ -23,6 +23,7 @@ import { formatCurrency, formatDate } from '../lib/formatters';
 import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { getOpcoes, getCor, loadCustom } from '../lib/classificacaoUnificada';
+import ComprasPortalCotacao from '../components/cartoes/ComprasPortalCotacao';
 
 const SEED_CARDS = [
 { nome: 'Acentra — Luiz Carlos', bandeira: 'Acentra', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
@@ -302,6 +303,8 @@ export default function Cartoes() {
           })}
         </div>
       </div>
+
+      <ComprasPortalCotacao />
 
       {/* Conciliação */}
       {filteredFaturas.length > 0 &&
