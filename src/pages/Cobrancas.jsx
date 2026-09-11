@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
+import IntegradosModuloPanel from '@/components/integracoes/IntegradosModuloPanel';
 import StatusBadge from '../components/shared/StatusBadge';
 import SortableTh from '../components/shared/SortableTh';
 import DedupTitulosButton from '../components/cobrancas/DedupTitulosButton';
@@ -197,6 +198,8 @@ export default function Cobrancas() {
         <DedupTitulosButton onComplete={loadData} />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Título</Button>
       </PageHeader>
+
+      <IntegradosModuloPanel modulo="cobrancas" titulo="Recebimentos de locações e assistência" />
 
       {/* Alerta */}
       {alertas.length > 0 &&

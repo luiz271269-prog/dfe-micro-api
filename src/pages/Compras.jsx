@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
+import IntegradosModuloPanel from '@/components/integracoes/IntegradosModuloPanel';
 import StatusBadge from '../components/shared/StatusBadge';
 import SortableTh from '../components/shared/SortableTh';
 import useTableSort from '@/hooks/useTableSort';
@@ -213,6 +214,8 @@ export default function Compras() {
           <Button onClick={() => setShowFormD(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Despesa</Button>
         )}
       </PageHeader>
+
+      <IntegradosModuloPanel modulo="comprasDespesas" titulo="Despesas de locações e condomínio" />
 
       {/* Tabs */}
       <div className="flex border-b mb-6 gap-1">

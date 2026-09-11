@@ -44,6 +44,13 @@ export function primeiroCampo(registro, nomes) {
   return nomes.find(nome => registro[nome] !== undefined && registro[nome] !== null) || '';
 }
 
+export function registroIntegradoMudou(local, normalizado) {
+  return local.payload_json !== normalizado.payload_json
+    || local.external_updated_date !== normalizado.external_updated_date
+    || Number(local.valor || 0) !== Number(normalizado.valor || 0)
+    || String(local.status || '') !== String(normalizado.status || '');
+}
+
 export function normalizarRegistro(app, entidade, tipo, registro) {
   const campoValor = primeiroCampo(registro, ['valor_aluguel','valor_total','total_amount','amount','value','valor','total']);
   const campoStatus = primeiroCampo(registro, ['status','payment_status','invoice_status','situacao']);

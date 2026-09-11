@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import PageHeader from '../components/shared/PageHeader';
+import IntegradosModuloPanel from '@/components/integracoes/IntegradosModuloPanel';
 import StatusBadge from '../components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import ConciliacaoRelatorio from '../components/faturamento/ConciliacaoRelatorio';
@@ -208,6 +209,8 @@ export default function Faturamento() {
         </Button>
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova NF</Button>
       </PageHeader>
+
+      <IntegradosModuloPanel modulo="faturamento" titulo="Receitas de locações e assistência" />
 
       {toast && (
         <div className={`mb-4 px-4 py-2.5 rounded-lg text-sm font-medium ${toast.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>

@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { getAppsFinanceiros, listarRegistrosExternos, atualizarRegistroExterno, normalizarRegistro } from '../../shared/appsFinanceiros.ts';
+import { getAppsFinanceiros, listarRegistrosExternos, atualizarRegistroExterno, normalizarRegistro, registroIntegradoMudou } from '../../shared/appsFinanceiros.ts';
 
 export default async function(req) {
   try {
@@ -11,6 +11,7 @@ export default async function(req) {
     const locais = await db.IntegracaoFinanceira.list('-updated_date', 5000);
     const configs = getAppsFinanceiros();
     let enviados = 0;
+    let ignorados = 0;
     const erros = [];
     for (const local of locais.filter(item => item.pendente_envio)) {
       try {
@@ -19,15 +20,16 @@ export default async function(req) {
         if (local.campo_valor) alteracoes[local.campo_valor] = local.valor;
         if (local.campo_status) alteracoes[local.campo_status] = local.status;
         if (Object.keys(alteracoes).length) await atualizarRegistroExterno(config, local.entidade_externa, local.registro_externo_id, alteracoes);
-        await db.IntegracaoFinanceira.update(local.id, { pendente_envio: false, erro_sync: '', ultima_sincronizacao: new Date().toISOString() });
+        const ultimaSincronizacao = new Date().toISOString();
+        await db.IntegracaoFinanceira.update(local.id, { pendente_envio: false, erro_sync: '', ultima_sincronizacao: ultimaSincronizacao });
+        Object.assign(local, { pendente_envio: false, erro_sync: '', ultima_sincronizacao: ultimaSincronizacao });
         enviados += 1;
       } catch (error) {
         await db.IntegracaoFinanceira.update(local.id, { erro_sync: error.message });
         erros.push(`${local.app_origem}/${local.entidade_externa}: ${error.message}`);
       }
     }
-    const atuais = await db.IntegracaoFinanceira.list('-updated_date', 5000);
-    const porChave = new Map(atuais.map(item => [`${item.app_origem}:${item.entidade_externa}:${item.registro_externo_id}`, item]));
+    const porChave = new Map(locais.map(item => [`${item.app_origem}:${item.entidade_externa}:${item.registro_externo_id}`, item]));
     const criar = [];
     const atualizar = [];
     const fontes = [];
@@ -42,8 +44,9 @@ export default async function(req) {
             const local = porChave.get(chave);
             if (local?.pendente_envio) continue;
             const normalizado = normalizarRegistro(app, spec.nome, spec.tipo, registro);
-            if (local) atualizar.push({ id: local.id, ...normalizado });
-            else criar.push(normalizado);
+            if (!local) criar.push(normalizado);
+            else if (registroIntegradoMudou(local, normalizado)) atualizar.push({ id: local.id, ...normalizado });
+            else ignorados += 1;
           }
         } catch (error) {
           erros.push(`${app}/${spec.nome}: ${error.message}`);
@@ -52,7 +55,7 @@ export default async function(req) {
     }
     if (criar.length) await db.IntegracaoFinanceira.bulkCreate(criar);
     if (atualizar.length) await db.IntegracaoFinanceira.bulkUpdate(atualizar);
-    return Response.json({ ok: erros.length === 0, recebidos: criar.length, atualizados: atualizar.length, enviados, fontes, erros });
+    return Response.json({ ok: erros.length === 0, recebidos: criar.length, atualizados: atualizar.length, ignorados, enviados, fontes, erros });
   } catch (error) {
     return Response.json({ ok: false, error: error.message }, { status: 500 });
   }

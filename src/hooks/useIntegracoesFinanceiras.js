@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { sincronizarAppsFinanceiros } from '@/functions/sincronizarAppsFinanceiros';
 
 export default function useIntegracoesFinanceiras() {
   const [registros, setRegistros] = useState([]);
@@ -14,8 +15,8 @@ export default function useIntegracoesFinanceiras() {
   useEffect(() => { carregar(); }, [carregar]);
   const sincronizar = async () => {
     setSincronizando(true); setMensagem('');
-    const { data } = await base44.functions.invoke('sincronizarAppsFinanceiros', {});
-    setMensagem(data.ok ? `Sincronização concluída: ${data.recebidos} novos, ${data.atualizados} atualizados e ${data.enviados} enviados.` : `Sincronização parcial: ${data.erros?.join(' · ') || data.error}`);
+    const { data } = await sincronizarAppsFinanceiros({});
+    setMensagem(data.ok ? `Loop-R concluído: ${data.recebidos} novos, ${data.atualizados} alterados, ${data.ignorados || 0} sem mudança e ${data.enviados} enviados.` : `Sincronização parcial: ${data.erros?.join(' · ') || data.error}`);
     await carregar(); setSincronizando(false);
   };
   const alterar = async (item, mudanca) => {
