@@ -26,6 +26,10 @@ export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentos
     },
     contasNaoVerificaveis: posicao.porConta.filter((c) => !c.verificavel).map((c) => c.conta),
     lacunasExtrato: posicao.porConta.flatMap((c) => (c.lacunasExtrato || []).map((g) => ({ conta: c.conta, ...g }))),
+    foraDaCadeia: {
+      registros: posicao.porConta.reduce((s, c) => s + (c.foraDaCadeia?.registros || 0), 0),
+      valor: arred(posicao.porConta.reduce((s, c) => s + (c.foraDaCadeia?.valor || 0), 0)),
+    },
   };
 
   let status;
@@ -37,6 +41,7 @@ export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentos
   const motivos = [];
   if (!posicao.verificavel) motivos.push(`Saldo inicial ou final não verificável: ${indicadores.contasNaoVerificaveis.join(', ') || 'nenhuma conta com saldo'}.`);
   if (indicadores.semSaldoExtrato.registros) motivos.push(`${indicadores.semSaldoExtrato.registros} lançamentos sem saldo de extrato (R$ ${indicadores.semSaldoExtrato.valor}) — possível duplicidade com o extrato importado.`);
+  if (indicadores.foraDaCadeia.registros) motivos.push(`${indicadores.foraDaCadeia.registros} lançamentos do extrato fora da cadeia de saldos (R$ ${indicadores.foraDaCadeia.valor}) — débitos agendados importados em duplicidade.`);
   for (const g of indicadores.lacunasExtrato) motivos.push(`Extrato ${g.conta} incompleto entre ${g.de} e ${g.ate}: falta importar R$ ${g.valor}.`);
   if (carregadas < fontes.length) motivos.push(`Fontes incompletas: ${indicadores.fontesIncompletas.join(', ')}`);
   if (abs(posicao.diferencaBancaria) > tolerancia) motivos.push(`Saldo inicial + resultado de caixa difere do banco em R$ ${posicao.diferencaBancaria}.`);

@@ -31,6 +31,24 @@ function lacunasExtrato(ord, inicio, fim) {
     .filter((x) => x && Math.abs(x.valor) >= 0.01);
 }
 
+// Ramos mortos: numa bifurcação (dois lançamentos partem do mesmo saldo), o ramo curto que termina numa ponta
+// é projeção do banco (débito agendado importado antes de acontecer) — depois o débito real entra de novo.
+function foraDaCadeia(ord, inicio, fim) {
+  const porAntes = new Map();
+  for (const l of ord) porAntes.set(saldoAntes(l), [...(porAntes.get(saldoAntes(l)) || []), l]);
+  const seguir = (l) => { const r = [l]; let cur = l; const vistos = new Set([l.id]); for (;;) { const n = (porAntes.get(arred(cur.saldo_apos)) || []).find((x) => !vistos.has(x.id)); if (!n) return r; vistos.add(n.id); r.push(n); cur = n; } };
+  const mortos = [];
+  for (const opcoes of porAntes.values()) {
+    if (opcoes.length < 2) continue;
+    const ramos = opcoes.map(seguir).sort((a, b) => b.length - a.length);
+    // só ramos curtos cujos lançamentos foram importados antes da própria data (assinatura do agendamento)
+    for (const ramo of ramos.slice(1).filter((r) => r.length <= 5)) {
+      mortos.push(...ramo.filter((l) => l.data >= inicio && l.data <= fim && (l.created_date || '').slice(0, 10) < l.data));
+    }
+  }
+  return { registros: mortos.length, valor: arred(mortos.reduce((s, l) => s + (l.valor || 0), 0)), ids: mortos.map((l) => l.id) };
+}
+
 export function calcularPosicao(dados, mes, perimetro, hoje, resultadoCaixa) {
   const inicio = `${mes}-01`;
   const fim = mes === hoje.slice(0, 7) ? hoje : `${mes}-31`;
@@ -46,6 +64,7 @@ export function calcularPosicao(dados, mes, perimetro, hoje, resultadoCaixa) {
     const saldoInicial = ultimoSaldo(antes, ord.filter((l) => l.data >= inicio));
     const saldoFinal = ultimoSaldo(ate, ord.filter((l) => l.data > fim));
     const lacunas = lacunasExtrato(ord, inicio, fim);
+    const projecoes = foraDaCadeia(ord, inicio, fim);
     const doMes = dados.LancamentoBancario.filter((l) => l.conta_bancaria === conta && l.data >= inicio && l.data <= fim);
     const movimento = arred(doMes.reduce((s, l) => s + (l.valor || 0), 0));
     // lançamentos sem saldo_apos não vieram do extrato importado (baixa manual) — candidatos a duplicidade
@@ -57,6 +76,7 @@ export function calcularPosicao(dados, mes, perimetro, hoje, resultadoCaixa) {
       diferencaExtrato: variacao != null ? arred(variacao - movimento) : null, // extrato incompleto ou duplicado se ≠ 0
       semSaldoExtrato,
       lacunasExtrato: lacunas, // trechos do extrato que faltam importar (cadeia de saldos quebrada)
+      foraDaCadeia: projecoes, // débitos agendados importados como se realizados (ramo morto da cadeia)
       verificavel: saldoInicial != null && saldoFinal != null,
     };
   });
