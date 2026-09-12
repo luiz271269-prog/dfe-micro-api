@@ -15,7 +15,17 @@ export default async function (req) {
 
     const { dados, sourceStatus } = await carregarDados(base44);
     const resultado = calcularConsolidado({ dados, sourceStatus, mes, perimetro, hoje });
-    return Response.json(resultado);
+    // resumo: true → remove listas de IDs (usado em validação/diagnóstico; o drill-down usa a resposta completa)
+    const semIds = (o) => {
+      if (Array.isArray(o)) return o.map(semIds);
+      if (!o || typeof o !== 'object') return o;
+      const c = {};
+      for (const k of Object.keys(o)) if (k !== 'ids') c[k] = semIds(o[k]);
+      return c;
+    };
+    let saida = body.resumo ? semIds(resultado) : resultado;
+    if (Array.isArray(body.secoes)) saida = Object.fromEntries(body.secoes.filter((s) => s in saida).map((s) => [s, saida[s]]));
+    return Response.json(saida);
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
