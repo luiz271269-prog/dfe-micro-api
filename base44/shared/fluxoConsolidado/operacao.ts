@@ -19,7 +19,13 @@ export function calcularOperacao(dados, mes, perimetro) {
 
   const vendasNF = linha(nfs, (n) => n.valor_total, { entidade: 'NotaFiscal', regime: 'competencia', rotulo: 'Vendas (NF)' });
   const externosLinha = linha(externosValidos, (i) => i.valor, { entidade: 'IntegracaoFinanceira', regime: 'competencia', rotulo: 'Locações / OS / Assistência', deduplicados: duplicados });
-  const faturamento = { valor: arred(vendasNF.valor + externosLinha.valor), componentes: { vendasNF, externos: externosLinha } };
+  const porTipo = (tipos, rotulo) => linha(externosValidos.filter((i) => tipos.includes(i.tipo_registro)), (i) => i.valor, { entidade: 'IntegracaoFinanceira', regime: 'competencia', rotulo });
+  const fontes = {
+    produtos: { ...vendasNF, rotulo: 'Produtos (NF)' },
+    servicos: porTipo(['ordem_servico', 'contrato_assistencia'], 'Serviços / Assistência'),
+    locacoes: porTipo(['contrato_locacao'], 'Locações'),
+  };
+  const faturamento = { valor: arred(vendasNF.valor + externosLinha.valor), componentes: { vendasNF, externos: externosLinha }, fontes };
 
   const cmvEstimado = linha(
     dados.ItemCompra.filter((c) => noMes(c.data_emissao, mes) && c.tipo_compra === 'estoque'),
@@ -39,6 +45,10 @@ export function calcularOperacao(dados, mes, perimetro) {
   const despesas = {
     ...linha([...despesasOp, ...obrasManutencao], (d) => d.valor, { regime: 'competencia', rotulo: 'Despesas operacionais' }),
     entidade: 'DespesaOperacional+ObraReforma(manutencao)',
+    componentes: {
+      despesasOp: linha(despesasOp, (d) => d.valor, { entidade: 'DespesaOperacional', regime: 'competencia', rotulo: 'Outras despesas operacionais' }),
+      obrasManutencao: linha(obrasManutencao, (o) => o.valor, { entidade: 'ObraReforma', regime: 'competencia', rotulo: 'Manutenção (obras)' }),
+    },
   };
 
   const custosFixos = arred(despesasOp.filter((d) => d.recorrente).reduce((s, d) => s + (d.valor || 0), 0) + folha.valor);

@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { carregarDados } from '../../shared/fluxoConsolidado/carregar.ts';
-import { calcularConsolidado } from '../../shared/fluxoConsolidado/motor.ts';
+import { calcularConsolidado, calcularHistorico } from '../../shared/fluxoConsolidado/motor.ts';
 
 export default async function (req) {
   try {
@@ -15,6 +15,8 @@ export default async function (req) {
 
     const { dados, sourceStatus } = await carregarDados(base44);
     const resultado = calcularConsolidado({ dados, sourceStatus, mes, perimetro, hoje });
+    const meses = Math.min(12, Math.max(0, Number(body.historico) || 0));
+    if (meses) resultado.historico = calcularHistorico({ dados, mes, perimetro, hoje, meses });
     // resumo: true → remove listas de IDs (usado em validação/diagnóstico; o drill-down usa a resposta completa)
     const semIds = (o) => {
       if (Array.isArray(o)) return o.map(semIds);

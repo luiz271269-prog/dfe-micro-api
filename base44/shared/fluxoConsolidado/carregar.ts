@@ -4,7 +4,7 @@ const MAX_PAGINAS = 20;
 
 export const FONTES = [
   'LancamentoBancario', 'VinculoExtrato', 'TransferenciaInterna', 'NotaFiscal', 'IntegracaoFinanceira',
-  'ItemCompra', 'Tributo', 'FolhaPagamento', 'DespesaOperacional', 'ObraReforma', 'TituloCobranca',
+  'ItemCompra', 'Tributo', 'FolhaPagamento', 'DespesaOperacional', 'ObraReforma', 'TituloCobranca', 'FaturaCartao',
 ];
 
 async function carregarFonte(base44, nome) {
