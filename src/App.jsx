@@ -43,7 +43,6 @@ import AnaliseClassificacao from './pages/AnaliseClassificacao';
 import RelatorioGerencial from './pages/RelatorioGerencial';
 import DREOperacional from './pages/DREOperacional';
 import IntegracoesFinanceiras from './pages/IntegracoesFinanceiras';
-import OAuthConsent from './pages/OAuthConsent';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -124,10 +123,7 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
-          <Routes>
-            <Route path="/oauth/consent" element={<OAuthConsent />} />
-            <Route path="*" element={<AuthenticatedApp />} />
-          </Routes>
+          <AuthenticatedApp />
         </Router>
         <Toaster />
       </QueryClientProvider>

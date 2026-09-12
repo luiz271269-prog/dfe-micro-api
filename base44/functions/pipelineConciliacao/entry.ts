@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
-import { secrets } from 'base44:runtime';
 import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
 
 // PIPELINE DINÂMICO DE CONCILIAÇÃO
@@ -20,13 +19,13 @@ const ENGINES = [
 
 const CONFIANCA_AUTO = 90;
 
-export default async function(req) {
+Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole.entities;
 
-    const appId = secrets.get('BASE44_APP_ID');
-    const token = secrets.get('NEXUS_HUB_TOKEN');
+    const appId = Deno.env.get('BASE44_APP_ID');
+    const token = Deno.env.get('NEXUS_HUB_TOKEN');
 
     // Segurança: só admin autenticado (inclui automação agendada) ou chamada interna com token
     const payload = await req.clone().json().catch(() => ({}));
@@ -43,16 +42,6 @@ export default async function(req) {
     const resultadosEngines = {};
     for (const nome of ENGINES) {
       try {
-        if (nome === 'conciliarFaturasCartao') {
-          const { data: d } = await base44.asServiceRole.functions.invoke(nome, { internal_token: token });
-          resultadosEngines[nome] = {
-            ok: d.sucesso === true,
-            baixas: d.conciliados ?? 0,
-            sugestoes: d.sugestoes_criadas ?? 0,
-            ...(d.sucesso === true ? {} : { erro: d.error || 'Conciliação não concluída' }),
-          };
-          continue;
-        }
         const resp = await fetch(`https://base44.app/api/apps/${appId}/functions/${nome}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -140,4 +129,4 @@ export default async function(req) {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-}
+});

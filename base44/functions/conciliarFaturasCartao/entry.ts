@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { secrets } from 'base44:runtime';
 
 const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 const perto = (a, b, dias = 14) => a && b && Math.abs(Date.parse(a) - Date.parse(b)) <= dias * 86400000;
@@ -12,17 +11,13 @@ function nomeBate(descricao, cartao) {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
-    const internoOk = !!body?.internal_token && body.internal_token === secrets.get('NEXUS_HUB_TOKEN');
-    if (!internoOk) {
-      const user = await base44.auth.me().catch(() => null);
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-      if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    const { dry_run = false } = body || {};
-    const svc = base44.asServiceRole.entities;
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const { dry_run = false } = await req.json().catch(() => ({}));
+    const db = base44.entities;
     const [cartoes, faturas, bancos, itensCartao, vinculos] = await Promise.all([
-      svc.ContaCartao.list('id', 500), svc.FaturaCartao.list('id', 1000), svc.LancamentoBancario.list('-data', 5000), svc.LancamentoCartao.list('id', 5000), svc.VinculoExtrato.list('id', 5000),
+      db.ContaCartao.list('id', 500), db.FaturaCartao.list('id', 1000), db.LancamentoBancario.list('-data', 5000), db.LancamentoCartao.list('id', 5000), db.VinculoExtrato.list('id', 5000),
     ]);
     const cartaoPorId = new Map(cartoes.map(c => [c.id, c]));
     const itensPorFatura = new Map();
@@ -90,9 +85,9 @@ export default async function(req) {
       detalhes.push({ fatura_id: fat.id, cartao: cartao.nome, mes: fat.mes_referencia, valor_fatura: valorFatura, pago_anterior: pagoAnterior, valor_pago: novoPago, saldo_restante: Math.max(0, valorFatura - novoPago), status: quitada ? 'paga_total' : 'parcial' });
     }
     if (!dry_run) {
-      if (novosVinculos.length) await svc.VinculoExtrato.bulkCreate(novosVinculos);
-      if (updatesFatura.length) await svc.FaturaCartao.bulkUpdate(updatesFatura);
-      if (updatesBanco.size) await svc.LancamentoBancario.bulkUpdate([...updatesBanco.values()]);
+      if (novosVinculos.length) await db.VinculoExtrato.bulkCreate(novosVinculos);
+      if (updatesFatura.length) await db.FaturaCartao.bulkUpdate(updatesFatura);
+      if (updatesBanco.size) await db.LancamentoBancario.bulkUpdate([...updatesBanco.values()]);
     }
     return Response.json({ sucesso: true, dry_run, faturas_avaliadas: abertas.length, conciliados: updatesFatura.length, atualizadas_pagas: updatesFatura.filter(f => f.status === 'paga_total').length, vinculos_criados: novosVinculos.length, detalhes });
   } catch (error) {
