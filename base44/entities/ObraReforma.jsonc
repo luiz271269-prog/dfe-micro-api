@@ -101,6 +101,14 @@
     "lancamento_bancario_id": {
       "type": "string",
       "title": "ID do LancamentoBancario que confirmou o pagamento (PIX / transfer\u00eancia)"
+    },
+    "natureza": {
+      "type": "string",
+      "enum": [
+        "investimento",
+        "manutencao"
+      ],
+      "title": "Natureza (Gate 1 decis\u00e3o 12): investimento fica fora do resultado da opera\u00e7\u00e3o; manuten\u00e7\u00e3o \u00e9 despesa operacional"
     }
   },
   "required": [
