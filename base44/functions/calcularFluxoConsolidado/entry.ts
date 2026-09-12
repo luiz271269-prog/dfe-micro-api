@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { carregarDados } from '../../shared/fluxoConsolidado/carregar.ts';
 import { calcularConsolidado, calcularHistorico } from '../../shared/fluxoConsolidado/motor.ts';
 
+// Motor consolidado (Gate 2) — ponto de entrada do Painel Financeiro.
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
