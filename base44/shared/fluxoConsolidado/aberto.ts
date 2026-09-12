@@ -37,6 +37,8 @@ export function calcularAberto(dados, mes, perimetro, hoje) {
       .map((d) => ({ id: d.id, entidade: 'DespesaOperacional', data_vencimento: d.data_vencimento || d.data, valor: d.valor })),
     ...dados.FolhaPagamento.filter((f) => f.status === 'pendente' && dentroPerimetro(f.empresa, perimetro))
       .map((f) => ({ id: f.id, entidade: 'FolhaPagamento', data_vencimento: f.data_pagamento || null, valor: f.salario_liquido })),
+    ...dados.ItemCompra.filter((c) => ['pendente', 'parcial', 'nao_identificado'].includes(c.status_pagamento) && !c.lancamento_cartao_id && dentroPerimetro(c.empresa, perimetro) && (c.valor_total || 0) - (c.valor_pago || 0) > 0.01)
+      .map((c) => ({ id: c.id, entidade: 'ItemCompra', data_vencimento: c.data_vencimento || null, valor: (c.valor_total || 0) - (c.valor_pago || 0) })),
     ...dados.FaturaCartao.filter((f) => f.status !== 'paga_total')
       .map((f) => ({ id: f.id, entidade: 'FaturaCartao', data_vencimento: f.data_vencimento, valor: (f.valor_total || 0) - (f.valor_pago || 0) })),
   ];

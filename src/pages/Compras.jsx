@@ -17,6 +17,10 @@ import useTableSort from '@/hooks/useTableSort';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import ConciliacaoDDAvsContas from '../components/contas-pagar/ConciliacaoDDAvsContas';
+import CompraPagamentoFields, { EMPTY_COMPRA, FORMAS_COMPRA } from '@/components/compras/CompraPagamentoFields';
+import ComprasPagamentoResumo from '@/components/compras/ComprasPagamentoResumo';
+import SincronizarComprasButton from '@/components/contas-pagar/SincronizarComprasButton';
+import { useQueryClient } from '@tanstack/react-query';
 
 // ── Compras config ────────────────────────────────────────────────────────────
 const fornecedorOptions = ['COMPRAS A VISTA', 'MERCADO LIVRE', 'PAUTA DISTRIBUIÇÃO'];
@@ -52,7 +56,11 @@ const TABS = [
 ];
 
 export default function Compras() {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('compras');
+  const [filterPagamentoC, setFilterPagamentoC] = useState('all');
+  const [savingC, setSavingC] = useState(false);
+  const [errorC, setErrorC] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
 
@@ -66,7 +74,7 @@ export default function Compras() {
   const [fornecedores, setFornecedores] = useState([]);
   const [fornInput, setFornInput] = useState('COMPRAS A VISTA');
   const [showFornSugg, setShowFornSugg] = useState(false);
-  const [formC, setFormC] = useState({ fornecedor:'COMPRAS A VISTA',numero_nota:'',data_emissao:'',descricao_produto:'',categoria_produto:'notebook',quantidade:'1',valor_unitario:'',valor_total:'',codigo_produto:'' });
+  const [formC, setFormC] = useState(EMPTY_COMPRA);
 
   // ── Despesas state ────────────────────────────────────────────────────────
   const [despesas, setDespesas] = useState([]);
@@ -117,13 +125,14 @@ export default function Compras() {
     return t;
   }, [compras]);
 
-  const comprasMes = useMemo(() => isAnnual ? compras : compras.filter(c => c.data_emissao?.startsWith(selectedMonth)), [compras, selectedMonth, isAnnual]);
+  const comprasMes = useMemo(() => compras.filter(c => c.data_emissao?.startsWith(isAnnual ? selectedMonth.slice(0, 4) : selectedMonth)), [compras, selectedMonth, isAnnual]);
   const filteredC = useMemo(() => comprasMes.filter(c => {
     if (filterFornecedor !== 'all' && c.fornecedor !== filterFornecedor) return false;
     if (filterCategoriaC !== 'all' && c.categoria_produto !== filterCategoriaC) return false;
+    if (filterPagamentoC !== 'all' && (c.forma_pagamento || 'nao_definida') !== filterPagamentoC) return false;
     if (searchC && !c.descricao_produto?.toLowerCase().includes(searchC.toLowerCase())) return false;
     return true;
-  }), [comprasMes, filterFornecedor, filterCategoriaC, searchC]);
+  }), [comprasMes, filterFornecedor, filterCategoriaC, filterPagamentoC, searchC]);
 
   const sortC = useTableSort(filteredC, 'data_emissao', 'desc');
 
@@ -176,11 +185,19 @@ export default function Compras() {
   // ── Handlers ──────────────────────────────────────────────────────────────
   async function handleSubmitC(e) {
     e.preventDefault();
-    await base44.entities.ItemCompra.create({ ...formC, fornecedor: fornInput||formC.fornecedor, quantidade: parseInt(formC.quantidade)||1, valor_unitario: formC.valor_unitario ? parseFloat(formC.valor_unitario) : null, valor_total: parseFloat(formC.valor_total) });
-    setShowFormC(false);
-    setFornInput('COMPRAS A VISTA');
-    setFormC({ fornecedor:'COMPRAS A VISTA',numero_nota:'',data_emissao:'',descricao_produto:'',categoria_produto:'notebook',quantidade:'1',valor_unitario:'',valor_total:'',codigo_produto:'' });
-    loadCompras();
+    if (savingC) return;
+    setErrorC(''); setSavingC(true);
+    try {
+      const total = Number(formC.valor_total);
+      const pago = formC.status_pagamento === 'pago' ? total : formC.status_pagamento === 'parcial' ? Number(formC.valor_pago) : 0;
+      if (!(total > 0) || !Number.isFinite(total)) throw new Error('Informe um valor total maior que zero.');
+      if (formC.status_pagamento === 'parcial' && !(pago > 0 && pago < total)) throw new Error('O pagamento parcial deve ser maior que zero e menor que o total.');
+      await base44.entities.ItemCompra.create({ ...formC, fornecedor: fornInput.trim() || formC.fornecedor, tipo_compra: 'estoque', origem_compra: 'empresa', quantidade: parseInt(formC.quantidade) || 1, valor_unitario: formC.valor_unitario ? Number(formC.valor_unitario) : null, valor_total: total, valor_pago: pago, data_vencimento: formC.data_vencimento || undefined });
+      await queryClient.invalidateQueries({ queryKey: ['fluxoConsolidado'] });
+      setShowFormC(false); setFornInput('COMPRAS A VISTA'); setFormC(EMPTY_COMPRA);
+      await loadCompras();
+    } catch (err) { setErrorC(err.message || 'Não foi possível salvar a compra.'); }
+    finally { setSavingC(false); }
   }
 
   async function handleSubmitD(e) {
@@ -207,7 +224,8 @@ export default function Compras() {
             <Link to="/produtos?tab=fornecedores">
               <Button variant="outline" className="gap-2"><Building2 className="w-4 h-4" /> Fornecedores</Button>
             </Link>
-            <Button onClick={() => setShowFormC(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Compra</Button>
+            <SincronizarComprasButton onDone={loadCompras} />
+            <Button onClick={() => { setErrorC(''); setShowFormC(true); }} className="gap-2"><Plus className="w-4 h-4" /> Nova Compra</Button>
           </>
         )}
         {activeTab === 'despesas' && (
@@ -241,17 +259,7 @@ export default function Compras() {
       {/* ── ABA COMPRAS ──────────────────────────────────────────────────── */}
       {activeTab === 'compras' && (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            {fornecedorOptions.map((f, i) => {
-              const val = totaisFornecedor[f] || 0;
-              const perc = grandTotalC > 0 ? ((val/grandTotalC)*100).toFixed(0) : 0;
-              const isActive = filterFornecedor === f;
-              return (
-                <GradientCard key={f} title={f} value={formatCurrency(val)} sub={`${perc}% do total`} icon={ShoppingCart} gradient={['orange','blue','purple'][i]||'slate'} active={isActive} onClick={() => setFilterFornecedor(isActive?'all':f)} />
-              );
-            })}
-            <GradientCard title="Total Compras" value={formatCurrency(grandTotalC)} sub={`${compras.length} itens`} icon={TrendingDown} gradient="red" />
-          </div>
+          <ComprasPagamentoResumo compras={comprasMes} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -259,7 +267,11 @@ export default function Compras() {
             </div>
             <Select value={filterFornecedor} onValueChange={setFilterFornecedor}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
-              <SelectContent><SelectItem value="all">Todos</SelectItem>{fornecedorOptions.map(f=><SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+              <SelectContent><SelectItem value="all">Todos</SelectItem>{[...new Set([...fornecedorOptions, ...compras.map(c => c.fornecedor).filter(Boolean)])].map(f=><SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={filterPagamentoC} onValueChange={setFilterPagamentoC}>
+              <SelectTrigger className="w-[190px]"><SelectValue placeholder="Pagamento" /></SelectTrigger>
+              <SelectContent><SelectItem value="all">Todos os pagamentos</SelectItem>{Object.entries(FORMAS_COMPRA).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={filterCategoriaC} onValueChange={setFilterCategoriaC}>
               <SelectTrigger className="w-[160px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
@@ -290,7 +302,7 @@ export default function Compras() {
                     <tr key={c.id} className="border-b hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(c.data_emissao)}</td>
                       <td className="px-4 py-3"><p className="font-medium">{c.descricao_produto}</p>{c.numero_nota && <p className="text-xs text-muted-foreground">NF {c.numero_nota}</p>}</td>
-                      <td className="px-4 py-3 text-xs">{c.fornecedor}</td>
+                      <td className="px-4 py-3 text-xs">{c.fornecedor}<p className="text-muted-foreground mt-1">{FORMAS_COMPRA[c.forma_pagamento] || 'Não informada'} · {c.status_pagamento === 'pago' ? 'Pago ao fornecedor' : c.status_pagamento === 'parcial' ? 'Parcial' : c.status_pagamento === 'pendente' ? 'Pendente' : 'Pagamento não identificado'}</p>{c.data_vencimento && <p className="text-muted-foreground">Vence {formatDate(c.data_vencimento)}</p>}</td>
                       <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${categoriaComprasColors[c.categoria_produto]||'bg-slate-100 text-slate-700'}`}>{c.categoria_produto}</span></td>
                       <td className="px-4 py-3 text-right tabular-nums">{c.quantidade}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{c.valor_unitario ? formatCurrency(c.valor_unitario) : '—'}</td>
@@ -398,8 +410,8 @@ export default function Compras() {
 
       {/* ── FORM COMPRAS ─────────────────────────────────────────────────── */}
       <Dialog open={showFormC} onOpenChange={setShowFormC}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Nova Compra</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Nova Compra — Revenda / Estoque</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmitC} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
@@ -428,7 +440,9 @@ export default function Compras() {
               <div><Label>Valor Unit.</Label><Input type="number" step="0.01" value={formC.valor_unitario} onChange={e=>setFormC({...formC,valor_unitario:e.target.value})} /></div>
               <div><Label>Valor Total</Label><Input type="number" step="0.01" value={formC.valor_total} onChange={e=>setFormC({...formC,valor_total:e.target.value})} required /></div>
             </div>
-            <Button type="submit" className="w-full">Salvar Compra</Button>
+            <CompraPagamentoFields value={formC} onChange={setFormC} />
+            {errorC && <p role="alert" className="text-sm text-destructive">{errorC}</p>}
+            <Button type="submit" disabled={savingC} className="w-full">{savingC ? 'Salvando...' : 'Salvar Compra'}</Button>
           </form>
         </DialogContent>
       </Dialog>

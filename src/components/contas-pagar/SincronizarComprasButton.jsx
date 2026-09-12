@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { sincronizarComprasCentral } from '@/functions/sincronizarComprasCentral';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
 /** Puxa os pedidos do app Central de Compras para o Contas a Pagar (ItemCompra). */
 export default function SincronizarComprasButton({ onDone }) {
+  const queryClient = useQueryClient();
   const [rodando, setRodando] = useState(false);
   const [resultado, setResultado] = useState(null);
 
@@ -13,12 +15,13 @@ export default function SincronizarComprasButton({ onDone }) {
     setRodando(true);
     setResultado(null);
     try {
-      const { data } = await base44.functions.sincronizarComprasCentral({});
+      const { data } = await sincronizarComprasCentral({});
       if (data?.error || data?.motivo && !data?.ok) throw new Error(data.error || data.motivo);
       setResultado(`${data.criados} nova(s) · ${data.atualizados} atualizada(s)`);
+      await queryClient.invalidateQueries({ queryKey: ['fluxoConsolidado'] });
       onDone?.();
     } catch (err) {
-      setResultado(`Erro: ${err.message}`);
+      setResultado(`Erro: ${err.response?.data?.motivo || err.message}`);
     }
     setRodando(false);
   }
