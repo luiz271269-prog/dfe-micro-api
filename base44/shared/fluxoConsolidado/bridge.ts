@@ -12,6 +12,7 @@ export function construirBridge(operacao, caixa) {
     { chave: 'retiradas', rotulo: 'Pró-labore e retiradas', valor: arred(caixa.retiradas.proLabore.valor + caixa.retiradas.pessoal.valor), competencia: 0, caixa: arred(caixa.retiradas.proLabore.valor + caixa.retiradas.pessoal.valor) },
     { chave: 'investimentos', rotulo: 'Obras / investimentos', valor: caixa.investimentos.valor, competencia: 0, caixa: caixa.investimentos.valor },
     { chave: 'financeiros', rotulo: 'Financeiros não operacionais', valor: caixa.financeiros.valor, competencia: 0, caixa: caixa.financeiros.valor },
+    { chave: 'aplicacoes', rotulo: 'Aplicações / resgates', valor: caixa.aplicacoes.valor, competencia: 0, caixa: caixa.aplicacoes.valor, observacao: 'Movimento entre conta corrente e fundo (decisão 6 pendente).' },
     { chave: 'transferencias', rotulo: 'Transferências fora do perímetro', valor: caixa.transferenciasForaPerimetro.valor, competencia: 0, caixa: caixa.transferenciasForaPerimetro.valor },
     { chave: 'nao_classificado', rotulo: 'Diferença não classificada — requer Loop-R', valor: caixa.naoClassificado.valor, competencia: 0, caixa: caixa.naoClassificado.valor, requerLoopR: true },
   ];

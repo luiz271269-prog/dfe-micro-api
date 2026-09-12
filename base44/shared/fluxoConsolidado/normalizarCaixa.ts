@@ -25,6 +25,20 @@ const CATEGORIA_PARA_CLASSE = {
   transferencia: ['transferencia', 'transferencia'],
 };
 
+// decisão 15: classificação unificada específica (tipo_compra/origem_compra) prevalece sobre a categoria genérica
+const TIPO_COMPRA_PARA_CLASSE = {
+  estoque: ['pagamento_operacional', 'compras'],
+  fretes: ['pagamento_operacional', 'compras'],
+  impostos: ['pagamento_operacional', 'tributos'],
+  folha: ['pagamento_operacional', 'folha'],
+  despesas: ['pagamento_operacional', 'despesas'],
+  pro_labore: ['retirada', 'pro_labore'],
+  obras: ['investimento', 'obras'],
+};
+
+// decisão 6 (pendente: fundos como caixa e equivalentes) — aplicação/resgate fica em linha própria e visível
+const APLICACAO_RE = /APLIC\.?\s*FINANC|RESGATE|RESG\.?\s*APLIC/i;
+
 function classeDaObra(obra) {
   // decisão 12: sem natureza → investimento
   return obra?.natureza === 'manutencao' ? ['pagamento_operacional', 'despesas'] : ['investimento', 'obras'];
@@ -58,7 +72,10 @@ export function normalizarCaixa(dados, perimetro, hoje) {
       else if (vinc?.length) {
         const v = vinc[0]; // decisão 15: em caixa, o vínculo manda
         [classe, sub] = v.entidade_tipo === 'ObraReforma' ? classeDaObra(obras.get(v.entidade_id)) : (VINCULO_PARA_CLASSE[v.entidade_tipo] || ['nao_classificado', 'sem_regra']);
-      } else if (CATEGORIA_PARA_CLASSE[l.categoria]) { [classe, sub] = CATEGORIA_PARA_CLASSE[l.categoria]; }
+      } else if (APLICACAO_RE.test(l.descricao || '')) { [classe, sub] = ['aplicacao', l.valor < 0 ? 'aplicacao' : 'resgate']; }
+      else if (l.valor < 0 && l.origem_compra === 'pessoal') { [classe, sub] = ['retirada', 'pessoal']; }
+      else if (l.valor < 0 && TIPO_COMPRA_PARA_CLASSE[l.tipo_compra]) { [classe, sub] = TIPO_COMPRA_PARA_CLASSE[l.tipo_compra]; }
+      else if (CATEGORIA_PARA_CLASSE[l.categoria]) { [classe, sub] = CATEGORIA_PARA_CLASSE[l.categoria]; }
       else { [classe, sub] = ['nao_classificado', l.categoria || 'sem_categoria']; }
       // crédito classificado como pagamento é inconsistente → financeiro (estorno) — decisão 13
       if (l.valor > 0 && classe === 'pagamento_operacional') { classe = 'financeiro'; sub = 'estorno'; }

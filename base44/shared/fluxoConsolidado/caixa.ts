@@ -24,19 +24,20 @@ export function calcularCaixa(lancamentos, mes) {
     pessoal: L(por('retirada', 'pessoal'), 'Retiradas pessoais'),
   };
   const investimentos = L(por('investimento'), 'Obras / investimentos');
-  const financeiros = L(por('financeiro'), 'Financeiros (tarifas, juros, estornos)');
+  const financeiros = L(por('financeiro'), 'Financeiros (tarifas, juros, empréstimos, estornos)');
+  const aplicacoes = L(por('aplicacao'), 'Aplicações / resgates (caixa e equivalentes — decisão 6)');
   const transferenciasForaPerimetro = L(por('transferencia'), 'Transferências não neutralizadas');
   const transferenciasNeutralizadas = L(por('transferencia_neutralizada'), 'Transferências internas neutralizadas');
   const naoClassificado = L(por('nao_classificado'), 'Movimento não classificado — requer Loop-R');
 
   const resultado = arred(
-    caixaOperacao + soma(Object.values(retiradas)) + investimentos.valor + financeiros.valor
+    caixaOperacao + soma(Object.values(retiradas)) + investimentos.valor + financeiros.valor + aplicacoes.valor
     + transferenciasForaPerimetro.valor + naoClassificado.valor,
   );
   const movimentoTotal = soma(doMes.filter((l) => l.classe !== 'transferencia_neutralizada'));
 
   return {
-    recebimentos, pagamentos, totalPagamentos, caixaOperacao, retiradas, investimentos, financeiros,
+    recebimentos, pagamentos, totalPagamentos, caixaOperacao, retiradas, investimentos, financeiros, aplicacoes,
     transferenciasForaPerimetro, transferenciasNeutralizadas, naoClassificado, resultado, movimentoTotal,
     lancamentosMes: doMes.length,
   };
