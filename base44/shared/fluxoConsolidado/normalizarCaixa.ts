@@ -34,6 +34,7 @@ const TIPO_COMPRA_PARA_CLASSE = {
   despesas: ['pagamento_operacional', 'despesas'],
   pro_labore: ['retirada', 'pro_labore'],
   obras: ['investimento', 'obras'],
+  financeiro: ['financeiro', 'financeiro'], // devoluções de PIX, tarifas, juros — decisão 13
 };
 
 // decisão 6 (pendente: fundos como caixa e equivalentes) — aplicação/resgate fica em linha própria e visível
