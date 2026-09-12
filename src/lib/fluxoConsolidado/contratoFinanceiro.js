@@ -94,6 +94,7 @@ export const CONTRATO = [
     perimetro: 'grupo',
     fontes: [{ entidade: 'LancamentoBancario', campoValor: 'saldo_apos', agrupador: 'conta_bancaria' }],
     decisaoPendente: 'Quais contas compõem cada perímetro (lista de conta_bancaria → empresa; fundos/aplicações entram em caixa e equivalentes?).',
+    defaultAplicado: 'Prefixo da conta define a empresa (NeuralTec…, Liesch…); aplicações/resgates ficam em linha própria "Aplicações" do Resultado de Caixa.',
     status: 'pendente_usuario',
   },
   {
@@ -115,6 +116,7 @@ export const CONTRATO = [
     chave: 'registro_externo_id ↔ NotaFiscal.numero; fallback: contraparte normalizada + valor ± 0,01 + data ± 3 dias',
     regime: 'competencia',
     decisaoPendente: 'Confirmar se o número da NF é gravado no registro externo (locações/assistência) ou se o fallback será a regra principal.',
+    defaultAplicado: 'Fallback (contraparte + valor ± 0,01 + data ± 3 dias) em uso; registros deduplicados são listados na evidência.',
     status: 'pendente_usuario',
   },
   {
@@ -159,6 +161,7 @@ export const CONTRATO = [
     fontes: [{ entidade: 'ObraReforma', campoValor: 'valor', campoData: 'data', campoClassificacao: 'natureza' }],
     antiDuplaContagem: 'Se houver lancamento_bancario_id ou lancamento_cartao_id, o caixa usa o vínculo; a obra é fallback apenas em competência.',
     decisaoPendente: 'Default para registros sem natureza preenchida: investimento (recomendado) ou não classificado.',
+    defaultAplicado: 'Sem natureza → investimento.',
     status: 'pendente_usuario',
   },
   {
@@ -168,6 +171,7 @@ export const CONTRATO = [
     formula: 'LancamentoBancario com tipo_compra = financeiro, ou MovimentoFinanceiro vinculado',
     regime: 'caixa',
     decisaoPendente: 'Fonte prioritária: categoria do extrato ou MovimentoFinanceiro? Empréstimo recebido entra como entrada financeira (não receita)?',
+    defaultAplicado: 'Extrato: vínculo > tipo_compra/origem_compra específicos > categoria. Categoria "financeiro" sem classificação específica = financeiro não operacional (MovimentoFinanceiro está vazio).',
     status: 'pendente_usuario',
   },
   {

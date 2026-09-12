@@ -20,6 +20,11 @@ export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentos
     diferencaBancaria: posicao.diferencaBancaria,
     residualBridge: bridge.residual,
     tolerancia,
+    semSaldoExtrato: {
+      registros: posicao.porConta.reduce((s, c) => s + c.semSaldoExtrato.registros, 0),
+      valor: arred(posicao.porConta.reduce((s, c) => s + c.semSaldoExtrato.valor, 0)),
+    },
+    contasNaoVerificaveis: posicao.porConta.filter((c) => !c.verificavel).map((c) => c.conta),
   };
 
   let status;
@@ -29,7 +34,8 @@ export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentos
   else status = 'fechado';
 
   const motivos = [];
-  if (!posicao.verificavel) motivos.push('Saldo inicial ou final não verificável em alguma conta.');
+  if (!posicao.verificavel) motivos.push(`Saldo inicial ou final não verificável: ${indicadores.contasNaoVerificaveis.join(', ') || 'nenhuma conta com saldo'}.`);
+  if (indicadores.semSaldoExtrato.registros) motivos.push(`${indicadores.semSaldoExtrato.registros} lançamentos sem saldo de extrato (R$ ${indicadores.semSaldoExtrato.valor}) — possível duplicidade com o extrato importado.`);
   if (carregadas < fontes.length) motivos.push(`Fontes incompletas: ${indicadores.fontesIncompletas.join(', ')}`);
   if (abs(posicao.diferencaBancaria) > tolerancia) motivos.push(`Saldo inicial + resultado de caixa difere do banco em R$ ${posicao.diferencaBancaria}.`);
   if (caixa.naoClassificado.registros) motivos.push(`${caixa.naoClassificado.registros} lançamentos não classificados (R$ ${caixa.naoClassificado.valor}).`);
