@@ -23,6 +23,7 @@ import OutrasSaidasSection from '../components/dashboard/OutrasSaidasSection';
 import LoopRIntegrityBadge from '../components/dashboard/LoopRIntegrityBadge';
 import ExcecoesLoopRTable from '../components/dashboard/ExcecoesLoopRTable';
 import OperacaoFinanceiraSection from '../components/dashboard/OperacaoFinanceiraSection';
+import DashboardColumn from '@/components/dashboard/DashboardColumn';
 
 function fmtMesLong(m) {
   const [y, mo] = m.split('-');
@@ -442,39 +443,44 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ─── GRUPO 1: POSIÇÃO BANCÁRIA ─── */}
-      <Section icon={Landmark} label="Posição Bancária" gradient="blue" cols={4}>
-        <SectionMetric title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Sicredi 36092-2" icon={Landmark} valueColor="blue" onClick={() => openDrill('saldo')} />
-        <SectionMetric title="Liesch + Fundos" value={formatCurrency(data.liesch + data.fundos)} sub="R$41 + R$100k em fundos" icon={Building2} valueColor="default" href="/extrato" />
-        <SectionMetric title="Entradas" value={formatCurrency(data.recYTD)} sub="Recebimentos" icon={TrendingUp} valueColor="green" onClick={() => openDrill('entradas')} />
-        <SectionMetric title="Saídas" value={formatCurrency(-data.pagYTD)} sub="Pagamentos" icon={TrendingDown} valueColor="red" onClick={() => openDrill('saidas')} />
-      </Section>
+      {/* Sequência executiva: vendas → despesas → fluxo → resultado. */}
+      <div className="dashboard-sequence grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <DashboardColumn title="Vendas">
+          <Section icon={FileText} label="Faturamento" gradient="green" cols={4}>
+            <SectionMetric title="Total Faturado" value={formatCurrency(data.totalFat)} sub="NFs + CIs emitidas" icon={FileText} valueColor="green" onClick={() => openDrill('totalFat')} />
+            <SectionMetric title="A Receber" value={formatCurrency(data.aReceber)} sub="Saldo em aberto" icon={TrendingUp} valueColor="orange" onClick={() => openDrill('aReceber')} />
+            <SectionMetric title="Tiago (V-01)" value={formatCurrency(data.tiago)} sub="Vendas diretas" icon={FileText} valueColor="blue" onClick={() => openDrill('tiago')} />
+            <SectionMetric title="Thais (V-05)" value={formatCurrency(data.thais)} sub="Televendas" icon={FileText} valueColor="purple" onClick={() => openDrill('thais')} />
+          </Section>
+          <Section icon={Receipt} label="Cobranças Sicredi" gradient="teal" cols={3}>
+            <SectionMetric title="Total Emitido" value={formatCurrency(data.emitido)} sub="Boletos gerados" icon={Receipt} valueColor="blue" onClick={() => openDrill('emitido')} />
+            <SectionMetric title="Recebido da Carteira" value={formatCurrency(data.recebido)} sub={`${percCob}% dos títulos com vencimento no período`} icon={TrendingUp} valueColor="green" onClick={() => openDrill('recebido')} />
+            <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Total geral — todos os vencimentos" icon={AlertTriangle} valueColor="orange" onClick={() => openDrill('emAberto')} />
+          </Section>
+        </DashboardColumn>
 
-      {/* ─── GRUPO 2: FATURAMENTO ─── */}
-      <Section icon={FileText} label="Faturamento" gradient="green" cols={4}>
-        <SectionMetric title="Total Faturado" value={formatCurrency(data.totalFat)} sub="NFs + CIs emitidas" icon={FileText} valueColor="green" onClick={() => openDrill('totalFat')} />
-        <SectionMetric title="A Receber" value={formatCurrency(data.aReceber)} sub="Saldo em aberto" icon={TrendingUp} valueColor="orange" onClick={() => openDrill('aReceber')} />
-        <SectionMetric title="Tiago (V-01)" value={formatCurrency(data.tiago)} sub="Vendas diretas" icon={FileText} valueColor="blue" onClick={() => openDrill('tiago')} />
-        <SectionMetric title="Thais (V-05)" value={formatCurrency(data.thais)} sub="Televendas" icon={FileText} valueColor="purple" onClick={() => openDrill('thais')} />
-      </Section>
+        <DashboardColumn title="Despesas">
+          <OperacaoFinanceiraSection summary={data} consolidated={consolidated} onDrill={openDrill} />
+          <CustosDiretosSection data={consolidated} onDrill={openDrill} />
+          <OutrasSaidasSection data={consolidated} onDrill={openDrill} />
+        </DashboardColumn>
 
-      {/* ─── GRUPO 3: COBRANÇAS ─── */}
-      <Section icon={Receipt} label="Cobranças Sicredi" gradient="teal" cols={3}>
-        <SectionMetric title="Total Emitido" value={formatCurrency(data.emitido)} sub="Boletos gerados" icon={Receipt} valueColor="blue" onClick={() => openDrill('emitido')} />
-        <SectionMetric title="Recebido da Carteira" value={formatCurrency(data.recebido)} sub={`${percCob}% dos títulos com vencimento no período`} icon={TrendingUp} valueColor="green" onClick={() => openDrill('recebido')} />
-        <SectionMetric title="Em Aberto" value={formatCurrency(data.emAberto)} sub="Total geral — todos os vencimentos" icon={AlertTriangle} valueColor="orange" onClick={() => openDrill('emAberto')} />
-      </Section>
+        <DashboardColumn title="Fluxo financeiro">
+          <Section icon={Landmark} label="Posição Bancária" gradient="blue" cols={4}>
+            <SectionMetric title="Saldo NeuralTec" value={formatCurrency(data.bankBalance)} sub="Sicredi 36092-2" icon={Landmark} valueColor="blue" onClick={() => openDrill('saldo')} />
+            <SectionMetric title="Liesch + Fundos" value={formatCurrency(data.liesch + data.fundos)} sub="R$41 + R$100k em fundos" icon={Building2} valueColor="default" href="/extrato" />
+            <SectionMetric title="Entradas" value={formatCurrency(data.recYTD)} sub="Recebimentos" icon={TrendingUp} valueColor="green" onClick={() => openDrill('entradas')} />
+            <SectionMetric title="Saídas" value={formatCurrency(-data.pagYTD)} sub="Pagamentos" icon={TrendingDown} valueColor="red" onClick={() => openDrill('saidas')} />
+          </Section>
+          <FluxoConsolidadoChart data={consolidated} />
+        </DashboardColumn>
 
-      {/* ─── GRUPOS 4–6: OPERAÇÃO + CONSOLIDADO LOOP-R ─── */}
-      <OperacaoFinanceiraSection summary={data} consolidated={consolidated} onDrill={openDrill} />
-      <FluxoConsolidadoSection data={consolidated} regime={regime} onRegime={setRegime} onDrill={openDrill} />
-      <FluxoConsolidadoChart data={consolidated} />
-      <CustosDiretosSection data={consolidated} onDrill={openDrill} />
-      <OutrasSaidasSection data={consolidated} onDrill={openDrill} />
-      <div className="grid gap-4 lg:grid-cols-3">
-        <LoopRIntegrityBadge integrity={consolidated.integrity} />
-        <div className="lg:col-span-2"><ExcecoesLoopRTable rows={consolidated.exceptions} /></div>
+        <DashboardColumn title="Resultado">
+          <FluxoConsolidadoSection data={consolidated} regime={regime} onRegime={setRegime} onDrill={openDrill} />
+          <LoopRIntegrityBadge integrity={consolidated.integrity} />
+        </DashboardColumn>
       </div>
+      <ExcecoesLoopRTable rows={consolidated.exceptions} />
 
       <DrilldownDialog drill={drill} onClose={() => setDrill(null)} />
 

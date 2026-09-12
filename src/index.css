@@ -135,6 +135,53 @@
   }
 }
 
+/* The executive columns reflow their existing cards locally, without affecting other pages. */
+@media (min-width: 768px) {
+  .dashboard-sequence-column .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dashboard-sequence-column .grid > * {
+    min-width: 0;
+  }
+  .dashboard-sequence-column .grid-cols-2.gap-x-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dashboard-sequence-column .grid-cols-3.gap-2 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .dashboard-sequence-column .p-4 {
+    padding: 0.75rem;
+  }
+  .dashboard-sequence-column .px-4 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .dashboard-sequence-column .group.px-4 {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+  .dashboard-sequence-column article.min-h-32 {
+    min-height: 0;
+  }
+  .dashboard-sequence-column .tracking-widest {
+    letter-spacing: 0.025em;
+  }
+  .dashboard-sequence-column .text-xl {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+  }
+  .dashboard-sequence-column .flex > .text-muted-foreground {
+    min-width: 0;
+  }
+  .dashboard-sequence-column button,
+  .dashboard-sequence-column p {
+    overflow-wrap: anywhere;
+  }
+  .dashboard-sequence-column .recharts-wrapper {
+    font-size: 0.625rem;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
