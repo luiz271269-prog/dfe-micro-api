@@ -25,7 +25,7 @@ export default function CampoClassificacao({ eixo, label, value, onChange }) {
 
   return (
     <div>
-      <Label>{eixo === 'tipo' ? 'Tipo de gasto' : label}</Label>
+      <Label>{eixo === 'origem' ? 'Responsável econômico' : eixo === 'tipo' ? 'Natureza econômica' : eixo === 'categoria' ? 'Conta analítica' : label}</Label>
       {adding ? (
         <div className="flex items-center gap-1">
           <input

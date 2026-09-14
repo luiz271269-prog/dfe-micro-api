@@ -5,7 +5,7 @@
 
 export const ORIGENS_COMPRA = {
   empresa: 'Empresa',
-  pro_labore: 'Pró-labore',
+  pro_labore: 'Sócio / Administrador',
   condominio: 'Condomínio',
   pessoal: 'Pessoal',
 };
@@ -28,7 +28,7 @@ export function rotuloTipoGasto(valor) {
 }
 
 export function exigeTipoGasto(entidade, registro) {
-  if (entidade === 'FaturaCartao') return false;
+  if (entidade === 'FaturaCartao' || registro?.origem_compra === 'pessoal') return false;
   if (entidade === 'VinculoExtrato') return !['FaturaCartao', 'NotaFiscal', 'TituloCobranca', 'TransferenciaInterna', 'MovimentoFinanceiro'].includes(registro.entidade_tipo) && !['recebimento_integral', 'recebimento_parcial', 'estorno'].includes(registro.tipo_vinculo);
   if (entidade !== 'LancamentoBancario') return true;
   if (!(registro.valor < 0) || ['saque', 'transferencia', 'interno', 'recebimento'].includes(registro.categoria)) return false;

@@ -26,7 +26,7 @@ export default function TipoGastoSelector({ entityName, record, onChange }) {
   }
   return <span className="inline-flex flex-col gap-1 max-w-full">
     <span className="inline-flex items-center gap-1">
-      {editing ? <select aria-label="Tipo de gasto" autoFocus disabled={saving} value={tipoGastoValido(valor) ? valor : ''} onChange={e => salvar(e.target.value)} className="h-7 max-w-full rounded border bg-background text-xs">
+      {editing ? <select aria-label="Natureza econômica" autoFocus disabled={saving} value={tipoGastoValido(valor) ? valor : ''} onChange={e => salvar(e.target.value)} className="h-7 max-w-full rounded border bg-background text-xs">
         <option value="" disabled>Escolha o tipo de gasto</option>
         {Object.entries(TIPOS_COMPRA).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
       </select> : <button type="button" onClick={() => setEditing(true)} title={pendente ? `Classificação anterior: ${valor || 'não informada'}` : 'Alterar tipo de gasto'} className={`rounded px-1.5 py-0.5 text-[10px] font-semibold text-left ${pendente ? 'bg-warning/10 text-warning' : getCor('tipo', valor)}`}>
