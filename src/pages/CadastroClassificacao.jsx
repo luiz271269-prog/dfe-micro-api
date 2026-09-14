@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import PageHeader from '@/components/shared/PageHeader';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import CadastroNovoItem from '@/components/classificacao/CadastroNovoItem';
 import CadastroClassificacaoLista from '@/components/classificacao/CadastroClassificacaoLista';
 import useCadastroClassificacaoAdmin from '@/hooks/useCadastroClassificacaoAdmin';
@@ -12,7 +11,6 @@ const eixos = [
 ];
 
 export default function CadastroClassificacao() {
-  const [eixo, setEixo] = useState('origem');
   const [error, setError] = useState('');
   const { itens, usuario, isLoading, salvar, remover } = useCadastroClassificacaoAdmin();
   const tipos = itens.filter(x => x.eixo === 'tipo' && x.ativo);
@@ -22,9 +20,12 @@ export default function CadastroClassificacao() {
   return <div className="mx-auto max-w-7xl space-y-5 p-4 md:p-6">
     <PageHeader title="Cadastro de Classificação" subtitle="Fonte única para todo o app: responsável, natureza econômica e plano de contas." />
     {error && <div role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-    <Tabs value={eixo} onValueChange={setEixo}>
-      <TabsList className="grid h-auto w-full grid-cols-1 sm:grid-cols-3">{eixos.map(x => <TabsTrigger key={x.key} value={x.key}>{x.label}</TabsTrigger>)}</TabsList>
-      {eixos.map(x => <TabsContent key={x.key} value={x.key} className="space-y-3"><CadastroNovoItem eixo={x.key} tipos={tipos} onSave={dados => executar(() => salvar(dados))} /><CadastroClassificacaoLista itens={itens.filter(i => i.eixo === x.key)} tipos={tipos} onSave={(dados, id) => executar(() => salvar(dados, id))} onRemove={id => { if (window.confirm('Excluir esta classificação do cadastro mestre?')) executar(() => remover(id)); }} /></TabsContent>)}
-    </Tabs>
+    <div className="grid gap-4 xl:grid-cols-3">
+      {eixos.map(x => <section key={x.key} className="min-w-0 space-y-3">
+        <h2 className="text-base font-semibold">{x.label}</h2>
+        <CadastroNovoItem eixo={x.key} tipos={tipos} onSave={dados => executar(() => salvar(dados))} />
+        <CadastroClassificacaoLista itens={itens.filter(i => i.eixo === x.key)} tipos={tipos} onSave={(dados, id) => executar(() => salvar(dados, id))} onRemove={id => { if (window.confirm('Excluir esta classificação do cadastro mestre?')) executar(() => remover(id)); }} />
+      </section>)}
+    </div>
   </div>;
 }
