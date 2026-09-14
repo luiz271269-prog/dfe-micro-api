@@ -30,7 +30,7 @@ export function calcularOperacao(dados, mes, perimetro) {
   const cmvEstimado = linha(
     dados.ItemCompra.filter((c) => noMes(c.data_emissao, mes) && c.tipo_compra === 'estoque' && dentroPerimetro(c.empresa, perimetro)),
     (c) => c.valor_total,
-    { entidade: 'ItemCompra', regime: 'competencia', rotulo: 'Custo de mercadorias — estimativa por compras', confianca: 'estimado' },
+    { entidade: 'ItemCompra', regime: 'competencia', rotulo: 'Custo de mercadorias — estimativa por compras', confianca: 'estimado', fonte: 'Central de Compras', fonteStatus: dados.ItemCompraFonte?.status || 'carregada' },
   );
   const tributosMes = dados.Tributo.filter((t) => t.competencia === mes && dentroPerimetro(t.empresa, perimetro));
   const tributos = {

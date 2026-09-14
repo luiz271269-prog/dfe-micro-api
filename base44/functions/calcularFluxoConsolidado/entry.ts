@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { carregarDados } from '../../shared/fluxoConsolidado/carregar.ts';
 import { calcularConsolidado, calcularHistorico } from '../../shared/fluxoConsolidado/motor.ts';
+import { fetchCentralCompras, normalizarPedidosCompra } from '../../shared/centralCompras.ts';
 
 // Motor consolidado (Gate 2) — ponto de entrada do Painel Financeiro.
 export default async function (req) {
@@ -15,6 +16,10 @@ export default async function (req) {
     const perimetro = ['grupo', 'NeuralTec', 'Liesch'].includes(body.perimetro) ? body.perimetro : 'grupo';
 
     const { dados, sourceStatus } = await carregarDados(base44);
+    const central = await fetchCentralCompras('PedidoCompra', 'limit=500');
+    dados.ItemCompra = central.ok ? normalizarPedidosCompra(central.data).itens : [];
+    dados.ItemCompraFonte = { status: central.ok ? 'carregada' : 'indisponivel', httpStatus: central.status };
+    sourceStatus.ItemCompra = { status: dados.ItemCompraFonte.status, registros: dados.ItemCompra.length, origem: 'Central de Compras', erro: central.ok ? undefined : `HTTP ${central.status}` };
     const resultado = calcularConsolidado({ dados, sourceStatus, mes, perimetro, hoje });
     const meses = Math.min(12, Math.max(0, Number(body.historico) || 0));
     if (meses) resultado.historico = calcularHistorico({ dados, mes, perimetro, hoje, meses });

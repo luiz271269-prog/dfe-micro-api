@@ -14,7 +14,7 @@ export default function ResultadoOperacaoCard({ operacao: op, mes, onDrill }) {
       <LinhaDemo rotulo="Locações" valor={f.locacoes.valor} linha={f.locacoes} onDrill={onDrill} />
 
       <LinhaDemo rotulo="Despesas Diretas da Operação" valor={-totalDespesas} nivel="grupo" tom="red" />
-      <LinhaDemo rotulo="Custo de mercadorias (CMV estimado)" valor={-op.cmvEstimado.valor} linha={op.cmvEstimado} onDrill={onDrill} />
+      <LinhaDemo rotulo={op.cmvEstimado.fonteStatus === 'indisponivel' ? 'CMV indisponível — Central desconectada' : 'Custo de mercadorias (CMV estimado)'} valor={-op.cmvEstimado.valor} linha={op.cmvEstimado} onDrill={onDrill} />
       <LinhaDemo rotulo="Impostos da operação" valor={-op.tributos.valor} linha={op.tributos} onDrill={onDrill} />
       <LinhaDemo rotulo="Folha de pagamento (operacional)" valor={-op.folha.valor} linha={op.folha} onDrill={onDrill} />
       <LinhaDemo rotulo="Outras despesas operacionais" valor={-desp.despesasOp.valor} linha={desp.despesasOp} onDrill={onDrill} />
