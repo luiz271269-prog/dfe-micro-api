@@ -52,6 +52,7 @@ export function normalizarCaixa(dados, perimetro, hoje) {
     vinculosPorLanc.get(v.lancamento_bancario_id).push(v);
   }
   const obras = new Map(dados.ObraReforma.map((o) => [o.id, o]));
+  const tributos = new Map(dados.Tributo.map((t) => [t.id, t]));
   const contas = new Map(dados.LancamentoBancario.map((l) => [l.id, l.conta_bancaria]));
 
   // decisão 7: transferência neutralizada só quando origem e destino estão no perímetro
@@ -72,7 +73,9 @@ export function normalizarCaixa(dados, perimetro, hoje) {
       if (neutralizados.has(l.id)) { [classe, sub] = ['transferencia_neutralizada', 'transferencia']; }
       else if (vinc?.length) {
         const v = vinc[0]; // decisão 15: em caixa, o vínculo manda
-        [classe, sub] = v.entidade_tipo === 'ObraReforma' ? classeDaObra(obras.get(v.entidade_id)) : (VINCULO_PARA_CLASSE[v.entidade_tipo] || ['nao_classificado', 'sem_regra']);
+        if (v.entidade_tipo === 'ObraReforma') [classe, sub] = classeDaObra(obras.get(v.entidade_id));
+        else if (v.entidade_tipo === 'Tributo') [classe, sub] = ['pagamento_operacional', tributos.get(v.entidade_id)?.tipo === 'DAS' ? 'das' : 'tributos'];
+        else [classe, sub] = VINCULO_PARA_CLASSE[v.entidade_tipo] || ['nao_classificado', 'sem_regra'];
       } else if (APLICACAO_RE.test(l.descricao || '')) { [classe, sub] = ['aplicacao', l.valor < 0 ? 'aplicacao' : 'resgate']; }
       else if (l.valor < 0 && l.origem_compra === 'pessoal') { [classe, sub] = ['retirada', 'pessoal']; }
       else if (l.valor < 0 && TIPO_COMPRA_PARA_CLASSE[l.tipo_compra]) { [classe, sub] = TIPO_COMPRA_PARA_CLASSE[l.tipo_compra]; }

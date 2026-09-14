@@ -4,7 +4,7 @@ import { arred } from './evidencia.ts';
 
 const TOLERANCIA_POR_CONTA = 0.01;
 
-export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentosMes, operacao }) {
+export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentosMes, operacao, conciliacaoCache }) {
   const abs = (v) => Math.abs(v || 0);
   const movimentadoAbs = lancamentosMes.filter((l) => l.classe !== 'transferencia_neutralizada').reduce((s, l) => s + abs(l.valor), 0);
   const classificadoAbs = lancamentosMes.filter((l) => !['nao_classificado', 'transferencia_neutralizada'].includes(l.classe)).reduce((s, l) => s + abs(l.valor), 0);
@@ -32,9 +32,10 @@ export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentos
       valor: arred(posicao.porConta.reduce((s, c) => s + (c.foraDaCadeia?.valor || 0), 0)),
     },
     pendenteEmpresa: operacao?.pendenteEmpresa || { registros: 0, valor: 0 },
+    cachesConciliacaoDivergentes: conciliacaoCache?.divergencias || 0,
   };
 
-  const pendencias = caixa.naoClassificado.registros > 0 || !bridge.fechado || indicadores.pendenteEmpresa.registros > 0;
+  const pendencias = caixa.naoClassificado.registros > 0 || !bridge.fechado || indicadores.pendenteEmpresa.registros > 0 || indicadores.cachesConciliacaoDivergentes > 0;
   let status;
   if (!posicao.verificavel || carregadas < fontes.length) status = 'nao_verificavel';
   else if (abs(posicao.diferencaBancaria) > tolerancia) status = 'divergente';
@@ -43,6 +44,7 @@ export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentos
 
   const motivos = [];
   if (indicadores.pendenteEmpresa.registros) motivos.push(`${indicadores.pendenteEmpresa.registros} registros sem empresa definida (R$ ${indicadores.pendenteEmpresa.valor}) — não certificáveis por perímetro.`);
+  if (indicadores.cachesConciliacaoDivergentes) motivos.push(`${indicadores.cachesConciliacaoDivergentes} lançamentos com cache divergente dos vínculos — VinculoExtrato prevalece como fonte da verdade.`);
   if (!posicao.verificavel) motivos.push(`Saldo inicial ou final não verificável: ${indicadores.contasNaoVerificaveis.join(', ') || 'nenhuma conta com saldo'}.`);
   if (indicadores.semSaldoExtrato.registros) motivos.push(`${indicadores.semSaldoExtrato.registros} lançamentos sem saldo de extrato (R$ ${indicadores.semSaldoExtrato.valor}) — possível duplicidade com o extrato importado.`);
   if (indicadores.foraDaCadeia.registros) motivos.push(`${indicadores.foraDaCadeia.registros} lançamentos do extrato fora da cadeia de saldos (R$ ${indicadores.foraDaCadeia.valor}) — débitos agendados importados em duplicidade.`);

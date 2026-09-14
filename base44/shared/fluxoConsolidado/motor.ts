@@ -6,6 +6,7 @@ import { construirBridge } from './bridge.ts';
 import { calcularPosicao } from './posicao.ts';
 import { avaliarLoopR } from './loopR.ts';
 import { calcularAberto } from './aberto.ts';
+import { diagnosticarCachesConciliacao } from './conciliacaoCache.ts';
 import { noMes } from './evidencia.ts';
 
 const mesAnterior = (mes, n) => {
@@ -32,7 +33,8 @@ export function calcularConsolidado({ dados, sourceStatus, mes, perimetro = 'gru
   const bridge = construirBridge(operacao, caixa);
   const posicao = calcularPosicao(dados, mes, perimetro, hoje, caixa.resultado);
   const lancamentosMes = lancamentos.filter((l) => noMes(l.data, mes));
-  const loopR = avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentosMes, operacao });
+  const conciliacaoCache = diagnosticarCachesConciliacao(dados.LancamentoBancario, dados.VinculoExtrato);
+  const loopR = avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentosMes, operacao, conciliacaoCache });
   const aberto = calcularAberto(dados, mes, perimetro, hoje);
 
   return {
@@ -47,6 +49,6 @@ export function calcularConsolidado({ dados, sourceStatus, mes, perimetro = 'gru
       diferencaOperacaoCaixa: Math.round((caixa.resultado - operacao.resultado) * 100) / 100,
       custosFixos: operacao.custosFixos.valor,
     },
-    operacao, caixa, bridge, posicao, loopR, aberto, sourceStatus,
+    operacao, caixa, bridge, posicao, loopR, aberto, conciliacaoCache, sourceStatus,
   };
 }

@@ -9,14 +9,17 @@ export function calcularCaixa(lancamentos, mes) {
   const L = (itens, rotulo) => linha(itens, (l) => l.valor, { entidade: 'LancamentoBancario', regime: 'caixa', rotulo });
 
   const recebimentos = L(por('recebimento'), 'Recebimentos operacionais');
+  const tributosPagos = por('pagamento_operacional').filter((l) => ['tributos', 'das'].includes(l.sub));
   const pagamentos = {
     compras: L(por('pagamento_operacional', 'compras'), 'Compras pagas'),
     cartao: L(por('pagamento_operacional', 'cartao'), 'Faturas de cartão pagas'),
-    tributos: L(por('pagamento_operacional', 'tributos'), 'Impostos pagos'),
+    tributos: L(tributosPagos, 'Impostos pagos'),
+    das: L(por('pagamento_operacional', 'das'), 'DAS pago'),
+    outrosTributos: L(por('pagamento_operacional', 'tributos'), 'Outros impostos pagos'),
     folha: L(por('pagamento_operacional', 'folha'), 'Folha paga'),
     despesas: L(por('pagamento_operacional', 'despesas'), 'Despesas pagas'),
   };
-  const totalPagamentos = soma(Object.values(pagamentos));
+  const totalPagamentos = soma([pagamentos.compras, pagamentos.cartao, pagamentos.tributos, pagamentos.folha, pagamentos.despesas]);
   const caixaOperacao = arred(recebimentos.valor + totalPagamentos); // pagamentos são negativos
 
   const retiradas = {

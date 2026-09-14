@@ -32,10 +32,14 @@ export function calcularOperacao(dados, mes, perimetro) {
     (c) => c.valor_total,
     { entidade: 'ItemCompra', regime: 'competencia', rotulo: 'Custo de mercadorias — estimativa por compras', confianca: 'estimado' },
   );
-  const tributos = linha(
-    dados.Tributo.filter((t) => t.competencia === mes && dentroPerimetro(t.empresa, perimetro)),
-    (t) => t.valor_original, { entidade: 'Tributo', regime: 'competencia', rotulo: 'Impostos da operação' },
-  );
+  const tributosMes = dados.Tributo.filter((t) => t.competencia === mes && dentroPerimetro(t.empresa, perimetro));
+  const tributos = {
+    ...linha(tributosMes, (t) => t.valor_original, { entidade: 'Tributo', regime: 'competencia', rotulo: 'Impostos da operação' }),
+    componentes: {
+      das: linha(tributosMes.filter((t) => t.tipo === 'DAS'), (t) => t.valor_original, { entidade: 'Tributo', regime: 'competencia', rotulo: 'DAS' }),
+      outros: linha(tributosMes.filter((t) => t.tipo !== 'DAS'), (t) => t.valor_original, { entidade: 'Tributo', regime: 'competencia', rotulo: 'Outros tributos' }),
+    },
+  };
   const folha = linha(
     dados.FolhaPagamento.filter((f) => f.competencia === mes && f.origem_compra !== 'pro_labore' && dentroPerimetro(f.empresa, perimetro)),
     (f) => f.salario_liquido, { entidade: 'FolhaPagamento', regime: 'competencia', rotulo: 'Folha operacional' },
