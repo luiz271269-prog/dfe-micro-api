@@ -355,9 +355,11 @@ async function aplicarBaixa(base44, lanc, conta) {
 
   // 1. Atualiza a entidade-origem para status 'pago'
   if (conta.origem_tipo === 'despesa') {
+    // Loop-R: `data` é competência (documento) e nunca muda; a data bancária vai para data_pagamento.
     await base44.entities.DespesaOperacional.update(conta.origem_id, {
       status: 'pago',
-      data: lanc.data,
+      data_pagamento: lanc.data,
+      lancamento_bancario_id: lanc.id,
     });
   } else if (conta.origem_tipo === 'tributo') {
     await base44.entities.Tributo.update(conta.origem_id, {

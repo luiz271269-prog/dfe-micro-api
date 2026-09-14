@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Landmark, ShieldCheck, ShieldAlert, ShieldQuestion, CheckCircle2 } from 'lucide-react';
+import { Landmark, ShieldCheck, ShieldAlert, ShieldQuestion, Loader } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import { fmtMes } from '@/components/shared/MonthNavigator';
 
 const STATUS = {
   conciliado: { label: 'CONCILIADO', cls: 'bg-emerald-50 border-emerald-300 text-emerald-700', icon: ShieldCheck },
-  fechado: { label: 'FECHADO', cls: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: CheckCircle2 },
+  em_conciliacao: { label: 'EM CONCILIAÇÃO', cls: 'bg-amber-50 border-amber-300 text-amber-700', icon: Loader },
   divergente: { label: 'DIVERGENTE', cls: 'bg-rose-50 border-rose-300 text-rose-700', icon: ShieldAlert },
   nao_verificavel: { label: 'NÃO VERIFICÁVEL', cls: 'bg-amber-50 border-amber-300 text-amber-700', icon: ShieldQuestion },
 };

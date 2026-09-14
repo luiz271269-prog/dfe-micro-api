@@ -23,7 +23,10 @@ export function perimetroDaConta(conta) {
   return 'nao_classificado';
 }
 
+// Loop-R: empresa vazia nunca é atribuída a um perímetro — entra só no grupo e fica PENDENTE DE EMPRESA.
 export function dentroPerimetro(empresa, perimetro) {
   if (perimetro === 'grupo') return true;
-  return (empresa || 'NeuralTec') === perimetro; // decisão 6: empresa vazia → NeuralTec (emissora padrão)
+  return !!empresa && empresa === perimetro;
 }
+
+export const semEmpresa = (registros) => registros.filter((r) => !r.empresa);

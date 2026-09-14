@@ -1,9 +1,10 @@
-// Loop-R: status (fechado | conciliado | divergente | nao_verificavel) + 4 indicadores separados.
+// Loop-R: escada de certificação nao_verificavel → divergente → em_conciliacao → conciliado.
+// "fechado" nunca é derivado automaticamente: só um FechamentoFinanceiro (Fase 5) pode certificar.
 import { arred } from './evidencia.ts';
 
 const TOLERANCIA_POR_CONTA = 0.01;
 
-export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentosMes }) {
+export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentosMes, operacao }) {
   const abs = (v) => Math.abs(v || 0);
   const movimentadoAbs = lancamentosMes.filter((l) => l.classe !== 'transferencia_neutralizada').reduce((s, l) => s + abs(l.valor), 0);
   const classificadoAbs = lancamentosMes.filter((l) => !['nao_classificado', 'transferencia_neutralizada'].includes(l.classe)).reduce((s, l) => s + abs(l.valor), 0);
@@ -30,15 +31,18 @@ export function avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentos
       registros: posicao.porConta.reduce((s, c) => s + (c.foraDaCadeia?.registros || 0), 0),
       valor: arred(posicao.porConta.reduce((s, c) => s + (c.foraDaCadeia?.valor || 0), 0)),
     },
+    pendenteEmpresa: operacao?.pendenteEmpresa || { registros: 0, valor: 0 },
   };
 
+  const pendencias = caixa.naoClassificado.registros > 0 || !bridge.fechado || indicadores.pendenteEmpresa.registros > 0;
   let status;
   if (!posicao.verificavel || carregadas < fontes.length) status = 'nao_verificavel';
   else if (abs(posicao.diferencaBancaria) > tolerancia) status = 'divergente';
-  else if (bridge.fechado && caixa.naoClassificado.registros === 0) status = 'conciliado';
-  else status = 'fechado';
+  else if (pendencias) status = 'em_conciliacao';
+  else status = 'conciliado';
 
   const motivos = [];
+  if (indicadores.pendenteEmpresa.registros) motivos.push(`${indicadores.pendenteEmpresa.registros} registros sem empresa definida (R$ ${indicadores.pendenteEmpresa.valor}) — não certificáveis por perímetro.`);
   if (!posicao.verificavel) motivos.push(`Saldo inicial ou final não verificável: ${indicadores.contasNaoVerificaveis.join(', ') || 'nenhuma conta com saldo'}.`);
   if (indicadores.semSaldoExtrato.registros) motivos.push(`${indicadores.semSaldoExtrato.registros} lançamentos sem saldo de extrato (R$ ${indicadores.semSaldoExtrato.valor}) — possível duplicidade com o extrato importado.`);
   if (indicadores.foraDaCadeia.registros) motivos.push(`${indicadores.foraDaCadeia.registros} lançamentos do extrato fora da cadeia de saldos (R$ ${indicadores.foraDaCadeia.valor}) — débitos agendados importados em duplicidade.`);

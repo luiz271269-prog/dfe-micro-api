@@ -10,6 +10,14 @@
       "type": "string",
       "title": "ID do Fornecedor mestre (opcional)"
     },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa compradora (per\u00edmetro Loop-R)"
+    },
     "numero_nota": {
       "type": "string",
       "title": "N\u00famero da Nota"

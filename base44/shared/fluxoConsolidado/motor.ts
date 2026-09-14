@@ -32,7 +32,7 @@ export function calcularConsolidado({ dados, sourceStatus, mes, perimetro = 'gru
   const bridge = construirBridge(operacao, caixa);
   const posicao = calcularPosicao(dados, mes, perimetro, hoje, caixa.resultado);
   const lancamentosMes = lancamentos.filter((l) => noMes(l.data, mes));
-  const loopR = avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentosMes });
+  const loopR = avaliarLoopR({ caixa, bridge, posicao, sourceStatus, lancamentosMes, operacao });
   const aberto = calcularAberto(dados, mes, perimetro, hoje);
 
   return {

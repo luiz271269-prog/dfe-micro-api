@@ -11,6 +11,14 @@
       ],
       "title": "Aplicativo de origem"
     },
+    "empresa": {
+      "type": "string",
+      "enum": [
+        "NeuralTec",
+        "Liesch"
+      ],
+      "title": "Empresa benefici\u00e1ria (per\u00edmetro Loop-R)"
+    },
     "entidade_externa": {
       "type": "string",
       "title": "Entidade no aplicativo de origem"
