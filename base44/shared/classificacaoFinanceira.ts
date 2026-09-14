@@ -81,10 +81,10 @@ export function classificarRegistro(entidade, registro, memoria = new Map(), cad
   const evento = eventoDoRegistro(entidade, registro);
 
   if (depois.origem_compra === 'pessoal') {
-    depois.origem_compra = 'investimento'; motivos.push('responsável legado migrado para Investimento');
+    depois.origem_compra = 'investimento'; motivos.push('centro de custo legado migrado para Investimento');
   } else if (!permitidos.origens.includes(depois.origem_compra)) {
     depois.origem_compra = historico?.confiancaOrigem >= 60 && permitidos.origens.includes(historico.origem) ? historico.origem : (permitidos.origens.includes('empresa') ? 'empresa' : permitidos.origens[0] || '');
-    motivos.push(historico?.confiancaOrigem >= 60 ? 'responsável aprendido do histórico' : 'responsável padrão do cadastro mestre');
+    motivos.push(historico?.confiancaOrigem >= 60 ? 'centro de custo aprendido do histórico' : 'centro de custo padrão do cadastro mestre');
   }
   if (categoriasPessoais.has(depois.categoria) && entidade !== 'DespesaOperacional') {
     depois.origem_compra = 'investimento'; motivos.push('categoria pessoal direcionada para Investimento');

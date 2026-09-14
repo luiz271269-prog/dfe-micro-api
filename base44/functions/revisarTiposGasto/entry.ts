@@ -121,7 +121,7 @@ export default async function(req) {
       proposto.tipo_compra = payload.tipo;
     } else if (action === 'salvar_eixo') {
       if (!campos.includes(payload.campo) || typeof payload.valor !== 'string') return Response.json({ error: 'Classificação inválida.' }, { status: 400 });
-      if (payload.campo === 'origem_compra' && !permitidos.origens.includes(payload.valor)) return Response.json({ error: 'Responsável econômico inativo ou não permitido.' }, { status: 400 });
+      if (payload.campo === 'origem_compra' && !permitidos.origens.includes(payload.valor)) return Response.json({ error: 'Centro de custo inativo ou não permitido.' }, { status: 400 });
       if (payload.campo === 'tipo_compra' && !permitidos.tipos.includes(payload.valor)) return Response.json({ error: 'Natureza econômica inativa ou não permitida.' }, { status: 400 });
       if (payload.campo === 'categoria' && permitidos.categorias.length && !permitidos.categorias.includes(payload.valor)) return Response.json({ error: 'Conta analítica inativa ou não permitida.' }, { status: 400 });
       proposto[payload.campo] = payload.valor;

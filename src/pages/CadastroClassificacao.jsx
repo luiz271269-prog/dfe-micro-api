@@ -19,7 +19,7 @@ export default function CadastroClassificacao() {
   if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Carregando cadastro…</div>;
   if (usuario?.role !== 'admin') return <div className="p-8"><h1 className="text-xl font-bold">Acesso restrito</h1><p className="mt-2 text-muted-foreground">Somente administradores podem editar o cadastro mestre.</p></div>;
   return <div className="mx-auto max-w-none space-y-5 p-4 md:p-6">
-    <PageHeader title="Cadastro de Classificação" subtitle="Fonte única para todo o app: responsável, natureza econômica e plano de contas." />
+    <PageHeader title="Cadastro de Classificação" subtitle="Planilha mestre do plano de contas, naturezas econômicas e centros de custo." />
     {error && <div role="alert" className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
     <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr_1fr]">
       {eixos.map(x => <section key={x.key} className="min-w-0 space-y-3">
