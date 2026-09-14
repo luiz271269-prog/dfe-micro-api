@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { getOpcoes, getCor, loadCustom } from '@/lib/classificacaoUnificada';
+import { getCor } from '@/lib/classificacaoUnificada';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 
 const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
@@ -17,7 +18,7 @@ function Variacao({ v }) {
 }
 
 export default function TabelaDesempenho({ titulo, eixo, dados }) {
-  const opcoes = getOpcoes(eixo, loadCustom());
+  const { opcoes } = useCadastroClassificacao(eixo);
   const total = dados.reduce((s, d) => s + d.total, 0);
 
   return (

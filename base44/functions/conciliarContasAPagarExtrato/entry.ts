@@ -115,6 +115,7 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole.entities;
+    if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
 
     const [despesas, tributos, faturas, cartoes, compras, obras, lancamentos, vinculos, sugestoesAntigas] = await Promise.all([
       svc.DespesaOperacional.list('-data', 2000),
@@ -197,11 +198,12 @@ Deno.serve(async (req) => {
           data_vencimento: dataPag, data_pagamento: dataPag,
           valor_original: Math.abs(debito.valor), valor_pago: Math.abs(debito.valor),
           status: 'pago', empresa, conta_pagamento: debito.conta_bancaria || '',
+          origem_compra: 'empresa', tipo_compra: 'impostos',
           lancamento_bancario_id: debito.id,
         });
         await svc.VinculoExtrato.create({
           lancamento_bancario_id: debito.id, entidade_tipo: 'Tributo', entidade_id: novoTributo.id,
-          valor_alocado: Math.abs(debito.valor), tipo_vinculo: 'pagamento_integral',
+          valor_alocado: Math.abs(debito.valor), origem_compra: 'empresa', tipo_compra: 'impostos', tipo_vinculo: 'pagamento_integral',
           conciliado_por: 'auto', confianca: 100,
           observacao: `Tributo auto-criado do extrato · ${tipo}`,
         });

@@ -6,24 +6,21 @@ import { formatCurrency, formatDate } from '../../lib/formatters';
 import { aprenderEAplicarRegra } from '../../lib/autoCategorizacao';
 import ComprovantePicker from '../shared/ComprovantePicker';
 import SeletorClassificacao from '../shared/SeletorClassificacao';
-import { CATEGORIAS_CONTAS, CATEGORIA_COLORS, getCor, loadCustom, saveCustom, slugify } from '../../lib/classificacaoUnificada';
-
-// Plano de contas unificado (compartilhado com Extrato e Contas a Pagar)
-export const categoriaLabels = CATEGORIAS_CONTAS;
-export const categoriaColors = CATEGORIA_COLORS;
+import { getCor, slugify } from '../../lib/classificacaoUnificada';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function LancamentosEditableTable({ lancamentos, onReload }) {
+  const queryClient = useQueryClient();
+  const { opcoes: allCategorias } = useCadastroClassificacao('categoria');
   const [editing, setEditing] = useState(null);
   const [localRows, setLocalRows] = useState(lancamentos || []);
-  const [custom, setCustom] = useState(loadCustom);
   const [addingCat, setAddingCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
   const [sort, setSort] = useState({ field: 'data_lancamento', dir: 'asc' });
 
   // Sincroniza com props quando lista externa muda (carregamento silencioso, novo mês, etc.)
   useEffect(() => { setLocalRows(lancamentos || []); }, [lancamentos]);
-
-  const allCategorias = useMemo(() => ({ ...CATEGORIAS_CONTAS, ...(custom.categoria || {}) }), [custom]);
 
   function catLabel(k) {
     return allCategorias[k] || k || '—';
@@ -32,13 +29,12 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
     return getCor('categoria', k);
   }
 
-  function addCategoria() {
+  async function addCategoria() {
     const label = newCatName.trim();
     const key = slugify(label);
-    if (!key) return;
-    const next = { ...custom, categoria: { ...(custom.categoria || {}), [key]: label } };
-    setCustom(next);
-    saveCustom(next);
+    if (!key || allCategorias[key]) return;
+    await base44.entities.CadastroClassificacao.create({ eixo: 'categoria', chave: key, rotulo: label, nivel: 'subcategoria', ativo: true, perfis_permitidos: ['admin', 'user'], naturezas_vinculadas: [], centros_custo_vinculados: [], ordem: 99 });
+    await queryClient.invalidateQueries({ queryKey: ['cadastro-classificacao'] });
     setNewCatName('');
     setAddingCat(false);
   }

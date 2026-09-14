@@ -1,4 +1,4 @@
-export const tiposCanonicos = ['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore'];
+export const tiposCanonicos = ['receitas', 'estoque', 'despesas', 'folha', 'pro_labore', 'impostos', 'obras', 'financeiro'];
 export const origensCanonicas = ['empresa', 'condominio', 'investimento', 'pro_labore'];
 
 export function resolverCadastro(cadastro = [], role = 'admin') {
@@ -15,12 +15,33 @@ export function resolverCadastro(cadastro = [], role = 'admin') {
 }
 
 const categoriaTipo = {
-  fornecedor: 'estoque', estoque: 'estoque', produtos: 'estoque',
-  tributo: 'impostos', despesa_operacional: 'despesas',
-  obras_reforma: 'obras', pro_labore: 'pro_labore',
+  recebimento: 'receitas', fornecedor: 'estoque', fretes_compras_vendas: 'estoque', servicos_diretamente_vinculados: 'estoque', estoque: 'estoque', produtos: 'estoque',
+  administrativas: 'despesas', comerciais: 'despesas', despesa_operacional: 'despesas', tecnologia: 'despesas', transporte: 'despesas', outro: 'despesas', combustivel: 'despesas', seguro: 'despesas',
+  salarios_comissoes: 'folha', rescisoes_contrato: 'folha', beneficios: 'folha',
+  pro_labore: 'pro_labore', alimentacao: 'pro_labore', lazer: 'pro_labore', beleza: 'pro_labore', farmacia: 'pro_labore', saude_bem_estar: 'pro_labore', servico_pessoal: 'pro_labore', saque: 'pro_labore',
+  das: 'impostos', tributos_vendas: 'impostos', tributos_folha: 'impostos', tributo: 'impostos',
+  equipamentos: 'obras', moveis: 'obras', infraestrutura: 'obras', obras_reforma: 'obras',
+  financeiro: 'financeiro', tarifas: 'financeiro', juros: 'financeiro', rendimentos: 'financeiro', emprestimos: 'financeiro',
 };
-const eventosSemNatureza = new Set(['recebimento', 'transferencia', 'interno', 'saque', 'financeiro']);
-const categoriasPessoais = new Set(['lazer', 'beleza', 'farmacia', 'saude_bem_estar', 'servico_pessoal']);
+const eventosSemNatureza = new Set(['recebimento', 'transferencia', 'interno', 'aplicacoes', 'resgates']);
+const categoriasPessoais = new Set(['pro_labore', 'alimentacao', 'lazer', 'beleza', 'farmacia', 'saude_bem_estar', 'servico_pessoal', 'saque']);
+const aliasesCategoria = {
+  'alimentacao': 'alimentacao', 'supermercado': 'alimentacao', 'supermercado e hipermercado': 'alimentacao', 'gastronomia': 'alimentacao',
+  'entretenimento': 'lazer', 'esportes': 'lazer', 'esportes e lazer': 'lazer', 'esportes lazer e turismo': 'lazer', 'turismo e entretenimento': 'lazer', 'viagem': 'lazer',
+  'vestuario': 'servico_pessoal', 'estetica e cuidados pessoais': 'beleza', 'saude': 'saude_bem_estar', 'saude e esporte': 'saude_bem_estar', 'pet': 'servico_pessoal',
+  'informatica': 'tecnologia', 'eletronicos': 'tecnologia', 'software': 'tecnologia', 'servicos de informatica': 'tecnologia', 'servico digital': 'tecnologia', 'assinatura': 'tecnologia', 'compras online': 'outro',
+  'tarifa': 'tarifas', 'tarifas': 'tarifas', 'tarifa bancaria': 'tarifas', 'tarifas bancarias': 'tarifas', 'anuidade': 'tarifas',
+  'encargo': 'juros', 'encargos': 'juros', 'encargo financeiro': 'juros', 'encargos financeiros': 'juros', 'parcelamento de fatura': 'juros',
+  'construcao': 'obras_reforma', 'construcao e reforma': 'obras_reforma', 'artigos para o lar': 'moveis', 'artigos e servicos para o lar': 'moveis',
+  'servicos': 'despesa_operacional', 'servicos cartoriais': 'administrativas', 'educacao e cultura': 'servico_pessoal', 'imposto': 'tributo',
+  'pagamento': 'interno', 'estorno': 'interno', 'desconto': 'interno', 'desconto anuidade': 'interno', 'outros': 'outro', 'diversos': 'outro', 'compras': 'fornecedor',
+};
+
+function normalizarCategoria(valor, permitidas) {
+  if (!valor || permitidas.includes(valor)) return valor || '';
+  const chave = normalizarTexto(valor).replace(/\s+/g, ' ');
+  return aliasesCategoria[chave] || (permitidas.includes('outro') ? 'outro' : '');
+}
 
 export function normalizarTexto(valor) {
   return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\d+/g, ' ').replace(/[^a-z]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -75,22 +96,37 @@ function eventoDoRegistro(entidade, registro) {
 export function classificarRegistro(entidade, registro, memoria = new Map(), cadastro = [], role = 'admin') {
   const permitidos = resolverCadastro(cadastro, role);
   const antes = { origem_compra: registro.origem_compra || '', tipo_compra: registro.tipo_compra || '', categoria: registro.categoria || '' };
-  const depois = { ...antes };
+  const depois = { ...antes, categoria: normalizarCategoria(registro.categoria, permitidos.categorias) };
   const motivos = [];
+  if (depois.categoria !== antes.categoria) motivos.push('conta legada normalizada pelo cadastro mestre');
+  if (depois.categoria === 'pessoal') {
+    if (entidade === 'LancamentoCartao' || registro.natureza === 'pessoal' || depois.origem_compra === 'pro_labore') {
+      depois.categoria = 'pro_labore';
+      motivos.push('categoria pessoal de cartão migrada para Pró-labore');
+    } else {
+      depois.categoria = 'salarios_comissoes';
+      depois.origem_compra = 'empresa';
+      depois.tipo_compra = 'folha';
+      motivos.push('categoria pessoal bancária migrada para Salários + comissões');
+    }
+  }
   const historico = memoria.get(chaveHistorica(entidade, registro));
   const evento = eventoDoRegistro(entidade, registro);
 
   if (depois.origem_compra === 'pessoal') {
-    depois.origem_compra = 'investimento'; motivos.push('centro de custo legado migrado para Investimento');
+    depois.origem_compra = 'pro_labore'; motivos.push('centro de custo pessoal migrado para Pró-labore');
   } else if (!permitidos.origens.includes(depois.origem_compra)) {
     depois.origem_compra = historico?.confiancaOrigem >= 60 && permitidos.origens.includes(historico.origem) ? historico.origem : (permitidos.origens.includes('empresa') ? 'empresa' : permitidos.origens[0] || '');
     motivos.push(historico?.confiancaOrigem >= 60 ? 'centro de custo aprendido do histórico' : 'centro de custo padrão do cadastro mestre');
   }
-  if (categoriasPessoais.has(depois.categoria) && entidade !== 'DespesaOperacional') {
-    depois.origem_compra = 'investimento'; motivos.push('categoria pessoal direcionada para Investimento');
-  }
-  if (depois.categoria === 'pro_labore') {
-    depois.origem_compra = 'pro_labore'; depois.tipo_compra = 'pro_labore'; motivos.push('conta analítica de pró-labore');
+  const contaCadastro = cadastro.find(item => item.eixo === 'categoria' && item.chave === depois.categoria && item.ativo);
+  const naturezasConta = contaCadastro?.naturezas_vinculadas?.length ? contaCadastro.naturezas_vinculadas : contaCadastro?.natureza_vinculada ? [contaCadastro.natureza_vinculada] : [];
+  const centrosConta = contaCadastro?.centros_custo_vinculados || [];
+  if (categoriasPessoais.has(depois.categoria) || registro.natureza === 'pessoal') {
+    depois.origem_compra = 'pro_labore'; depois.tipo_compra = 'pro_labore'; motivos.push('gasto pessoal direcionado para Pró-labore');
+  } else {
+    if (naturezasConta.length === 1 && permitidos.tipos.includes(naturezasConta[0])) depois.tipo_compra = naturezasConta[0];
+    if (centrosConta.length === 1 && permitidos.origens.includes(centrosConta[0])) depois.origem_compra = centrosConta[0];
   }
 
   if (evento !== 'gasto') {

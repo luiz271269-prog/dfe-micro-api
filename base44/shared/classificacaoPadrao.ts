@@ -15,14 +15,14 @@ export const TIPO_POR_ENTIDADE = {
 
 // Categoria do extrato bancário -> eixos unificados
 export const CLASSIFICACAO_POR_CATEGORIA = {
-  recebimento: { origem_compra: 'empresa', tipo_compra: 'financeiro' },
+  recebimento: { origem_compra: 'empresa', tipo_compra: 'receitas' },
   fornecedor: { origem_compra: 'empresa', tipo_compra: 'estoque' },
   pessoal: { origem_compra: 'empresa', tipo_compra: 'folha' },
   pro_labore: { origem_compra: 'pro_labore', tipo_compra: 'pro_labore' },
   tributo: { origem_compra: 'empresa', tipo_compra: 'impostos' },
   despesa_operacional: { origem_compra: 'empresa', tipo_compra: 'despesas' },
   financeiro: { origem_compra: 'empresa', tipo_compra: 'financeiro' },
-  saque: { origem_compra: 'empresa', tipo_compra: 'outro' },
+  saque: { origem_compra: 'pro_labore', tipo_compra: 'pro_labore' },
   obras_reforma: { origem_compra: 'empresa', tipo_compra: 'obras' },
   transferencia: { origem_compra: 'empresa', tipo_compra: 'financeiro' },
   interno: { origem_compra: 'empresa', tipo_compra: 'financeiro' },
@@ -30,7 +30,7 @@ export const CLASSIFICACAO_POR_CATEGORIA = {
 
 // Eixos de um lançamento bancário, completando o que faltar pela categoria.
 export function eixosDoLancamento(lanc) {
-  const padrao = CLASSIFICACAO_POR_CATEGORIA[lanc?.categoria] || { origem_compra: 'empresa', tipo_compra: 'outro' };
+  const padrao = CLASSIFICACAO_POR_CATEGORIA[lanc?.categoria] || { origem_compra: 'empresa', tipo_compra: 'despesas' };
   return {
     origem_compra: lanc?.origem_compra || padrao.origem_compra,
     tipo_compra: lanc?.tipo_compra || padrao.tipo_compra,

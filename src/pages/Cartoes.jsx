@@ -22,7 +22,8 @@ import { FileImage } from 'lucide-react';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
-import { getOpcoes, getCor, loadCustom } from '../lib/classificacaoUnificada';
+import { getCor } from '../lib/classificacaoUnificada';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import ComprasPortalCotacao from '../components/cartoes/ComprasPortalCotacao';
 
 const SEED_CARDS = [
@@ -34,9 +35,6 @@ const SEED_CARDS = [
 { nome: 'Sicredi — NeuralTec', bandeira: 'Sicredi', titular: 'NeuralTec Dist. Tecnologia Ltda', tipo: 'empresarial', dia_vencimento: 25, empresa_vinculada: 'NeuralTec', conta_bancaria_pagamento: 'Sicredi 36092-2', is_ativo: true },
 { nome: 'Magalu / LuizaCred', bandeira: 'Magalu', titular: 'pessoal', tipo: 'pessoal', dia_vencimento: 27, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'Sicredi 36092-2', is_ativo: true }];
 
-
-// Plano de contas unificado (compartilhado com Extrato e Contas a Pagar)
-const categoriaLabels = getOpcoes('categoria', loadCustom());
 
 // Pagamento da fatura do mês anterior (crédito no cartão) — não é despesa real, não deve entrar em totais
 function isPagamentoFatura(l) {
@@ -57,6 +55,7 @@ const BANDEIRAS = {
 };
 
 function CategoriaBreakdown({ lancamentos }) {
+  const { opcoes: categoriaLabels } = useCadastroClassificacao('categoria');
   const validos = lancamentos.filter((l) => !l.observacao?.includes('Não faz parte') && !isPagamentoFatura(l));
   const cats = {};
   validos.forEach((l) => {

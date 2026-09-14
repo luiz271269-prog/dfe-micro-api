@@ -94,6 +94,8 @@ Deno.serve(async (req) => {
             status: 'pendente',
             fgts_valor: modelo?.fgts_valor || 0,
             empresa: modelo?.empresa || func.empresa,
+            origem_compra: 'empresa',
+            tipo_compra: 'folha',
             gerada_automaticamente: true,
           };
           const criada = await svc.FolhaPagamento.create(nova);
@@ -136,6 +138,8 @@ Deno.serve(async (req) => {
         salario_liquido: valorFerias,
         status: 'pendente',
         empresa: func.empresa,
+        origem_compra: 'empresa',
+        tipo_compra: 'folha',
         gerada_automaticamente: true,
       });
       geradas.push(criada.id);

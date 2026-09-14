@@ -1,10 +1,12 @@
-import { TIPOS_COMPRA, tipoGastoValido } from '@/lib/classificacaoUnificada';
+import { tipoGastoValido } from '@/lib/classificacaoUnificada';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import { formatCurrency } from '@/lib/formatters';
 
 export default function FiltroTiposGasto({ itens, value, onChange }) {
-  const chave = i => i.origem_tipo === 'fatura' ? 'fatura' : tipoGastoValido(i.tipo_compra) ? i.tipo_compra : 'pendente';
+  const { opcoes: tipos } = useCadastroClassificacao('tipo');
+  const chave = i => i.origem_tipo === 'fatura' ? 'fatura' : tipos[i.tipo_compra] ? i.tipo_compra : 'pendente';
   const totais = itens.reduce((a, i) => { const k = chave(i); a[k] = (a[k] || 0) + (i.valor || 0); return a; }, {});
-  const opcoes = { todos: 'Todos os gastos', ...TIPOS_COMPRA, pendente: 'Pendente de classificação' };
+  const opcoes = { todos: 'Todos os gastos', ...tipos, pendente: 'Pendente de classificação' };
   return <div className="space-y-2 mb-4">
     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
       {Object.entries(opcoes).map(([key, label]) => <button key={key} type="button" onClick={() => onChange(key)} aria-pressed={value === key} className={`rounded-lg border px-3 py-2 text-left ${value === key ? 'ring-2 ring-primary bg-primary/5' : 'bg-card hover:bg-muted/30'}`}>

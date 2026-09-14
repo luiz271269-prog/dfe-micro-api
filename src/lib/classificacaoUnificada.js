@@ -11,12 +11,14 @@ export const ORIGENS_COMPRA = {
 };
 
 export const TIPOS_COMPRA = {
-  estoque: 'Compras (estoque/revenda)',
-  despesas: 'Despesas fixas/variáveis',
-  impostos: 'Impostos (vendas + folha)',
-  folha: 'Folha',
-  obras: 'Obras / Reformas',
+  receitas: 'Receitas',
+  estoque: 'Custos / estoque',
+  despesas: 'Despesas operacionais',
+  folha: 'Folha de pagamento',
   pro_labore: 'Pró-labore',
+  impostos: 'Tributos',
+  obras: 'Investimentos',
+  financeiro: 'Financeiro',
 };
 
 export function tipoGastoValido(valor) {

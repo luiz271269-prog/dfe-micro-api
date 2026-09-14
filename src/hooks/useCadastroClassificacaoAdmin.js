@@ -13,7 +13,6 @@ export default function useCadastroClassificacaoAdmin() {
     const payload = { eixo: dados.eixo, chave: dados.chave, rotulo: dados.rotulo, natureza_vinculada: dados.natureza_vinculada || '', naturezas_vinculadas: dados.naturezas_vinculadas || [], centros_custo_vinculados: dados.centros_custo_vinculados || [], nivel: dados.nivel || 'base', ativo: dados.ativo !== false, perfis_permitidos: dados.perfis_permitidos || [], ordem: Number(dados.ordem || 0), cor: dados.cor || '' };
     if (id) await base44.entities.CadastroClassificacao.update(id, payload);
     else await base44.entities.CadastroClassificacao.create(payload);
-    await revisarTiposGasto({ action: 'migrar_cadastro' });
     await queryClient.invalidateQueries({ queryKey: ['cadastro-classificacao'] });
   }
 
@@ -41,7 +40,7 @@ export default function useCadastroClassificacaoAdmin() {
     const criados = criar.length ? await base44.entities.CadastroClassificacao.bulkCreate(criar) : [];
     const execucaoId = `sincronizar-plano-${Date.now()}`;
     await auditar([...atualizar.map(item => ({ id: item.id, antes: atuais.find(x => x.id === item.id), depois: item })), ...criados.map(item => ({ id: item.id, antes: {}, depois: item }))], execucaoId);
-    const validacao = await revisarTiposGasto({ action: 'aplicar_automatico', dry_run: true });
+    const validacao = await revisarTiposGasto({ action: 'aplicar_automatico', dry_run: false });
     await queryClient.invalidateQueries({ queryKey: ['cadastro-classificacao'] });
     return { atualizados: atualizar.length, criados: criar.length, validacao };
   }

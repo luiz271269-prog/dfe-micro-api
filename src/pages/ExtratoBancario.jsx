@@ -19,7 +19,7 @@ import SortableTh from '../components/shared/SortableTh';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
-import { getOpcoes, loadCustom } from '../lib/classificacaoUnificada';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizacao';
@@ -53,6 +53,9 @@ export default function ExtratoBancario() {
     origem_compra: 'empresa', tipo_compra: 'despesas',
     saldo_apos: '', conta_bancaria: 'NeuralTec 36092-2', detalhe: '', mes_referencia: ''
   });
+  const { itens: tiposCadastro } = useCadastroClassificacao('tipo');
+  const { opcoes: opcoesCategoria } = useCadastroClassificacao('categoria');
+  const tiposTotalizadores = tiposCadastro.map(item => [item.chave, item.rotulo]);
 
   async function loadData() {
     setLoading(true);
@@ -114,17 +117,14 @@ export default function ExtratoBancario() {
   }, [filtered, sortField, sortDir]);
 
   const totaisTipo = useMemo(() => {
-    const totais = Object.fromEntries(TIPOS_TOTALIZADORES.map(([tipo]) => [tipo, 0]));
+    const totais = Object.fromEntries(tiposTotalizadores.map(([tipo]) => [tipo, 0]));
     periodoLancamentos.forEach(l => {
       if (Object.prototype.hasOwnProperty.call(totais, l.tipo_compra)) totais[l.tipo_compra] += l.valor || 0;
     });
     return totais;
-  }, [periodoLancamentos]);
+  }, [periodoLancamentos, tiposCadastro]);
 
   const totalGeral = filtered.reduce((s, l) => s + (l.valor || 0), 0);
-
-  // Plano de contas unificado (compartilhado com Cartões e Contas a Pagar)
-  const opcoesCategoria = useMemo(() => getOpcoes('categoria', loadCustom()), []);
 
   // Chamado após o SeletorClassificacao já ter persistido a mudança no banco
   async function handleCategoriaChange(id, newCat) {
@@ -264,7 +264,7 @@ export default function ExtratoBancario() {
 
       {/* Totalizadores padronizados pelos seis tipos de gasto */}
       <MobileKPICarousel desktopGridClass="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        {TIPOS_TOTALIZADORES.map(([tipo, titulo]) => {
+        {tiposTotalizadores.map(([tipo, titulo]) => {
           const valor = totaisTipo[tipo] || 0;
           const isActive = filterTipo === tipo;
           return <GradientCard

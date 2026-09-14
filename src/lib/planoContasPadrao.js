@@ -17,7 +17,7 @@ export const CONTAS_PLANO = [
   conta('administrativas', '3.01 Administrativas', 3.01, 'despesas'), conta('comerciais', '3.02 Comerciais', 3.02, 'despesas'),
   conta('despesa_operacional', '3.03 Operacionais', 3.03, 'despesas'), conta('tecnologia', '3.04 Tecnologia', 3.04, 'despesas'),
   conta('transporte', '3.05 Veículos / transporte', 3.05, 'despesas'), conta('outro', '3.06 Outras despesas', 3.06, 'despesas'),
-  conta('combustivel', '3.07 Combustível', 3.07, 'despesas'), conta('seguro', '3.08 Seguro', 3.08, 'despesas'), conta('pessoal', '3.09 Pessoal', 3.09, 'despesas'),
+  conta('combustivel', '3.07 Combustível', 3.07, 'despesas'), conta('seguro', '3.08 Seguro', 3.08, 'despesas'),
   conta('salarios_comissoes', '4.01 Salários + comissões', 4.01, 'folha'), conta('rescisoes_contrato', '4.02 Rescisões de contrato', 4.02, 'folha'),
   conta('beneficios', '4.03 Benefícios (férias / 13º salário)', 4.03, 'folha'), conta('pro_labore', '4.04 Pró-labore', 4.04, 'pro_labore', ['pro_labore']),
   conta('alimentacao', '4.05 Alimentação', 4.05, 'pro_labore', ['pro_labore']), conta('lazer', '4.06 Lazer', 4.06, 'pro_labore', ['pro_labore']),

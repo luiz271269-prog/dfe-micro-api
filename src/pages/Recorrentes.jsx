@@ -20,6 +20,7 @@ import { formatCurrency, formatDate } from '../lib/formatters';
 import { aprenderPadroes, aplicarRegra } from '../lib/recurringEngine';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 
 const EMPRESAS = ['NeuralTec','Liesch'];
 const FORMAS = ['pix','boleto','debito_automatico','cartao','transferencia'];
@@ -36,6 +37,7 @@ export default function Recorrentes() {
   const [mes, setMes] = useState(() => format(new Date(), 'yyyy-MM'));
   const [modo, setModo] = useState('mes');
   const { regras, lancs, cartoes, loading, error, load } = useRecorrentesData(mes);
+  const { opcoes: tiposPermitidos } = useCadastroClassificacao('tipo');
   const [extratoOpen, setExtratoOpen] = useState(false);
   const [conciliarOpen, setConciliarOpen] = useState(false);
   const [formErro, setFormErro] = useState('');
@@ -110,7 +112,7 @@ export default function Recorrentes() {
 
   async function salvar() {
     setFormErro('');
-    if (!(Number(form.valor_esperado) > 0) || !form.origem_compra || !['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore'].includes(form.tipo_compra)) { setFormErro('Informe um valor positivo e complete a classificação.'); return; }
+    if (!(Number(form.valor_esperado) > 0) || !form.origem_compra || !tiposPermitidos[form.tipo_compra]) { setFormErro('Informe um valor positivo e complete a classificação.'); return; }
     if (form.frequencia === 'semanal' && !/^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/.test(form.data_inicio || '')) { setFormErro('Informe a data inicial da recorrência semanal.'); return; }
     if (['trimestral', 'anual'].includes(form.frequencia) && !/^\d{4}-(0[1-9]|1[0-2])$/.test(form.mes_inicio || '')) { setFormErro('Informe o mês inicial da recorrência.'); return; }
     if (form.dia_vencimento && (Number(form.dia_vencimento) < 1 || Number(form.dia_vencimento) > 31)) { setFormErro('O dia esperado deve estar entre 1 e 31.'); return; }

@@ -1,11 +1,12 @@
-import { getOpcoes, getCor, loadCustom } from '@/lib/classificacaoUnificada';
+import { getCor } from '@/lib/classificacaoUnificada';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 
 const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function MatrizClassificacao({ vinculos, onSelecionar }) {
-  const custom = loadCustom();
-  const origens = getOpcoes('origem', custom);
-  const tipos = { ...getOpcoes('tipo', custom), __fatura__: 'Faturas (composição no cartão)' };
+  const { opcoes: origens } = useCadastroClassificacao('origem');
+  const { opcoes: tiposCadastro } = useCadastroClassificacao('tipo');
+  const tipos = { ...tiposCadastro, __fatura__: 'Faturas (composição no cartão)' };
 
   const chaveO = Object.keys(origens).concat('__sem__');
   const chaveT = Object.keys(tipos).concat('__sem__');

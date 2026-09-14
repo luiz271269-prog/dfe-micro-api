@@ -62,8 +62,8 @@ export default async function(req) {
         for (let lote = 0; lote < 20; lote++) {
           const registros = await db[nome].filter({ origem_compra: 'pessoal' }, '-created_date', 500);
           if (!registros.length) break;
-          await db[nome].bulkUpdate(registros.map(registro => ({ id: registro.id, origem_compra: 'investimento' })));
-          auditoria.push(...registros.map(registro => ({ execucao_id: execucaoId, entidade_tipo: nome, entidade_id: registro.id, origem_alteracao: 'automatica', confianca: 100, motivos: ['migração do cadastro mestre: pessoal para investimento'], antes_json: JSON.stringify({ origem_compra: 'pessoal' }), depois_json: JSON.stringify({ origem_compra: 'investimento' }) })));
+          await db[nome].bulkUpdate(registros.map(registro => ({ id: registro.id, origem_compra: 'pro_labore', tipo_compra: 'pro_labore' })));
+          auditoria.push(...registros.map(registro => ({ execucao_id: execucaoId, entidade_tipo: nome, entidade_id: registro.id, origem_alteracao: 'automatica', confianca: 100, motivos: ['migração do cadastro mestre: pessoal para Pró-labore'], antes_json: JSON.stringify({ origem_compra: 'pessoal' }), depois_json: JSON.stringify({ origem_compra: 'pro_labore', tipo_compra: 'pro_labore' }) })));
         }
       }
       if (auditoria.length) await auditar(db, auditoria);
