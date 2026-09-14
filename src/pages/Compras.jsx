@@ -19,7 +19,7 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import ConciliacaoDDAvsContas from '../components/contas-pagar/ConciliacaoDDAvsContas';
 import CompraPagamentoFields, { EMPTY_COMPRA, FORMAS_COMPRA } from '@/components/compras/CompraPagamentoFields';
 import ComprasPagamentoResumo from '@/components/compras/ComprasPagamentoResumo';
-import SincronizarComprasButton from '@/components/contas-pagar/SincronizarComprasButton';
+import ComprasPortalCotacao from '@/components/cartoes/ComprasPortalCotacao';
 import { useQueryClient } from '@tanstack/react-query';
 
 // ── Compras config ────────────────────────────────────────────────────────────
@@ -224,7 +224,6 @@ export default function Compras() {
             <Link to="/produtos?tab=fornecedores">
               <Button variant="outline" className="gap-2"><Building2 className="w-4 h-4" /> Fornecedores</Button>
             </Link>
-            <SincronizarComprasButton onDone={loadCompras} />
             <Button onClick={() => { setErrorC(''); setShowFormC(true); }} className="gap-2"><Plus className="w-4 h-4" /> Nova Compra</Button>
           </>
         )}
@@ -259,6 +258,7 @@ export default function Compras() {
       {/* ── ABA COMPRAS ──────────────────────────────────────────────────── */}
       {activeTab === 'compras' && (
         <>
+          <ComprasPortalCotacao />
           <ComprasPagamentoResumo compras={comprasMes} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
