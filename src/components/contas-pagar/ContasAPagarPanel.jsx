@@ -33,6 +33,21 @@ function rotuloMes(mesIso) {
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
+const FILTROS_EMPRESA = [
+  { valor: 'todos', rotulo: 'Todas' },
+  { valor: 'NeuralTec', rotulo: 'NeuralTec' },
+  { valor: 'Liesch', rotulo: 'Liesch' },
+  { valor: 'pro_labore', rotulo: 'Pró-labore' },
+  { valor: 'condominio', rotulo: 'Condomínio' },
+];
+
+function pertenceAoFiltroEmpresa(item, filtro) {
+  if (filtro === 'todos') return true;
+  if (filtro === 'pro_labore') return ['pro_labore', 'pessoal'].includes(item.origem_compra) || item.empresa === 'pessoal';
+  if (filtro === 'condominio') return item.origem_compra === 'condominio' || item.empresa === 'condominio';
+  return item.empresa === filtro;
+}
+
 export default function ContasAPagarPanel() {
   const [loading, setLoading] = useState(true);
   const [conciliando, setConciliando] = useState(false);
@@ -133,7 +148,7 @@ export default function ContasAPagarPanel() {
     return itensRaw.filter(i => {
       const tipo = i.origem_tipo === 'fatura' ? 'fatura' : tipoGastoValido(i.tipo_compra) ? i.tipo_compra : 'pendente';
       if (filtroOrigem !== 'todos' && tipo !== filtroOrigem) return false;
-      if (filtroEmpresa !== 'todos' && i.empresa !== filtroEmpresa) return false;
+      if (!pertenceAoFiltroEmpresa(i, filtroEmpresa)) return false;
       return true;
     });
   }, [itensRaw, filtroOrigem, filtroEmpresa]);
@@ -239,15 +254,15 @@ export default function ContasAPagarPanel() {
         </>)}
       </div>
 
-      <FiltroTiposGasto itens={itensRaw.filter(i => filtroEmpresa === 'todos' || i.empresa === filtroEmpresa)} value={filtroOrigem} onChange={setFiltroOrigem} />
+      <FiltroTiposGasto itens={itensRaw.filter(i => pertenceAoFiltroEmpresa(i, filtroEmpresa))} value={filtroOrigem} onChange={setFiltroOrigem} />
 
-      {/* Filtro empresa */}
-      <div className="flex items-center gap-2 mb-4 text-xs">
-        <span className="font-bold text-muted-foreground">Empresa:</span>
-        {['todos', 'NeuralTec', 'Liesch'].map(e => (
-          <button key={e} onClick={() => setFiltroEmpresa(e)}
-            className={`px-3 py-1 rounded-full border font-semibold ${filtroEmpresa === e ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'}`}>
-            {e === 'todos' ? 'Todas' : e}
+      {/* Filtro empresa / responsável econômico */}
+      <div className="flex items-center gap-2 mb-4 text-xs overflow-x-auto pb-1">
+        <span className="font-bold text-muted-foreground whitespace-nowrap">Empresa / origem:</span>
+        {FILTROS_EMPRESA.map(({ valor, rotulo }) => (
+          <button key={valor} onClick={() => setFiltroEmpresa(valor)}
+            className={`px-3 py-1 rounded-full border font-semibold whitespace-nowrap ${filtroEmpresa === valor ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'}`}>
+            {rotulo}
           </button>
         ))}
       </div>

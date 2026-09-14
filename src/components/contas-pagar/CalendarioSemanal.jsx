@@ -78,7 +78,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
     const cfg = ORIGEM_CONFIG[i.origem_tipo] || ORIGEM_FALLBACK;
     const OIcon = cfg.icon;
     const entityName = mapearTipoEntidade(i.origem_tipo);
-    const ok = conciliadosSet.has(i);
+    const ok = modo === 'pagos' && conciliadosSet.has(i);
     return (
       <div key={i.id} className="flex items-start gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-muted/30">
         <span className={`flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded ${cfg.color}`}>
