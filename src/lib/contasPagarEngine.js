@@ -49,7 +49,7 @@ function eixos(reg, origem_tipo) {
 export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [], compras = [], obras = [], lancamentos = [], lancamentosCartao = [] }) {
   const itens = [];
 
-  despesas.filter(d => d.status === 'pendente' && !evaporou(d)).forEach(d => {
+  despesas.filter(d => d.status === 'pendente' && !evaporou(d) && (d.valor || 0) > 0.01).forEach(d => {
     itens.push({
       id: `desp-${d.id}`,
       origem_id: d.id,
