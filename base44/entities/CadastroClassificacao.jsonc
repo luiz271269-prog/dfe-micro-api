@@ -1,7 +1,7 @@
 {
   "name": "CadastroClassificacao",
   "type": "object",
-  "description": "Fonte \u00fanica dos tr\u00eas eixos da classifica\u00e7\u00e3o financeira e de suas permiss\u00f5es de uso.",
+  "description": "Fonte \u00fanica do plano de contas, naturezas econ\u00f4micas, centros de custo e permiss\u00f5es de uso.",
   "properties": {
     "eixo": {
       "type": "string",
@@ -18,11 +18,27 @@
     },
     "rotulo": {
       "type": "string",
-      "title": "R\u00f3tulo"
+      "title": "Nome"
     },
     "natureza_vinculada": {
       "type": "string",
-      "title": "Natureza econ\u00f4mica vinculada"
+      "title": "Natureza vinculada (legado)"
+    },
+    "naturezas_vinculadas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "title": "Naturezas econ\u00f4micas permitidas"
+    },
+    "centros_custo_vinculados": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "title": "Centros de custo permitidos"
     },
     "nivel": {
       "type": "string",

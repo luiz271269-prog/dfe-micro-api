@@ -1,5 +1,5 @@
 // Vocabulário único de classificação usado em Extrato, Cartões e Contas a Pagar.
-// Eixo 1 — Quem comprou / Centro de custo (origem_compra)
+// Eixo 1 — Centro de custo (origem_compra)
 // Eixo 2 — Tipo de compra (tipo_compra)
 // Eixo 3 — Plano de contas / Categoria (categoria)
 
@@ -157,8 +157,8 @@ export function getItensCadastro(cadastro, eixo, role = 'user', natureza = '') {
   return cadastrados
     .filter(item => item.ativo && (item.perfis_permitidos || []).includes(role))
     .sort((a, b) => {
-      const prioridadeA = eixo === 'categoria' && natureza && a.natureza_vinculada === natureza ? 0 : 1;
-      const prioridadeB = eixo === 'categoria' && natureza && b.natureza_vinculada === natureza ? 0 : 1;
+      const prioridadeA = eixo === 'categoria' && natureza && (a.naturezas_vinculadas || [a.natureza_vinculada]).includes(natureza) ? 0 : 1;
+      const prioridadeB = eixo === 'categoria' && natureza && (b.naturezas_vinculadas || [b.natureza_vinculada]).includes(natureza) ? 0 : 1;
       return prioridadeA - prioridadeB || (a.ordem || 0) - (b.ordem || 0);
     });
 }

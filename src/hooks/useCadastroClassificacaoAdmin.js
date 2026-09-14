@@ -9,7 +9,7 @@ export default function useCadastroClassificacaoAdmin() {
 
   async function salvar(dados, id) {
     if (!id && (cadastro.data || []).some(item => item.eixo === dados.eixo && item.chave === dados.chave)) throw new Error('Já existe uma classificação com esta chave neste eixo.');
-    const payload = { eixo: dados.eixo, chave: dados.chave, rotulo: dados.rotulo, natureza_vinculada: dados.natureza_vinculada || '', nivel: dados.nivel || 'base', ativo: dados.ativo !== false, perfis_permitidos: dados.perfis_permitidos || [], ordem: Number(dados.ordem || 0), cor: dados.cor || '' };
+    const payload = { eixo: dados.eixo, chave: dados.chave, rotulo: dados.rotulo, natureza_vinculada: dados.natureza_vinculada || '', naturezas_vinculadas: dados.naturezas_vinculadas || [], centros_custo_vinculados: dados.centros_custo_vinculados || [], nivel: dados.nivel || 'base', ativo: dados.ativo !== false, perfis_permitidos: dados.perfis_permitidos || [], ordem: Number(dados.ordem || 0), cor: dados.cor || '' };
     if (id) await base44.entities.CadastroClassificacao.update(id, payload);
     else await base44.entities.CadastroClassificacao.create(payload);
     await revisarTiposGasto({ action: 'migrar_cadastro' });

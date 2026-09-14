@@ -5,7 +5,7 @@ import { getCor } from '@/lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import TipoGastoSelector from '@/components/shared/TipoGastoSelector';
 
-// Badge editável para os eixos unificados: eixo="origem" (Quem comprou) ou "tipo" (Tipo de compra)
+// Badge editável para os eixos unificados: eixo="origem" (Centro de custo) ou "tipo" (Natureza econômica)
 export default function SeletorClassificacao({ eixo, entityName, record, field, onChange }) {
   const [editing, setEditing] = useState(false);
   const [valor, setValor] = useState(record?.[field] || '');
@@ -30,7 +30,7 @@ export default function SeletorClassificacao({ eixo, entityName, record, field, 
         <Select value={valor || ''} onValueChange={salvar} open onOpenChange={(o) => { if (!o) setEditing(false); }}>
           <SelectTrigger className="h-6 text-[10px] px-1.5 w-[130px]"><SelectValue placeholder="—" /></SelectTrigger>
           <SelectContent>
-            {itens.map(item => <SelectItem key={item.chave} value={item.chave} className={eixo === 'categoria' && record?.tipo_compra && item.natureza_vinculada === record.tipo_compra ? 'font-semibold text-primary' : ''}>{item.rotulo}</SelectItem>)}
+            {itens.map(item => <SelectItem key={item.chave} value={item.chave} className={eixo === 'categoria' && record?.tipo_compra && (item.naturezas_vinculadas || [item.natureza_vinculada]).includes(record.tipo_compra) ? 'font-semibold text-primary' : ''}>{item.rotulo}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
