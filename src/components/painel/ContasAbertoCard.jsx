@@ -35,6 +35,7 @@ export default function ContasAbertoCard({ aberto }) {
         {g.faixas.map((f) => <div key={f.faixa}><p className="text-muted-foreground">{f.faixa} dias</p><p className="font-bold tabular-nums">{formatCurrency(f.aVencer + f.vencido, true)}</p></div>)}
       </div>
       <p className="text-[11px] text-muted-foreground text-center mt-2">{g.registros} registro(s) · total {formatCurrency(g.total)}</p>
+      {aberto.dataCorte && <p className="text-[10px] text-muted-foreground text-center">Aging {aberto.modoAging === 'fechamento' ? 'do fechamento' : 'operacional'} · corte em {aberto.dataCorte.split('-').reverse().join('/')}</p>}
     </div>
   );
 }

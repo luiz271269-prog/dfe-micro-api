@@ -26,7 +26,17 @@ function agrupar(itens, hoje) {
   };
 }
 
-export function calcularAberto(dados, mes, perimetro, hoje) {
+// Data de corte do aging: mês corrente → hoje (aging operacional); mês encerrado → último dia da competência (aging do fechamento).
+// Sem isso o aging histórico mudaria toda vez que "hoje" avança.
+export function dataCorteAging(mes, hoje) {
+  if (mes >= hoje.slice(0, 7)) return { dataCorte: hoje, modo: 'operacional' };
+  const [y, m] = mes.split('-').map(Number);
+  const ultimoDia = new Date(y, m, 0).getDate();
+  return { dataCorte: `${mes}-${String(ultimoDia).padStart(2, '0')}`, modo: 'fechamento' };
+}
+
+export function calcularAberto(dados, mes, perimetro, hojeReal) {
+  const { dataCorte: hoje, modo } = dataCorteAging(mes, hojeReal);
   const titulos = dados.TituloCobranca.filter((t) => t.status !== 'pago')
     .map((t) => ({ id: t.id, entidade: 'TituloCobranca', data_vencimento: t.data_vencimento, valor: (t.valor_titulo || 0) - (t.valor_pago || 0) }));
 
@@ -48,6 +58,7 @@ export function calcularAberto(dados, mes, perimetro, hoje) {
   const pagos = vencidosNoMes.filter((t) => t.status === 'pago').length;
 
   return {
+    dataCorte: hoje, modoAging: modo,
     aReceber: agrupar(titulos, hoje),
     aPagar: agrupar(aPagar, hoje),
     adimplencia: { percentual: vencidosNoMes.length ? arred((pagos / vencidosNoMes.length) * 100) : null, pagos, total: vencidosNoMes.length },
