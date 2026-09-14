@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { revisarTiposGasto } from '@/functions/revisarTiposGasto';
-import { TIPOS_COMPRA, tipoGastoValido, getCor, exigeTipoGasto } from '@/lib/classificacaoUnificada';
+import { getCor, exigeTipoGasto } from '@/lib/classificacaoUnificada';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 
 export default function TipoGastoSelector({ entityName, record, onChange }) {
   const [valor, setValor] = useState(record?.tipo_compra || '');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { opcoes } = useCadastroClassificacao('tipo');
   useEffect(() => { setValor(record?.tipo_compra || ''); }, [record?.id, record?.tipo_compra]);
   if (entityName === 'FaturaCartao') return <span className="text-[10px] text-muted-foreground">Tipos nos lançamentos do cartão</span>;
   if (entityName === 'LancamentoBancario' && record?.valor !== undefined && !exigeTipoGasto(entityName, record)) return <span className="text-[10px] text-muted-foreground">Não se aplica — movimentação financeira</span>;
-  const pendente = !tipoGastoValido(valor);
+  const pendente = !opcoes[valor];
   async function salvar(tipo) {
-    if (!tipoGastoValido(tipo) || saving) return;
+    if (!opcoes[tipo] || saving) return;
     setSaving(true); setError('');
     try {
       const { data } = await revisarTiposGasto({ action: 'salvar', entidade: entityName, id: record.id, tipo });
@@ -26,11 +28,11 @@ export default function TipoGastoSelector({ entityName, record, onChange }) {
   }
   return <span className="inline-flex flex-col gap-1 max-w-full">
     <span className="inline-flex items-center gap-1">
-      {editing ? <select aria-label="Natureza econômica" autoFocus disabled={saving} value={tipoGastoValido(valor) ? valor : ''} onChange={e => salvar(e.target.value)} className="h-7 max-w-full rounded border bg-background text-xs">
+      {editing ? <select aria-label="Natureza econômica" autoFocus disabled={saving} value={opcoes[valor] ? valor : ''} onChange={e => salvar(e.target.value)} className="h-7 max-w-full rounded border bg-background text-xs">
         <option value="" disabled>Escolha o tipo de gasto</option>
-        {Object.entries(TIPOS_COMPRA).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+        {Object.entries(opcoes).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
       </select> : <button type="button" onClick={() => setEditing(true)} title={pendente ? `Classificação anterior: ${valor || 'não informada'}` : 'Alterar tipo de gasto'} className={`rounded px-1.5 py-0.5 text-[10px] font-semibold text-left ${pendente ? 'bg-warning/10 text-warning' : getCor('tipo', valor)}`}>
-        {pendente ? 'Pendente de classificação' : TIPOS_COMPRA[valor]}
+        {pendente ? 'Pendente de cadastro' : opcoes[valor]}
       </button>}
       <button type="button" disabled={saving} onClick={() => setEditing(v => !v)} aria-label="Selecionar tipo de gasto" className="text-muted-foreground hover:text-primary"><Plus className="w-3.5 h-3.5" /></button>
       {saving && <span className="text-xs text-muted-foreground">Salvando…</span>}

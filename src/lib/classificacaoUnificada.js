@@ -5,9 +5,9 @@
 
 export const ORIGENS_COMPRA = {
   empresa: 'Empresa',
-  pro_labore: 'Sócio / Administrador',
   condominio: 'Condomínio',
-  pessoal: 'Pessoal',
+  investimento: 'Investimento',
+  pro_labore: 'Pró-labore',
 };
 
 export const TIPOS_COMPRA = {
@@ -28,7 +28,7 @@ export function rotuloTipoGasto(valor) {
 }
 
 export function exigeTipoGasto(entidade, registro) {
-  if (entidade === 'FaturaCartao' || registro?.origem_compra === 'pessoal') return false;
+  if (entidade === 'FaturaCartao') return false;
   if (entidade === 'VinculoExtrato') return !['FaturaCartao', 'NotaFiscal', 'TituloCobranca', 'TransferenciaInterna', 'MovimentoFinanceiro'].includes(registro.entidade_tipo) && !['recebimento_integral', 'recebimento_parcial', 'estorno'].includes(registro.tipo_vinculo);
   if (entidade !== 'LancamentoBancario') return true;
   if (!(registro.valor < 0) || ['saque', 'transferencia', 'interno', 'recebimento'].includes(registro.categoria)) return false;
@@ -66,9 +66,9 @@ export const CATEGORIAS_CONTAS = {
 
 export const ORIGEM_COLORS = {
   empresa: 'bg-blue-100 text-blue-700',
-  pro_labore: 'bg-purple-100 text-purple-700',
   condominio: 'bg-amber-100 text-amber-700',
-  pessoal: 'bg-pink-100 text-pink-700',
+  investimento: 'bg-emerald-100 text-emerald-700',
+  pro_labore: 'bg-purple-100 text-purple-700',
 };
 
 export const TIPO_COLORS = {
@@ -149,6 +149,18 @@ const COLORS = { origem: ORIGEM_COLORS, tipo: TIPO_COLORS, categoria: CATEGORIA_
 export function getOpcoes(eixo, custom) {
   if (eixo === 'tipo') return { ...TIPOS_COMPRA };
   return { ...(BASES[eixo] || {}), ...(custom?.[eixo] || {}) };
+}
+
+export function getItensCadastro(cadastro, eixo, role = 'user', natureza = '') {
+  const cadastrados = cadastro.filter(item => item.eixo === eixo);
+  if (!cadastrados.length) return Object.entries(BASES[eixo] || {}).map(([chave, rotulo], ordem) => ({ chave, rotulo, ordem, nivel: 'base' }));
+  return cadastrados
+    .filter(item => item.ativo && (item.perfis_permitidos || []).includes(role))
+    .sort((a, b) => {
+      const prioridadeA = eixo === 'categoria' && natureza && a.natureza_vinculada === natureza ? 0 : 1;
+      const prioridadeB = eixo === 'categoria' && natureza && b.natureza_vinculada === natureza ? 0 : 1;
+      return prioridadeA - prioridadeB || (a.ordem || 0) - (b.ordem || 0);
+    });
 }
 
 export function getCor(eixo, valor) {

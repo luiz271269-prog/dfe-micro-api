@@ -43,6 +43,7 @@ import AnaliseClassificacao from './pages/AnaliseClassificacao';
 import RelatorioGerencial from './pages/RelatorioGerencial';
 import DREOperacional from './pages/DREOperacional';
 import IntegracoesFinanceiras from './pages/IntegracoesFinanceiras';
+import CadastroClassificacao from './pages/CadastroClassificacao';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -110,6 +111,7 @@ const AuthenticatedApp = () => {
         <Route path="/relatorio-gerencial" element={<RelatorioGerencial />} />
         <Route path="/dre-operacional" element={<DREOperacional />} />
         <Route path="/integracoes-financeiras" element={<IntegracoesFinanceiras />} />
+        <Route path="/cadastro-classificacao" element={<CadastroClassificacao />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

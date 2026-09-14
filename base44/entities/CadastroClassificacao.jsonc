@@ -1,0 +1,105 @@
+{
+  "name": "CadastroClassificacao",
+  "type": "object",
+  "description": "Fonte \u00fanica dos tr\u00eas eixos da classifica\u00e7\u00e3o financeira e de suas permiss\u00f5es de uso.",
+  "properties": {
+    "eixo": {
+      "type": "string",
+      "enum": [
+        "origem",
+        "tipo",
+        "categoria"
+      ],
+      "title": "Eixo"
+    },
+    "chave": {
+      "type": "string",
+      "title": "Chave can\u00f4nica"
+    },
+    "rotulo": {
+      "type": "string",
+      "title": "R\u00f3tulo"
+    },
+    "natureza_vinculada": {
+      "type": "string",
+      "title": "Natureza econ\u00f4mica vinculada"
+    },
+    "nivel": {
+      "type": "string",
+      "enum": [
+        "base",
+        "subcategoria"
+      ],
+      "default": "base",
+      "title": "N\u00edvel"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "title": "Ativo"
+    },
+    "perfis_permitidos": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "user"
+        ]
+      },
+      "default": [
+        "admin",
+        "user"
+      ],
+      "title": "Perfis autorizados"
+    },
+    "ordem": {
+      "type": "number",
+      "default": 0,
+      "title": "Ordem"
+    },
+    "cor": {
+      "type": "string",
+      "title": "Cor hexadecimal"
+    }
+  },
+  "required": [
+    "eixo",
+    "chave",
+    "rotulo",
+    "nivel",
+    "ativo",
+    "perfis_permitidos"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "user"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Landmark, FileText, Receipt, ShoppingCart,
   Hammer, CreditCard, DollarSign, Users, BarChart3, CloudUpload, Map,
   Scale, Package, GitCompare, FolderOpen, Target, Repeat, Bot, FileCode,
-  Calculator, Activity, Link2, ShieldCheck, Wallet, FolderSync, CircleDollarSign, PieChart
+  Calculator, Activity, Link2, ShieldCheck, Wallet, FolderSync, CircleDollarSign, PieChart, Tags
 } from 'lucide-react';
 
 // Menu agrupado pela lógica dos fluxos (espelha o Diagnóstico de Fluxos)
@@ -77,6 +77,7 @@ export const navGroups = [
     items: [
       { path: '/importar', label: 'Importar Documento', icon: CloudUpload },
       { path: '/integracoes-financeiras', label: 'Integrações Financeiras', icon: FolderSync },
+      { path: '/cadastro-classificacao', label: 'Cadastro de Classificação', icon: Tags },
       { path: '/auditoria', label: 'Auditoria de Arquivos', icon: FolderOpen },
     ],
   },

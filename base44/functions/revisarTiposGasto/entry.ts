@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { tiposCanonicos, origensCanonicas, construirMemoria, classificarRegistro, validarCombinacao } from '../../shared/classificacaoFinanceira.ts';
+import { construirMemoria, classificarRegistro, validarCombinacao, resolverCadastro } from '../../shared/classificacaoFinanceira.ts';
 
 const entidades = ['LancamentoBancario', 'LancamentoCartao', 'FaturaCartao', 'DespesaOperacional', 'Tributo', 'FolhaPagamento', 'ItemCompra', 'ObraReforma', 'RegraRecorrente'];
 const campos = ['origem_compra', 'tipo_compra', 'categoria'];
@@ -50,13 +50,32 @@ export default async function(req) {
     const payload = await req.json();
     const { action, entidade, id } = payload;
     const db = base44.entities;
+    const cadastro = await db.CadastroClassificacao.list('ordem', 200);
+    const permitidos = resolverCadastro(cadastro, user.role);
+
+    if (action === 'migrar_cadastro') {
+      if (user.role !== 'admin') return Response.json({ error: 'Apenas administradores podem migrar o cadastro.' }, { status: 403 });
+      const nomes = ['LancamentoBancario', 'LancamentoCartao', 'DespesaOperacional', 'ItemCompra', 'ObraReforma', 'FolhaPagamento', 'VinculoExtrato'];
+      const execucaoId = `migracao-cadastro-${Date.now()}`;
+      const auditoria = [];
+      for (const nome of nomes) {
+        for (let lote = 0; lote < 20; lote++) {
+          const registros = await db[nome].filter({ origem_compra: 'pessoal' }, '-created_date', 500);
+          if (!registros.length) break;
+          await db[nome].bulkUpdate(registros.map(registro => ({ id: registro.id, origem_compra: 'investimento' })));
+          auditoria.push(...registros.map(registro => ({ execucao_id: execucaoId, entidade_tipo: nome, entidade_id: registro.id, origem_alteracao: 'automatica', confianca: 100, motivos: ['migração do cadastro mestre: pessoal para investimento'], antes_json: JSON.stringify({ origem_compra: 'pessoal' }), depois_json: JSON.stringify({ origem_compra: 'investimento' }) })));
+        }
+      }
+      if (auditoria.length) await auditar(db, auditoria);
+      return Response.json({ success: true, execucao_id: execucaoId, migrados: auditoria.length });
+    }
 
     if (action === 'aplicar_automatico') {
       if (user.role !== 'admin') return Response.json({ error: 'Apenas administradores podem reclassificar o histórico.' }, { status: 403 });
       const dryRun = payload.dry_run !== false;
       const dados = {};
       for (const nome of entidades.filter(n => n !== 'RegraRecorrente')) dados[nome] = await listarTudo(db, nome);
-      const memoria = construirMemoria(dados);
+      const memoria = construirMemoria(dados, cadastro, user.role);
       const execucaoId = `classificacao-${Date.now()}`;
       const resumo = {};
       const amostra = [];
@@ -64,7 +83,7 @@ export default async function(req) {
       const classificacoesFonte = new Map();
 
       for (const [nome, registros] of Object.entries(dados)) {
-        const avaliados = registros.map(registro => ({ registro, resultado: classificarRegistro(nome, registro, memoria) }));
+        const avaliados = registros.map(registro => ({ registro, resultado: classificarRegistro(nome, registro, memoria, cadastro, user.role) }));
         avaliados.forEach(x => classificacoesFonte.set(`${nome}|${x.registro.id}`, x.resultado.depois));
         const alteracoes = avaliados.filter(x => x.resultado.mudou);
         resumo[nome] = { analisados: registros.length, alterados: alteracoes.length };
@@ -90,7 +109,7 @@ export default async function(req) {
       const offset = Number(payload.offset || 0);
       if (!Number.isInteger(offset) || offset < 0 || offset > 1000000) return Response.json({ error: 'Página inválida' }, { status: 400 });
       const rows = await db[entidade].list('-created_date', 200, offset);
-      const itens = rows.map(r => ({ registro: r, resultado: classificarRegistro(entidade, r) })).filter(x => x.resultado.mudou).slice(0, 50).map(x => ({ id: x.registro.id, tipo_compra: x.registro.tipo_compra || '', descricao: x.registro.descricao || x.registro.descricao_produto || x.registro.estabelecimento || x.registro.funcionario_nome || x.registro.tipo || 'Sem descrição', data: x.registro.data || x.registro.data_lancamento || x.registro.data_emissao || x.registro.data_vencimento || x.registro.competencia || '', valor: x.registro.valor ?? x.registro.valor_total ?? x.registro.valor_original ?? x.registro.salario_liquido ?? 0, motivos: x.resultado.motivos }));
+      const itens = rows.map(r => ({ registro: r, resultado: classificarRegistro(entidade, r, new Map(), cadastro, user.role) })).filter(x => x.resultado.mudou).slice(0, 50).map(x => ({ id: x.registro.id, tipo_compra: x.registro.tipo_compra || '', descricao: x.registro.descricao || x.registro.descricao_produto || x.registro.estabelecimento || x.registro.funcionario_nome || x.registro.tipo || 'Sem descrição', data: x.registro.data || x.registro.data_lancamento || x.registro.data_emissao || x.registro.data_vencimento || x.registro.competencia || '', valor: x.registro.valor ?? x.registro.valor_total ?? x.registro.valor_original ?? x.registro.salario_liquido ?? 0, motivos: x.resultado.motivos }));
       return Response.json({ itens, has_more: rows.length === 200, next_offset: offset + 200 });
     }
 
@@ -98,15 +117,17 @@ export default async function(req) {
     if (!registro) return Response.json({ error: 'Registro não encontrado' }, { status: 404 });
     const proposto = { ...registro };
     if (action === 'salvar') {
-      if (!tiposCanonicos.includes(payload.tipo)) return Response.json({ error: 'Escolha uma das seis naturezas econômicas.' }, { status: 400 });
+      if (!permitidos.tipos.includes(payload.tipo)) return Response.json({ error: 'Natureza econômica inativa ou não permitida para este perfil.' }, { status: 400 });
       proposto.tipo_compra = payload.tipo;
     } else if (action === 'salvar_eixo') {
       if (!campos.includes(payload.campo) || typeof payload.valor !== 'string') return Response.json({ error: 'Classificação inválida.' }, { status: 400 });
-      if (payload.campo === 'origem_compra' && !origensCanonicas.includes(payload.valor)) return Response.json({ error: 'Responsável econômico inválido.' }, { status: 400 });
+      if (payload.campo === 'origem_compra' && !permitidos.origens.includes(payload.valor)) return Response.json({ error: 'Responsável econômico inativo ou não permitido.' }, { status: 400 });
+      if (payload.campo === 'tipo_compra' && !permitidos.tipos.includes(payload.valor)) return Response.json({ error: 'Natureza econômica inativa ou não permitida.' }, { status: 400 });
+      if (payload.campo === 'categoria' && permitidos.categorias.length && !permitidos.categorias.includes(payload.valor)) return Response.json({ error: 'Conta analítica inativa ou não permitida.' }, { status: 400 });
       proposto[payload.campo] = payload.valor;
     } else return Response.json({ error: 'Ação inválida.' }, { status: 400 });
 
-    const depois = validarCombinacao(entidade, proposto).normalizado;
+    const depois = validarCombinacao(entidade, proposto, cadastro, user.role).normalizado;
     await db[entidade].update(id, persistivel(entidade, depois));
     const vinculosAtualizados = await atualizarVinculos(base44, entidade, id, depois);
     const filhosAtualizados = await propagarCartao(base44, entidade, id);

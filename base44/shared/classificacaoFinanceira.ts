@@ -1,5 +1,18 @@
 export const tiposCanonicos = ['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore'];
-export const origensCanonicas = ['empresa', 'pro_labore', 'condominio', 'pessoal'];
+export const origensCanonicas = ['empresa', 'condominio', 'investimento', 'pro_labore'];
+
+export function resolverCadastro(cadastro = [], role = 'admin') {
+  const permitidas = (eixo, fallback) => {
+    const itens = cadastro.filter(item => item.eixo === eixo);
+    if (!itens.length) return fallback;
+    return itens.filter(item => item.ativo && (item.perfis_permitidos || []).includes(role)).map(item => item.chave);
+  };
+  return {
+    origens: permitidas('origem', origensCanonicas),
+    tipos: permitidas('tipo', tiposCanonicos),
+    categorias: permitidas('categoria', []),
+  };
+}
 
 const categoriaTipo = {
   fornecedor: 'estoque', estoque: 'estoque', produtos: 'estoque',
@@ -18,7 +31,8 @@ export function chaveHistorica(entidade, registro) {
   return `${entidade}|${normalizarTexto(texto)}`;
 }
 
-export function construirMemoria(registrosPorEntidade) {
+export function construirMemoria(registrosPorEntidade, cadastro = [], role = 'admin') {
+  const permitidos = resolverCadastro(cadastro, role);
   const contagens = new Map();
   for (const [entidade, registros] of Object.entries(registrosPorEntidade)) {
     for (const registro of registros) {
@@ -26,8 +40,8 @@ export function construirMemoria(registrosPorEntidade) {
       if (!chave.split('|')[1]) continue;
       const atual = contagens.get(chave) || { total: 0, origens: {}, tipos: {}, categorias: {} };
       atual.total += 1;
-      if (origensCanonicas.includes(registro.origem_compra)) atual.origens[registro.origem_compra] = (atual.origens[registro.origem_compra] || 0) + 1;
-      if (tiposCanonicos.includes(registro.tipo_compra)) atual.tipos[registro.tipo_compra] = (atual.tipos[registro.tipo_compra] || 0) + 1;
+      if (permitidos.origens.includes(registro.origem_compra)) atual.origens[registro.origem_compra] = (atual.origens[registro.origem_compra] || 0) + 1;
+      if (permitidos.tipos.includes(registro.tipo_compra)) atual.tipos[registro.tipo_compra] = (atual.tipos[registro.tipo_compra] || 0) + 1;
       if (registro.categoria) atual.categorias[registro.categoria] = (atual.categorias[registro.categoria] || 0) + 1;
       contagens.set(chave, atual);
     }
@@ -58,27 +72,29 @@ function eventoDoRegistro(entidade, registro) {
   return 'gasto';
 }
 
-export function classificarRegistro(entidade, registro, memoria = new Map()) {
+export function classificarRegistro(entidade, registro, memoria = new Map(), cadastro = [], role = 'admin') {
+  const permitidos = resolverCadastro(cadastro, role);
   const antes = { origem_compra: registro.origem_compra || '', tipo_compra: registro.tipo_compra || '', categoria: registro.categoria || '' };
   const depois = { ...antes };
   const motivos = [];
   const historico = memoria.get(chaveHistorica(entidade, registro));
   const evento = eventoDoRegistro(entidade, registro);
 
-  if (!origensCanonicas.includes(depois.origem_compra)) {
-    depois.origem_compra = historico?.confiancaOrigem >= 60 ? historico.origem : 'empresa';
-    motivos.push(historico?.confiancaOrigem >= 60 ? 'responsável aprendido do histórico' : 'responsável padrão da origem');
+  if (depois.origem_compra === 'pessoal') {
+    depois.origem_compra = 'investimento'; motivos.push('responsável legado migrado para Investimento');
+  } else if (!permitidos.origens.includes(depois.origem_compra)) {
+    depois.origem_compra = historico?.confiancaOrigem >= 60 && permitidos.origens.includes(historico.origem) ? historico.origem : (permitidos.origens.includes('empresa') ? 'empresa' : permitidos.origens[0] || '');
+    motivos.push(historico?.confiancaOrigem >= 60 ? 'responsável aprendido do histórico' : 'responsável padrão do cadastro mestre');
   }
-  const pessoalSemResponsavel = depois.categoria === 'pessoal' && !origensCanonicas.includes(antes.origem_compra) && antes.tipo_compra !== 'folha';
-  if ((categoriasPessoais.has(depois.categoria) || pessoalSemResponsavel) && entidade !== 'DespesaOperacional') {
-    depois.origem_compra = 'pessoal'; motivos.push('categoria de uso pessoal');
+  if (categoriasPessoais.has(depois.categoria) && entidade !== 'DespesaOperacional') {
+    depois.origem_compra = 'investimento'; motivos.push('categoria pessoal direcionada para Investimento');
   }
   if (depois.categoria === 'pro_labore') {
     depois.origem_compra = 'pro_labore'; depois.tipo_compra = 'pro_labore'; motivos.push('conta analítica de pró-labore');
   }
 
-  if (evento !== 'gasto' || depois.origem_compra === 'pessoal') {
-    if (depois.tipo_compra) motivos.push(evento !== 'gasto' ? 'evento sem impacto de natureza de gasto' : 'gasto pessoal fora do DRE operacional');
+  if (evento !== 'gasto') {
+    if (depois.tipo_compra) motivos.push('evento sem impacto de natureza de gasto');
     depois.tipo_compra = '';
   } else if (depois.origem_compra === 'pro_labore') {
     depois.tipo_compra = 'pro_labore';
@@ -89,27 +105,32 @@ export function classificarRegistro(entidade, registro, memoria = new Map()) {
   } else if (entidade === 'ObraReforma') {
     depois.tipo_compra = registro.natureza === 'manutencao' ? 'despesas' : 'obras'; motivos.push('natureza definida pela política de obras');
   } else if (entidade === 'ItemCompra') {
-    depois.tipo_compra = tiposCanonicos.includes(depois.tipo_compra) ? depois.tipo_compra : 'estoque'; motivos.push('natureza definida pela origem Compra');
-  } else if (!tiposCanonicos.includes(depois.tipo_compra)) {
+    depois.tipo_compra = permitidos.tipos.includes(depois.tipo_compra) ? depois.tipo_compra : 'estoque'; motivos.push('natureza definida pela origem Compra');
+  } else if (!permitidos.tipos.includes(depois.tipo_compra)) {
     const peloHistorico = historico?.confiancaTipo >= 60 ? historico.tipo : null;
     depois.tipo_compra = peloHistorico || categoriaTipo[depois.categoria] || (entidade === 'DespesaOperacional' || entidade === 'LancamentoCartao' ? 'despesas' : 'despesas');
     motivos.push(peloHistorico ? 'natureza aprendida do histórico' : categoriaTipo[depois.categoria] ? 'natureza derivada da conta analítica' : 'natureza padrão do módulo');
   }
 
-  if (!depois.categoria && historico?.categoria && historico.confiancaCategoria >= 60 && ['LancamentoBancario', 'LancamentoCartao', 'DespesaOperacional'].includes(entidade)) {
+  if (depois.tipo_compra && !permitidos.tipos.includes(depois.tipo_compra)) {
+    depois.tipo_compra = '';
+    motivos.push('natureza econômica inativa ou não permitida no cadastro mestre');
+  }
+
+  if (!depois.categoria && historico?.categoria && historico.confiancaCategoria >= 60 && (!permitidos.categorias.length || permitidos.categorias.includes(historico.categoria)) && ['LancamentoBancario', 'LancamentoCartao', 'DespesaOperacional'].includes(entidade)) {
     depois.categoria = historico.categoria; motivos.push('conta analítica aprendida do histórico');
   }
+  if (depois.categoria && permitidos.categorias.length && !permitidos.categorias.includes(depois.categoria)) motivos.push('conta analítica pendente no cadastro mestre');
   const mudou = Object.keys(depois).some(campo => depois[campo] !== antes[campo]);
   const confiancas = [historico?.confiancaOrigem || 0, historico?.confiancaTipo || 0, historico?.confiancaCategoria || 0].filter(Boolean);
   const confianca = motivos.some(m => m.includes('definida pela origem') || m.includes('evento sem')) ? 100 : confiancas.length ? Math.max(...confiancas) : 70;
   return { evento, antes, depois, mudou, motivos, confianca };
 }
 
-export function validarCombinacao(entidade, registro) {
-  const resultado = classificarRegistro(entidade, registro);
+export function validarCombinacao(entidade, registro, cadastro = [], role = 'admin') {
+  const resultado = classificarRegistro(entidade, registro, new Map(), cadastro, role);
   const erros = [];
   if (resultado.evento !== 'gasto' && registro.tipo_compra) erros.push('Este evento financeiro não aceita natureza de gasto.');
-  if (registro.origem_compra === 'pessoal' && registro.tipo_compra) erros.push('Gasto pessoal fica fora das naturezas do DRE operacional.');
-  if (registro.origem_compra === 'pro_labore' && registro.tipo_compra !== 'pro_labore') erros.push('Sócio/Administrador deve usar natureza Pró-labore nesta destinação.');
+  if (registro.origem_compra === 'pro_labore' && registro.tipo_compra !== 'pro_labore') erros.push('Pró-labore deve usar natureza Pró-labore nesta destinação.');
   return { valido: erros.length === 0, erros, normalizado: resultado.depois, evento: resultado.evento };
 }
