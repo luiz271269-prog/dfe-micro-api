@@ -17,7 +17,7 @@ export function getCentralComprasKey() {
  * Retorna { ok, status, data, header } — header indica qual formato funcionou.
  */
 export async function fetchCentralCompras(entityName, query = 'limit=500') {
-  const key = getCentralComprasKey();
+  const key = getCentralComprasKey().trim();
   const url = `${CENTRAL_COMPRAS_API_BASE}/${entityName}?${query}`;
   const tentativas = [
     { nome: 'api_key', headers: { api_key: key } },
@@ -25,17 +25,19 @@ export async function fetchCentralCompras(entityName, query = 'limit=500') {
     { nome: 'bearer', headers: { Authorization: `Bearer ${key}` } },
   ];
 
-  let ultimoStatus = 0;
+  const diagnostico = [];
   for (const t of tentativas) {
-    const res = await fetch(url, { headers: { ...t.headers, 'Content-Type': 'application/json' } });
+    const res = await fetch(url, { headers: { ...t.headers, Accept: 'application/json' } });
+    const texto = await res.text();
     if (res.ok) {
-      const json = await res.json();
+      const json = texto ? JSON.parse(texto) : [];
       const data = Array.isArray(json) ? json : (json.results || json.data || []);
       return { ok: true, status: res.status, data, header: t.nome };
     }
-    ultimoStatus = res.status;
+    diagnostico.push({ header: t.nome, status: res.status, detalhe: texto.slice(0, 300) });
   }
-  return { ok: false, status: ultimoStatus, data: [], header: null };
+  const ultima = diagnostico[diagnostico.length - 1];
+  return { ok: false, status: ultima?.status || 0, data: [], header: null, diagnostico };
 }
 
 const CATEGORIAS = ['notebook','tablet','smartphone','componente','memoria','armazenamento','periferico','software','rede','outro'];

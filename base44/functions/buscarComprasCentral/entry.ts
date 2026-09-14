@@ -24,8 +24,9 @@ export default async function(req) {
         ok: false,
         status: resultado.status,
         motivo: resultado.status === 403
-          ? 'A Central de Compras recusou a chave de API (403). Habilite o acesso via API no app Nexus Cotações (Dashboard → API) e confirme a chave em CENTRAL_COMPRAS_API_KEY.'
+          ? 'A Central de Compras recusou a autenticação ou o acesso da chave pessoal aos pedidos (403).'
           : `A Central de Compras respondeu HTTP ${resultado.status}.`,
+        diagnostico: resultado.diagnostico,
         itens: [],
         fornecedores: [],
       });
