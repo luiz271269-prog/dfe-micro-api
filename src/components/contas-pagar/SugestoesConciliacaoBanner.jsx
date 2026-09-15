@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Sparkles, Check, XIcon, ChevronDown, ChevronUp, AlertTriangle, SearchCheck } from 'lucide-react';
+import { Sparkles, Check, ChevronDown, ChevronUp, AlertTriangle, SearchCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
-import ResolverManualDialog from './ResolverManualDialog';
 import AnalisarPagtosExtratoDialog from './AnalisarPagtosExtratoDialog';
 
 export default function SugestoesConciliacaoBanner() {
@@ -12,9 +11,9 @@ export default function SugestoesConciliacaoBanner() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [processandoId, setProcessandoId] = useState(null);
-  const [resolverManual, setResolverManual] = useState(null);
   const [analisarOpen, setAnalisarOpen] = useState(false);
   const [analisarLancId, setAnalisarLancId] = useState(null);
+  const [analisarSugestao, setAnalisarSugestao] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -72,9 +71,10 @@ export default function SugestoesConciliacaoBanner() {
     setProcessandoId(null);
   }
 
-  // Rejeitar agora abre o diálogo para o usuário escolher a conta correta
-  function rejeitar(s) {
-    setResolverManual(s);
+  function abrirAnalise(sugestao = null) {
+    setAnalisarSugestao(sugestao);
+    setAnalisarLancId(sugestao?.lancamento_bancario_id || null);
+    setAnalisarOpen(true);
   }
 
   if (loading || sugestoes.length === 0) return null;
@@ -97,7 +97,7 @@ export default function SugestoesConciliacaoBanner() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button size="sm" variant="outline" onClick={() => { setAnalisarLancId(null); setAnalisarOpen(true); }} className="gap-1.5 h-8 border-yellow-400 bg-white text-yellow-900 hover:bg-yellow-100">
+          <Button size="sm" variant="outline" onClick={() => abrirAnalise()} className="gap-1.5 h-8 border-yellow-400 bg-white text-yellow-900 hover:bg-yellow-100">
             <SearchCheck className="w-4 h-4" /> Analisar pagtos × extrato
           </Button>
           {sugestoes.length > 3 && (
@@ -138,21 +138,12 @@ export default function SugestoesConciliacaoBanner() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => { setAnalisarLancId(s.lancamento_bancario_id); setAnalisarOpen(true); }}
+                onClick={() => abrirAnalise(s)}
                 disabled={processandoId === s.id}
                 className="gap-1 h-8 border-yellow-400 text-yellow-900 hover:bg-yellow-100"
                 title="Analisar este débito contra as contas a pagar"
               >
                 <SearchCheck className="w-3.5 h-3.5" /> Analisar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => rejeitar(s)}
-                disabled={processandoId === s.id}
-                className="gap-1 h-8 border-red-300 text-red-700 hover:bg-red-50"
-              >
-                <XIcon className="w-3.5 h-3.5" /> Não é essa
               </Button>
             </div>
           </div>
@@ -162,14 +153,9 @@ export default function SugestoesConciliacaoBanner() {
       <AnalisarPagtosExtratoDialog
         open={analisarOpen}
         lancamentoIdInicial={analisarLancId}
-        onClose={() => { setAnalisarOpen(false); setAnalisarLancId(null); }}
+        sugestaoInicial={analisarSugestao}
+        onClose={() => { setAnalisarOpen(false); setAnalisarLancId(null); setAnalisarSugestao(null); }}
         onResolved={load}
-      />
-
-      <ResolverManualDialog
-        sugestao={resolverManual}
-        onClose={() => setResolverManual(null)}
-        onResolved={() => { setResolverManual(null); window.dispatchEvent(new Event('neuralfinRefresh')); }}
       />
     </div>
   );

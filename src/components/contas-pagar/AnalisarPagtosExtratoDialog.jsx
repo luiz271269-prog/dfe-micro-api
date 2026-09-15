@@ -3,14 +3,14 @@ import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Link2, Check } from 'lucide-react';
+import { Search, Link2, Check, XIcon, AlertCircle } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
 import { carregarObrigacoesAbertas, conciliarObrigacaoComLancamento } from '@/lib/obrigacoesAbertas';
 import { ordenarPorSimilaridade, scoreSimilaridadeConciliacao } from '@/lib/similaridadeConciliacao';
 import ColunaSelecao from './ColunaSelecao';
 
-export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved, lancamentoIdInicial }) {
+export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved, lancamentoIdInicial, sugestaoInicial }) {
   const [obrigacoes, setObrigacoes] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,10 +64,22 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
     ? Math.abs(Math.abs(selLanc.valor || 0) - (selObrig.valor || 0))
     : null;
 
+  async function resolverSugestoes(lancamentoId, obrigacao = null) {
+    const pendentes = await base44.entities.SugestaoConciliacao.filter({ lancamento_bancario_id: lancamentoId, status: 'pendente' }, '-created_date', 100);
+    if (!pendentes.length) return;
+    const resolvidaEm = new Date().toISOString();
+    await base44.entities.SugestaoConciliacao.bulkUpdate(pendentes.map(s => ({
+      id: s.id,
+      status: obrigacao && s.entidade_tipo === obrigacao.entidade_tipo && s.entidade_id === obrigacao.entidade_id ? 'confirmada' : 'rejeitada',
+      resolvida_em: resolvidaEm,
+    })));
+  }
+
   async function conciliar() {
     setSalvando(true);
     try {
       await conciliarObrigacaoComLancamento(selObrig, selLanc, `Conciliação manual (análise pagtos × extrato) · ${selObrig.descricao}`);
+      await resolverSugestoes(selLanc.id, selObrig);
       window.dispatchEvent(new Event('neuralfinRefresh'));
       onResolved?.();
       await load();
@@ -75,6 +87,37 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
       alert(`Erro: ${err.message}`);
     }
     setSalvando(false);
+  }
+
+  async function rejeitarSugestao() {
+    if (!sugestaoInicial) return;
+    setSalvando(true);
+    try {
+      await base44.entities.SugestaoConciliacao.update(sugestaoInicial.id, { status: 'rejeitada', resolvida_em: new Date().toISOString() });
+      window.dispatchEvent(new Event('neuralfinRefresh'));
+      onResolved?.();
+      onClose();
+    } catch (err) {
+      alert(`Erro: ${err.message}`);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function ignorarDebito() {
+    if (!selLanc) return;
+    setSalvando(true);
+    try {
+      await base44.entities.LancamentoBancario.update(selLanc.id, { status_conciliacao: 'ignorar' });
+      await resolverSugestoes(selLanc.id);
+      window.dispatchEvent(new Event('neuralfinRefresh'));
+      onResolved?.();
+      onClose();
+    } catch (err) {
+      alert(`Erro: ${err.message}`);
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
@@ -141,10 +184,16 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
               <p className="text-muted-foreground">Selecione um item em qualquer coluna para ordenar a outra por valor, data e descrição semelhantes.</p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {sugestaoInicial && <Button variant="outline" onClick={rejeitarSugestao} disabled={salvando} className="gap-2 border-destructive/30 text-destructive">
+              <XIcon className="w-4 h-4" /> Rejeitar sugestão
+            </Button>}
+            <Button variant="outline" onClick={ignorarDebito} disabled={!selLanc || salvando} className="gap-2 text-orange-700 border-orange-300 hover:bg-orange-50">
+              <AlertCircle className="w-4 h-4" /> Não é conta a pagar
+            </Button>
             <Button variant="ghost" onClick={onClose} disabled={salvando}>Fechar</Button>
             <Button onClick={conciliar} disabled={!selObrig || !selLanc || salvando} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
-              <Check className="w-4 h-4" /> {salvando ? 'Conciliando...' : 'Conciliar'}
+              <Check className="w-4 h-4" /> {salvando ? 'Processando...' : 'Conciliar'}
             </Button>
           </div>
         </div>
