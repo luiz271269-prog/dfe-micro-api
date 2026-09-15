@@ -1,6 +1,6 @@
 {
   "name": "Liquidar item inclu\u00eddo em fatura paga",
-  "description": "Reprocessa a fatura quando um lan\u00e7amento de cart\u00e3o \u00e9 criado ou muda de fatura, cobrindo itens inclu\u00eddos depois do pagamento.",
+  "description": "Ao receber um lan\u00e7amento de cart\u00e3o, vincula a compra correspondente e reprocessa a fatura se ela j\u00e1 estiver paga.",
   "trigger": {
     "condition": "${ .trigger.event_type == \"create\" or (.trigger.changed_fields | index(\"fatura_id\") != null) }",
     "config": {
@@ -16,10 +16,24 @@
     "document": {
       "dsl": "1.0.0",
       "name": "liquidar_item_incluido_em_fatura_paga",
-      "version": "1.0",
+      "version": "2.0",
       "namespace": "base44"
     },
     "do": [
+      {
+        "conciliar_compra_cartao": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "conciliarComprasPagamentos",
+            "args": {}
+          },
+          "then": "verificar_fatura",
+          "x-base44": {
+            "title": "Conciliar compra do cart\u00e3o",
+            "description": "Vincula compra e lan\u00e7amento"
+          }
+        }
+      },
       {
         "verificar_fatura": {
           "call": "invoke_backend_function",

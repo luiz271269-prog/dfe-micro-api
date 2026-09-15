@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
 
 const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 const perto = (a, b, dias = 14) => a && b && Math.abs(Date.parse(a) - Date.parse(b)) <= dias * 86400000;
@@ -11,11 +12,16 @@ function nomeBate(descricao, cartao) {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-    const { dry_run = false } = await req.json().catch(() => ({}));
-    const db = base44.entities;
+    const payload = await req.json().catch(() => ({}));
+    const tokenInterno = secrets.get('NEXUS_HUB_TOKEN');
+    const chamadaInterna = Boolean(tokenInterno && payload.internal_token === tokenInterno);
+    if (!chamadaInterna) {
+      const user = await base44.auth.me();
+      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const dry_run = payload.dry_run === true;
+    const db = chamadaInterna ? base44.asServiceRole.entities : base44.entities;
     const [cartoes, faturas, bancos, itensCartao, vinculos] = await Promise.all([
       db.ContaCartao.list('id', 500), db.FaturaCartao.list('id', 1000), db.LancamentoBancario.list('-data', 5000), db.LancamentoCartao.list('id', 5000), db.VinculoExtrato.list('id', 5000),
     ]);

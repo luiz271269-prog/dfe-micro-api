@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
 import { fetchCentralCompras, normalizarFormaPagamento } from '../../shared/centralCompras.ts';
 
 /**
@@ -30,12 +31,16 @@ function resumoItens(itens) {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
-
     const payload = await req.json().catch(() => ({}));
+    const tokenInterno = secrets.get('NEXUS_HUB_TOKEN');
+    const chamadaInterna = Boolean(tokenInterno && payload.internal_token === tokenInterno);
+    if (!chamadaInterna) {
+      const user = await base44.auth.me();
+      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
+    }
     const dryRun = payload.dry_run === true;
+    const db = chamadaInterna ? base44.asServiceRole.entities : base44.entities;
 
     // 1. Buscar pedidos na Central de Compras
     const resultado = await fetchCentralCompras('PedidoCompra', 'limit=500');
@@ -45,7 +50,7 @@ export default async function(req) {
     const pedidos = resultado.data;
 
     // 2. Indexar ItemCompra locais já sincronizados
-    const locais = await base44.entities.ItemCompra.list('-data_emissao', 2000);
+    const locais = await db.ItemCompra.list('-data_emissao', 2000);
     const porPedido = new Map(locais.filter(c => c.pedido_central_id).map(c => [c.pedido_central_id, c]));
 
     let criados = 0, atualizados = 0, ignorados = 0;
@@ -85,14 +90,14 @@ export default async function(req) {
         }
         const mudou = Object.entries(dados).some(([key, value]) => value !== undefined && existente[key] !== value);
         if (!mudou) { ignorados++; continue; }
-        if (!dryRun) await base44.entities.ItemCompra.update(existente.id, dados);
+        if (!dryRun) await db.ItemCompra.update(existente.id, dados);
         atualizados++;
         acoes.push({ pedido: p.numero_pedido, acao: 'atualizado', status: dados.status_pagamento });
       } else {
         // Não soma novamente uma compra já registrada pela mesma NF e fornecedor.
         const mesmaNota = dados.numero_nota && locais.some(c => c.numero_nota === dados.numero_nota && String(c.fornecedor).trim().toLowerCase() === dados.fornecedor.trim().toLowerCase());
         if (mesmaNota) { ignorados++; acoes.push({ pedido: p.numero_pedido, acao: 'revisar_vinculo', motivo: 'NF e fornecedor já registrados localmente' }); continue; }
-        if (!dryRun) await base44.entities.ItemCompra.create(dados);
+        if (!dryRun) await db.ItemCompra.create(dados);
         porPedido.set(p.numero_pedido, dados);
         criados++;
         acoes.push({ pedido: p.numero_pedido, acao: 'criado', status: statusLocal, valor: p.valor_total, fornecedor: dados.fornecedor });

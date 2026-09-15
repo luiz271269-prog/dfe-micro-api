@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
 import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
 
 // PIPELINE DINÂMICO DE CONCILIAÇÃO
@@ -7,6 +8,7 @@ import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
 // Roda via automação agendada (sem usuário) ou manualmente por admin.
 
 const ENGINES = [
+  'sincronizarComprasCentral',
   'sanearClassificacaoExtrato',
   'conciliarContasAPagarExtrato',
   'conciliarCobrancasBanco',
@@ -19,13 +21,13 @@ const ENGINES = [
 
 const CONFIANCA_AUTO = 90;
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole.entities;
 
-    const appId = Deno.env.get('BASE44_APP_ID');
-    const token = Deno.env.get('NEXUS_HUB_TOKEN');
+    const appId = secrets.get('BASE44_APP_ID');
+    const token = secrets.get('NEXUS_HUB_TOKEN');
 
     // Segurança: só admin autenticado (inclui automação agendada) ou chamada interna com token
     const payload = await req.clone().json().catch(() => ({}));
@@ -42,13 +44,8 @@ Deno.serve(async (req) => {
     const resultadosEngines = {};
     for (const nome of ENGINES) {
       try {
-        const resp = await fetch(`https://base44.app/api/apps/${appId}/functions/${nome}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ internal_token: token }),
-        });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const d = await resp.json();
+        const resposta = await base44.functions.invoke(nome, { internal_token: token });
+        const d = resposta?.data ?? resposta;
         resultadosEngines[nome] = {
           ok: true,
           baixas: d.baixas_automaticas ?? d.conciliados ?? d.conciliadas ?? 0,
@@ -129,4 +126,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

@@ -1,15 +1,14 @@
 {
-  "name": "Pipeline de Concilia\u00e7\u00e3o Autom\u00e1tica",
-  "description": "Roda todos os motores de concilia\u00e7\u00e3o (contas a pagar, cobran\u00e7as, folha, faturas, cart\u00f5es, obras) e auto-aprova sugest\u00f5es com confian\u00e7a \u2265 90%.",
+  "description": "A cada hora atualiza as compras online da Central e executa o fallback Loop-R; novos lan\u00e7amentos de extrato e cart\u00e3o continuam conciliados por evento.",
   "trigger": {
     "condition": null,
     "config": {
       "trigger_type": "scheduled",
       "events": [],
       "schedule_mode": "recurring",
-      "cron_expression": "0 10 * * *",
+      "cron_expression": "0 * * * *",
       "one_time_date": null,
-      "timezone": "UTC",
+      "timezone": "America/Sao_Paulo",
       "interval_value": null,
       "interval_unit": null,
       "interval_anchor": null,
@@ -21,21 +20,26 @@
   "definition": {
     "document": {
       "dsl": "1.0.0",
-      "name": "pipeline_de_concilia_o_autom_tica",
-      "version": "1.0",
+      "name": "pipeline_de_conciliacao_automatica",
+      "version": "2.1",
       "namespace": "base44"
     },
     "do": [
       {
-        "run_function": {
+        "executar_loop_r": {
           "call": "invoke_backend_function",
           "with": {
             "function_name": "pipelineConciliacao",
             "args": {}
           },
-          "then": "end"
+          "then": "end",
+          "x-base44": {
+            "title": "Executar ciclo Loop-R",
+            "description": "Sincroniza, concilia e revisa"
+          }
         }
       }
     ]
-  }
+  },
+  "name": "Pipeline de Concilia\u00e7\u00e3o Autom\u00e1tica"
 }
