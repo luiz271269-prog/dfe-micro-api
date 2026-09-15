@@ -6,8 +6,8 @@ export const CENTRAL_COMPRAS_APP_ID = '69c530ac2befe8eafb45b38d';
 export const CENTRAL_COMPRAS_API_BASE = `https://app.base44.com/api/apps/${CENTRAL_COMPRAS_APP_ID}/entities`;
 
 export function getCentralComprasKey() {
-  const key = secrets.get('CENTRAL_COMPRAS_API_KEY');
-  if (!key) throw new Error('Secret CENTRAL_COMPRAS_API_KEY não configurado');
+  const key = secrets.get('centra_compras_api_key') || secrets.get('CENTRAL_COMPRAS_API_KEY');
+  if (!key) throw new Error('Secret centra_compras_api_key não configurado');
   return key;
 }
 
