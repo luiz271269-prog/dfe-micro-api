@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { fetchCentralCompras } from '../../shared/centralCompras.ts';
+import { fetchCentralCompras, normalizarFormaPagamento } from '../../shared/centralCompras.ts';
 
 /**
  * sincronizarComprasCentral — puxa os Pedidos de Compra (PedidoCompra) do app
@@ -57,8 +57,7 @@ export default async function(req) {
       processados.add(p.numero_pedido);
       if (!p.numero_pedido || !(p.valor_total > 0) || !p.data_pedido || ['cancelado', 'cancelada'].includes(p.status)) { ignorados++; continue; }
       const statusLocal = mapStatus(p);
-      const formaOrigem = String(p.forma_pagamento || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '_');
-      const formas = { pix: 'banco_pix', banco_pix: 'banco_pix', cartao: 'cartao', cartao_credito: 'cartao', cartao_de_credito: 'cartao', boleto: 'banco_boleto', boletos: 'banco_boleto', boleto_a_prazo: 'banco_boleto', banco_boleto: 'banco_boleto', transferencia: 'banco_transferencia', banco_transferencia: 'banco_transferencia', dinheiro: 'dinheiro' };
+      const formaPagamento = normalizarFormaPagamento(p.condicao_pagamento || p.forma_pagamento);
       const existente = porPedido.get(p.numero_pedido);
 
       const dados = {
@@ -75,7 +74,7 @@ export default async function(req) {
         valor_total: p.valor_total,
         valor_pago: statusLocal === 'pago' ? (p.valor_pago || p.valor_total) : (p.valor_pago || 0),
         status_pagamento: statusLocal,
-        forma_pagamento: formas[formaOrigem] || existente?.forma_pagamento || 'nao_definida',
+        forma_pagamento: formaPagamento !== 'nao_definida' ? formaPagamento : (existente?.forma_pagamento || 'nao_definida'),
       };
 
       if (existente) {
