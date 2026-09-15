@@ -4,6 +4,7 @@ import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Hammer, Briefcase, C
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import SeletorClassificacao from '../shared/SeletorClassificacao';
 import { mapearTipoEntidade } from '../../lib/contasPagarEngine';
+import BaixaManualButton from '@/components/shared/BaixaManualButton';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700', label: 'Despesa', href: '/despesas' },
@@ -92,7 +93,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
             {ok ? (
               <span className="inline-flex items-center gap-0.5 text-emerald-700 font-semibold"><Link2 className="w-2.5 h-2.5" /> {porEmissao ? 'Conciliado' : 'OK'}</span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> Pendente</span>
+              <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> {i.valor_pago > 0 ? 'Parcial · saldo em aberto' : 'Pendente'}</span>
             )}
           </div>
           {/* Classificação unificada — só para itens com entidade real (projeções não têm) */}
@@ -115,6 +116,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className="text-xs font-bold text-rose-600 tabular-nums whitespace-nowrap">{formatCurrency(i.valor)}</span>
+          {['FolhaPagamento', 'FaturaCartao'].includes(entityName) && <BaixaManualButton entidade={entityName} registroId={i.origem_id} className="h-6 px-2 text-[10px]" />}
           <Link to={cfg.href} className="text-[10px] text-muted-foreground hover:text-primary inline-flex items-center gap-0.5">
             ver <ArrowRight className="w-2.5 h-2.5" />
           </Link>

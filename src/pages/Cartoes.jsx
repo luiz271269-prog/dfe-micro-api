@@ -25,6 +25,7 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import { getCor } from '../lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import ComprasPortalCotacao from '../components/cartoes/ComprasPortalCotacao';
+import BaixaManualButton from '@/components/shared/BaixaManualButton';
 
 const SEED_CARDS = [
 { nome: 'Acentra — Luiz Carlos', bandeira: 'Acentra', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
@@ -241,7 +242,8 @@ export default function Cartoes() {
   const totalMes = lancamentos.
   filter((l) => faturaIdsMes.has(l.fatura_id)).
   reduce((s, l) => s + (l.valor || 0), 0);
-  const totalPagoMes = filteredFaturas.filter((f) => f.status === 'paga_total').reduce((s, f) => s + (f.valor_pago || 0), 0);
+  const totalPagoMes = filteredFaturas.reduce((s, f) => s + (f.valor_pago || 0), 0);
+  const saldoFaturas = filteredFaturas.reduce((s, f) => s + Math.max(0, (f.valor_total || 0) - (f.valor_pago || 0)), 0);
 
   return (
     <div className="lg:px-6 lg:py-6 max-w-[1600px] mx-auto px-4 py-1">
@@ -262,8 +264,8 @@ export default function Cartoes() {
       {/* Resumo do mês */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <GradientCard title="Total Faturas" value={formatCurrency(totalMes)} sub={`${filteredFaturas.length} faturas`} icon={CreditCard} gradient="purple" />
-        <GradientCard title="Total Pago" value={formatCurrency(totalPagoMes)} sub="Faturas quitadas" icon={DollarSign} gradient="green" />
-        <GradientCard title="A Pagar" value={formatCurrency(totalMes - totalPagoMes)} sub="Saldo restante" icon={AlertCircle} gradient="orange" />
+        <GradientCard title="Total Pago" value={formatCurrency(totalPagoMes)} sub="Pagamentos integrais e parciais" icon={DollarSign} gradient="green" />
+        <GradientCard title="A Pagar" value={formatCurrency(saldoFaturas)} sub="Saldo das faturas cadastradas" icon={AlertCircle} gradient="orange" />
         <GradientCard title="Cartões Ativos" value={cartoes.filter((c) => c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
       </div>
 
@@ -389,6 +391,10 @@ export default function Cartoes() {
 
                       {isFatExpanded &&
                     <div className="px-3 pb-3 bg-background">
+                          <div className="flex flex-wrap items-center gap-3 py-3">
+                            <BaixaManualButton entidade="FaturaCartao" registroId={fat.id} onSaved={() => loadData(true)} />
+                            <span className="text-xs text-muted-foreground">{fat.valor_pago > 0 && fat.status !== 'paga_total' ? 'Pagamento parcial · ' : ''}Saldo: {formatCurrency(Math.max(0, (fat.valor_total || 0) - (fat.valor_pago || 0)))}</span>
+                          </div>
                           {fatLancs.length === 0 ?
                       <p className="text-xs text-muted-foreground py-2">Nenhum lançamento cadastrado</p> :
 

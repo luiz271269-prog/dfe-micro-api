@@ -49,6 +49,41 @@
     "lancamento_bancario_id": {
       "type": "string",
       "title": "ID do LancamentoBancario que pagou a fatura (preenchido em pagamento 1:1; em multi-d\u00e9bito a verdade fica em VinculoExtrato)"
+    },
+    "pagamentos_manuais": {
+      "type": "array",
+      "title": "Hist\u00f3rico de baixas manuais (n\u00e3o conciliadas com extrato)",
+      "default": [],
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string",
+            "format": "date"
+          },
+          "valor": {
+            "type": "number"
+          },
+          "forma": {
+            "type": "string"
+          },
+          "registrado_em": {
+            "type": "string"
+          },
+          "usuario_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "data",
+          "valor",
+          "forma"
+        ]
+      }
     }
   },
   "required": [

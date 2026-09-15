@@ -82,7 +82,7 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  folhas.filter(f => f.status === 'pendente').forEach(f => {
+  folhas.filter(f => ['pendente', 'adiantamento'].includes(f.status) && (f.salario_liquido || 0) - (f.valor_pago || 0) > 0.009).forEach(f => {
     // Folha vence dia 5 do mês seguinte à competência
     const [y, m] = (f.competencia || '').split('-').map(Number);
     const venc = y && m ? new Date(y, m, 5).toISOString().slice(0, 10) : null;
@@ -93,7 +93,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       descricao: `Salário — ${f.funcionario_nome}`,
       fornecedor: f.funcionario_nome,
       categoria: 'folha',
-      valor: f.salario_liquido,
+      valor: Math.max(0, (f.salario_liquido || 0) - (f.valor_pago || 0)),
+      valor_pago: f.valor_pago || 0,
       data_vencimento: venc,
       empresa: f.empresa,
       forma_pagamento: 'transferencia',
@@ -110,7 +111,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       descricao: `Fatura ${cartao?.nome || 'Cartão'} — ${fat.mes_referencia}`,
       fornecedor: cartao?.nome || 'Cartão de Crédito',
       categoria: 'cartao',
-      valor: fat.valor_total - (fat.valor_pago || 0),
+      valor: Math.max(0, fat.valor_total - (fat.valor_pago || 0)),
+      valor_pago: fat.valor_pago || 0,
       data_vencimento: fat.data_vencimento,
       empresa: cartao?.empresa_vinculada || '—',
       forma_pagamento: 'debito_automatico',
