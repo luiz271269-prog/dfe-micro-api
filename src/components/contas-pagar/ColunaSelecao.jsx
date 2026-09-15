@@ -1,6 +1,6 @@
 export default function ColunaSelecao({
   titulo, itens, getKey, selecionadoKey, onSelect,
-  renderTitulo, renderSub, renderValor, comparar,
+  renderTitulo, renderSub, renderValor, comparar, renderIndicador,
 }) {
   return (
     <div className="border rounded-xl overflow-hidden">
@@ -26,7 +26,10 @@ export default function ColunaSelecao({
                 <p className="text-sm font-medium truncate">{renderTitulo(item)}</p>
                 <p className="text-[11px] text-muted-foreground truncate">{renderSub(item)}</p>
               </div>
-              <p className={`text-sm font-bold tabular-nums shrink-0 ${bate ? 'text-green-700' : ''}`}>{renderValor(item)}</p>
+              <div className="shrink-0 text-right">
+                <p className={`text-sm font-bold tabular-nums ${bate ? 'text-green-700' : ''}`}>{renderValor(item)}</p>
+                {renderIndicador?.(item)}
+              </div>
             </button>
           );
         })}

@@ -7,6 +7,7 @@ import { Search, Link2, Check } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
 import { carregarObrigacoesAbertas, conciliarObrigacaoComLancamento } from '@/lib/obrigacoesAbertas';
+import { ordenarPorSimilaridade, scoreSimilaridadeConciliacao } from '@/lib/similaridadeConciliacao';
 import ColunaSelecao from './ColunaSelecao';
 
 export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved, lancamentoIdInicial }) {
@@ -49,15 +50,15 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
     const base = q
       ? obrigacoes.filter(o => `${o.descricao} ${o.fornecedor} ${o.valor}`.toLowerCase().includes(q))
       : obrigacoes;
-    return ordenar(base, 'data_vencimento', 'valor');
-  }, [obrigacoes, q, ordem]);
+    return selLanc ? ordenarPorSimilaridade(base, selLanc, 'obrigacao') : ordenar(base, 'data_vencimento', 'valor');
+  }, [obrigacoes, q, ordem, selLanc]);
 
   const lancamentosFiltrados = useMemo(() => {
     const base = q
       ? lancamentos.filter(l => `${l.descricao} ${l.valor}`.toLowerCase().includes(q))
       : lancamentos;
-    return ordenar(base, 'data', 'valor');
-  }, [lancamentos, q, ordem]);
+    return selObrig ? ordenarPorSimilaridade(base, selObrig, 'lancamento') : ordenar(base, 'data', 'valor');
+  }, [lancamentos, q, ordem, selObrig]);
 
   const diff = selObrig && selLanc
     ? Math.abs(Math.abs(selLanc.valor || 0) - (selObrig.valor || 0))
@@ -99,26 +100,28 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ColunaSelecao
-              titulo={`Contas a pagar em aberto (${obrigacoesFiltradas.length})`}
+              titulo={`Contas a pagar em aberto (${obrigacoesFiltradas.length})${selLanc ? ' · semelhantes primeiro' : ''}`}
               itens={obrigacoesFiltradas}
               getKey={o => `${o.entidade_tipo}-${o.entidade_id}`}
               selecionadoKey={selObrig ? `${selObrig.entidade_tipo}-${selObrig.entidade_id}` : null}
-              onSelect={setSelObrig}
+              onSelect={o => setSelObrig(selObrig?.entidade_id === o.entidade_id ? null : o)}
               renderTitulo={o => o.descricao}
               renderSub={o => `${o.tipo_label} · ${o.fornecedor}${o.data_vencimento ? ` · venc. ${formatDate(o.data_vencimento)}` : ''}`}
               renderValor={o => formatCurrency(o.valor)}
-              comparar={o => selLanc ? Math.abs(Math.abs(selLanc.valor || 0) - (o.valor || 0)) < 0.5 : false}
+              renderIndicador={o => selLanc && <span className="text-[10px] font-semibold text-primary">{scoreSimilaridadeConciliacao(o, selLanc)}% compatível</span>}
+              comparar={o => selLanc ? scoreSimilaridadeConciliacao(o, selLanc) >= 70 : false}
             />
             <ColunaSelecao
-              titulo={`Débitos do extrato não conciliados (${lancamentosFiltrados.length})`}
+              titulo={`Débitos do extrato não conciliados (${lancamentosFiltrados.length})${selObrig ? ' · semelhantes primeiro' : ''}`}
               itens={lancamentosFiltrados}
               getKey={l => l.id}
               selecionadoKey={selLanc?.id || null}
-              onSelect={setSelLanc}
+              onSelect={l => setSelLanc(selLanc?.id === l.id ? null : l)}
               renderTitulo={l => l.descricao}
               renderSub={l => `${formatDate(l.data)} · ${l.conta_bancaria || '—'}`}
               renderValor={l => formatCurrency(Math.abs(l.valor || 0))}
-              comparar={l => selObrig ? Math.abs(Math.abs(l.valor || 0) - (selObrig.valor || 0)) < 0.5 : false}
+              renderIndicador={l => selObrig && <span className="text-[10px] font-semibold text-primary">{scoreSimilaridadeConciliacao(selObrig, l)}% compatível</span>}
+              comparar={l => selObrig ? scoreSimilaridadeConciliacao(selObrig, l) >= 70 : false}
             />
           </div>
         )}
@@ -135,7 +138,7 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
                 </span>
               </p>
             ) : (
-              <p className="text-muted-foreground">Selecione uma conta e um débito do extrato para conciliar.</p>
+              <p className="text-muted-foreground">Selecione um item em qualquer coluna para ordenar a outra por valor, data e descrição semelhantes.</p>
             )}
           </div>
           <div className="flex gap-2">
