@@ -20,6 +20,7 @@ import ConciliacaoDDAvsContas from '../components/contas-pagar/ConciliacaoDDAvsC
 import CompraPagamentoFields, { EMPTY_COMPRA, FORMAS_COMPRA } from '@/components/compras/CompraPagamentoFields';
 import ComprasPagamentoResumo from '@/components/compras/ComprasPagamentoResumo';
 import ComprasPortalCotacao from '@/components/cartoes/ComprasPortalCotacao';
+import VincularExtratoDespesaDialog from '@/components/despesas/VincularExtratoDespesaDialog';
 import { useQueryClient } from '@tanstack/react-query';
 
 // ── Compras config ────────────────────────────────────────────────────────────
@@ -84,6 +85,8 @@ export default function Compras() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchD, setSearchD] = useState('');
   const [formD, setFormD] = useState(EMPTY_DESP);
+  const [vinculosD, setVinculosD] = useState([]);
+  const [despesaVinculo, setDespesaVinculo] = useState(null);
 
   // ── DDA state ─────────────────────────────────────────────────────────────
   const [lancamentos, setLancamentos] = useState([]);
@@ -101,8 +104,13 @@ export default function Compras() {
   }
   async function loadDespesas() {
     setLoadingD(true);
-    const data = await base44.entities.DespesaOperacional.list('-data', 500);
-    setDespesas(Array.isArray(data) ? data.filter(d => !d.tipo_compra || d.tipo_compra === 'despesas') : []); setLoadingD(false);
+    const [data, vinculos] = await Promise.all([
+      base44.entities.DespesaOperacional.list('-data', 500),
+      base44.entities.VinculoExtrato.filter({ entidade_tipo: 'DespesaOperacional' }, '-created_date', 2000),
+    ]);
+    setDespesas(Array.isArray(data) ? data.filter(d => !d.tipo_compra || d.tipo_compra === 'despesas') : []);
+    setVinculosD(Array.isArray(vinculos) ? vinculos : []);
+    setLoadingD(false);
   }
   async function loadLancamentos() {
     setLoadingL(true);
@@ -358,9 +366,9 @@ export default function Compras() {
               </SelectContent>
             </Select>
           </div>
-          <div className="bg-card rounded-xl border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+          <div className="min-w-0 bg-card rounded-xl border overflow-hidden">
+            <div className="w-full overflow-x-auto">
+              <table className="w-full min-w-[1180px] text-sm">
                 <thead><tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
                   {[
                     ['data', 'Data', 'left', 'py-3'],
@@ -371,14 +379,15 @@ export default function Compras() {
                     ['forma_pagamento', 'Forma Pag.', 'left', 'py-3 hidden lg:table-cell'],
                     ['valor', 'Valor', 'right', 'py-3'],
                     ['status', 'Status', 'left', 'py-3'],
-                  ].map(([field, label, align, cls]) => (
+                    ].map(([field, label, align, cls]) => (
                     <SortableTh key={field} field={field} align={align} className={cls}
                       sortField={sortD.sortField} sortDir={sortD.sortDir} onSort={sortD.handleSort}>{label}</SortableTh>
-                  ))}
-                </tr></thead>
+                    ))}
+                    <th className="px-4 py-3 text-left font-semibold whitespace-nowrap">Ações</th>
+                    </tr></thead>
                 <tbody>
-                  {loadingD ? <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
-                  : filteredD.length===0 ? <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhuma despesa encontrada</td></tr>
+                  {loadingD ? <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
+                  : filteredD.length===0 ? <tr><td colSpan={9} className="text-center py-12 text-muted-foreground">Nenhuma despesa encontrada</td></tr>
                   : sortD.sorted.map(d => (
                     <tr key={d.id} className={`border-b hover:bg-muted/30 transition-colors ${d.status==='vencido'?'bg-red-50':''}`}>
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(d.data)}</td>
@@ -389,14 +398,20 @@ export default function Compras() {
                       <td className="px-4 py-3 text-xs hidden lg:table-cell">{d.forma_pagamento||'—'}</td>
                       <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(d.valor)}</td>
                       <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
-                    </tr>
+                      <td className="px-4 py-3">
+                        <Button size="sm" variant="outline" onClick={() => setDespesaVinculo(d)} className={vinculosD.some(v => v.entidade_id === d.id) ? 'gap-2 border-success/30 text-success' : 'gap-2'}>
+                          <FileText className="h-4 w-4" />{vinculosD.some(v => v.entidade_id === d.id) ? 'Vinculado' : 'Vincular extrato'}
+                        </Button>
+                      </td>
+                      </tr>
                   ))}
                 </tbody>
                 {filteredD.length > 0 && <tfoot><tr className="border-t-2 bg-muted/30">
                   <td colSpan={6} className="px-4 py-3 font-semibold">Total ({filteredD.length} itens)</td>
                   <td className="px-4 py-3 text-right font-bold text-red-600">{formatCurrency(filteredD.reduce((s,d)=>s+(d.valor||0),0))}</td>
                   <td></td>
-                </tr></tfoot>}
+                  <td></td>
+                  </tr></tfoot>}
               </table>
             </div>
           </div>
@@ -446,6 +461,15 @@ export default function Compras() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <VincularExtratoDespesaDialog
+        despesa={despesaVinculo}
+        vinculo={vinculosD.find(v => v.entidade_id === despesaVinculo?.id)}
+        lancamentos={lancamentos}
+        open={!!despesaVinculo}
+        onClose={() => setDespesaVinculo(null)}
+        onChanged={async () => { await Promise.all([loadDespesas(), loadLancamentos()]); }}
+      />
 
       {/* ── FORM DESPESAS ────────────────────────────────────────────────── */}
       <Dialog open={showFormD} onOpenChange={setShowFormD}>

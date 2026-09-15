@@ -100,7 +100,7 @@ export default function Layout() {
       </aside>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
         {/* Mobile top bar */}
         <div className="flex md:hidden items-center gap-3 px-4 h-14 border-b bg-sidebar shrink-0 safe-top box-content">
           <button onClick={() => setMobileOpen(true)} className="text-sidebar-foreground">
@@ -115,7 +115,7 @@ export default function Layout() {
           <PainelNotificacoes />
         </div>
         <Breadcrumb location={location} />
-        <main className="flex-1 overflow-auto overscroll-lock pb-16 md:pb-0">
+        <main className="min-w-0 flex-1 overflow-auto overscroll-lock pb-16 md:pb-0">
           <Outlet />
         </main>
         {/* Footer */}
