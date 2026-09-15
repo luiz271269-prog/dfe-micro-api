@@ -170,7 +170,7 @@ export default function ContasAPagarPanel() {
 
 
 
-  const evaporados = useMemo(() => contarEvaporados(dados), [dados]);
+  const evaporados = useMemo(() => contarEvaporados(dados, mesReferencia), [dados, mesReferencia]);
 
   // Totais por mês de vencimento — alimentam a barra de meses (inclui meses futuros)
   const totaisPorMes = useMemo(() => {
@@ -225,7 +225,7 @@ export default function ContasAPagarPanel() {
 
       <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} evaporados={evaporados} />
 
-      <PainelComprasImportadas compras={dados.compras} />
+      <PainelComprasImportadas compras={dados.compras} mesReferencia={mesReferencia} />
 
       {/* Totais principais — linha compacta de KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">

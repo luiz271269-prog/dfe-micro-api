@@ -21,7 +21,10 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
       if (m) contasMonitoradas.add(m[0]);
     });
 
-    const abertas = faturas.filter(f => f.status === 'aberta' || f.status === 'vencida');
+    const abertas = faturas.filter(f =>
+      (f.status === 'aberta' || f.status === 'vencida') &&
+      (!mesReferencia || (f.data_vencimento || f.mes_referencia || '').startsWith(mesReferencia))
+    );
     const semCartao = [];
     const contaNaoMonitorada = [];
     const monitoradas = [];
@@ -39,7 +42,11 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
     });
 
     const soma = arr => arr.reduce((s, x) => s + x.aberto, 0);
-    const duplicados = lancamentos.filter(l => l.alerta_duplicidade && l.status_conciliacao !== 'ignorar');
+    const duplicados = lancamentos.filter(l =>
+      l.alerta_duplicidade &&
+      l.status_conciliacao !== 'ignorar' &&
+      (!mesReferencia || (l.data || '').startsWith(mesReferencia))
+    );
     const movimentosMes = lancamentos.filter((l) => !mesReferencia || (l.data || '').startsWith(mesReferencia));
     const extrato = movimentosMes.reduce((acc, l) => {
       const natureza = classificarNaturezaExtrato(l);
@@ -63,7 +70,7 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
     <div className="bg-card border rounded-xl mb-4 overflow-hidden">
       <button onClick={() => setAberto(!aberto)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30">
         <div className="flex items-center gap-2">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fluxo &amp; Cruzamentos do Contas a Pagar</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Integridade &amp; Cobertura da Conciliação</h3>
           {(diag.semCartao.length > 0 || diag.contaNaoMonitorada.length > 0) && (
             <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
               {diag.semCartao.length + diag.contaNaoMonitorada.length} sinal(is)

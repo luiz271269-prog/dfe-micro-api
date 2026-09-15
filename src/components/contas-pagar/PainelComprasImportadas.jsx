@@ -19,7 +19,10 @@ function rotuloMes(m) {
   return new Date(Date.UTC(y, mm - 1, 1)).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 }
 function valorAberto(c) {
-  return c.status_pagamento === 'pago' ? (c.valor_total || 0) : (c.valor_total || 0) - (c.valor_pago || 0);
+  return c.status_pagamento === 'pago' ? 0 : Math.max(0, (c.valor_total || 0) - (c.valor_pago || 0));
+}
+function valorDoStatus(c) {
+  return c.status_pagamento === 'pago' ? (c.valor_total || 0) : valorAberto(c);
 }
 
 /**
@@ -27,17 +30,20 @@ function valorAberto(c) {
  * Foco nas compras sincronizadas da Central de Compras (pedido_central_id), com opção de ver todas.
  * Somente leitura — não altera nenhuma regra do Contas a Pagar.
  */
-export default function PainelComprasImportadas({ compras = [] }) {
+export default function PainelComprasImportadas({ compras = [], mesReferencia }) {
   const [aberto, setAberto] = useState(true);
   const [soImportadas, setSoImportadas] = useState(true);
   const [celula, setCelula] = useState(null); // { status, mes }
 
   const base = useMemo(
-    () => compras.filter(c => (soImportadas ? !!c.pedido_central_id : true)),
-    [compras, soImportadas]
+    () => compras.filter(c =>
+      (soImportadas ? !!c.pedido_central_id : true) &&
+      (!mesReferencia || mesDe(c) === mesReferencia)
+    ),
+    [compras, soImportadas, mesReferencia]
   );
 
-  const { meses, matriz, totaisMes, totaisStatus, total } = useMemo(() => {
+  const { meses, matriz, totaisMes, totaisStatus, total, totalPago } = useMemo(() => {
     const mesesSet = new Set();
     const m = {};
     STATUS.forEach(s => { m[s.key] = {}; });
@@ -45,14 +51,21 @@ export default function PainelComprasImportadas({ compras = [] }) {
       const st = STATUS.some(s => s.key === c.status_pagamento) ? c.status_pagamento : 'nao_identificado';
       const mes = mesDe(c);
       mesesSet.add(mes);
-      m[st][mes] = (m[st][mes] || 0) + valorAberto(c);
+      m[st][mes] = (m[st][mes] || 0) + valorDoStatus(c);
     });
     const meses = [...mesesSet].sort((a, b) => (a === 'sem-data' ? 1 : b === 'sem-data' ? -1 : a.localeCompare(b)));
     const totaisMes = {};
-    meses.forEach(mes => { totaisMes[mes] = STATUS.reduce((s, st) => s + (m[st.key][mes] || 0), 0); });
+    meses.forEach(mes => { totaisMes[mes] = STATUS.filter(st => st.key !== 'pago').reduce((s, st) => s + (m[st.key][mes] || 0), 0); });
     const totaisStatus = {};
     STATUS.forEach(st => { totaisStatus[st.key] = meses.reduce((s, mes) => s + (m[st.key][mes] || 0), 0); });
-    return { meses, matriz: m, totaisMes, totaisStatus, total: Object.values(totaisMes).reduce((a, b) => a + b, 0) };
+    return {
+      meses,
+      matriz: m,
+      totaisMes,
+      totaisStatus,
+      total: Object.values(totaisMes).reduce((a, b) => a + b, 0),
+      totalPago: totaisStatus.pago || 0,
+    };
   }, [base]);
 
   const itensCelula = useMemo(() => {
@@ -68,10 +81,13 @@ export default function PainelComprasImportadas({ compras = [] }) {
       <button onClick={() => setAberto(!aberto)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30">
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-            <ShoppingCart className="w-3.5 h-3.5" /> Compras por status × mês de vencimento
+            <ShoppingCart className="w-3.5 h-3.5" /> Detalhamento das compras no período
           </h3>
-          <span className="text-[10px] font-bold bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">
-            {base.length} item(ns) · {formatCurrency(total)}
+          <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+            Em aberto · {formatCurrency(total)}
+          </span>
+          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+            Pago · {formatCurrency(totalPago)}
           </span>
         </div>
         {aberto ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -92,7 +108,7 @@ export default function PainelComprasImportadas({ compras = [] }) {
 
           {meses.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              {soImportadas ? 'Nenhuma compra importada da Central de Compras ainda.' : 'Nenhuma compra registrada.'}
+              {soImportadas ? 'Nenhuma compra importada da Central neste período.' : 'Nenhuma compra registrada neste período.'}
             </p>
           ) : (
             <div className="overflow-x-auto border rounded-lg">
@@ -130,7 +146,7 @@ export default function PainelComprasImportadas({ compras = [] }) {
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 bg-muted/30">
-                    <td className="px-3 py-2 font-bold">Total por mês</td>
+                    <td className="px-3 py-2 font-bold">Em aberto no período</td>
                     {meses.map(mes => (
                       <td key={mes} className="px-3 py-2 text-right font-bold tabular-nums">{formatCurrency(totaisMes[mes])}</td>
                     ))}
@@ -157,7 +173,7 @@ export default function PainelComprasImportadas({ compras = [] }) {
                         {c.pedido_central_id ? ` · ${c.pedido_central_id}` : ''}
                       </p>
                     </div>
-                    <span className="text-xs font-bold tabular-nums text-rose-600 whitespace-nowrap">{formatCurrency(valorAberto(c))}</span>
+                    <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${c.status_pagamento === 'pago' ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(valorDoStatus(c))}</span>
                   </div>
                 ))}
               </div>

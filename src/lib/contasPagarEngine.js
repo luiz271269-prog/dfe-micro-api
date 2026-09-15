@@ -26,10 +26,11 @@ function evaporou(reg) {
 }
 
 /** Quantos itens saíram do Contas a Pagar por já estarem absorvidos numa fatura de cartão. */
-export function contarEvaporados({ despesas = [], compras = [], obras = [] }) {
-  const dsp = despesas.filter(d => d.status === 'pendente' && evaporou(d));
-  const cmp = compras.filter(c => ['pendente', 'parcial', 'nao_identificado'].includes(c.status_pagamento) && evaporou(c));
-  const obr = obras.filter(o => !o.lancamento_bancario_id && evaporou(o));
+export function contarEvaporados({ despesas = [], compras = [], obras = [] }, mesReferencia = null) {
+  const pertenceAoMes = reg => !mesReferencia || (reg.data_vencimento || reg.data_emissao || reg.data || '').startsWith(mesReferencia);
+  const dsp = despesas.filter(d => d.status === 'pendente' && evaporou(d) && pertenceAoMes(d));
+  const cmp = compras.filter(c => ['pendente', 'parcial', 'nao_identificado'].includes(c.status_pagamento) && evaporou(c) && pertenceAoMes(c));
+  const obr = obras.filter(o => !o.lancamento_bancario_id && evaporou(o) && pertenceAoMes(o));
   return {
     total: dsp.length + cmp.length + obr.length,
     valor: [...dsp, ...cmp, ...obr].reduce((a, x) => a + (x.valor || x.valor_total || 0), 0),
