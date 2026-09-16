@@ -17,6 +17,7 @@ import FiltroTiposGasto from '@/components/classificacao/FiltroTiposGasto';
 import RevisaoTiposGasto from '@/components/classificacao/RevisaoTiposGasto';
 import { tipoGastoValido } from '@/lib/classificacaoUnificada';
 import IntegradosModuloPanel from '@/components/integracoes/IntegradosModuloPanel';
+import ResumoPorInstrumento from './ResumoPorInstrumento';
 
 
 
@@ -211,6 +212,8 @@ export default function ContasAPagarPanel() {
           monthTotals={totaisPorMes}
         />
       </div>
+
+      <ResumoPorInstrumento itens={itens} />
 
       {/* Totais e classificação do período selecionado */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
