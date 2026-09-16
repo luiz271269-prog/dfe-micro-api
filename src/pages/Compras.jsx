@@ -14,6 +14,8 @@ import IntegradosModuloPanel from '@/components/integracoes/IntegradosModuloPane
 import StatusBadge from '../components/shared/StatusBadge';
 import SortableTh from '../components/shared/SortableTh';
 import useTableSort from '@/hooks/useTableSort';
+import ComprasTitulosTable from '@/components/compras/ComprasTitulosTable';
+import { consolidarDocumentosCompras } from '@/lib/documentosCompras';
 import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import ConciliacaoDDAvsContas from '../components/contas-pagar/ConciliacaoDDAvsContas';
@@ -129,23 +131,21 @@ export default function Compras() {
   // ── Compras memos ─────────────────────────────────────────────────────────
   const monthTotalsC = useMemo(() => {
     const t = {};
-    ALL_MONTHS.forEach(m => { t[m] = compras.filter(c => c.data_emissao?.startsWith(m)).reduce((s,c) => s+(c.valor_total||0), 0); });
+    const documentos = consolidarDocumentosCompras(compras);
+    ALL_MONTHS.forEach(m => { t[m] = documentos.filter(c => (c.data_vencimento || c.data_emissao || '').startsWith(m)).reduce((s,c) => s + c.valor, 0); });
     return t;
   }, [compras]);
 
-  const comprasMes = useMemo(() => compras.filter(c => c.data_emissao?.startsWith(isAnnual ? selectedMonth.slice(0, 4) : selectedMonth)), [compras, selectedMonth, isAnnual]);
-  const filteredC = useMemo(() => comprasMes.filter(c => {
-    if (filterFornecedor !== 'all' && c.fornecedor !== filterFornecedor) return false;
-    if (filterCategoriaC !== 'all' && c.categoria_produto !== filterCategoriaC) return false;
-    if (filterPagamentoC !== 'all' && (c.forma_pagamento || 'nao_definida') !== filterPagamentoC) return false;
-    if (searchC && !c.descricao_produto?.toLowerCase().includes(searchC.toLowerCase())) return false;
+  const comprasMes = useMemo(() => compras.filter(c => (c.data_vencimento || c.data_emissao || '').startsWith(isAnnual ? selectedMonth.slice(0, 4) : selectedMonth)), [compras, selectedMonth, isAnnual]);
+  const documentosC = useMemo(() => consolidarDocumentosCompras(comprasMes), [comprasMes]);
+  const filteredC = useMemo(() => documentosC.filter(doc => {
+    if (filterFornecedor !== 'all' && doc.fornecedor !== filterFornecedor) return false;
+    if (filterCategoriaC !== 'all' && !doc.itens.some(c => c.categoria_produto === filterCategoriaC)) return false;
+    if (filterPagamentoC !== 'all' && (doc.forma_pagamento || 'nao_definida') !== filterPagamentoC) return false;
+    const busca = searchC.toLowerCase();
+    if (busca && !`${doc.numero} ${doc.fornecedor} ${doc.itens.map(i => i.descricao_produto).join(' ')}`.toLowerCase().includes(busca)) return false;
     return true;
-  }), [comprasMes, filterFornecedor, filterCategoriaC, filterPagamentoC, searchC]);
-
-  const sortC = useTableSort(filteredC, 'data_emissao', 'desc');
-
-  const totaisFornecedor = useMemo(() => { const t={}; comprasMes.forEach(c => { t[c.fornecedor]=(t[c.fornecedor]||0)+(c.valor_total||0); }); return t; }, [comprasMes]);
-  const grandTotalC = comprasMes.reduce((s,c) => s+(c.valor_total||0), 0);
+  }), [documentosC, filterFornecedor, filterCategoriaC, filterPagamentoC, searchC]);
 
   const fornSuggestions = useMemo(() => {
     const todos = [...fornecedores.map(f=>f.nome), ...fornecedorOptions.filter(f=>!fornecedores.some(fdb=>fdb.nome===f))];
@@ -267,11 +267,11 @@ export default function Compras() {
       {activeTab === 'compras' && (
         <>
           <ComprasPortalCotacao />
-          <ComprasPagamentoResumo compras={comprasMes} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
+          <ComprasPagamentoResumo compras={documentosC} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar produto..." value={searchC} onChange={e => setSearchC(e.target.value)} className="pl-9" />
+              <Input placeholder="Buscar nota, pedido ou fornecedor..." value={searchC} onChange={e => setSearchC(e.target.value)} className="pl-9" />
             </div>
             <Select value={filterFornecedor} onValueChange={setFilterFornecedor}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Fornecedor" /></SelectTrigger>
@@ -286,45 +286,7 @@ export default function Compras() {
               <SelectContent><SelectItem value="all">Todas</SelectItem>{categoriaComprasOptions.map(c=><SelectItem key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="bg-card rounded-xl border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
-                  {[
-                    ['data_emissao', 'Data', 'left'],
-                    ['descricao_produto', 'Produto', 'left'],
-                    ['fornecedor', 'Fornecedor', 'left'],
-                    ['categoria_produto', 'Categoria', 'left'],
-                    ['quantidade', 'Qtd', 'right'],
-                    ['valor_unitario', 'Unit.', 'right'],
-                    ['valor_total', 'Total', 'right'],
-                  ].map(([field, label, align]) => (
-                    <SortableTh key={field} field={field} align={align} className="py-3"
-                      sortField={sortC.sortField} sortDir={sortC.sortDir} onSort={sortC.handleSort}>{label}</SortableTh>
-                  ))}
-                </tr></thead>
-                <tbody>
-                  {loadingC ? <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Carregando...</td></tr>
-                  : filteredC.length === 0 ? <tr><td colSpan={7} className="text-center py-12 text-muted-foreground">Nenhuma compra encontrada</td></tr>
-                  : sortC.sorted.map(c => (
-                    <tr key={c.id} className="border-b hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap">{formatDate(c.data_emissao)}</td>
-                      <td className="px-4 py-3"><p className="font-medium">{c.descricao_produto}</p>{c.numero_nota && <p className="text-xs text-muted-foreground">NF {c.numero_nota}</p>}</td>
-                      <td className="px-4 py-3 text-xs">{c.fornecedor}<p className="text-muted-foreground mt-1">{FORMAS_COMPRA[c.forma_pagamento] || 'Não informada'} · {c.status_pagamento === 'pago' ? 'Pago ao fornecedor' : c.status_pagamento === 'parcial' ? 'Parcial' : c.status_pagamento === 'pendente' ? 'Pendente' : 'Pagamento não identificado'}</p>{c.data_vencimento && <p className="text-muted-foreground">Vence {formatDate(c.data_vencimento)}</p>}</td>
-                      <td className="px-4 py-3"><span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${categoriaComprasColors[c.categoria_produto]||'bg-slate-100 text-slate-700'}`}>{c.categoria_produto}</span></td>
-                      <td className="px-4 py-3 text-right tabular-nums">{c.quantidade}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{c.valor_unitario ? formatCurrency(c.valor_unitario) : '—'}</td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(c.valor_total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                {filteredC.length > 0 && <tfoot><tr className="border-t-2 bg-muted/30">
-                  <td colSpan={6} className="px-4 py-3 font-semibold">Total ({filteredC.length} itens)</td>
-                  <td className="px-4 py-3 text-right font-bold text-red-600">{formatCurrency(filteredC.reduce((s,c)=>s+(c.valor_total||0),0))}</td>
-                </tr></tfoot>}
-              </table>
-            </div>
-          </div>
+          <ComprasTitulosTable documentos={filteredC} loading={loadingC} />
         </>
       )}
 
