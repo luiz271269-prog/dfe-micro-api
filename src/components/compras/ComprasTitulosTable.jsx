@@ -1,13 +1,9 @@
-import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { FORMAS_COMPRA } from '@/components/compras/CompraPagamentoFields';
-import CompraProdutosDialog from '@/components/compras/CompraProdutosDialog';
+import VerPedidoCentralButton from '@/components/contas-pagar/VerPedidoCentralButton';
 
 const statusLabel = { pendente: 'Pendente', parcial: 'Parcial', nao_identificado: 'Não identificado' };
 export default function ComprasTitulosTable({ documentos, loading = false, embedded = false }) {
-  const [selecionado, setSelecionado] = useState(null);
   const tabela = <div className="overflow-x-auto"><table className="w-full text-sm">
     <thead><tr className="border-b bg-muted/30">
       <th className="p-3 text-left">Vencimento</th><th className="p-3 text-left">Nota / parcela</th>
@@ -22,9 +18,9 @@ export default function ComprasTitulosTable({ documentos, loading = false, embed
         <td className="p-3">{doc.fornecedor}</td><td className="p-3 text-xs">{FORMAS_COMPRA[doc.forma_pagamento] || 'Não informada'}</td>
         <td className="p-3">{statusLabel[doc.status_pagamento] || doc.status_pagamento}</td>
         <td className="p-3 text-right font-bold tabular-nums text-destructive">{formatCurrency(doc.valor)}</td>
-        <td className="p-3 text-right"><Button size="sm" variant="outline" onClick={() => setSelecionado(doc)}>Mais <ChevronRight className="h-4 w-4" /></Button></td>
+        <td className="p-3 text-right"><VerPedidoCentralButton compra={{ pedido_central_id: doc.numero, pedido_central_internal_id: doc.itens?.[0]?.pedido_central_internal_id }} /></td>
       </tr>)}</tbody>
     {documentos.length > 0 && <tfoot><tr className="border-t-2 bg-muted/30"><td colSpan={5} className="p-3 font-semibold">Total ({documentos.length} títulos)</td><td className="p-3 text-right font-bold text-destructive">{formatCurrency(documentos.reduce((s, d) => s + d.valor, 0))}</td><td /></tr></tfoot>}
   </table></div>;
-  return <>{embedded ? tabela : <div className="rounded-xl border bg-card overflow-hidden">{tabela}</div>}<CompraProdutosDialog documento={selecionado} onClose={() => setSelecionado(null)} /></>;
+  return embedded ? tabela : <div className="rounded-xl border bg-card overflow-hidden">{tabela}</div>;
 }
