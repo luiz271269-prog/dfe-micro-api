@@ -24,7 +24,7 @@ import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { getCor } from '../lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
-import ComprasPortalCotacao from '../components/cartoes/ComprasPortalCotacao';
+
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
 
 const SEED_CARDS = [
@@ -304,8 +304,6 @@ export default function Cartoes() {
           })}
         </div>
       </div>
-
-      <ComprasPortalCotacao />
 
       {/* Conciliação */}
       {filteredFaturas.length > 0 &&

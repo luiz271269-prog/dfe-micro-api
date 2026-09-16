@@ -9,9 +9,12 @@ import SeletorClassificacao from '../shared/SeletorClassificacao';
 import { getCor, slugify } from '../../lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import { useQueryClient } from '@tanstack/react-query';
+import useVinculosLancamentos from '@/components/cartoes/useVinculosLancamentos';
+import VinculoLancamentoInfo from '@/components/cartoes/VinculoLancamentoInfo';
 
 export default function LancamentosEditableTable({ lancamentos, onReload }) {
   const queryClient = useQueryClient();
+  const vinculos = useVinculosLancamentos(lancamentos);
   const { opcoes: allCategorias } = useCadastroClassificacao('categoria');
   const [editing, setEditing] = useState(null);
   const [localRows, setLocalRows] = useState(lancamentos || []);
@@ -125,6 +128,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
             <th className="text-left py-2 font-semibold text-muted-foreground">Tipo de compra</th>
             <th className={`text-right ${headerCls}`} onClick={() => toggleSort('valor')}>Valor <SortIcon field="valor" /></th>
             <th className="text-left py-2 pl-3 font-semibold text-muted-foreground">Comprovante</th>
+            <th className="text-left py-2 pl-3 font-semibold text-muted-foreground">Vínculo / Contas a Pagar</th>
           </tr>
         </thead>
         <tbody>
@@ -193,6 +197,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
                 <td className="py-1.5 pl-3">
                   <ComprovantePicker entityName="LancamentoCartao" record={l} onChange={onReload} />
                 </td>
+                <td className="py-1.5 pl-3"><VinculoLancamentoInfo lancamento={l} consulta={vinculos} /></td>
               </tr>
             );
           })}
@@ -203,7 +208,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
               Total ({localRows.length} lançamentos)
             </td>
             <td className="py-2 text-right tabular-nums text-sm">{formatCurrency(totalValor)}</td>
-            <td></td>
+            <td colSpan={2}></td>
           </tr>
         </tfoot>
       </table>
