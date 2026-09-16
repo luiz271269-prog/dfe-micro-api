@@ -269,8 +269,8 @@ export default function Compras() {
       {/* ── ABA COMPRAS ──────────────────────────────────────────────────── */}
       {activeTab === 'compras' && (
         <>
-          <ComprasPortalCotacao />
           <ComprasPagamentoResumo compras={documentosC} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
+          <ComprasPortalCotacao />
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
