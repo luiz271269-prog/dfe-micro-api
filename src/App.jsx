@@ -44,6 +44,7 @@ import RelatorioGerencial from './pages/RelatorioGerencial';
 import DREOperacional from './pages/DREOperacional';
 import IntegracoesFinanceiras from './pages/IntegracoesFinanceiras';
 import CadastroClassificacao from './pages/CadastroClassificacao';
+import PedidoCentralDetalhe from './pages/PedidoCentralDetalhe';
 import OAuthConsent from '@/pages/OAuthConsent';
 
 const AuthenticatedApp = () => {
@@ -113,6 +114,7 @@ const AuthenticatedApp = () => {
         <Route path="/dre-operacional" element={<DREOperacional />} />
         <Route path="/integracoes-financeiras" element={<IntegracoesFinanceiras />} />
         <Route path="/cadastro-classificacao" element={<CadastroClassificacao />} />
+        <Route path="/pedido-central/:oc_numero" element={<PedidoCentralDetalhe />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
