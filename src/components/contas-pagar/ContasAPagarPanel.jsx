@@ -186,6 +186,20 @@ export default function ContasAPagarPanel() {
 
   return (
     <>
+      {/* Filtros principais no topo da tela */}
+      <div className="flex items-center gap-2 mb-3 text-xs overflow-x-auto pb-1">
+        <span className="font-bold text-muted-foreground whitespace-nowrap">Empresa / origem:</span>
+        {FILTROS_EMPRESA.map(({ valor, rotulo }) => (
+          <button key={valor} onClick={() => setFiltroEmpresa(valor)}
+            className={`px-3 py-1 rounded-full border font-semibold whitespace-nowrap ${filtroEmpresa === valor ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'}`}>
+            {rotulo}
+          </button>
+        ))}
+      </div>
+      <div className="mb-4 bg-card border rounded-xl px-3 py-2">
+        <MonthNavigator selectedMonth={mesReferencia} onSelectMonth={setMesReferencia} monthTotals={totaisPorMes} />
+      </div>
+
       {/* Header da aba — ações */}
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
         <ChipsStatusContas status={filtroStatus} onChange={(s) => { setFiltroStatus(s); setFiltroOrigem('todos'); }} contagens={contagens} />
@@ -255,22 +269,6 @@ export default function ContasAPagarPanel() {
       </div>
 
       <FiltroTiposGasto itens={itensRaw.filter(i => pertenceAoFiltroEmpresa(i, filtroEmpresa))} value={filtroOrigem} onChange={setFiltroOrigem} />
-
-      {/* Filtro empresa / responsável econômico */}
-      <div className="flex items-center gap-2 mb-4 text-xs overflow-x-auto pb-1">
-        <span className="font-bold text-muted-foreground whitespace-nowrap">Empresa / origem:</span>
-        {FILTROS_EMPRESA.map(({ valor, rotulo }) => (
-          <button key={valor} onClick={() => setFiltroEmpresa(valor)}
-            className={`px-3 py-1 rounded-full border font-semibold whitespace-nowrap ${filtroEmpresa === valor ? 'bg-primary text-primary-foreground' : 'bg-card hover:bg-muted'}`}>
-            {rotulo}
-          </button>
-        ))}
-      </div>
-
-      {/* Seletor de mês para o calendário */}
-      <div className="mb-3 bg-card border rounded-xl px-3 py-2">
-        <MonthNavigator selectedMonth={mesReferencia} onSelectMonth={setMesReferencia} monthTotals={totaisPorMes} />
-      </div>
 
       {/* Duas colunas: Calendário (sistema) × DDA (banco) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
