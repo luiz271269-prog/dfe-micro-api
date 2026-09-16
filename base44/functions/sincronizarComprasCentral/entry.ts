@@ -68,6 +68,7 @@ export default async function(req) {
       const dados = {
         fornecedor: p.fornecedor_nome || p.fornecedor || 'Fornecedor',
         pedido_central_id: p.numero_pedido,
+        pedido_central_internal_id: p.id || existente?.pedido_central_internal_id || undefined,
         numero_nota: p.nota_fiscal_numero || undefined,
         data_emissao: p.data_pedido,
         data_vencimento: p.data_previsao_entrega || p.data_pedido,

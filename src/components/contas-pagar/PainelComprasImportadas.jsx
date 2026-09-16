@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ShoppingCart, ChevronDown, ChevronUp, CloudDownload } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
+import VerPedidoCentralButton from '@/components/contas-pagar/VerPedidoCentralButton';
 
 const STATUS = [
   { key: 'pendente',         label: 'Pendente',        color: 'text-amber-700',   bg: 'bg-amber-50' },
@@ -172,6 +173,7 @@ export default function PainelComprasImportadas({ compras = [], mesReferencia })
                         {c.fornecedor} · venc. {c.data_vencimento ? formatDate(c.data_vencimento) : 'emissão ' + formatDate(c.data_emissao)}
                         {c.pedido_central_id ? ` · ${c.pedido_central_id}` : ''}
                       </p>
+                      <VerPedidoCentralButton compra={c} />
                     </div>
                     <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${c.status_pagamento === 'pago' ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(valorDoStatus(c))}</span>
                   </div>

@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from '../../lib/formatters';
 import SeletorClassificacao from '../shared/SeletorClassificacao';
 import { mapearTipoEntidade } from '../../lib/contasPagarEngine';
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
+import VerPedidoCentralButton from '@/components/contas-pagar/VerPedidoCentralButton';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700', label: 'Despesa', href: '/despesas' },
@@ -96,6 +97,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
               <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> {i.valor_pago > 0 ? 'Parcial · saldo em aberto' : 'Pendente'}</span>
             )}
           </div>
+          {entityName === 'ItemCompra' && <VerPedidoCentralButton compra={i} />}
           {/* Classificação unificada — só para itens com entidade real (projeções não têm) */}
           {entityName && !i.is_planejado && (
             <div className="flex items-center gap-1.5 mt-1">

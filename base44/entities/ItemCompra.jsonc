@@ -113,6 +113,10 @@
       "type": "string",
       "title": "N\u00ba do pedido na Central de Compras (ex: PC-2026-064) \u2014 chave de sincroniza\u00e7\u00e3o entre apps"
     },
+    "pedido_central_internal_id": {
+      "type": "string",
+      "title": "ID interno do pedido na Central de Compras \u2014 abre a vis\u00e3o completa"
+    },
     "data_vencimento": {
       "type": "string",
       "format": "date",

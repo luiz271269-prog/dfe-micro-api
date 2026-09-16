@@ -72,6 +72,8 @@ export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [
   compras.filter(c => c.status_pagamento === 'pago' && !c.lancamento_cartao_id).forEach(c => {
     itens.push({
       id: `compra-${c.id}`, origem_id: c.id, origem_tipo: 'compra',
+      pedido_central_id: c.pedido_central_id,
+      pedido_central_internal_id: c.pedido_central_internal_id,
       descricao: c.descricao_produto || `Compra NF ${c.numero_nota || ''}`.trim(),
       fornecedor: c.fornecedor || '—', categoria: c.categoria_produto || 'compra',
       valor: c.valor_pago || c.valor_total,
