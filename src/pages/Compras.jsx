@@ -220,13 +220,6 @@ export default function Compras() {
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Compras & Despesas" subtitle="Gestão de aquisições, despesas operacionais e boletos a vencer">
-        <MonthNavigator
-          selectedMonth={selectedMonth}
-          onSelectMonth={setSelectedMonth}
-          isAnnual={isAnnual}
-          onToggleAnnual={() => setIsAnnual(!isAnnual)}
-          monthTotals={monthTotalsActive}
-        />
         {activeTab === 'compras' && (
           <>
             <Link to="/produtos?tab=fornecedores">
@@ -239,6 +232,16 @@ export default function Compras() {
           <Button onClick={() => setShowFormD(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Despesa</Button>
         )}
       </PageHeader>
+
+      <div className="mb-4 rounded-xl border bg-card px-3 py-2">
+        <MonthNavigator
+          selectedMonth={selectedMonth}
+          onSelectMonth={setSelectedMonth}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual(!isAnnual)}
+          monthTotals={monthTotalsActive}
+        />
+      </div>
 
       <IntegradosModuloPanel modulo="comprasDespesas" titulo="Despesas de locações e condomínio" />
 
