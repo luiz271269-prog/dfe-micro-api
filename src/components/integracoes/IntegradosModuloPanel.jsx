@@ -2,10 +2,10 @@ import { Badge } from '@/components/ui/badge';
 import useIntegradosModulo from '@/hooks/useIntegradosModulo';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 
-export default function IntegradosModuloPanel({ modulo, titulo }) {
+export default function IntegradosModuloPanel({ modulo, titulo, compact = false }) {
   const { registros, carregando } = useIntegradosModulo(modulo);
   const total = registros.reduce((soma, item) => soma + Number(item.valor || 0), 0);
-  return <section className="my-4 overflow-hidden rounded-xl border bg-card">
+  return <section className={`${compact ? 'h-full' : 'my-4'} overflow-hidden rounded-xl border bg-card`}>
     <header className="flex items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
       <div><h2 className="text-sm font-semibold">{titulo}</h2><p className="text-xs text-muted-foreground">Dados rastreados pela central de integrações</p></div>
       <div className="text-right"><p className="text-sm font-bold tabular-nums">{formatCurrency(total)}</p><p className="text-xs text-muted-foreground">{registros.length} registro(s)</p></div>

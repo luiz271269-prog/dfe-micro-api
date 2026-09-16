@@ -16,6 +16,7 @@ import MonthNavigator from '../shared/MonthNavigator';
 import FiltroTiposGasto from '@/components/classificacao/FiltroTiposGasto';
 import RevisaoTiposGasto from '@/components/classificacao/RevisaoTiposGasto';
 import { tipoGastoValido } from '@/lib/classificacaoUnificada';
+import IntegradosModuloPanel from '@/components/integracoes/IntegradosModuloPanel';
 
 
 
@@ -277,9 +278,17 @@ export default function ContasAPagarPanel() {
         </div>
       )}
 
-      <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} evaporados={evaporados} />
-
-      <PainelComprasImportadas compras={dados.compras} mesReferencia={mesReferencia} />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4 items-stretch">
+        <div className="min-w-0">
+          <IntegradosModuloPanel modulo="contasPagar" titulo="Contas externas a pagar" compact />
+        </div>
+        <div className="min-w-0 [&>div]:h-full [&>div]:mb-0">
+          <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} evaporados={evaporados} />
+        </div>
+        <div className="min-w-0 [&>div]:h-full [&>div]:mb-0">
+          <PainelComprasImportadas compras={dados.compras} mesReferencia={mesReferencia} />
+        </div>
+      </div>
 
       {/* Duas colunas: Calendário (sistema) × DDA (banco) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
