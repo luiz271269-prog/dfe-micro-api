@@ -57,6 +57,7 @@ export default function ContasAPagarPanel() {
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [mesReferencia, setMesReferencia] = useState(mesAtualISO());
+  const [isAnnual, setIsAnnual] = useState(false);
   const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [], compras: [], obras: [], lancamentos: [], lancamentosCartao: [] });
   const [vinculos, setVinculos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
@@ -144,14 +145,19 @@ export default function ContasAPagarPanel() {
     if (filtroStatus === 'vencidos') return ag.vencidos;
     return abertosRaw;
   }, [abertosRaw, pagosRaw, filtroStatus]);
+  const itensPeriodo = useMemo(() => itensRaw.filter((i) => {
+    const periodo = (i.data_vencimento || '').slice(0, isAnnual ? 4 : 7);
+    return periodo === (isAnnual ? mesReferencia.slice(0, 4) : mesReferencia);
+  }), [itensRaw, mesReferencia, isAnnual]);
+
   const itens = useMemo(() => {
-    return itensRaw.filter(i => {
+    return itensPeriodo.filter(i => {
       const tipo = i.origem_tipo === 'fatura' ? 'fatura' : tipoGastoValido(i.tipo_compra) ? i.tipo_compra : 'pendente';
       if (filtroOrigem !== 'todos' && tipo !== filtroOrigem) return false;
       if (!pertenceAoFiltroEmpresa(i, filtroEmpresa)) return false;
       return true;
     });
-  }, [itensRaw, filtroOrigem, filtroEmpresa]);
+  }, [itensPeriodo, filtroOrigem, filtroEmpresa]);
 
   const aging = useMemo(() => calcularAging(itens), [itens]);
 
@@ -166,7 +172,6 @@ export default function ContasAPagarPanel() {
   const total = itens.reduce((a, i) => a + (i.valor || 0), 0);
   const totalVencido = aging.vencidos.reduce((a, i) => a + (i.valor || 0), 0);
   const totalSemana = [...aging.hoje, ...aging.semana].reduce((a, i) => a + (i.valor || 0), 0);
-  const totalMes = [...aging.hoje, ...aging.semana, ...aging.ate15, ...aging.ate30].reduce((a, i) => a + (i.valor || 0), 0);
 
 
 
@@ -197,8 +202,43 @@ export default function ContasAPagarPanel() {
         ))}
       </div>
       <div className="mb-4 bg-card border rounded-xl px-3 py-2">
-        <MonthNavigator selectedMonth={mesReferencia} onSelectMonth={setMesReferencia} monthTotals={totaisPorMes} />
+        <MonthNavigator
+          selectedMonth={mesReferencia}
+          onSelectMonth={setMesReferencia}
+          isAnnual={isAnnual}
+          onToggleAnnual={() => setIsAnnual((atual) => !atual)}
+          monthTotals={totaisPorMes}
+        />
       </div>
+
+      {/* Totais e classificação do período selecionado */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+        <div className="bg-gradient-to-br from-slate-700 to-slate-900 text-white rounded-xl px-3 py-2 shadow" title={`${itens.length} itens`}>
+          <p className="text-[10px] font-bold uppercase opacity-80">{modo === 'aberto' ? 'Total a pagar' : 'Total pago'}</p>
+          <p className="text-xl font-bold">{formatCurrency(total)}</p>
+        </div>
+        {modo === 'pagos' ? (
+          <div className="bg-emerald-50 rounded-xl px-3 py-2 border border-emerald-200 lg:col-span-3" title="Obrigações já liquidadas no período selecionado">
+            <p className="text-[10px] font-bold uppercase text-emerald-700">Itens liquidados</p>
+            <p className="text-lg font-bold text-emerald-700">{itens.length} item(ns)</p>
+          </div>
+        ) : (<>
+          <div className="bg-red-50 rounded-xl px-3 py-2 border border-red-200" title={`${aging.vencidos.length} item(ns) em atraso`}>
+            <p className="text-[10px] font-bold uppercase text-red-700">Vencido</p>
+            <p className="text-lg font-bold text-red-700">{formatCurrency(totalVencido)}</p>
+          </div>
+          <div className="bg-orange-50 rounded-xl px-3 py-2 border border-orange-200" title={`${aging.hoje.length + aging.semana.length} item(ns)`}>
+            <p className="text-[10px] font-bold uppercase text-orange-700">Próximos 7 dias</p>
+            <p className="text-lg font-bold text-orange-700">{formatCurrency(totalSemana)}</p>
+          </div>
+          <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-200" title="Total do período selecionado">
+            <p className="text-[10px] font-bold uppercase text-blue-700">{isAnnual ? 'Ano selecionado' : 'Mês selecionado'}</p>
+            <p className="text-lg font-bold text-blue-700">{formatCurrency(total)}</p>
+          </div>
+        </>)}
+      </div>
+
+      <FiltroTiposGasto itens={itensPeriodo.filter(i => pertenceAoFiltroEmpresa(i, filtroEmpresa))} value={filtroOrigem} onChange={setFiltroOrigem} />
 
       {/* Header da aba — ações */}
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
@@ -240,35 +280,6 @@ export default function ContasAPagarPanel() {
       <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} evaporados={evaporados} />
 
       <PainelComprasImportadas compras={dados.compras} mesReferencia={mesReferencia} />
-
-      {/* Totais principais — linha compacta de KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
-        <div className="bg-gradient-to-br from-slate-700 to-slate-900 text-white rounded-xl px-3 py-2 shadow" title={`${itens.length} itens`}>
-          <p className="text-[10px] font-bold uppercase opacity-80">{modo === 'aberto' ? 'Total a pagar' : 'Total pago'}</p>
-          <p className="text-xl font-bold">{formatCurrency(total)}</p>
-        </div>
-        {modo === 'pagos' ? (
-          <div className="bg-emerald-50 rounded-xl px-3 py-2 border border-emerald-200 lg:col-span-3" title="Obrigações já liquidadas, agrupadas pela data de emissão do documento">
-            <p className="text-[10px] font-bold uppercase text-emerald-700">Itens liquidados</p>
-            <p className="text-lg font-bold text-emerald-700">{itens.length} item(ns)</p>
-          </div>
-        ) : (<>
-        <div className="bg-red-50 rounded-xl px-3 py-2 border border-red-200" title={`${aging.vencidos.length} item(ns) em atraso`}>
-          <p className="text-[10px] font-bold uppercase text-red-700">Vencido</p>
-          <p className="text-lg font-bold text-red-700">{formatCurrency(totalVencido)}</p>
-        </div>
-        <div className="bg-orange-50 rounded-xl px-3 py-2 border border-orange-200" title={`${aging.hoje.length + aging.semana.length} item(ns)`}>
-          <p className="text-[10px] font-bold uppercase text-orange-700">Próximos 7 dias</p>
-          <p className="text-lg font-bold text-orange-700">{formatCurrency(totalSemana)}</p>
-        </div>
-        <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-200" title="Projeção de desembolso">
-          <p className="text-[10px] font-bold uppercase text-blue-700">Este mês (30d)</p>
-          <p className="text-lg font-bold text-blue-700">{formatCurrency(totalMes)}</p>
-        </div>
-        </>)}
-      </div>
-
-      <FiltroTiposGasto itens={itensRaw.filter(i => pertenceAoFiltroEmpresa(i, filtroEmpresa))} value={filtroOrigem} onChange={setFiltroOrigem} />
 
       {/* Duas colunas: Calendário (sistema) × DDA (banco) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
