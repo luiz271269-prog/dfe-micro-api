@@ -99,7 +99,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
           </div>
           {entityName === 'ItemCompra' && <VerPedidoCentralButton compra={i} />}
           {/* Classificação unificada — só para itens com entidade real (projeções não têm) */}
-          {entityName && !i.is_planejado && (
+          {entityName && !i.is_planejado && !i.is_grouped && (
             <div className="flex items-center gap-1.5 mt-1">
               <SeletorClassificacao
                 eixo="origem"

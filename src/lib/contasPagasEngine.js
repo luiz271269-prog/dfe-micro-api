@@ -4,6 +4,8 @@
  * Usada no modo "Pagos por emissão" da tela de Contas a Pagar. Somente leitura.
  */
 
+import { consolidarTitulosCompras } from './titulosCompras';
+
 // Não inferir tipos dos registros antigos: a classificação é manual.
 
 function eixos(reg, origem_tipo) {
@@ -69,20 +71,7 @@ export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  compras.filter(c => c.status_pagamento === 'pago' && !c.lancamento_cartao_id).forEach(c => {
-    itens.push({
-      id: `compra-${c.id}`, origem_id: c.id, origem_tipo: 'compra',
-      pedido_central_id: c.pedido_central_id,
-      pedido_central_internal_id: c.pedido_central_internal_id,
-      descricao: c.descricao_produto || `Compra NF ${c.numero_nota || ''}`.trim(),
-      fornecedor: c.fornecedor || '—', categoria: c.categoria_produto || 'compra',
-      valor: c.valor_pago || c.valor_total,
-      data_emissao: c.data_emissao,
-      data_pagamento: null,
-      empresa: c.empresa || '—', forma_pagamento: c.forma_pagamento,
-      ...eixos(c, 'compra'),
-    });
-  });
+  itens.push(...consolidarTitulosCompras(compras, true));
 
   obras.filter(o => o.lancamento_bancario_id && !o.lancamento_cartao_id).forEach(o => {
     itens.push({

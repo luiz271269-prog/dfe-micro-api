@@ -12,6 +12,7 @@
 
 import { ehSaidaContasPagar } from './extratoNatureza';
 import { calcularProLabore } from './proLaboreContasPagar';
+import { consolidarTitulosCompras } from './titulosCompras';
 
 // Registros antigos sem tipo permanecem pendentes até a classificação manual.
 
@@ -120,30 +121,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  // Compras (ItemCompra) ainda não pagas — produtos para estoque/revenda (origem própria, não é despesa)
-  compras
-    .filter(c => c.status_pagamento === 'pendente' || c.status_pagamento === 'parcial' || c.status_pagamento === 'nao_identificado')
-    .filter(c => !evaporou(c))
-    .forEach(c => {
-      const valorAberto = (c.valor_total || 0) - (c.valor_pago || 0);
-      if (valorAberto <= 0.01) return;
-      itens.push({
-        id: `compra-${c.id}`,
-        origem_id: c.id,
-        origem_tipo: 'compra',
-        pedido_central_id: c.pedido_central_id,
-        pedido_central_internal_id: c.pedido_central_internal_id,
-        descricao: c.descricao_produto || `Compra NF ${c.numero_nota || ''}`.trim(),
-        fornecedor: c.fornecedor || '—',
-        categoria: c.categoria_produto || 'compra',
-        valor: valorAberto,
-        // Vencimento próprio (sincronizado da Central de Compras) com fallback na emissão
-        data_vencimento: c.data_vencimento || c.data_emissao,
-        empresa: c.empresa || '—',
-        forma_pagamento: c.forma_pagamento,
-        ...eixos(c, 'compra'),
-      });
-    });
+  // Compras entram como títulos fiscais parcelados, nunca como linhas de produto.
+  itens.push(...consolidarTitulosCompras(compras, false));
 
   // Obras / Reformas ainda não pagas pelo banco (e não absorvidas por cartão)
   obras
@@ -265,7 +244,7 @@ export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias =
 
   const candidatos = contasPagar
     .map(c => {
-      if (c.is_planejado) return null; // projeções não têm entidade — nunca são baixadas
+      if (c.is_planejado || c.is_grouped) return null; // projeções e títulos agregados exigem conciliação individual
       if (Math.abs(c.valor - valor) > toleranciaValor) return null;
       if (!c.data_vencimento) return null;
       // Folha e cartão podem ter variação maior de data
