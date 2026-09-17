@@ -128,7 +128,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
             <th className="text-left py-2 font-semibold text-muted-foreground">Tipo de compra</th>
             <th className={`text-right ${headerCls}`} onClick={() => toggleSort('valor')}>Valor <SortIcon field="valor" /></th>
             <th className="text-left py-2 pl-3 font-semibold text-muted-foreground">Comprovante</th>
-            <th className="text-left py-2 pl-3 font-semibold text-muted-foreground">Vínculo / Contas a Pagar</th>
+            <th className="text-left py-2 pl-3 font-semibold text-muted-foreground">Identificação no Contas a Pagar</th>
           </tr>
         </thead>
         <tbody>
