@@ -209,23 +209,29 @@ export default async function(req) {
       });
       lastResult = result;
 
-      // Falha de runtime → Plano B
-      if (result.plano_b_necessario) {
+      // Falha de transporte/contrato: não avança o cursor e nunca retorna falso sucesso.
+      if (!result.ok && ![137, 138, 656].includes(result.cstat)) {
+        const motivo = result.motivo || result.xMotivo || 'Falha desconhecida no transporte fiscal.';
         await base44.asServiceRole.entities.ControleNSU.update(controle.id, {
           ultima_consulta: new Date().toISOString(),
           ultimo_status: 'erro',
-          ultimo_erro: result.motivo,
+          estado_sincronizacao: 'erro',
+          ultimo_erro: motivo,
           tentativas_consecutivas_erro: (controle.tentativas_consecutivas_erro || 0) + 1,
         });
         await base44.asServiceRole.entities.LogSyncSEFAZ.create({
           request_id, empresa, cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
           data_execucao: new Date().toISOString(), duracao_ms: Date.now() - t0,
           nsu_inicial: nsuInicial, nsu_final: nsuAtual,
-          status_final: 'erro',
-          mensagem: `Plano B necessário: ${result.motivo}`,
-          endpoint: result.endpoint,
+          cstat: result.cstat, x_motivo: result.xMotivo,
+          status_final: 'erro', mensagem: motivo, endpoint: result.endpoint,
         });
-        return Response.json({ ok: false, plano_b_necessario: true, motivo: result.motivo });
+        return Response.json({
+          ok: false,
+          motivo,
+          http_status: result.http_status || null,
+          endpoint: result.endpoint || null,
+        }, { status: 502 });
       }
 
       // cStat 656 → bloqueia 1h
