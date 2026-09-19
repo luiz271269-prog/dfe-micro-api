@@ -1,9 +1,20 @@
-export async function consultarSaudeDFeMicroApi({ url, token, requestId }) {
-  if (!url || !token) {
-    return { ok: false, endpoint: url || null, motivo: 'Micro-API DFe não configurada.' };
+function validarConfiguracao(url, token) {
+  const invalida = { ok: false, endpoint: null, motivo: 'DFE_MICRO_API_URL inválida: informe a URL HTTPS real do serviço publicado no Render, sem usuário, senha, parâmetros ou /health. Não use senha ou token neste campo.' };
+  if (typeof url !== 'string' || !url.trim()) return invalida;
+  let parsed;
+  try { parsed = new URL(url.trim()); } catch { return invalida; }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== '/') return invalida;
+  if (typeof token !== 'string' || !token.trim()) {
+    return { ok: false, endpoint: null, motivo: 'Configure DFE_MICRO_API_TOKEN com o mesmo token DFE_API_TOKEN do Render.' };
   }
+  return { ok: true, baseUrl: parsed.origin };
+}
 
-  const endpoint = `${url.replace(/\/$/, '')}/health`;
+export async function consultarSaudeDFeMicroApi({ url, token, requestId }) {
+  const config = validarConfiguracao(url, token);
+  if (!config.ok) return config;
+
+  const endpoint = `${config.baseUrl}/health`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
 
@@ -19,6 +30,12 @@ export async function consultarSaudeDFeMicroApi({ url, token, requestId }) {
     const body = await response.json().catch(() => null);
     if (!response.ok) {
       return { ok: false, endpoint, http_status: response.status, motivo: body?.motivo || `Health-check respondeu HTTP ${response.status}` };
+    }
+    if (body?.ok !== true || body?.servico !== 'nexus-dfe-neuraltec') {
+      return { ok: false, endpoint, http_status: response.status, motivo: 'O endereço respondeu, mas não é uma resposta válida da micro-API DFe NeuralTec.' };
+    }
+    if (body.certificado_configurado !== true || body.cnpj_configurado !== true) {
+      return { ok: false, endpoint, http_status: response.status, motivo: 'Micro-API online, mas a configuração fiscal está incompleta: confira CNPJ_NEURALTEC, CERT_PFX_BASE64 e CERT_PFX_PASSWORD no Render.' };
     }
     return { ok: true, endpoint, http_status: response.status, body };
   } catch (error) {
@@ -43,15 +60,10 @@ export async function consultarDistribuicaoDFeMicroApi({
   url,
   token,
 }) {
-  if (!url || !token) {
-    return {
-      ok: false,
-      motivo: 'Micro-API DFe não configurada.',
-      endpoint: url || null,
-    };
-  }
+  const config = validarConfiguracao(url, token);
+  if (!config.ok) return config;
 
-  const endpoint = `${url.replace(/\/$/, '')}/dfe/distribuicao`;
+  const endpoint = `${config.baseUrl}/dfe/distribuicao`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
 

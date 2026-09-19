@@ -10,7 +10,9 @@ Crie um **Web Service** usando este mesmo repositório:
 - Runtime: `Node`
 - Build Command: `npm install`
 - Start Command: `npm start`
-- Health Check Path: `/health`
+- Health Check Path: `/live` (sonda pública, sem credenciais ou dados fiscais)
+
+`/health` permanece protegido pelo token e é usado exclusivamente pelo app para conferir a configuração; usá-lo como sonda do Render retorna 401 sem autenticação.
 
 Cadastre no Render, como variáveis secretas:
 
@@ -23,7 +25,7 @@ Não grave certificado, senha ou token no GitHub.
 
 Depois do deploy, configure no app:
 
-- `DFE_MICRO_API_URL`: URL HTTPS fornecida pelo Render, sem barra no final.
+- `DFE_MICRO_API_URL`: URL HTTPS real fornecida pelo Render, somente a origem (`https://<seu-servico>.onrender.com`), sem `/health`, parâmetros, usuário ou senha. Nunca use uma senha ou token neste campo.
 - `DFE_MICRO_API_TOKEN`: o mesmo valor de `DFE_API_TOKEN`.
 
 O serviço expõe `GET /health` e `POST /dfe/distribuicao`, exatamente no contrato já consumido pelas funções fiscais do app.

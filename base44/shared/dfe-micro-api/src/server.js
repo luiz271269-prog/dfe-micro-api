@@ -20,6 +20,10 @@ async function lerJson(req) {
 
 createServer(async (req, res) => {
   const requestId = req.headers['x-request-id'] || `dfe_${Date.now()}`;
+  // Sonda pública do Render: somente disponibilidade, sem dados fiscais.
+  if (req.method === 'GET' && req.url === '/live') {
+    return json(res, 200, { ok: true });
+  }
   if (!autorizado(req)) return json(res, 401, { ok: false, motivo: 'Não autorizado.', requestId });
 
   if (req.method === 'GET' && req.url === '/health') {
