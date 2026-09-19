@@ -1,6 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
-import forge from 'npm:node-forge@1.3.1';
-import { getCertSecret } from '../../shared/certSecrets.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
+import { consultarDistribuicaoDFeMicroApi } from '../../shared/dfeMicroApi.ts';
 
 const COOLDOWN_MS = 60 * 60 * 1000; // 1 hora
 const MAX_LOOPS_POR_EXECUCAO = 5; // máx 5 batches por chamada (até 250 docs)
@@ -25,20 +25,10 @@ const MAX_LOOPS_POR_EXECUCAO = 5; // máx 5 batches por chamada (até 250 docs)
 //   }
 //
 // Implementações disponíveis:
-//   - consultarDistribuicaoDFeBase44  → Plano A: mTLS direto (indisponível no runtime → retorna plano_b)
-//   - consultarDistribuicaoDFeMock    → Plano TESTE: simula 137/138 sem rede
-//   - (futuro) consultarDistribuicaoDFeMicroApi → Plano B: micro-API externa
+//   - consultarDistribuicaoDFeMicroApi → produção: micro-API externa com mTLS
+//   - consultarDistribuicaoDFeMock     → teste: simula 137/138 em cursor isolado
 //
 // ============================================================
-async function consultarDistribuicaoDFeBase44() {
-  // O runtime de backend functions do Base44 não expõe cliente HTTP mTLS,
-  // então a consulta direta à SEFAZ AN não é possível daqui.
-  return {
-    ok: false,
-    plano_b_necessario: true,
-    motivo: 'Cliente HTTP mTLS indisponível no runtime — necessário Plano B (micro-API externa Node + mTLS).',
-  };
-}
 
 // ============================================================
 // ADAPTER MOCK — testa pipeline (parse + gunzip + dedup + UI)
@@ -135,7 +125,7 @@ function parseNFeXml(xml) {
 // ============================================================
 // CORE BUSINESS LOGIC — independente do adapter
 // ============================================================
-Deno.serve(async (req) => {
+export default async function(req) {
   const t0 = Date.now();
   const request_id = `sync_${Date.now()}`;
 
@@ -148,11 +138,18 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { empresa = 'NeuralTec', force = false, mock = null } = body || {};
 
-    // Seleciona adapter: mock para testes, Base44 para produção real.
-    // Para Plano B no futuro: troque por consultarDistribuicaoDFeMicroApi.
+    // Mock e produção usam cursores independentes. Produção envia somente
+    // metadados fiscais; certificado e chave privada ficam na infraestrutura mTLS.
+    const origemCursor = mock ? 'mock' : 'real';
     const adapter = mock
       ? (r) => consultarDistribuicaoDFeMock(r, mock)
-      : consultarDistribuicaoDFeBase44;
+      : (r) => consultarDistribuicaoDFeMicroApi({
+          ...r,
+          empresa,
+          requestId: request_id,
+          url: secrets.get('DFE_MICRO_API_URL'),
+          token: secrets.get('DFE_MICRO_API_TOKEN'),
+        });
 
     // 1. Certificado ativo + válido
     const certs = await base44.asServiceRole.entities.CertificadoDigitalNFe.filter({
@@ -164,15 +161,22 @@ Deno.serve(async (req) => {
       motivo: `Nenhum certificado ativo+válido para ${empresa}. Cadastre e valide em /certificado-nfe.`
     }, { status: 400 });
 
-    // 2. ControleNSU
-    let controles = await base44.asServiceRole.entities.ControleNSU.filter({ empresa });
+    // 2. ControleNSU isolado por empresa, ambiente e origem (real/mock)
+    let controles = await base44.asServiceRole.entities.ControleNSU.filter({
+      empresa,
+      ambiente: cdoc.ambiente,
+      origem_cursor: origemCursor,
+    });
     let controle = controles?.[0];
     if (!controle) {
       controle = await base44.asServiceRole.entities.ControleNSU.create({
         empresa,
+        ambiente: cdoc.ambiente,
+        origem_cursor: origemCursor,
         cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
         ultimo_nsu: '000000000000000',
         max_nsu_servidor: '000000000000000',
+        estado_sincronizacao: 'em_backlog',
       });
     }
 
@@ -188,29 +192,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 4. Senha do secret — apenas via allowlist estática, nunca acesso dinâmico ao env
-    const { key: secretKey, senha, permitido } = getCertSecret(cdoc.senha_secret_name);
-    if (!permitido || !senha) return Response.json({ ok: false, motivo: `Secret ${secretKey} ${permitido ? 'não configurado' : 'não permitido'}` }, { status: 400 });
-
-    // 5. PFX → PEM (pulado no modo mock — não precisa de certificado)
-    let certPem = null, keyPem = null;
-    if (!mock) try {
-      const { signed_url } = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({ file_uri: cdoc.file_uri, expires_in: 60 });
-      const pfxResp = await fetch(signed_url);
-      const pfxBuffer = new Uint8Array(await pfxResp.arrayBuffer());
-      const p12Der = forge.util.binary.raw.encode(pfxBuffer);
-      const p12Asn1 = forge.asn1.fromDer(p12Der);
-      const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, senha);
-      const certBag = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag]?.[0];
-      const keyBag = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0]
-                  || p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag]?.[0];
-      certPem = forge.pki.certificateToPem(certBag.cert);
-      keyPem = forge.pki.privateKeyToPem(keyBag.key);
-    } catch (e) {
-      return Response.json({ ok: false, motivo: `Falha ao abrir PFX: ${e.message}` }, { status: 400 });
-    }
-
-    // 6. LOOP de consulta via adapter
+    // 4. LOOP de consulta via adapter. PFX e senha não passam pelo Base44.
     let nsuAtual = controle.ultimo_nsu || '000000000000000';
     const nsuInicial = nsuAtual;
     let novos = 0, duplicados = 0, erros = 0, totalDocs = 0;
@@ -221,8 +203,9 @@ Deno.serve(async (req) => {
     while (loops < MAX_LOOPS_POR_EXECUCAO) {
       loops++;
       const result = await adapter({
-        certPem, keyPem, ambiente: cdoc.ambiente,
-        cnpj: cdoc.cnpj_sem_mascara, ultNSU: nsuAtual,
+        ambiente: cdoc.ambiente,
+        cnpj: cdoc.cnpj_sem_mascara,
+        ultNSU: nsuAtual,
       });
       lastResult = result;
 
@@ -349,11 +332,15 @@ Deno.serve(async (req) => {
 
     // 7. Atualizar ControleNSU
     const houveAlgumProgresso = novos > 0 || duplicados > 0 || lastResult?.cstat === 137;
+    const maxNsuAtual = lastResult?.maxNSU || controle.max_nsu_servidor;
     const updateControle = {
       ultima_consulta: new Date().toISOString(),
       ultimo_cstat: lastResult?.cstat || null,
       ultimo_nsu: nsuAtual,
-      max_nsu_servidor: lastResult?.maxNSU || controle.max_nsu_servidor,
+      max_nsu_servidor: maxNsuAtual,
+      estado_sincronizacao: erros > 0
+        ? 'erro'
+        : (maxNsuAtual && nsuAtual < maxNsuAtual ? 'em_backlog' : 'sincronizado'),
       tentativas_consecutivas_erro: houveAlgumProgresso
         ? 0
         : (controle.tentativas_consecutivas_erro || 0) + 1,
@@ -399,4 +386,4 @@ Deno.serve(async (req) => {
     console.error('sincronizarNFeAN erro:', error);
     return Response.json({ ok: false, motivo: error.message }, { status: 500 });
   }
-});
+}

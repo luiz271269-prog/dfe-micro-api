@@ -1,7 +1,7 @@
 {
   "name": "ControleNSU",
   "type": "object",
-  "description": "Cursor incremental do servi\u00e7o NFeDistribuicaoDFe do Ambiente Nacional. Um registro por empresa.",
+  "description": "Cursor incremental isolado por empresa, ambiente e origem para o servi\u00e7o NFeDistribuicaoDFe do Ambiente Nacional.",
   "properties": {
     "empresa": {
       "type": "string",
@@ -9,6 +9,22 @@
         "NeuralTec",
         "Liesch"
       ]
+    },
+    "ambiente": {
+      "type": "string",
+      "enum": [
+        "producao",
+        "homologacao"
+      ],
+      "default": "producao"
+    },
+    "origem_cursor": {
+      "type": "string",
+      "enum": [
+        "real",
+        "mock"
+      ],
+      "default": "real"
     },
     "cnpj_sem_mascara": {
       "type": "string"
@@ -22,6 +38,15 @@
       "type": "string",
       "default": "000000000000000",
       "title": "\u00daltimo NSU informado pelo AN como existente"
+    },
+    "estado_sincronizacao": {
+      "type": "string",
+      "enum": [
+        "em_backlog",
+        "sincronizado",
+        "erro"
+      ],
+      "default": "em_backlog"
     },
     "ultima_consulta": {
       "type": "string",
@@ -55,6 +80,8 @@
   },
   "required": [
     "empresa",
+    "ambiente",
+    "origem_cursor",
     "cnpj_sem_mascara"
   ],
   "rls": {
