@@ -9,53 +9,29 @@
     },
     "data_pagamento": {
       "type": "string",
-      "format": "date",
-      "title": "Data do pagamento (realiza\u00e7\u00e3o \u2014 vem do extrato banc\u00e1rio)"
+      "format": "date"
     },
     "descricao": {
-      "type": "string",
-      "title": "Descri\u00e7\u00e3o"
+      "type": "string"
     },
     "fornecedor": {
-      "type": "string",
-      "title": "Fornecedor / Benefici\u00e1rio"
+      "type": "string"
     },
     "categoria": {
       "type": "string",
-      "title": "Categoria",
-      "enum": [
-        "aluguel",
-        "energia",
-        "agua",
-        "internet",
-        "telefone",
-        "manutencao",
-        "limpeza",
-        "marketing",
-        "contabilidade",
-        "juridico",
-        "seguro",
-        "transporte",
-        "alimentacao",
-        "material_escritorio",
-        "outro"
-      ]
+      "title": "Categoria do plano de contas"
     },
     "origem_compra": {
-      "type": "string",
-      "title": "Quem comprou (classifica\u00e7\u00e3o unificada: empresa, pro_labore, condominio, pessoal)"
+      "type": "string"
     },
     "tipo_compra": {
-      "type": "string",
-      "title": "Tipo de compra (classifica\u00e7\u00e3o unificada: estoque, fretes, impostos, despesas, folha, pro_labore, obras, financeiro, outro)"
+      "type": "string"
     },
     "valor": {
-      "type": "number",
-      "title": "Valor (R$)"
+      "type": "number"
     },
     "forma_pagamento": {
       "type": "string",
-      "title": "Forma de Pagamento",
       "enum": [
         "pix",
         "boleto",
@@ -67,7 +43,6 @@
     },
     "status": {
       "type": "string",
-      "title": "Status",
       "enum": [
         "pago",
         "pendente",
@@ -77,12 +52,10 @@
     },
     "data_vencimento": {
       "type": "string",
-      "format": "date",
-      "title": "Data Vencimento"
+      "format": "date"
     },
     "empresa": {
       "type": "string",
-      "title": "Empresa",
       "enum": [
         "NeuralTec",
         "Liesch"
@@ -90,40 +63,31 @@
     },
     "recorrente": {
       "type": "boolean",
-      "title": "Recorrente",
       "default": false
     },
     "observacoes": {
-      "type": "string",
-      "title": "Observa\u00e7\u00f5es"
+      "type": "string"
     },
     "lancamento_bancario_id": {
-      "type": "string",
-      "title": "ID do LancamentoBancario que confirmou o pagamento (quando pago por extrato banc\u00e1rio)"
+      "type": "string"
     },
     "lancamento_cartao_id": {
-      "type": "string",
-      "title": "ID do LancamentoCartao que originou a despesa (quando pago no cart\u00e3o)"
+      "type": "string"
     },
     "comprovante_drive_url": {
-      "type": "string",
-      "title": "Link do comprovante no Google Drive"
+      "type": "string"
     },
     "comprovante_nome": {
-      "type": "string",
-      "title": "Nome do arquivo de comprovante"
+      "type": "string"
     },
     "foto_url": {
-      "type": "string",
-      "title": "Foto do cupom/nota tirada pela c\u00e2mera (lan\u00e7amento por foto)"
+      "type": "string"
     },
     "assinante_nome": {
-      "type": "string",
-      "title": "Nome de quem assinou o lan\u00e7amento"
+      "type": "string"
     },
     "assinatura_url": {
-      "type": "string",
-      "title": "Imagem da assinatura (lan\u00e7amento por foto)"
+      "type": "string"
     }
   },
   "required": [

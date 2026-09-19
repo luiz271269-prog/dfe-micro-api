@@ -17,7 +17,7 @@ export default function PeriodoRecorrentes({ mes, modo, onMes, onModo, totais })
       <Button variant="outline" size="icon" onClick={() => mudarAno(1)} aria-label="Próximo ano"><ChevronRight /></Button>
       <Button size="sm" variant={modo === 'ano' ? 'default' : 'outline'} onClick={() => onModo(modo === 'ano' ? 'mes' : 'ano')}>Anual</Button>
       <Button size="sm" variant={modo === '12meses' ? 'default' : 'outline'} onClick={() => onModo('12meses')}>Últimos 12 meses</Button>
-      <span className="text-xs text-muted-foreground">{modo === '12meses' ? `Até ${mes.slice(5)}/${ano}, inclusive` : 'Valores identificados nas regras, sem somar o mesmo débito duas vezes'}</span>
+      <span className="text-xs text-muted-foreground">{modo === '12meses' ? `Até ${mes.slice(5)}/${ano}, inclusive` : 'Previsões das despesas fixas ativas, antes do pagamento'}</span>
     </div>
     <div className="flex gap-1 overflow-x-auto pb-1">
       {meses.map(m => <button key={m} onClick={() => { onMes(m); onModo('mes'); }} className={`min-w-[72px] flex-1 rounded-lg px-2 py-1.5 text-xs border ${modo === 'mes' && mes === m ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>

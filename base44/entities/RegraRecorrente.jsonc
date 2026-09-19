@@ -1,31 +1,28 @@
 {
   "name": "RegraRecorrente",
   "type": "object",
+  "description": "Cadastro pr\u00e9vio de despesas fixas. A previs\u00e3o existe antes da compra ou pagamento; categoria \u00e9 a chave da conta no plano de contas.",
   "properties": {
     "nome": {
       "type": "string",
-      "title": "Nome da Regra"
+      "title": "Nome da despesa fixa"
     },
     "padrao_descricao": {
       "type": "string",
-      "title": "Palavra-chave da descri\u00e7\u00e3o no extrato"
+      "title": "Palavra-chave no extrato ou cart\u00e3o"
     },
     "fornecedor": {
-      "type": "string",
-      "title": "Fornecedor/Benefici\u00e1rio"
+      "type": "string"
     },
     "valor_esperado": {
-      "type": "number",
-      "title": "Valor esperado (R$)"
+      "type": "number"
     },
     "tolerancia_percentual": {
       "type": "number",
-      "title": "Toler\u00e2ncia (%)",
       "default": 5
     },
     "dia_vencimento": {
-      "type": "number",
-      "title": "Dia do m\u00eas esperado"
+      "type": "number"
     },
     "frequencia": {
       "type": "string",
@@ -35,41 +32,34 @@
         "trimestral",
         "anual"
       ],
-      "default": "mensal",
-      "title": "Frequ\u00eancia"
+      "default": "mensal"
     },
     "data_inicio": {
       "type": "string",
-      "format": "date",
-      "title": "Data inicial da recorr\u00eancia semanal"
+      "format": "date"
     },
     "mes_inicio": {
-      "type": "string",
-      "title": "M\u00eas inicial da recorr\u00eancia (YYYY-MM)"
+      "type": "string"
     },
     "conta_bancaria": {
-      "type": "string",
-      "title": "Conta do extrato (vazio = todas)"
+      "type": "string"
     },
     "categoria": {
       "type": "string",
-      "title": "Categoria (plano de contas unificado \u2014 aceita categorias customizadas)"
+      "title": "Chave da conta no plano de contas"
     },
     "origem_compra": {
-      "type": "string",
-      "title": "Quem comprou (classifica\u00e7\u00e3o unificada: empresa, pro_labore, condominio, pessoal)"
+      "type": "string"
     },
     "tipo_compra": {
-      "type": "string",
-      "title": "Tipo de compra (classifica\u00e7\u00e3o unificada: estoque, fretes, impostos, despesas, folha, pro_labore, obras, financeiro, outro)"
+      "type": "string"
     },
     "empresa": {
       "type": "string",
       "enum": [
         "NeuralTec",
         "Liesch"
-      ],
-      "title": "Empresa"
+      ]
     },
     "forma_pagamento": {
       "type": "string",
@@ -79,29 +69,24 @@
         "debito_automatico",
         "cartao",
         "transferencia"
-      ],
-      "title": "Forma de pagamento t\u00edpica"
+      ]
     },
     "is_ativa": {
       "type": "boolean",
-      "title": "Ativa",
       "default": true
     },
     "historico_valores": {
       "type": "array",
       "items": {
         "type": "number"
-      },
-      "title": "Hist\u00f3rico de valores observados"
+      }
     },
     "ultima_ocorrencia": {
       "type": "string",
-      "format": "date",
-      "title": "\u00daltima ocorr\u00eancia detectada"
+      "format": "date"
     },
     "observacoes": {
-      "type": "string",
-      "title": "Observa\u00e7\u00f5es"
+      "type": "string"
     }
   },
   "required": [
@@ -112,7 +97,9 @@
   ],
   "rls": {
     "create": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "read": {
       "$or": [
@@ -127,28 +114,14 @@
       ]
     },
     "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     }
   }
 }

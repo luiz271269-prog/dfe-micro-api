@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { avaliarFixa, validarClassificacaoFixa, normalizarFixa } from '../../shared/despesasFixas.ts';
 
-const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const norm = normalizarFixa;
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -14,25 +15,13 @@ export default async function(req) {
       db.RegraRecorrente.filter({ id: regra_id }), db.LancamentoBancario.filter({ id: lancamento_id }), db.VinculoExtrato.filter({ lancamento_bancario_id: lancamento_id })
     ]);
     if (!regra || !lanc) return Response.json({ error: 'Regra ou débito não encontrado' }, { status: 404 });
+    const avaliacao = avaliarFixa(regra, lanc, 'extrato');
+    if (!avaliacao || avaliacao.bloqueada) return Response.json({ error: avaliacao?.motivo || 'Canal, empresa ou descrição incompatível' }, { status: 422 });
+    await validarClassificacaoFixa(db, regra);
     if (vinculos.length || ['conciliado', 'parcial', 'ignorar'].includes(lanc.status_conciliacao) || lanc.alerta_duplicidade || lanc.duplicidade_ref || lanc.item_compra_id) return Response.json({ error: 'Débito já vinculado, ignorado ou sinalizado como duplicado; revise a conciliação existente.' }, { status: 409 });
     if (!(lanc.valor < 0) || ['transferencia', 'interno', 'financeiro'].includes(lanc.categoria)) return Response.json({ error: 'Movimento não elegível para despesa recorrente' }, { status: 422 });
     const palavras = norm(regra.padrao_descricao).split(' ').filter(p => p.length > 2);
-    const texto = norm(`${lanc.descricao || ''} ${lanc.detalhe || ''}`);
-    const frequencia = regra.frequencia || 'mensal';
-    let cicloValido = false;
-    if (frequencia === 'semanal') {
-      const dias = regra.data_inicio ? Math.round((Date.parse(`${lanc.data}T12:00:00Z`) - Date.parse(`${regra.data_inicio}T12:00:00Z`)) / 86400000) : -1;
-      cicloValido = Number.isFinite(dias) && dias >= 0 && dias % 7 === 0;
-    } else {
-      const intervalo = { mensal: 1, trimestral: 3, anual: 12 }[frequencia];
-      const [a, m] = lanc.data.slice(0, 7).split('-').map(Number);
-      const [ia, im] = (regra.mes_inicio || lanc.data.slice(0, 7)).split('-').map(Number);
-      const distancia = (a - ia) * 12 + m - im;
-      cicloValido = !!intervalo && !(intervalo > 1 && !regra.mes_inicio) && distancia >= 0 && distancia % intervalo === 0;
-    }
-    const desvio = Math.abs(Math.abs(lanc.valor) - regra.valor_esperado) / regra.valor_esperado * 100;
-    if (!regra.is_ativa || !palavras.length || !palavras.every(p => texto.includes(p)) || !cicloValido || (regra.conta_bancaria && regra.conta_bancaria !== lanc.conta_bancaria) || !(regra.valor_esperado > 0) || desvio > (regra.tolerancia_percentual ?? 5)) return Response.json({ error: 'Débito fora do padrão, frequência, conta ou tolerância da regra' }, { status: 422 });
-    if (!regra.origem_compra || !['estoque', 'despesas', 'impostos', 'folha', 'obras', 'pro_labore'].includes(regra.tipo_compra)) return Response.json({ error: 'Preencha a classificação da regra antes de conciliar' }, { status: 422 });
+
     // Um FK direto em outro módulo também bloqueia a criação de uma nova despesa.
     const outros = await Promise.all(['Tributo', 'FolhaPagamento', 'ObraReforma', 'ItemCompra', 'FaturaCartao', 'MovimentoFinanceiro'].map(t => db[t].filter({ lancamento_bancario_id: lanc.id }, '-created_date', 1)));
     if (outros.some(lista => lista.length)) return Response.json({ error: 'Débito já registrado em outro módulo; restaure seu vínculo em vez de criar outra despesa.' }, { status: 409 });
@@ -56,7 +45,7 @@ export default async function(req) {
     if (simular) return Response.json({ success: true, acao: despesa ? 'vincular_despesa' : 'criar_despesa', valor: Math.abs(lanc.valor) });
     if (!despesa) {
       const categorias = ['aluguel','energia','agua','internet','telefone','manutencao','limpeza','marketing','contabilidade','juridico','seguro','transporte','alimentacao','material_escritorio','outro'];
-      despesa = await db.DespesaOperacional.create({ data: lanc.data, data_vencimento: lanc.data, descricao: regra.nome, fornecedor: regra.fornecedor || lanc.descricao, categoria: categorias.includes(regra.categoria) ? regra.categoria : 'outro', origem_compra: regra.origem_compra, tipo_compra: regra.tipo_compra, ...(regra.empresa ? { empresa: regra.empresa } : {}), valor: Math.abs(lanc.valor), status: 'pendente', forma_pagamento: regra.forma_pagamento === 'cartao' ? 'transferencia' : regra.forma_pagamento || 'pix', recorrente: true, lancamento_bancario_id: lanc.id, observacoes: `Regra recorrente ${regra.id} · ${regra.nome}` });
+      despesa = await db.DespesaOperacional.create({ data: lanc.data, data_vencimento: lanc.data, descricao: regra.nome, fornecedor: regra.fornecedor || lanc.descricao, categoria: regra.categoria, origem_compra: regra.origem_compra, tipo_compra: regra.tipo_compra, ...(regra.empresa ? { empresa: regra.empresa } : {}), valor: Math.abs(lanc.valor), status: 'pendente', forma_pagamento: regra.forma_pagamento === 'cartao' ? 'transferencia' : regra.forma_pagamento || 'pix', recorrente: true, lancamento_bancario_id: lanc.id, observacoes: `Regra recorrente ${regra.id} · ${regra.nome}` });
     }
     const resultado = await base44.functions.invoke('vincularExtrato', { acao: 'criar', lancamento_bancario_id: lanc.id, entidade_tipo: 'DespesaOperacional', entidade_id: despesa.id, valor_alocado: Math.abs(lanc.valor), conciliado_por: 'regra_recorrente', observacao: `Regra ${regra.nome} (${regra.frequencia || 'mensal'})` });
     if (!resultado.data?.success) throw new Error(resultado.data?.error || 'Não foi possível criar o vínculo');

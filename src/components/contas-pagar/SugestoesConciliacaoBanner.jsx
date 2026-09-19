@@ -18,7 +18,7 @@ export default function SugestoesConciliacaoBanner() {
   async function load() {
     setLoading(true);
     const [lista, lancamentos] = await Promise.all([
-      base44.entities.SugestaoConciliacao.filter({ status: 'pendente' }, '-confianca', 200),
+      base44.entities.SugestaoConciliacao.filter({ status: 'pendente', entidade_tipo: { $ne: 'RegraRecorrente' } }, '-confianca', 200),
       base44.entities.LancamentoBancario.list('-data', 2000),
     ]);
     const lancamentosPorId = new Map(lancamentos.map((l) => [l.id, l]));

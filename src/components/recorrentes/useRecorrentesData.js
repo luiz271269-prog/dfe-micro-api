@@ -15,12 +15,16 @@ export default function useRecorrentesData(mes) {
   const query = useQuery({
     queryKey: ['recorrentes-periodo', ano],
     queryFn: async () => {
-      const [regras, lancs, cartoes] = await Promise.all([
+      const [regras, lancs, cartoes, sugestoes, despesas, faturas, usuario] = await Promise.all([
         todos('RegraRecorrente', {}, 'id'),
         todos('LancamentoBancario', { data: { $gte: `${ano - 1}-01-01`, $lte: `${ano}-12-31` } }, '-data'),
         todos('LancamentoCartao', { data_lancamento: { $gte: `${ano - 1}-01-01`, $lte: `${ano}-12-31` } }, '-data_lancamento'),
+        todos('SugestaoConciliacao', { entidade_tipo: 'RegraRecorrente', competencia: { $gte: `${ano - 1}-01`, $lte: `${ano}-12` } }, 'id'),
+        todos('DespesaOperacional', { recorrente: true, data: { $gte: `${ano - 1}-01-01`, $lte: `${ano}-12-31` } }, 'id'),
+        todos('FaturaCartao', {}, 'id'),
+        base44.auth.me(),
       ]);
-      return { regras, lancs, cartoes };
+      return { regras, lancs, cartoes, sugestoes, despesas, faturas, usuario };
     },
   });
   useEffect(() => {
@@ -28,5 +32,5 @@ export default function useRecorrentesData(mes) {
     window.addEventListener('neuralfinRefresh', atualizar);
     return () => window.removeEventListener('neuralfinRefresh', atualizar);
   }, [query.refetch]);
-  return { regras: query.data?.regras || [], lancs: query.data?.lancs || [], cartoes: query.data?.cartoes || [], loading: query.isPending, error: query.error, load: query.refetch };
+  return { regras: query.data?.regras || [], lancs: query.data?.lancs || [], cartoes: query.data?.cartoes || [], sugestoes: query.data?.sugestoes || [], despesas: query.data?.despesas || [], faturas: query.data?.faturas || [], usuario: query.data?.usuario, loading: query.isPending, error: query.error, load: query.refetch };
 }

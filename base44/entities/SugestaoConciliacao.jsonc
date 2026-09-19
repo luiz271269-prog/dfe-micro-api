@@ -1,11 +1,30 @@
 {
   "name": "SugestaoConciliacao",
   "type": "object",
-  "description": "Fila de sugest\u00f5es de concilia\u00e7\u00e3o autom\u00e1tica (m\u00e9dia confian\u00e7a) aguardando confirma\u00e7\u00e3o do usu\u00e1rio. Quando confirmada, vira VinculoExtrato + baixa da entidade origem. Quando rejeitada, fica marcada como descartada para n\u00e3o reaparecer.",
+  "description": "Sugest\u00f5es de concilia\u00e7\u00e3o. RegraRecorrente representa revis\u00e3o de despesas fixas; cart\u00e3o confirma a compra, n\u00e3o o pagamento da fatura.",
   "properties": {
     "lancamento_bancario_id": {
+      "type": "string"
+    },
+    "lancamento_cartao_id": {
+      "type": "string"
+    },
+    "canal": {
       "type": "string",
-      "title": "ID do LancamentoBancario sugerido"
+      "enum": [
+        "extrato",
+        "cartao"
+      ]
+    },
+    "competencia": {
+      "type": "string"
+    },
+    "bloqueada": {
+      "type": "boolean",
+      "default": false
+    },
+    "confirmada_por": {
+      "type": "string"
     },
     "entidade_tipo": {
       "type": "string",
@@ -13,56 +32,45 @@
         "DespesaOperacional",
         "Tributo",
         "FolhaPagamento",
-        "FaturaCartao"
-      ],
-      "title": "Tipo da entidade de controle"
+        "FaturaCartao",
+        "RegraRecorrente"
+      ]
     },
     "entidade_id": {
-      "type": "string",
-      "title": "ID do registro origem"
+      "type": "string"
     },
     "descricao_conta": {
-      "type": "string",
-      "title": "Descri\u00e7\u00e3o amig\u00e1vel da conta (cache p/ exibir no banner)"
+      "type": "string"
     },
     "fornecedor": {
-      "type": "string",
-      "title": "Fornecedor / Benefici\u00e1rio"
+      "type": "string"
     },
     "valor_esperado": {
-      "type": "number",
-      "title": "Valor da conta a pagar"
+      "type": "number"
     },
     "valor_extrato": {
-      "type": "number",
-      "title": "Valor do d\u00e9bito no extrato"
+      "type": "number"
     },
     "data_vencimento": {
       "type": "string",
-      "format": "date",
-      "title": "Vencimento da conta"
+      "format": "date"
     },
     "data_extrato": {
       "type": "string",
-      "format": "date",
-      "title": "Data do d\u00e9bito"
+      "format": "date"
     },
     "descricao_extrato": {
-      "type": "string",
-      "title": "Descri\u00e7\u00e3o do lan\u00e7amento banc\u00e1rio"
+      "type": "string"
     },
     "diff_dias": {
-      "type": "number",
-      "title": "Diferen\u00e7a em dias entre vencimento e d\u00e9bito"
+      "type": "number"
     },
     "confianca": {
       "type": "number",
-      "title": "Confian\u00e7a 0-100",
       "default": 70
     },
     "motivo": {
-      "type": "string",
-      "title": "Por que virou sugest\u00e3o (n\u00e3o match perfeito)"
+      "type": "string"
     },
     "status": {
       "type": "string",
@@ -71,17 +79,14 @@
         "confirmada",
         "rejeitada"
       ],
-      "default": "pendente",
-      "title": "Status da sugest\u00e3o"
+      "default": "pendente"
     },
     "resolvida_em": {
       "type": "string",
-      "format": "date-time",
-      "title": "Quando foi confirmada/rejeitada"
+      "format": "date-time"
     }
   },
   "required": [
-    "lancamento_bancario_id",
     "entidade_tipo",
     "entidade_id",
     "valor_esperado",
@@ -89,7 +94,32 @@
   ],
   "rls": {
     "create": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "$and": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.entidade_tipo": "RegraRecorrente"
+            }
+          ]
+        },
+        {
+          "$and": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "data.entidade_tipo": {
+                "$ne": "RegraRecorrente"
+              }
+            }
+          ]
+        }
+      ]
     },
     "read": {
       "$or": [
@@ -106,24 +136,42 @@
     "update": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
-        },
-        {
           "user_condition": {
             "role": "admin"
           }
+        },
+        {
+          "$and": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "data.entidade_tipo": {
+                "$ne": "RegraRecorrente"
+              }
+            }
+          ]
         }
       ]
     },
     "delete": {
       "$or": [
         {
-          "created_by_id": "{{user.id}}"
-        },
-        {
           "user_condition": {
             "role": "admin"
           }
+        },
+        {
+          "$and": [
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "data.entidade_tipo": {
+                "$ne": "RegraRecorrente"
+              }
+            }
+          ]
         }
       ]
     }
