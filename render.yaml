@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: nexus-dfe-micro-api
+    name: nexus-dfe-micro-api-v2
     runtime: node
     rootDir: base44/shared/dfe-micro-api
     buildCommand: npm install
