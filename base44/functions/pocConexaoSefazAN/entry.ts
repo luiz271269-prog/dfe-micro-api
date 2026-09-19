@@ -1,92 +1,100 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
-import forge from 'npm:node-forge@1.3.1';
-import { getCertSecret } from '../../shared/certSecrets.ts';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
+import { consultarDistribuicaoDFeMicroApi, consultarSaudeDFeMicroApi } from '../../shared/dfeMicroApi.ts';
 
-const ENDPOINT_PROD = 'https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx';
-const ENDPOINT_HOM = 'https://hom1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx';
-
-function maskCnpj(cnpj) {
-  const d = (cnpj || '').replace(/\D/g, '');
-  if (d.length !== 14) return cnpj;
-  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/****-${d.slice(12,14)}`;
-}
-
-Deno.serve(async (req) => {
+export default async function(req) {
   const t0 = Date.now();
+  const requestId = `poc_${Date.now()}`;
+
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { certificado_id } = body || {};
     if (!certificado_id) return Response.json({ ok: false, motivo: 'certificado_id obrigatório' }, { status: 400 });
 
     const certs = await base44.asServiceRole.entities.CertificadoDigitalNFe.filter({ id: certificado_id });
-    const cdoc = certs?.[0];
-    if (!cdoc) return Response.json({ ok: false, motivo: 'Certificado não encontrado' }, { status: 404 });
-    if (cdoc.status_validacao !== 'valido') {
+    const certificado = certs?.[0];
+    if (!certificado) return Response.json({ ok: false, motivo: 'Certificado não encontrado' }, { status: 404 });
+    if (certificado.status_validacao !== 'valido') {
       return Response.json({
         ok: false,
-        motivo: `Certificado precisa estar com status "valido" para rodar a POC (atual: ${cdoc.status_validacao})`
+        motivo: `Certificado precisa estar com status "valido" para rodar a POC (atual: ${certificado.status_validacao})`,
       }, { status: 400 });
     }
 
-    // Resolve a senha apenas via allowlist estática — nunca acesso dinâmico ao env
-    const { key: secretNameNormalizado, senha, permitido } = getCertSecret(cdoc.senha_secret_name);
-    if (!permitido || !senha) {
+    const url = secrets.get('DFE_MICRO_API_URL');
+    const token = secrets.get('DFE_MICRO_API_TOKEN');
+    const health = await consultarSaudeDFeMicroApi({ url, token, requestId });
+
+    if (!health.ok) {
+      const log = await base44.asServiceRole.entities.LogSyncSEFAZ.create({
+        request_id: requestId,
+        empresa: certificado.empresa,
+        cnpj_sem_mascara: certificado.cnpj_sem_mascara,
+        data_execucao: new Date().toISOString(),
+        duracao_ms: Date.now() - t0,
+        status_final: 'poc',
+        mensagem: health.motivo,
+        endpoint: health.endpoint,
+      });
       return Response.json({
         ok: false,
-        motivo: `Secret "${secretNameNormalizado}" ${permitido ? 'não configurado no runtime' : 'não é um secret de certificado permitido'}`,
-      }, { status: 400 });
+        micro_api_online: false,
+        motivo: health.motivo,
+        http_status: health.http_status || null,
+        endpoint: health.endpoint || null,
+        latencia_ms: Date.now() - t0,
+        log_id: log.id,
+      }, { status: 502 });
     }
 
-    const endpoint = cdoc.ambiente === 'producao' ? ENDPOINT_PROD : ENDPOINT_HOM;
-
-    // 1. Baixar PFX e validar senha/estrutura (PFX → PEM)
-    const { signed_url } = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({ file_uri: cdoc.file_uri, expires_in: 60 });
-    const pfxResp = await fetch(signed_url);
-    if (!pfxResp.ok) return Response.json({ ok: false, motivo: `Falha ao baixar PFX: HTTP ${pfxResp.status}` }, { status: 500 });
-    const pfxBuffer = new Uint8Array(await pfxResp.arrayBuffer());
-
-    try {
-      const p12Der = forge.util.binary.raw.encode(pfxBuffer);
-      const p12Asn1 = forge.asn1.fromDer(p12Der);
-      const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, senha);
-      const certBag = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag]?.[0];
-      const keyBag = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag]?.[0]
-                  || p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag]?.[0];
-      if (!certBag || !keyBag) return Response.json({ ok: false, motivo: 'PFX sem certificado ou chave privada' }, { status: 400 });
-    } catch (e) {
-      return Response.json({ ok: false, motivo: `Falha ao extrair PFX→PEM: ${e.message}` }, { status: 400 });
-    }
-
-    // 2. mTLS direto não é suportado no runtime de backend functions do Base44 → Plano B
+    const fiscal = await consultarDistribuicaoDFeMicroApi({
+      empresa: certificado.empresa,
+      cnpj: certificado.cnpj_sem_mascara,
+      ambiente: certificado.ambiente,
+      ultNSU: '000000000000000',
+      requestId,
+      url,
+      token,
+    });
+    const motivo = fiscal.xMotivo || fiscal.motivo || 'Consulta concluída.';
     const log = await base44.asServiceRole.entities.LogSyncSEFAZ.create({
-      request_id: `poc_${Date.now()}`,
-      empresa: cdoc.empresa,
-      cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
+      request_id: requestId,
+      empresa: certificado.empresa,
+      cnpj_sem_mascara: certificado.cnpj_sem_mascara,
       data_execucao: new Date().toISOString(),
       duracao_ms: Date.now() - t0,
-      status_final: 'erro',
-      mensagem: 'Cliente HTTP mTLS indisponível no runtime — necessário Plano B (micro-API externa Node + mTLS). PFX e senha validados com sucesso.',
-      endpoint,
+      nsu_inicial: '000000000000000',
+      nsu_final: fiscal.ultNSU || '000000000000000',
+      max_nsu_servidor: fiscal.maxNSU || '000000000000000',
+      documentos_baixados: fiscal.docZips?.length || 0,
+      cstat: fiscal.cstat,
+      x_motivo: fiscal.xMotivo,
+      status_final: 'poc',
+      mensagem: motivo,
+      endpoint: fiscal.endpoint,
     });
+
     return Response.json({
-      ok: false,
-      plano_b_necessario: true,
-      motivo: 'O runtime do Base44 não expõe cliente HTTP mTLS — não dá pra fazer mTLS direto daqui. PFX e senha foram validados com sucesso.',
-      proximo_passo: 'Subir micro-API Node em Cloud Run / Railway / VPS que receba a chamada do Base44, abra o PFX, faça mTLS e devolva o XML.',
-      empresa: cdoc.empresa,
-      cnpj_mascarado: maskCnpj(cdoc.cnpj_sem_mascara),
-      ambiente: cdoc.ambiente,
-      endpoint,
-      duracao_ms: Date.now() - t0,
+      ok: fiscal.ok === true,
+      micro_api_online: true,
+      cstat_real: fiscal.cstat,
+      cstat: fiscal.cstat,
+      x_motivo: fiscal.xMotivo || null,
+      motivo: fiscal.ok ? motivo : fiscal.motivo || motivo,
+      http_status: fiscal.http_status || health.http_status || null,
+      ult_nsu: fiscal.ultNSU || null,
+      max_nsu: fiscal.maxNSU || null,
+      endpoint: fiscal.endpoint || null,
+      latencia_ms: Date.now() - t0,
       log_id: log.id,
-    });
+    }, { status: fiscal.ok ? 200 : 502 });
   } catch (error) {
     console.error('pocConexaoSefazAN erro:', error);
-    return Response.json({ ok: false, motivo: error.message }, { status: 500 });
+    return Response.json({ ok: false, micro_api_online: false, motivo: error.message }, { status: 500 });
   }
-});
+}

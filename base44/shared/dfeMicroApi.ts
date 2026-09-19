@@ -1,3 +1,39 @@
+export async function consultarSaudeDFeMicroApi({ url, token, requestId }) {
+  if (!url || !token) {
+    return { ok: false, endpoint: url || null, motivo: 'Micro-API DFe não configurada.' };
+  }
+
+  const endpoint = `${url.replace(/\/$/, '')}/health`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-Request-Id': requestId,
+      },
+      signal: controller.signal,
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      return { ok: false, endpoint, http_status: response.status, motivo: body?.motivo || `Health-check respondeu HTTP ${response.status}` };
+    }
+    return { ok: true, endpoint, http_status: response.status, body };
+  } catch (error) {
+    return {
+      ok: false,
+      endpoint,
+      motivo: error?.name === 'AbortError'
+        ? 'Timeout de 10s no health-check da micro-API DFe.'
+        : `Falha no health-check da micro-API DFe: ${error.message}`,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function consultarDistribuicaoDFeMicroApi({
   empresa,
   cnpj,
