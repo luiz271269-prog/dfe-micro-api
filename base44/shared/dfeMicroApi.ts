@@ -29,7 +29,9 @@ export async function consultarSaudeDFeMicroApi({ url, token, requestId }) {
     });
     const body = await response.json().catch(() => null);
     if (!response.ok) {
-      return { ok: false, endpoint, http_status: response.status, motivo: body?.motivo || `Health-check respondeu HTTP ${response.status}` };
+      return { ok: false, endpoint, http_status: response.status, motivo: response.status === 404
+        ? 'HTTP 404: /health não foi encontrado no endereço configurado. Confira a URL real do Web Service no Render e se a micro-API foi publicada nesse serviço; uma URL de exemplo não cria o serviço.'
+        : body?.motivo || `Health-check respondeu HTTP ${response.status}` };
     }
     if (body?.ok !== true || body?.servico !== 'nexus-dfe-neuraltec') {
       return { ok: false, endpoint, http_status: response.status, motivo: 'O endereço respondeu, mas não é uma resposta válida da micro-API DFe NeuralTec.' };
@@ -90,7 +92,9 @@ export async function consultarDistribuicaoDFeMicroApi({
         docZips: [],
         endpoint,
         http_status: response.status,
-        motivo: body?.motivo || `Micro-API respondeu HTTP ${response.status}`,
+        motivo: response.status === 404
+          ? 'HTTP 404: /dfe/distribuicao não foi encontrado no endereço configurado. Confira a URL real do Web Service no Render e publique a micro-API nesse serviço; esta falha não é uma resposta da SEFAZ.'
+          : body?.motivo || `Micro-API respondeu HTTP ${response.status}`,
       };
     }
 

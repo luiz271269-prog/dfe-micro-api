@@ -13,11 +13,11 @@ export default function SincronizarButton({ empresa = 'NeuralTec', onDone }) {
       const res = await sincronizarNFeAN({ empresa, ...opts });
       const data = res?.data || res;
       setResult(data);
-      if (onDone) await onDone();
     } catch (e) {
       setResult({ ok: false, motivo: e?.response?.data?.motivo || e.message });
     } finally {
       setBusy(false);
+      if (onDone) await onDone();
     }
   }
 
