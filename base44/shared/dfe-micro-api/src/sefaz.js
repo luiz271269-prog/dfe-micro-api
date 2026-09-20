@@ -46,7 +46,7 @@ export async function distribuirDFe({ cnpj, ambiente, ultNSU }) {
   const endpoint = ENDPOINTS[ambiente];
   const pfx = Buffer.from(process.env.CERT_PFX_BASE64 || '', 'base64');
   const passphrase = process.env.CERT_PFX_PASSWORD || '';
-  if (!endpoint || !pfx.length || !passphrase) throw new Error('Configuração fiscal incompleta no Render.');
+  if (!endpoint || !pfx.length || !passphrase) throw new Error('Configuração fiscal incompleta no Railway.');
 
   const payload = envelope({ cnpj, ambiente, ultNSU });
   const url = new URL(endpoint);
