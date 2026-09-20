@@ -2,10 +2,10 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "cd base44/shared/dfe-micro-api && npm install"
+    "buildCommand": "npm install"
   },
   "deploy": {
-    "startCommand": "cd base44/shared/dfe-micro-api && npm start",
+    "startCommand": "npm start",
     "healthcheckPath": "/live",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
