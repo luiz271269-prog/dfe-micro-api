@@ -1,5 +1,7 @@
 import https from 'node:https';
 
+const MAX_RESPONSE_BYTES = 25 * 1024 * 1024;
+
 const ENDPOINTS = {
   producao: 'https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
   homologacao: 'https://hom.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx',
@@ -31,7 +33,8 @@ function interpretar(xml) {
     schema: atributo(item[1], 'schema'),
     data: item[2].replace(/\s/g, ''),
   }));
-  const cstat = Number(tag(xml, 'cStat'));
+  const cstatTexto = tag(xml, 'cStat');
+  const cstat = cstatTexto === null ? null : Number(cstatTexto);
   return {
     ok: [137, 138, 656].includes(cstat),
     cstat: Number.isFinite(cstat) ? cstat : null,
@@ -65,11 +68,25 @@ export async function distribuirDFe({ cnpj, ambiente, ultNSU }) {
       timeout: 30000,
     }, (res) => {
       let body = '';
+      let totalBytes = 0;
+      let excedeuLimite = false;
       res.setEncoding('utf8');
-      res.on('data', (chunk) => { body += chunk; });
-      res.on('end', () => res.statusCode >= 200 && res.statusCode < 300
-        ? resolve(body)
-        : reject(new Error(`SEFAZ respondeu HTTP ${res.statusCode}`)));
+      res.on('data', (chunk) => {
+        if (excedeuLimite) return;
+        totalBytes += Buffer.byteLength(chunk);
+        if (totalBytes > MAX_RESPONSE_BYTES) {
+          excedeuLimite = true;
+          req.destroy(new Error('Resposta da SEFAZ excedeu o limite de 25 MB.'));
+          return;
+        }
+        body += chunk;
+      });
+      res.on('end', () => {
+        if (excedeuLimite) return;
+        return res.statusCode >= 200 && res.statusCode < 300
+          ? resolve(body)
+          : reject(new Error(`SEFAZ respondeu HTTP ${res.statusCode}`));
+      });
     });
     req.on('timeout', () => req.destroy(new Error('Timeout de 30s na SEFAZ.')));
     req.on('error', reject);

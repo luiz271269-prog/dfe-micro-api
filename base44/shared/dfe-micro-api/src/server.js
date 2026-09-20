@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { autorizado } from './auth.js';
+import { permitirConsulta } from './rateLimit.js';
 import { distribuirDFe } from './sefaz.js';
 
 const PORT = Number(process.env.PORT || 3000);
@@ -20,7 +21,7 @@ async function lerJson(req) {
 
 createServer(async (req, res) => {
   const requestId = req.headers['x-request-id'] || `dfe_${Date.now()}`;
-  // Sonda pública do Render: somente disponibilidade, sem dados fiscais.
+  // Sonda pública do Railway: somente disponibilidade, sem dados fiscais.
   if (req.method === 'GET' && req.url === '/live') {
     return json(res, 200, { ok: true });
   }
@@ -38,6 +39,12 @@ createServer(async (req, res) => {
 
   if (req.method !== 'POST' || req.url !== '/dfe/distribuicao') {
     return json(res, 404, { ok: false, motivo: 'Rota não encontrada.', requestId });
+  }
+
+  const limite = permitirConsulta();
+  if (!limite.ok) {
+    res.setHeader('Retry-After', String(limite.retryAfter));
+    return json(res, 429, { ok: false, motivo: 'Limite temporário de consultas atingido.', requestId });
   }
 
   try {
