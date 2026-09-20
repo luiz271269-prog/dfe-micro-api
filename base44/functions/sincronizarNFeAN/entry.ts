@@ -1,8 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
 import { consultarDistribuicaoDFeMicroApi } from '../../shared/dfeMicroApi.ts';
+import { carregarCertificadoMtls } from '../../shared/dfeCertificate.ts';
 
 const COOLDOWN_MS = 60 * 60 * 1000; // 1 hora
+const LOCK_TIMEOUT_MS = 15 * 60 * 1000;
+const MAX_XML_BYTES = 10 * 1024 * 1024;
 const MAX_LOOPS_POR_EXECUCAO = 5; // máx 5 batches por chamada (até 250 docs)
 
 // ============================================================
@@ -81,9 +84,23 @@ async function gunzipBase64(b64) {
   const raw = atob(b64);
   const bytes = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-  const stream = new Response(bytes).body.pipeThrough(new DecompressionStream('gzip'));
-  const buf = await new Response(stream).arrayBuffer();
-  return new TextDecoder('utf-8').decode(buf);
+  const reader = new Response(bytes).body.pipeThrough(new DecompressionStream('gzip')).getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_XML_BYTES) {
+      await reader.cancel();
+      throw new Error('XML descompactado excede o limite de 10 MB.');
+    }
+    chunks.push(value);
+  }
+  const output = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { output.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder('utf-8').decode(output);
 }
 
 // Extrai metadados básicos do XML — suporta NFe completa, resumo (resNFe) e CTe
@@ -128,28 +145,21 @@ function parseNFeXml(xml) {
 export default async function(req) {
   const t0 = Date.now();
   const request_id = `sync_${Date.now()}`;
+  let base44Client = null;
+  let lockedControleId = null;
 
   try {
     const base44 = createClientFromRequest(req);
+    base44Client = base44;
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const { empresa = 'NeuralTec', force = false, mock = null } = body || {};
+    const { empresa = 'NeuralTec', mock = null } = body || {};
 
-    // Mock e produção usam cursores independentes. Produção envia somente
-    // metadados fiscais; certificado e chave privada ficam na infraestrutura mTLS.
+    // Mock e produção usam cursores e documentos independentes.
     const origemCursor = mock ? 'mock' : 'real';
-    const adapter = mock
-      ? (r) => consultarDistribuicaoDFeMock(r, mock)
-      : (r) => consultarDistribuicaoDFeMicroApi({
-          ...r,
-          empresa,
-          requestId: request_id,
-          url: secrets.get('DFE_MICRO_API_URL'),
-          token: secrets.get('DFE_MICRO_API_TOKEN'),
-        });
 
     // 1. Certificado ativo + válido
     const certs = await base44.asServiceRole.entities.CertificadoDigitalNFe.filter({
@@ -180,27 +190,64 @@ export default async function(req) {
       });
     }
 
-    // 3. Cooldown (bypass se force=true)
-    if (controle.bloqueado_ate && !force) {
+    // 3. Cooldown fiscal durável e sem bypass em produção.
+    if (origemCursor === 'real' && controle.bloqueado_ate) {
       const blocked = new Date(controle.bloqueado_ate);
       if (blocked > new Date()) {
         const min = Math.ceil((blocked.getTime() - Date.now()) / 60000);
         return Response.json({
           ok: false, bloqueado: true,
-          motivo: `Sync bloqueado por cooldown (cStat 137/656). Liberação em ${min}min (${blocked.toLocaleString('pt-BR')}). Use force=true para ignorar.`,
-        });
+          motivo: `Consulta fiscal bloqueada por cooldown. Liberação em ${min}min (${blocked.toLocaleString('pt-BR')}).`,
+        }, { status: 429 });
       }
     }
 
-    // 4. LOOP de consulta via adapter. PFX e senha não passam pelo Base44.
+    // 4. Trava uma única execução real por empresa/ambiente.
+    if (origemCursor === 'real') {
+      const inicioAnterior = controle.execucao_iniciada_em ? new Date(controle.execucao_iniciada_em).getTime() : 0;
+      const lockExpirado = inicioAnterior > 0 && Date.now() - inicioAnterior > LOCK_TIMEOUT_MS;
+      if (controle.execucao_em_andamento && !lockExpirado) {
+        return Response.json({ ok: false, bloqueado: true, motivo: 'Já existe uma sincronização fiscal em andamento.' }, { status: 409 });
+      }
+      if (lockExpirado) {
+        await base44.asServiceRole.entities.ControleNSU.update(controle.id, { execucao_em_andamento: false, execucao_id: '' });
+      }
+      await base44.asServiceRole.entities.ControleNSU.updateMany(
+        { id: controle.id, execucao_em_andamento: { $ne: true } },
+        { $set: { execucao_em_andamento: true, execucao_id: request_id, execucao_iniciada_em: new Date().toISOString() } },
+      );
+      const atualizados = await base44.asServiceRole.entities.ControleNSU.filter({ id: controle.id });
+      controle = atualizados?.[0];
+      if (!controle || controle.execucao_id !== request_id) {
+        return Response.json({ ok: false, bloqueado: true, motivo: 'Outra sincronização adquiriu a trava fiscal.' }, { status: 409 });
+      }
+      lockedControleId = controle.id;
+    }
+
+    // 5. O PFX reside no Base44 e só é enviado em memória durante a chamada mTLS.
+    const credenciaisMtls = origemCursor === 'real' ? await carregarCertificadoMtls(base44, cdoc) : null;
+    const adapter = mock
+      ? (r) => consultarDistribuicaoDFeMock(r, mock)
+      : (r) => consultarDistribuicaoDFeMicroApi({
+          ...r,
+          empresa,
+          requestId: request_id,
+          url: secrets.get('DFE_MICRO_API_URL'),
+          token: secrets.get('DFE_MICRO_API_TOKEN'),
+          certificadoPfxBase64: credenciaisMtls.pfxBase64,
+          certificadoSenha: credenciaisMtls.senha,
+        });
+
+    // 6. LOOP de consulta via adapter.
     let nsuAtual = controle.ultimo_nsu || '000000000000000';
     const nsuInicial = nsuAtual;
     let novos = 0, duplicados = 0, erros = 0, totalDocs = 0;
     let lastResult = null;
     let loops = 0;
     let break_reason = '';
+    const maxLoops = origemCursor === 'real' ? 1 : MAX_LOOPS_POR_EXECUCAO;
 
-    while (loops < MAX_LOOPS_POR_EXECUCAO) {
+    while (loops < maxLoops) {
       loops++;
       const result = await adapter({
         ambiente: cdoc.ambiente,
@@ -208,6 +255,14 @@ export default async function(req) {
         ultNSU: nsuAtual,
       });
       lastResult = result;
+
+      // Uma resposta fiscal válida consome a janela; persiste o cooldown antes de processar documentos.
+      if (origemCursor === 'real' && [137, 138, 656].includes(result.cstat)) {
+        await base44.asServiceRole.entities.ControleNSU.update(controle.id, {
+          bloqueado_ate: new Date(Date.now() + COOLDOWN_MS).toISOString(),
+          ultima_consulta: new Date().toISOString(),
+        });
+      }
 
       // Falha de transporte/contrato: não avança o cursor e nunca retorna falso sucesso.
       if (!result.ok && ![137, 138, 656].includes(result.cstat)) {
@@ -220,7 +275,7 @@ export default async function(req) {
           tentativas_consecutivas_erro: (controle.tentativas_consecutivas_erro || 0) + 1,
         });
         await base44.asServiceRole.entities.LogSyncSEFAZ.create({
-          request_id, empresa, cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
+          request_id, empresa, origem_execucao: origemCursor, cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
           data_execucao: new Date().toISOString(), duracao_ms: Date.now() - t0,
           nsu_inicial: nsuInicial, nsu_final: nsuAtual,
           cstat: result.cstat, x_motivo: result.xMotivo,
@@ -244,7 +299,7 @@ export default async function(req) {
           bloqueado_ate: blockUntil.toISOString(),
         });
         await base44.asServiceRole.entities.LogSyncSEFAZ.create({
-          request_id, empresa, cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
+          request_id, empresa, origem_execucao: origemCursor, cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
           data_execucao: new Date().toISOString(), duracao_ms: Date.now() - t0,
           nsu_inicial: nsuInicial, nsu_final: nsuAtual,
           cstat: 656, x_motivo: result.xMotivo,
@@ -264,28 +319,31 @@ export default async function(req) {
         break;
       }
 
-      // cStat 138 → processar docZips
+      // cStat 138 → só avança além dos documentos persistidos com sucesso.
       if (result.cstat === 138) {
         if (!result.docZips || result.docZips.length === 0) {
           break_reason = 'cstat_138_sem_docs';
           break;
         }
+        let ultimoNsuSeguro = nsuAtual;
+        let loteFalhou = false;
         for (const dz of result.docZips) {
           totalDocs++;
           try {
             const xml = await gunzipBase64(dz.data);
             const meta = parseNFeXml(xml);
-            if (!meta.chave_acesso) {
-              erros++;
-              console.warn(`NSU ${dz.nsu} sem chave de acesso — schema ${dz.schema}`);
+            if (!meta.chave_acesso) throw new Error(`NSU ${dz.nsu} sem chave de acesso — schema ${dz.schema}`);
+
+            const dup = await base44.asServiceRole.entities.NFeRecebida.filter({
+              chave_acesso: meta.chave_acesso,
+              origem_documento: origemCursor,
+            });
+            if (dup && dup.length > 0) {
+              duplicados++;
+              ultimoNsuSeguro = dz.nsu || ultimoNsuSeguro;
               continue;
             }
 
-            // Dedup
-            const dup = await base44.asServiceRole.entities.NFeRecebida.filter({ chave_acesso: meta.chave_acesso });
-            if (dup && dup.length > 0) { duplicados++; continue; }
-
-            // Upload XML privado
             const xmlBlob = new Blob([xml], { type: 'application/xml' });
             const xmlFile = new File([xmlBlob], `${meta.chave_acesso}.xml`, { type: 'application/xml' });
             const { file_uri } = await base44.asServiceRole.integrations.Core.UploadPrivateFile({ file: xmlFile });
@@ -293,6 +351,7 @@ export default async function(req) {
             await base44.asServiceRole.entities.NFeRecebida.create({
               chave_acesso: meta.chave_acesso,
               nsu: dz.nsu,
+              origem_documento: origemCursor,
               tipo_documento: meta.tipo,
               empresa_destinataria: empresa,
               cnpj_destinatario: meta.cnpj_destinatario || cdoc.cnpj_sem_mascara,
@@ -314,18 +373,25 @@ export default async function(req) {
               status_processamento: 'novo',
             });
             novos++;
+            ultimoNsuSeguro = dz.nsu || ultimoNsuSeguro;
           } catch (e) {
             erros++;
+            loteFalhou = true;
             console.error(`Erro processando NSU ${dz.nsu}:`, e.message);
+            break;
           }
         }
-        nsuAtual = result.ultNSU || nsuAtual;
-        // Se chegamos no maxNSU, parar
+        if (loteFalhou) {
+          nsuAtual = ultimoNsuSeguro;
+          break_reason = 'erro_persistencia_doczip';
+          break;
+        }
+        nsuAtual = result.ultNSU || ultimoNsuSeguro;
         if (result.ultNSU && result.maxNSU && result.ultNSU >= result.maxNSU) {
           break_reason = 'alcancou_max_nsu';
           break;
         }
-        continue; // próximo batch
+        continue;
       }
 
       // cStat inesperado
@@ -334,7 +400,7 @@ export default async function(req) {
       break;
     }
 
-    if (loops >= MAX_LOOPS_POR_EXECUCAO && !break_reason) break_reason = 'limite_loops';
+    if (loops >= maxLoops && !break_reason) break_reason = origemCursor === 'real' ? 'limite_fiscal_1_lote_hora' : 'limite_loops';
 
     // 7. Atualizar ControleNSU
     const houveAlgumProgresso = novos > 0 || duplicados > 0 || lastResult?.cstat === 137;
@@ -351,9 +417,11 @@ export default async function(req) {
         ? 0
         : (controle.tentativas_consecutivas_erro || 0) + 1,
     };
+    if (origemCursor === 'real' && lastResult?.cstat) {
+      updateControle.bloqueado_ate = new Date(Date.now() + COOLDOWN_MS).toISOString();
+    }
     if (lastResult?.cstat === 137) {
       updateControle.ultimo_status = 'vazio';
-      updateControle.bloqueado_ate = new Date(Date.now() + COOLDOWN_MS).toISOString();
     } else if (novos > 0 || duplicados > 0) {
       updateControle.ultimo_status = 'ok';
     } else if (erros > 0) {
@@ -365,12 +433,12 @@ export default async function(req) {
     await base44.asServiceRole.entities.ControleNSU.update(controle.id, updateControle);
 
     // 8. Log final
-    const statusFinal = novos > 0 ? 'ok'
+    const statusFinal = erros > 0 ? 'erro'
+                      : novos > 0 ? 'ok'
                       : lastResult?.cstat === 137 ? 'sem_novos'
-                      : erros > 0 ? 'erro'
                       : 'ok';
     const log = await base44.asServiceRole.entities.LogSyncSEFAZ.create({
-      request_id, empresa, cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
+      request_id, empresa, origem_execucao: origemCursor, cnpj_sem_mascara: cdoc.cnpj_sem_mascara,
       data_execucao: new Date().toISOString(), duracao_ms: Date.now() - t0,
       nsu_inicial: nsuInicial, nsu_final: nsuAtual,
       max_nsu_servidor: lastResult?.maxNSU,
@@ -382,14 +450,21 @@ export default async function(req) {
     });
 
     return Response.json({
-      ok: true,
+      ok: erros === 0,
       novos, duplicados, erros, totalDocs, loops,
       cstat: lastResult?.cstat, x_motivo: lastResult?.xMotivo,
       nsu_inicial: nsuInicial, nsu_final: nsuAtual, max_nsu: lastResult?.maxNSU,
       break_reason, log_id: log.id,
-    });
+    }, { status: erros === 0 ? 200 : 500 });
   } catch (error) {
     console.error('sincronizarNFeAN erro:', error);
     return Response.json({ ok: false, motivo: error.message }, { status: 500 });
+  } finally {
+    if (base44Client && lockedControleId) {
+      await base44Client.asServiceRole.entities.ControleNSU.update(lockedControleId, {
+        execucao_em_andamento: false,
+        execucao_id: '',
+      }).catch((error) => console.error('Falha liberando trava fiscal:', error.message));
+    }
   }
 }

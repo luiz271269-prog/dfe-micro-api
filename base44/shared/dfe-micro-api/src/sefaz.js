@@ -45,11 +45,11 @@ function interpretar(xml) {
   };
 }
 
-export async function distribuirDFe({ cnpj, ambiente, ultNSU }) {
+export async function distribuirDFe({ cnpj, ambiente, ultNSU, certificadoPfxBase64, certificadoSenha }) {
   const endpoint = ENDPOINTS[ambiente];
-  const pfx = Buffer.from(process.env.CERT_PFX_BASE64 || '', 'base64');
-  const passphrase = process.env.CERT_PFX_PASSWORD || '';
-  if (!endpoint || !pfx.length || !passphrase) throw new Error('Configuração fiscal incompleta no Railway.');
+  const pfx = Buffer.from(certificadoPfxBase64 || '', 'base64');
+  const passphrase = certificadoSenha || '';
+  if (!endpoint || !pfx.length || !passphrase) throw new Error('Certificado fiscal não recebido do Base44.');
 
   const payload = envelope({ cnpj, ambiente, ultNSU });
   const url = new URL(endpoint);

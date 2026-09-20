@@ -36,8 +36,8 @@ export async function consultarSaudeDFeMicroApi({ url, token, requestId }) {
     if (body?.ok !== true || body?.servico !== 'nexus-dfe-neuraltec') {
       return { ok: false, endpoint, http_status: response.status, motivo: 'O endereço respondeu, mas não é uma resposta válida da micro-API DFe NeuralTec.' };
     }
-    if (body.certificado_configurado !== true || body.cnpj_configurado !== true) {
-      return { ok: false, endpoint, http_status: response.status, motivo: 'Micro-API online, mas a configuração fiscal está incompleta: confira CNPJ_NEURALTEC, CERT_PFX_BASE64 e CERT_PFX_PASSWORD no Railway.' };
+    if (body.certificado_origem !== 'base44_request' || body.cnpj_configurado !== true) {
+      return { ok: false, endpoint, http_status: response.status, motivo: 'Micro-API online, mas não está configurada para receber o certificado privado do Base44.' };
     }
     return { ok: true, endpoint, http_status: response.status, body };
   } catch (error) {
@@ -61,6 +61,8 @@ export async function consultarDistribuicaoDFeMicroApi({
   requestId,
   url,
   token,
+  certificadoPfxBase64,
+  certificadoSenha,
 }) {
   const config = validarConfiguracao(url, token);
   if (!config.ok) return config;
@@ -77,7 +79,14 @@ export async function consultarDistribuicaoDFeMicroApi({
         Authorization: `Bearer ${token}`,
         'X-Request-Id': requestId,
       },
-      body: JSON.stringify({ empresa, cnpj, ambiente, ultNSU }),
+      body: JSON.stringify({
+        empresa,
+        cnpj,
+        ambiente,
+        ultNSU,
+        certificado_pfx_base64: certificadoPfxBase64,
+        certificado_senha: certificadoSenha,
+      }),
       signal: controller.signal,
     });
 

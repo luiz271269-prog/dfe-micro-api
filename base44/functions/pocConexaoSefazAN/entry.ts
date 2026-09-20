@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
-import { consultarDistribuicaoDFeMicroApi, consultarSaudeDFeMicroApi } from '../../shared/dfeMicroApi.ts';
+import { consultarSaudeDFeMicroApi } from '../../shared/dfeMicroApi.ts';
 
 export default async function(req) {
   const t0 = Date.now();
@@ -34,6 +34,7 @@ export default async function(req) {
       const log = await base44.asServiceRole.entities.LogSyncSEFAZ.create({
         request_id: requestId,
         empresa: certificado.empresa,
+        origem_execucao: 'poc',
         cnpj_sem_mascara: certificado.cnpj_sem_mascara,
         data_execucao: new Date().toISOString(),
         duracao_ms: Date.now() - t0,
@@ -43,7 +44,7 @@ export default async function(req) {
       });
       return Response.json({
         ok: false,
-        micro_api_online: false,
+        micro_api_online: health.http_status != null,
         motivo: health.motivo,
         http_status: health.http_status || null,
         endpoint: health.endpoint || null,
@@ -52,47 +53,29 @@ export default async function(req) {
       }, { status: 502 });
     }
 
-    const fiscal = await consultarDistribuicaoDFeMicroApi({
-      empresa: certificado.empresa,
-      cnpj: certificado.cnpj_sem_mascara,
-      ambiente: certificado.ambiente,
-      ultNSU: '000000000000000',
-      requestId,
-      url,
-      token,
-    });
-    const motivo = fiscal.xMotivo || fiscal.motivo || 'Consulta concluída.';
+    const motivo = 'Micro-API autenticada e pronta. Nenhuma consulta fiscal foi executada.';
     const log = await base44.asServiceRole.entities.LogSyncSEFAZ.create({
       request_id: requestId,
       empresa: certificado.empresa,
+      origem_execucao: 'poc',
       cnpj_sem_mascara: certificado.cnpj_sem_mascara,
       data_execucao: new Date().toISOString(),
       duracao_ms: Date.now() - t0,
-      nsu_inicial: '000000000000000',
-      nsu_final: fiscal.ultNSU || '000000000000000',
-      max_nsu_servidor: fiscal.maxNSU || '000000000000000',
-      documentos_baixados: fiscal.docZips?.length || 0,
-      cstat: fiscal.cstat,
-      x_motivo: fiscal.xMotivo,
+      documentos_baixados: 0,
       status_final: 'poc',
       mensagem: motivo,
-      endpoint: fiscal.endpoint,
+      endpoint: health.endpoint,
     });
 
     return Response.json({
-      ok: fiscal.ok === true,
+      ok: true,
       micro_api_online: true,
-      cstat_real: fiscal.cstat,
-      cstat: fiscal.cstat,
-      x_motivo: fiscal.xMotivo || null,
-      motivo: fiscal.ok ? motivo : fiscal.motivo || motivo,
-      http_status: fiscal.http_status || health.http_status || null,
-      ult_nsu: fiscal.ultNSU || null,
-      max_nsu: fiscal.maxNSU || null,
-      endpoint: fiscal.endpoint || null,
+      motivo,
+      http_status: health.http_status,
+      endpoint: health.endpoint,
       latencia_ms: Date.now() - t0,
       log_id: log.id,
-    }, { status: fiscal.ok ? 200 : 502 });
+    });
   } catch (error) {
     console.error('pocConexaoSefazAN erro:', error);
     return Response.json({ ok: false, micro_api_online: false, motivo: error.message }, { status: 500 });

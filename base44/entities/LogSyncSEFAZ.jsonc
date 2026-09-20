@@ -1,7 +1,7 @@
 {
   "name": "LogSyncSEFAZ",
   "type": "object",
-  "description": "Trilha de auditoria de cada execu\u00e7\u00e3o do sync NFe (manual ou agendada).",
+  "description": "Trilha de auditoria de cada execu\u00e7\u00e3o do sync NFe (manual, agendada ou POC).",
   "properties": {
     "request_id": {
       "type": "string"
@@ -12,6 +12,15 @@
         "NeuralTec",
         "Liesch"
       ]
+    },
+    "origem_execucao": {
+      "type": "string",
+      "enum": [
+        "real",
+        "mock",
+        "poc"
+      ],
+      "default": "real"
     },
     "cnpj_sem_mascara": {
       "type": "string"

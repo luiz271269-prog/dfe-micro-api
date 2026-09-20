@@ -75,7 +75,18 @@
     "bloqueado_ate": {
       "type": "string",
       "format": "date-time",
-      "title": "Cooldown \u2014 n\u00e3o consultar antes desta data"
+      "title": "Pr\u00f3xima consulta fiscal permitida"
+    },
+    "execucao_em_andamento": {
+      "type": "boolean",
+      "default": false
+    },
+    "execucao_id": {
+      "type": "string"
+    },
+    "execucao_iniciada_em": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

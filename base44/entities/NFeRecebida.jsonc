@@ -1,15 +1,24 @@
 {
   "name": "NFeRecebida",
   "type": "object",
-  "description": "Documento fiscal eletr\u00f4nico recebido do Ambiente Nacional via NFeDistribuicaoDFe. Chave de acesso \u00fanica.",
+  "description": "Documento fiscal eletr\u00f4nico recebido do Ambiente Nacional via NFeDistribuicaoDFe. Chave de acesso \u00fanica por origem.",
   "properties": {
     "chave_acesso": {
       "type": "string",
-      "title": "Chave de acesso (44 d\u00edgitos) \u2014 chave de deduplica\u00e7\u00e3o"
+      "title": "Chave de acesso (44 d\u00edgitos)"
     },
     "nsu": {
       "type": "string",
       "title": "NSU atribu\u00eddo pelo AN"
+    },
+    "origem_documento": {
+      "type": "string",
+      "enum": [
+        "real",
+        "mock"
+      ],
+      "default": "real",
+      "title": "Origem fiscal do documento"
     },
     "tipo_documento": {
       "type": "string",
@@ -72,11 +81,10 @@
     },
     "xml_file_uri": {
       "type": "string",
-      "title": "URI privado do XML no storage (gera signed URL on-demand)"
+      "title": "URI privado do XML no storage"
     },
     "schema_documento": {
-      "type": "string",
-      "title": "Schema retornado pelo AN (ex: procNFe_v4.00.xsd)"
+      "type": "string"
     },
     "status_manifestacao": {
       "type": "string",
@@ -104,12 +112,10 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "title": "IDs de ItemCompra vinculados manualmente"
+      }
     },
     "nfe_analise_id": {
-      "type": "string",
-      "title": "ID em NFeAnalise quando processada"
+      "type": "string"
     },
     "divergencias": {
       "type": "array",
@@ -124,6 +130,7 @@
   "required": [
     "chave_acesso",
     "nsu",
+    "origem_documento",
     "empresa_destinataria"
   ],
   "rls": {

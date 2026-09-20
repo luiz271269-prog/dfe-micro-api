@@ -28,7 +28,7 @@ export default function POCConexaoCard({ certificado }) {
         <div>
           <h4 className="text-sm font-bold">POC Micro-API + SEFAZ AN</h4>
           <p className="text-[11px] text-muted-foreground">
-            Valida a saúde da micro-API e consulta o cStat real do Ambiente Nacional sem expor o certificado.
+            Valida autenticação e configuração da micro-API sem consultar ou consumir a janela da SEFAZ.
           </p>
         </div>
         <Button onClick={rodar} disabled={!valido || running} size="sm" className="gap-2 shrink-0">
@@ -63,12 +63,8 @@ export default function POCConexaoCard({ certificado }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
             <div className="bg-white/70 rounded px-2 py-1"><p className="text-muted-foreground">Micro-API</p><p className="font-bold">{result.micro_api_online ? 'Online' : 'Offline'}</p></div>
             {result.http_status != null && <div className="bg-white/70 rounded px-2 py-1"><p className="text-muted-foreground">HTTP</p><p className="font-bold tabular-nums">{result.http_status}</p></div>}
-            {result.cstat_real != null && <div className="bg-white/70 rounded px-2 py-1"><p className="text-muted-foreground">cStat real</p><p className="font-bold tabular-nums">{result.cstat_real}</p></div>}
             {result.latencia_ms != null && <div className="bg-white/70 rounded px-2 py-1"><p className="text-muted-foreground">Latência</p><p className="font-bold tabular-nums">{result.latencia_ms} ms</p></div>}
-            {result.ult_nsu && <div className="bg-white/70 rounded px-2 py-1"><p className="text-muted-foreground">ultNSU</p><p className="font-bold tabular-nums truncate">{result.ult_nsu}</p></div>}
-            {result.max_nsu && <div className="bg-white/70 rounded px-2 py-1"><p className="text-muted-foreground">maxNSU</p><p className="font-bold tabular-nums truncate">{result.max_nsu}</p></div>}
           </div>
-          {result.x_motivo && <p className="text-[11px] mt-2"><span className="text-muted-foreground">xMotivo:</span> <strong>{result.x_motivo}</strong></p>}
           {result.endpoint && <p className="text-[10px] mt-1 text-muted-foreground truncate">{result.endpoint}</p>}
 
           {result.resposta_xml_preview && (

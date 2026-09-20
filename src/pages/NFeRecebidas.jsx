@@ -35,11 +35,12 @@ export default function NFeRecebidas() {
   async function load() {
     setLoading(true);
     const [list, ctrls, lgs] = await Promise.all([
-      base44.entities.NFeRecebida.list('-data_emissao', 300).catch(() => []),
-      base44.entities.ControleNSU.list('-updated_date', 5).catch(() => []),
-      base44.entities.LogSyncSEFAZ.list('-data_execucao', 10).catch(() => []),
+      base44.entities.NFeRecebida.filter({ origem_documento: 'real' }, '-data_emissao', 300).catch(() => []),
+      base44.entities.ControleNSU.filter({ origem_cursor: 'real' }, '-updated_date', 5).catch(() => []),
+      base44.entities.LogSyncSEFAZ.list('-data_execucao', 30).catch(() => []),
     ]);
-    setNfes(list); setControles(ctrls); setLogs(lgs);
+    const logsReais = lgs.filter(l => l.origem_execucao !== 'mock' && l.endpoint !== 'mock://an').slice(0, 10);
+    setNfes(list); setControles(ctrls); setLogs(logsReais);
     setLoading(false);
   }
 

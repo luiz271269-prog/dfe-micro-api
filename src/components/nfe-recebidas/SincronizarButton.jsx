@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Loader2, AlertTriangle, CheckCircle, Clock, XIcon, FlaskConical, Zap } from 'lucide-react';
+import { RefreshCw, Loader2, AlertTriangle, CheckCircle, Clock, XIcon } from 'lucide-react';
 import { sincronizarNFeAN } from '@/functions/sincronizarNFeAN';
 
 export default function SincronizarButton({ empresa = 'NeuralTec', onDone }) {
@@ -27,13 +27,6 @@ export default function SincronizarButton({ empresa = 'NeuralTec', onDone }) {
         {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> Sincronizando...</>
               : <><RefreshCw className="w-4 h-4" /> Sincronizar {empresa}</>}
       </Button>
-      <Button onClick={() => rodar({ force: true })} disabled={busy} size="sm" variant="outline" className="gap-1 text-xs" title="Ignora cooldown de 1h">
-        <Zap className="w-3 h-3" /> Forçar
-      </Button>
-      <Button onClick={() => rodar({ mock: '138' })} disabled={busy} size="sm" variant="ghost" className="gap-1 text-xs text-muted-foreground" title="Testa pipeline com NF sintética (sem chamar SEFAZ)">
-        <FlaskConical className="w-3 h-3" /> Mock
-      </Button>
-
       {result && (
         <div className={`absolute top-full mt-2 right-0 w-96 rounded-xl border p-3 shadow-lg z-50 ${
           result.ok ? 'bg-emerald-50 border-emerald-200'
