@@ -73,9 +73,15 @@ export default function NFeRecebidas() {
                   <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
                     c.origem_cursor === 'mock'
                       ? 'bg-amber-100 text-amber-700'
-                      : 'bg-blue-100 text-blue-700'
+                      : c.origem_cursor === 'real'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-slate-100 text-slate-600'
                   }`}>
-                    {c.origem_cursor === 'mock' ? 'Teste mock' : 'Ambiente real'}
+                    {c.origem_cursor === 'mock'
+                      ? 'Teste mock'
+                      : c.origem_cursor === 'real'
+                        ? 'Ambiente real'
+                        : 'Origem desconhecida'}
                   </span>
                 </div>
                 <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
