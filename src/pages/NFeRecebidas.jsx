@@ -67,8 +67,17 @@ export default function NFeRecebidas() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           {controles.map(c => (
             <div key={c.id} className="bg-card border rounded-xl p-3 text-xs">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-bold">{c.empresa}</p>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="flex items-center gap-2">
+                  <p className="font-bold">{c.empresa}</p>
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    c.origem_cursor === 'mock'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {c.origem_cursor === 'mock' ? 'Teste mock' : 'Ambiente real'}
+                  </span>
+                </div>
                 <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
                   c.ultimo_status === 'ok' ? 'bg-emerald-100 text-emerald-700'
                     : c.ultimo_status === 'vazio' ? 'bg-slate-100 text-slate-600'
