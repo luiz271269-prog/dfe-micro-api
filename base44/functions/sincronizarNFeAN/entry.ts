@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
 import { consultarDistribuicaoDFeMicroApi } from '../../shared/dfeMicroApi.ts';
 import { carregarCertificadoMtls } from '../../shared/dfeCertificate.ts';
+import { ingestirDocumentoNFe } from '../../shared/nfeIngestion.ts';
 
 const COOLDOWN_MS = 60 * 60 * 1000; // 1 hora
 const LOCK_TIMEOUT_MS = 15 * 60 * 1000;
@@ -327,57 +328,22 @@ export default async function(req) {
         }
         let ultimoNsuSeguro = nsuAtual;
         let loteFalhou = false;
-        for (const dz of result.docZips) {
+        for (const dz of result.docZips.slice(0, 50)) {
           totalDocs++;
           try {
-            const xml = await gunzipBase64(dz.data);
-            const meta = parseNFeXml(xml);
-            if (!meta.chave_acesso) throw new Error(`NSU ${dz.nsu} sem chave de acesso — schema ${dz.schema}`);
-
-            const dup = await base44.asServiceRole.entities.NFeRecebida.filter({
-              chave_acesso: meta.chave_acesso,
-              origem_documento: origemCursor,
+            const persistido = await ingestirDocumentoNFe(base44, {
+              documento: dz,
+              empresa,
+              origem: origemCursor,
+              cnpjDestinatario: cdoc.cnpj_sem_mascara,
             });
-            if (dup && dup.length > 0) {
-              duplicados++;
-              ultimoNsuSeguro = dz.nsu || ultimoNsuSeguro;
-              continue;
-            }
-
-            const xmlBlob = new Blob([xml], { type: 'application/xml' });
-            const xmlFile = new File([xmlBlob], `${meta.chave_acesso}.xml`, { type: 'application/xml' });
-            const { file_uri } = await base44.asServiceRole.integrations.Core.UploadPrivateFile({ file: xmlFile });
-
-            await base44.asServiceRole.entities.NFeRecebida.create({
-              chave_acesso: meta.chave_acesso,
-              nsu: dz.nsu,
-              origem_documento: origemCursor,
-              tipo_documento: meta.tipo,
-              empresa_destinataria: empresa,
-              cnpj_destinatario: meta.cnpj_destinatario || cdoc.cnpj_sem_mascara,
-              cnpj_emitente: meta.cnpj_emitente,
-              nome_emitente: meta.nome_emitente,
-              uf_emitente: meta.uf_emitente,
-              numero_nota: meta.numero_nota,
-              serie: meta.serie,
-              data_emissao: meta.data_emissao,
-              valor_total: meta.valor_total,
-              valor_produtos: meta.valor_produtos,
-              valor_icms: meta.valor_icms,
-              valor_icms_st: meta.valor_icms_st,
-              valor_ipi: meta.valor_ipi,
-              natureza_operacao: meta.natureza_operacao,
-              xml_file_uri: file_uri,
-              schema_documento: dz.schema,
-              status_manifestacao: 'pendente',
-              status_processamento: 'novo',
-            });
-            novos++;
+            if (persistido.status === 'duplicado') duplicados++;
+            else novos++;
             ultimoNsuSeguro = dz.nsu || ultimoNsuSeguro;
-          } catch (e) {
+          } catch (error) {
             erros++;
             loteFalhou = true;
-            console.error(`Erro processando NSU ${dz.nsu}:`, e.message);
+            console.error(`Erro processando NSU ${dz.nsu}:`, error.message);
             break;
           }
         }

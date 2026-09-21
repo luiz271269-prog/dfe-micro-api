@@ -69,7 +69,7 @@ export async function consultarDistribuicaoDFeMicroApi({
 
   const endpoint = `${config.baseUrl}/dfe/distribuicao`;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 120000);
 
   try {
     const response = await fetch(endpoint, {
@@ -142,10 +142,28 @@ export async function consultarDistribuicaoDFeMicroApi({
       docZips: [],
       endpoint,
       motivo: error?.name === 'AbortError'
-        ? 'Timeout de 30s na micro-API DFe.'
+        ? 'Timeout de 120s na micro-API DFe.'
         : `Falha no transporte da micro-API DFe: ${error.message}`,
     };
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+export async function consultarDetalheNFeMicroApi({ chave, requestId, url, token }) {
+  const config = validarConfiguracao(url, token);
+  if (!config.ok) return config;
+  if (!/^\d{44}$/.test(String(chave || ''))) return { ok: false, motivo: 'Chave de acesso inválida.' };
+  const endpoint = `${config.baseUrl}/dfe/nota/${chave}`;
+  try {
+    const response = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${token.trim()}`, 'X-Request-Id': requestId || `detail_${Date.now()}` },
+      signal: AbortSignal.timeout(30000),
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !body?.documento) return { ok: false, endpoint, http_status: response.status, motivo: body?.motivo || `Micro-API respondeu HTTP ${response.status}` };
+    return { ok: true, endpoint, documento: body.documento };
+  } catch (error) {
+    return { ok: false, endpoint, motivo: `Falha buscando detalhe da NF-e: ${error.message}` };
   }
 }
