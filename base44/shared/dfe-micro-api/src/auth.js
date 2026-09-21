@@ -1,8 +1,8 @@
 import { timingSafeEqual } from 'node:crypto';
 
 export function autorizado(request) {
-  const recebido = request.headers.authorization?.replace(/^Bearer\s+/i, '') || '';
-  const esperado = process.env.DFE_API_TOKEN || '';
+  const recebido = (request.headers.authorization?.replace(/^Bearer\s+/i, '') || '').trim();
+  const esperado = (process.env.DFE_API_TOKEN || '').trim();
   if (!recebido || !esperado) return false;
 
   const a = Buffer.from(recebido);

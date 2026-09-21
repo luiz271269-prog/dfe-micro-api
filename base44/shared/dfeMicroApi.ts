@@ -22,7 +22,7 @@ export async function consultarSaudeDFeMicroApi({ url, token, requestId }) {
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token.trim()}`,
         'X-Request-Id': requestId,
       },
       signal: controller.signal,
@@ -76,7 +76,7 @@ export async function consultarDistribuicaoDFeMicroApi({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token.trim()}`,
         'X-Request-Id': requestId,
       },
       body: JSON.stringify({
