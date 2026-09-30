@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { fetchCentralCompras, normalizarPedidosCompra } from '../../shared/centralCompras.ts';
+import { consultarPedidosHub } from '../../shared/nexusHub.ts';
+import { normalizarPedidosHub } from '../../shared/normalizarPedidosHub.ts';
 
 /**
  * buscarComprasCentral — leitura pura (read-only) dos Pedidos de Compra
@@ -18,14 +19,12 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
 
-    const resultado = await fetchCentralCompras('PedidoCompra', 'limit=500');
+    const resultado = await consultarPedidosHub();
     if (!resultado.ok) {
       return Response.json({
         ok: false,
         status: resultado.status,
-        motivo: resultado.status === 403
-          ? 'A Central de Compras recusou a autenticação ou o acesso da chave pessoal aos pedidos (403).'
-          : `A Central de Compras respondeu HTTP ${resultado.status}.`,
+        motivo: resultado.motivo,
         diagnostico: resultado.diagnostico,
         itens: [],
         fornecedores: [],
@@ -33,12 +32,14 @@ export default async function(req) {
     }
 
     const pedidos = resultado.data;
-    const { itens, fornecedores } = normalizarPedidosCompra(pedidos);
+    const { itens, fornecedores } = normalizarPedidosHub(pedidos);
 
     return Response.json({
       ok: true,
       header_usado: resultado.header,
       pedidos_count: pedidos.length,
+      pedidos_referencias: pedidos.flatMap((p) => [p.id, p.numero_pedido].filter(Boolean)),
+      diagnostico: resultado.diagnostico,
       itens,
       fornecedores,
     });

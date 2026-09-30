@@ -5,12 +5,18 @@ import { Button } from '@/components/ui/button';
 import ComprasTitulosTable from '@/components/compras/ComprasTitulosTable';
 import { consolidarDocumentosCompras } from '@/lib/documentosCompras';
 
-export default function ComprasPortalCotacao() {
+export default function ComprasPortalCotacao({ onPedidos }) {
   const [estado, setEstado] = useState({ loading: true, data: null, erro: '' });
   async function carregar() {
     setEstado({ loading: true, data: null, erro: '' });
-    const { data } = await buscarComprasCentral({});
-    setEstado(data?.ok ? { loading: false, data, erro: '' } : { loading: false, data: null, erro: data?.motivo || 'Não foi possível ler o portal.' });
+    try {
+      const { data } = await buscarComprasCentral({});
+      setEstado(data?.ok ? { loading: false, data, erro: '' } : { loading: false, data: null, erro: data?.motivo || 'Não foi possível ler o portal.' });
+      onPedidos?.(data?.ok ? data.pedidos_referencias || [] : []);
+    } catch (error) {
+      setEstado({ loading: false, data: null, erro: error.response?.data?.motivo || (error.response?.status === 403 ? 'A consulta de pedidos é restrita a administradores (HTTP 403).' : 'Não foi possível consultar o portal. Tente atualizar novamente.') });
+      onPedidos?.([]);
+    }
   }
   useEffect(() => { carregar(); }, []);
   const documentos = useMemo(() => consolidarDocumentosCompras(estado.data?.itens || []), [estado.data]);
@@ -21,6 +27,6 @@ export default function ComprasPortalCotacao() {
       <Button variant="ghost" size="sm" className="ml-auto" onClick={carregar} disabled={estado.loading}><RefreshCw className={`w-3.5 h-3.5 ${estado.loading ? 'animate-spin' : ''}`} /> Atualizar</Button>
     </header>
     {estado.erro && <p role="alert" className="m-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">{estado.erro}</p>}
-    <ComprasTitulosTable documentos={documentos} loading={estado.loading} embedded />
+    {!estado.erro && <ComprasTitulosTable documentos={documentos} loading={estado.loading} embedded />}
   </section>;
 }

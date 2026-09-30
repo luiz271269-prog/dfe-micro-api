@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, ShoppingCart, TrendingDown, Building2, Receipt, AlertTriangle, CheckCircle, FileText, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -69,6 +69,7 @@ export default function Compras() {
 
   // ── Compras state ─────────────────────────────────────────────────────────
   const [compras, setCompras] = useState([]);
+  const [pedidosPortal, setPedidosPortal] = useState([]);
   const [loadingC, setLoadingC] = useState(true);
   const [showFormC, setShowFormC] = useState(false);
   const [filterFornecedor, setFilterFornecedor] = useState('all');
@@ -96,14 +97,17 @@ export default function Compras() {
   const [searchDDA, setSearchDDA] = useState('');
 
   // ── Data loading ─────────────────────────────────────────────────────────
-  async function loadCompras() {
+  const loadCompras = useCallback(async () => {
     setLoadingC(true);
     const [data, forns] = await Promise.all([
-      base44.entities.ItemCompra.list('-data_emissao', 500),
+      base44.entities.ItemCompra.filter(pedidosPortal.length ? {
+        pedido_central_id: { $nin: pedidosPortal },
+        pedido_central_internal_id: { $nin: pedidosPortal },
+      } : {}, '-data_emissao', 500),
       base44.entities.Fornecedor.list('nome', 200),
     ]);
     setCompras(data.filter(c => !c.tipo_compra || c.tipo_compra === 'estoque')); setFornecedores(forns); setLoadingC(false);
-  }
+  }, [pedidosPortal]);
   async function loadDespesas() {
     setLoadingD(true);
     const [data, vinculos] = await Promise.all([
@@ -121,11 +125,14 @@ export default function Compras() {
   }
 
   useEffect(() => {
-    loadCompras(); loadDespesas(); loadLancamentos();
-    const unsub1 = base44.entities.ItemCompra.subscribe(() => loadCompras());
+    loadCompras();
+    return base44.entities.ItemCompra.subscribe(() => loadCompras());
+  }, [loadCompras]);
+  useEffect(() => {
+    loadDespesas(); loadLancamentos();
     const unsub2 = base44.entities.DespesaOperacional.subscribe(() => loadDespesas());
     const unsub3 = base44.entities.LancamentoBancario.subscribe(() => loadLancamentos());
-    return () => { unsub1(); unsub2(); unsub3(); };
+    return () => { unsub2(); unsub3(); };
   }, []);
 
   // ── Compras memos ─────────────────────────────────────────────────────────
@@ -270,7 +277,7 @@ export default function Compras() {
       {activeTab === 'compras' && (
         <>
           <ComprasPagamentoResumo compras={documentosC} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
-          <ComprasPortalCotacao />
+          <ComprasPortalCotacao onPedidos={setPedidosPortal} />
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

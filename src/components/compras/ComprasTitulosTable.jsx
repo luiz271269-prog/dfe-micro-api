@@ -21,7 +21,7 @@ export default function ComprasTitulosTable({ documentos, loading = false, embed
         <td className="p-3">{statusLabel[doc.status_pagamento] || doc.status_pagamento}</td>
         <td className="p-3 text-right font-bold tabular-nums text-destructive">{formatCurrency(doc.valor)}</td>
         <td className="p-3 text-right">
-          <Link to={`/pedido-central/${encodeURIComponent(doc.numero)}`}>
+          <Link to={`/pedido-central/${encodeURIComponent(doc.itens?.[0]?.pedido_central_id || doc.numero)}`}>
             <Button size="sm" variant="outline">Mais <ChevronRight className="h-4 w-4" /></Button>
           </Link>
         </td>

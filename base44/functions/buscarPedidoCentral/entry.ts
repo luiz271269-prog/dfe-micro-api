@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { fetchCentralCompras, normalizarPedidosCompra } from '../../shared/centralCompras.ts';
+import { consultarPedidosHub } from '../../shared/nexusHub.ts';
+import { normalizarPedidosHub } from '../../shared/normalizarPedidosHub.ts';
 
 /**
  * buscarPedidoCentral — leitura pura (read-only) de UM Pedido de Compra
@@ -17,14 +18,12 @@ export default async function(req) {
     const ocNumero = String(body?.oc_numero || body?.ocNumero || '').trim();
     if (!ocNumero) return Response.json({ ok: false, motivo: 'oc_numero é obrigatório.' }, { status: 400 });
 
-    const resultado = await fetchCentralCompras('PedidoCompra', 'limit=500');
+    const resultado = await consultarPedidosHub();
     if (!resultado.ok) {
       return Response.json({
         ok: false,
         status: resultado.status,
-        motivo: resultado.status === 403
-          ? 'A Central de Compras recusou a autenticação ou o acesso da chave pessoal aos pedidos (403).'
-          : `A Central de Compras respondeu HTTP ${resultado.status}.`,
+        motivo: resultado.motivo,
         diagnostico: resultado.diagnostico,
       });
     }
@@ -35,7 +34,7 @@ export default async function(req) {
 
     if (!pedido) return Response.json({ ok: false, motivo: `Pedido ${ocNumero} não encontrado na Central de Compras.`, pedidos_count: pedidos.length });
 
-    const { itens } = normalizarPedidosCompra([pedido]);
+    const { itens } = normalizarPedidosHub([pedido]);
 
     return Response.json({
       ok: true,
