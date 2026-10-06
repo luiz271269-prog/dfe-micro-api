@@ -1,4 +1,4 @@
-import { resolverCadastro } from './classificacaoFinanceira.ts';
+import { resolverCadastro, validarCombinacao } from './classificacaoFinanceira.ts';
 export function mesAnteriorCartao(mes) {
   const [ano, numero] = mes.split('-').map(Number);
   return numero === 1 ? `${ano - 1}-12` : `${ano}-${String(numero - 1).padStart(2, '0')}`;
@@ -11,7 +11,7 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
   const periodos = [...new Set([...meses, ...meses.map(mesAnteriorCartao)])];
   const [faturasPage, cadastroPage] = await Promise.all([
     db.FaturaCartao.filter({ mes_referencia: { $in: periodos } }, { limit: 100, fields: ['mes_referencia','conta_cartao_id'] }),
-    db.CadastroClassificacao.list({ limit: 300, fields: ['eixo','chave','rotulo','ativo','perfis_permitidos'] }),
+    db.CadastroClassificacao.list({ limit: 300, fields: ['eixo','chave','rotulo','ativo','perfis_permitidos','naturezas_vinculadas','natureza_vinculada','centros_custo_vinculados'] }),
   ]);
   if (faturasPage.has_more || cadastroPage.has_more) throw new Error('Selecione um mês por vez; a revisão não pode usar uma base incompleta.');
   const faturas = faturasPage.items, cadastro = cadastroPage.items;
@@ -45,7 +45,13 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
   }
   const revisoes = meses.map(mes => {
     const anterior = mesAnteriorCartao(mes), itens = [];
-    const resumo = { lancamentos: 0, valor: 0, pendentes_eixos: 0, valor_pendente_eixos: 0, iguais: 0, divergentes: 0, sem_historico: 0, historico_inconsistente: 0 };
+    const resumo = { lancamentos: 0, valor: 0, pendentes_eixos: 0, valor_pendente_eixos: 0, pendentes_categorias: 0, valor_pendente_categorias: 0, iguais: 0, divergentes: 0, sem_historico: 0, historico_inconsistente: 0 };
+    for (const row of contas.rows) {
+      if (fatMap.get(row.fatura_id)?.mes_referencia !== mes) continue;
+      if (!row.categoria || row.categoria === 'outro' || (permitidos.categorias.length && !permitidos.categorias.includes(row.categoria))) {
+        resumo.pendentes_categorias += row.count; resumo.valor_pendente_categorias += row.sum_valor || 0;
+      }
+    }
     for (const row of eixos.rows) {
       const fat = fatMap.get(row.fatura_id); if (fat?.mes_referencia !== mes) continue;
       const cats = [...(categorias.get(`${row.fatura_id}|${estabelecimentoChave(row.estabelecimento)}`) || new Set(['']))];
@@ -57,7 +63,9 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
       if (historico) {
         const valores = [...historico.values()];
         const unico = valores.length === 1 ? valores[0] : null;
-        const valido = unico && permitidos.origens.includes(unico.origem_compra) && permitidos.tipos.includes(unico.tipo_compra) && unico.categoria && unico.categoria !== 'outro' && (!permitidos.categorias.length || permitidos.categorias.includes(unico.categoria)) && (unico.origem_compra !== 'pro_labore' || unico.tipo_compra === 'pro_labore');
+        const normalizado = unico ? validarCombinacao('LancamentoCartao', { ...unico, natureza: unico.origem_compra === 'pro_labore' ? 'pessoal' : 'empresarial' }, cadastro, role).normalizado : null;
+        const coerente = unico && ['origem_compra','tipo_compra','categoria'].every(c => unico[c] === normalizado[c]);
+        const valido = coerente && permitidos.origens.includes(unico.origem_compra) && permitidos.tipos.includes(unico.tipo_compra) && unico.categoria && unico.categoria !== 'outro' && (!permitidos.categorias.length || permitidos.categorias.includes(unico.categoria)) && (unico.origem_compra !== 'pro_labore' || unico.tipo_compra === 'pro_labore');
         if (valido) {
           sugestao = unico;
           status = row.origem_compra === unico.origem_compra && row.tipo_compra === unico.tipo_compra && cats.length === 1 && cats[0] === unico.categoria ? 'iguais' : 'divergentes';

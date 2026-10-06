@@ -131,7 +131,8 @@ export default async function(req) {
     } else return Response.json({ error: 'Ação inválida.' }, { status: 400 });
 
     const depois = validarCombinacao(entidade, proposto, cadastro, user.role).normalizado;
-    if (entidade === 'LancamentoCartao' && action === 'salvar_eixo' && payload.campo === 'origem_compra') depois.natureza = proposto.natureza;
+    if (entidade === 'LancamentoCartao' && action === 'salvar_eixo' && payload.campo === 'origem_compra') depois.natureza = depois.origem_compra === 'pro_labore' ? 'pessoal' : proposto.natureza;
+    if (payload.validate_only === true) return Response.json({ success: true, validate_only: true, classificacao: depois });
     await db[entidade].update(id, { ...persistivel(entidade, depois), ...(depois.natureza ? { natureza: depois.natureza } : {}) });
     const vinculosAtualizados = await atualizarVinculos(base44, entidade, id, depois);
     const filhosAtualizados = await propagarCartao(base44, entidade, id);

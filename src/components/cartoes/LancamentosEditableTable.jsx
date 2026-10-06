@@ -18,6 +18,8 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
   const vinculos = useVinculosLancamentos(lancamentos);
   const { opcoes: allCategorias } = useCadastroClassificacao('categoria');
   const [editing, setEditing] = useState(null);
+  const [saveStatus, setSaveStatus] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [localRows, setLocalRows] = useState(lancamentos || []);
   const [addingCat, setAddingCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -44,12 +46,14 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
   }
 
   async function update(id, field, value) {
+    setSaveStatus('Salvando categoria...'); setSaveError('');
     const original = (lancamentos || []).find((r) => r.id === id);
     // Otimista: atualiza local imediatamente sem fechar painel
     setLocalRows((prev) => prev.map((r) => r.id === id ? { ...r, [field]: value } : r));
     setEditing(null);
     try {
       await base44.entities.LancamentoCartao.update(id, { [field]: value });
+      setSaveStatus('Categoria salva.');
 
       // Auto-classificação: ao mudar categoria manualmente, propaga para lançamentos semelhantes
       if (field === 'categoria' && original?.estabelecimento && original.categoria !== value) {
@@ -66,7 +70,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
     } catch (e) {
       // Rollback em caso de erro
       setLocalRows(lancamentos || []);
-      console.error('Erro ao salvar', e);
+      setSaveStatus(''); setSaveError(e.response?.data?.error || e.message || 'Não foi possível salvar a categoria.');
     }
   }
 
@@ -120,6 +124,8 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
   return (
     <div className="overflow-x-auto">
       <p className="text-xs text-muted-foreground mb-2">Salvamento automático a cada seleção, sem precisar sair da tela. Aguarde o término do salvamento antes de fechar.</p>
+      {saveStatus && <p aria-live="polite" className="text-xs text-muted-foreground mb-2">{saveStatus}</p>}
+      {saveError && <p role="alert" className="text-xs text-destructive mb-2">{saveError}</p>}
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b">
