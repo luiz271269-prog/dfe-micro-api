@@ -35,6 +35,75 @@
       "format": "date",
       "title": "Data Admiss\u00e3o"
     },
+    "data_fichamento": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "title": "Data de fichamento (auxiliar)",
+      "description": "Data auxiliar do registro formal, sem substituir a admiss\u00e3o nas regras de eventos."
+    },
+    "jornada_referencia_diaria": {
+      "type": "number",
+      "minimum": 0.25,
+      "maximum": 24,
+      "default": 8,
+      "title": "Refer\u00eancia di\u00e1ria para compara\u00e7\u00e3o (horas)"
+    },
+    "jornada_referencia_semanal": {
+      "type": "number",
+      "minimum": 0.25,
+      "maximum": 168,
+      "default": 44,
+      "title": "Refer\u00eancia semanal para compara\u00e7\u00e3o (horas)"
+    },
+    "jornada_trabalho": {
+      "type": "array",
+      "maxItems": 7,
+      "default": [],
+      "title": "Hor\u00e1rios de trabalho por dia",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dia": {
+            "type": "string",
+            "enum": [
+              "seg",
+              "ter",
+              "qua",
+              "qui",
+              "sex",
+              "sab",
+              "dom"
+            ]
+          },
+          "ativo": {
+            "type": "boolean",
+            "default": true
+          },
+          "entrada": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "saida": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+          },
+          "intervalo_minutos": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1440,
+            "default": 0
+          }
+        },
+        "required": [
+          "dia",
+          "entrada",
+          "saida"
+        ]
+      }
+    },
     "data_demissao": {
       "type": "string",
       "format": "date",
