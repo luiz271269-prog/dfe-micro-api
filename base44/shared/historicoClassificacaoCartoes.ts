@@ -66,7 +66,8 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
         const normalizado = unico ? validarCombinacao('LancamentoCartao', { ...unico, natureza: unico.origem_compra === 'pro_labore' ? 'pessoal' : 'empresarial' }, cadastro, role).normalizado : null;
         const coerente = unico && ['origem_compra','tipo_compra','categoria'].every(c => unico[c] === normalizado[c]);
         const valido = coerente && permitidos.origens.includes(unico.origem_compra) && permitidos.tipos.includes(unico.tipo_compra) && unico.categoria && unico.categoria !== 'outro' && (!permitidos.categorias.length || permitidos.categorias.includes(unico.categoria)) && (unico.origem_compra !== 'pro_labore' || unico.tipo_compra === 'pro_labore');
-        if (valido) {
+        const generico = /^(mercadolivre (?:merca\w*|\d*produt\w*)|mercado pago merc\w*|amazon (?:br(?: amazo)?|marketplacev?))$/.test(estabelecimentoChave(row.estabelecimento));
+        if (valido && !generico) {
           sugestao = unico;
           status = row.origem_compra === unico.origem_compra && row.tipo_compra === unico.tipo_compra && cats.length === 1 && cats[0] === unico.categoria ? 'iguais' : 'divergentes';
         } else status = 'historico_inconsistente';

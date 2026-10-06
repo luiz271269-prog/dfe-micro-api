@@ -1,5 +1,5 @@
 import { formatCurrency } from '@/lib/formatters';
-const STATUS = { iguais: 'Igual ao mês anterior', divergentes: 'Revisar diferença', sem_historico: 'Sem correspondência no mês anterior', historico_inconsistente: 'Histórico incompleto ou conflitante' };
+const STATUS = { iguais: 'Igual ao mês anterior', divergentes: 'Revisar diferença', sem_historico: 'Sem correspondência no mês anterior', historico_inconsistente: 'Conferir: histórico incompleto, conflitante ou marketplace genérico' };
 export default function RevisaoHistoricoLinhas({ itens, rotulos }) {
   const label = (eixo, chave) => rotulos[eixo]?.[chave] || chave || 'Não informado';
   function texto(c) { return [label('origem', c.origem_compra), label('tipo', c.tipo_compra), (c.categorias || [c.categoria]).map(k => label('categoria',k)).join(', ')].join(' · '); }
