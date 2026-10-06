@@ -125,10 +125,14 @@ export default async function(req) {
       if (payload.campo === 'tipo_compra' && !permitidos.tipos.includes(payload.valor)) return Response.json({ error: 'Natureza econômica inativa ou não permitida.' }, { status: 400 });
       if (payload.campo === 'categoria' && permitidos.categorias.length && !permitidos.categorias.includes(payload.valor)) return Response.json({ error: 'Conta analítica inativa ou não permitida.' }, { status: 400 });
       proposto[payload.campo] = payload.valor;
+      if (entidade === 'LancamentoCartao' && payload.campo === 'origem_compra') {
+        proposto.natureza = ['pessoal', 'pro_labore'].includes(payload.valor) ? 'pessoal' : 'empresarial';
+      }
     } else return Response.json({ error: 'Ação inválida.' }, { status: 400 });
 
     const depois = validarCombinacao(entidade, proposto, cadastro, user.role).normalizado;
-    await db[entidade].update(id, persistivel(entidade, depois));
+    if (entidade === 'LancamentoCartao' && action === 'salvar_eixo' && payload.campo === 'origem_compra') depois.natureza = proposto.natureza;
+    await db[entidade].update(id, { ...persistivel(entidade, depois), ...(depois.natureza ? { natureza: depois.natureza } : {}) });
     const vinculosAtualizados = await atualizarVinculos(base44, entidade, id, depois);
     const filhosAtualizados = await propagarCartao(base44, entidade, id);
     await db.AuditoriaClassificacao.create({ execucao_id: `manual-${Date.now()}`, entidade_tipo: entidade, entidade_id: id, origem_alteracao: 'manual', confianca: 100, motivos: [`alteração manual de ${action === 'salvar' ? 'tipo_compra' : payload.campo}`], antes_json: JSON.stringify({ origem_compra: registro.origem_compra || '', tipo_compra: registro.tipo_compra || '', categoria: registro.categoria || '' }), depois_json: JSON.stringify(depois) });

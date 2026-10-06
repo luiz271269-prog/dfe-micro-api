@@ -11,6 +11,7 @@ import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import { useQueryClient } from '@tanstack/react-query';
 import useVinculosLancamentos from '@/components/cartoes/useVinculosLancamentos';
 import VinculoLancamentoInfo from '@/components/cartoes/VinculoLancamentoInfo';
+import OrigemCartaoSelector from '@/components/cartoes/OrigemCartaoSelector';
 
 export default function LancamentosEditableTable({ lancamentos, onReload }) {
   const queryClient = useQueryClient();
@@ -118,6 +119,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
 
   return (
     <div className="overflow-x-auto">
+      <p className="text-xs text-muted-foreground mb-2">Salvamento automático a cada seleção, sem precisar sair da tela. Aguarde o término do salvamento antes de fechar.</p>
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b">
@@ -176,17 +178,9 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
                   )}
                 </td>
                 <td className="py-1.5 pr-2">
-                  <SeletorClassificacao
-                    eixo="origem"
-                    entityName="LancamentoCartao"
-                    record={l}
-                    field="origem_compra"
-                    onChange={(id, f, v) => {
-                      // Mantém a natureza (empresarial/pessoal) sincronizada com "Quem comprou"
-                      const nat = (v === 'pessoal' || v === 'pro_labore') ? 'pessoal' : 'empresarial';
-                      if (l.natureza !== nat) update(id, 'natureza', nat);
-                    }}
-                  />
+                  <OrigemCartaoSelector record={l} onSaved={(id, classificacao) => {
+                    setLocalRows(prev => prev.map(row => row.id === id ? { ...row, ...classificacao } : row));
+                  }} />
                 </td>
                 <td className="py-1.5 pr-2">
                   <SeletorClassificacao eixo="tipo" entityName="LancamentoCartao" record={l} field="tipo_compra" />

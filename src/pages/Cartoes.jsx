@@ -24,6 +24,7 @@ import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { getCor } from '../lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
+import RevisaoHistoricoCartoes from '@/components/cartoes/RevisaoHistoricoCartoes';
 
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
 
@@ -304,6 +305,8 @@ export default function Cartoes() {
           })}
         </div>
       </div>
+
+      <RevisaoHistoricoCartoes mes={selectedMonth} anual={isAnnual} />
 
       {/* Conciliação */}
       {filteredFaturas.length > 0 &&
