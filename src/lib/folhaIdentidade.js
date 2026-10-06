@@ -25,7 +25,7 @@ export function consolidarFolhasPorFuncionario(folhas, funcionarios, umaPorMes =
     if (umaPorMes && /^\d{11}$/.test(String(funcionario.cpf || '').replace(/\D/g, '')) && funcionario.data_admissao) {
       funcionario = funcionarios.filter(f => f.cpf === funcionario.cpf && f.empresa === funcionario.empresa && f.data_admissao === funcionario.data_admissao).sort((a, b) => String(a.created_date).localeCompare(String(b.created_date)))[0];
     }
-    const chave = `${funcionario.id}|${folha.competencia}|${umaPorMes ? '' : folha.tipo || 'mensal'}`;
+    const chave = `${funcionario.id}|${folha.competencia}|${folha.tipo || 'mensal'}`;
     if (!grupos.has(chave)) grupos.set(chave, []);
     grupos.get(chave).push({ ...folha, funcionario_nome: funcionario.nome, _funcionario: funcionario });
   }

@@ -8,6 +8,9 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { calcularFimGozo, calcularSituacaoFerias, simularCustoFerias } from '@/lib/feriasEngine';
 import { criarFolha, validarFolha, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
+import DocumentoTrabalhistaImportador from '@/components/funcionarios/documentos/DocumentoTrabalhistaImportador';
+import CalculoManualSeparado from '@/components/funcionarios/documentos/CalculoManualSeparado';
+import { dadosDocumentoSalvos, formularioDocumento } from '@/components/funcionarios/documentos/documentoTrabalhista';
 
 export default function FeriasForm({ open, onClose, funcionarios, ferias, onSaved }) {
   const [form, setForm] = useState({
@@ -16,6 +19,11 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [documento, setDocumento] = useState(null), [simulacao, setSimulacao] = useState([]), [importando, setImportando] = useState(false);
+  function receberDocumento(doc) {
+    if (doc.file_uri !== documento?.file_uri) setForm(prev => ({ ...prev, ...formularioDocumento(doc, funcionarios) }));
+    setDocumento(doc);
+  }
 
   const func = funcionarios.find((f) => f.nome === form.funcionario_nome);
   const dataFim = calcularFimGozo(form.data_inicio_gozo, parseInt(form.dias_gozo) || 0);
@@ -24,19 +32,24 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
   async function handleSubmit(e) {
     e.preventDefault();
     if (!func || !dataFim) return;
-    if (saving) return;
+    if (saving || importando) return;
+    if (documento && !documento.revisado) { setError('Confira o documento antes de salvar.'); return; }
+    if (documento && ['valor_documento_bruto','valor_documento_descontos','valor_documento_liquido'].some(k => form[k] === '' || form[k] === undefined)) { setError('Confira e preencha bruto, descontos e líquido do documento (zero quando não houver desconto).'); return; }
+    if (documento && Math.abs(Number(form.valor_documento_bruto) - Number(form.valor_documento_descontos) - Number(form.valor_documento_liquido)) > 0.01) { setError('Bruto menos descontos deve corresponder ao líquido do documento.'); return; }
+    if (documento?.dados.data_fim_gozo && documento.dados.data_fim_gozo !== dataFim) { setError('Confira o início e os dias de gozo: o fim calculado difere do documento.'); return; }
     setSaving(true); setError('');
     try {
     const competencia = form.data_inicio_gozo.slice(0, 7);
     const existentes = await base44.entities.FolhaPagamento.filter({ funcionario_id: func.id, competencia, tipo: 'ferias' }, { limit: 1 });
     let folhaId = existentes.items[0]?.id;
+    if (documento && folhaId && (Math.abs((existentes.items[0].salario_bruto || 0) - Number(form.valor_documento_bruto)) > 0.01 || Math.abs((existentes.items[0].salario_liquido || 0) - Number(form.valor_documento_liquido)) > 0.01)) throw new Error('Já existe folha de férias com valores diferentes nesta competência. Revise essa folha antes de vincular o documento; pagamentos existentes não serão alterados automaticamente.');
     if (!folhaId) await validarFolha({ funcionario_id: func.id, competencia, tipo: 'ferias' });
     const sit = calcularSituacaoFerias(func, ferias.filter((f) => f.funcionario_nome === func.nome));
     const record = {
       funcionario_id: func.id,
       funcionario_nome: func.nome,
-      periodo_aquisitivo_inicio: sit.aquisitivoFim ? sit.aquisitivoFim.slice(0, 4) - 1 + sit.aquisitivoFim.slice(4) : undefined,
-      periodo_aquisitivo_fim: sit.aquisitivoFim || undefined,
+      periodo_aquisitivo_inicio: form.periodo_aquisitivo_inicio || (sit.aquisitivoFim ? sit.aquisitivoFim.slice(0, 4) - 1 + sit.aquisitivoFim.slice(4) : undefined),
+      periodo_aquisitivo_fim: form.periodo_aquisitivo_fim || sit.aquisitivoFim || undefined,
       data_inicio_gozo: form.data_inicio_gozo,
       data_fim_gozo: dataFim,
       dias_gozo: parseInt(form.dias_gozo) || 30,
@@ -47,6 +60,8 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
       status: form.status,
       empresa: func.empresa,
       observacoes: form.observacoes || undefined,
+      ...dadosDocumentoSalvos(documento, simulacao),
+      ...(documento ? { valor_documento_bruto:Number(form.valor_documento_bruto), valor_documento_descontos:Number(form.valor_documento_descontos), valor_documento_liquido:Number(form.valor_documento_liquido) } : {}),
     };
     const created = await base44.entities.FeriasFuncionario.create(record);
     // Alimenta as datas no cadastro — a geração automática da folha de férias usa esses campos
@@ -63,8 +78,9 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
         funcionario_nome: func.nome,
         competencia,
         tipo: 'ferias',
-        salario_bruto: total,
-        salario_liquido: total,
+        salario_bruto: documento ? Number(form.valor_documento_bruto) : total,
+        outros_descontos: documento ? Number(form.valor_documento_descontos) : 0,
+        salario_liquido: documento ? Number(form.valor_documento_liquido) : total,
         fgts_valor: Math.round(custo.fgts * 100) / 100,
         data_pagamento: form.pagamento_adiantado && form.data_pagamento ? form.data_pagamento : undefined,
         status: form.pagamento_adiantado && form.data_pagamento ? 'pago' : 'pendente',
@@ -79,6 +95,7 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
     if (prev) await base44.entities.FluxoCaixa.update(prev.id, { status: 'confirmado', origem_id: folhaId, origem_tipo: 'folha' });
     setSaving(false);
     setForm({ funcionario_nome: '', data_inicio_gozo: '', dias_gozo: '30', dias_abono: '0', pagamento_adiantado: false, data_pagamento: '', valor_pago: '', status: 'planejada', observacoes: '' });
+    setDocumento(null); setSimulacao([]);
     onSaved();
     onClose();
     } catch (err) { setError(erroFolha(err)); }
@@ -87,9 +104,13 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Registrar Férias</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <DocumentoTrabalhistaImportador tipo="ferias" value={documento} onChange={receberDocumento} onBusy={setImportando} disabled={saving} />
+          {documento && !form.funcionario_nome && <p className="text-sm text-warning">Nome importado: {documento.dados.funcionario_nome || 'não identificado'}; selecione e confirme o funcionário cadastrado.</p>}
+          {documento && <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">{[['valor_documento_bruto','Bruto do documento'],['valor_documento_descontos','Descontos do documento'],['valor_documento_liquido','Líquido do documento']].map(([k,l]) => <div key={k}><Label>{l}</Label><Input type="number" min="0" step="0.01" required value={form[k] ?? ''} onChange={e => setForm({ ...form,[k]:e.target.value })} /></div>)}</div>}
+          {documento && <div className="grid grid-cols-2 gap-3">{[['periodo_aquisitivo_inicio','Período aquisitivo: início'],['periodo_aquisitivo_fim','Período aquisitivo: fim']].map(([k,l]) => <div key={k}><Label>{l}</Label><Input type="date" value={form[k] || ''} onChange={e => setForm({ ...form,[k]:e.target.value })} /></div>)}</div>}
           <div><Label>Funcionário</Label>
             <Select value={form.funcionario_nome} onValueChange={(v) => setForm({ ...form, funcionario_nome: v })}>
               <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
@@ -130,8 +151,9 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
             </Select>
           </div>
           <div><Label>Observações</Label><Input value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
+          <CalculoManualSeparado value={simulacao} onChange={setSimulacao} disabled={saving || importando} />
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={saving || !func}>{saving ? 'Salvando...' : 'Salvar Férias'}</Button>
+          <Button type="submit" className="w-full" disabled={saving || importando || !func || (!!documento && !documento.revisado)}>{saving ? 'Salvando...' : 'Salvar Férias'}</Button>
         </form>
       </DialogContent>
     </Dialog>

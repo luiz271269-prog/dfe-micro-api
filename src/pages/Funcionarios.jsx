@@ -33,6 +33,7 @@ import { criarFolha, erroFolha } from '@/components/funcionarios/folha/folhaOper
 import { gerenciarFolha } from '@/functions/gerenciarFolha';
 import FuncionarioSemFolha from '@/components/funcionarios/folha/FuncionarioSemFolha';
 import DuplicatasFolhaButton from '@/components/funcionarios/folha/DuplicatasFolhaButton';
+import FolhaPosRescisaoAviso from '@/components/funcionarios/folha/FolhaPosRescisaoAviso';
 
 const SETORES = ['vendas', 'assistencia', 'financeiro', 'compras', 'administrativo', 'telemarketing'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -630,6 +631,7 @@ export default function Funcionarios() {
                                     {f.tipo === 'ferias' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold inline-flex items-center gap-1"><Palmtree className="w-3 h-3" /> Férias</span>}
                                     {f.tipo === 'decimo_terceiro' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">13º</span>}
                                     {f.tipo === 'rescisao' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">Rescisão</span>}
+                                    <FolhaPosRescisaoAviso folha={f} onSaved={async () => { setFolhaEventos(null); await loadData(); }} />
                                   </td>
                                   <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(f.salario_bruto)}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{extras > 0 ? formatCurrency(extras) : '—'}</td>

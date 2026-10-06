@@ -6,6 +6,8 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { TIPOS_RESCISAO } from '@/lib/rescisaoEngine';
 import RescisaoForm from './RescisaoForm';
 import HomologacaoRescisao from './HomologacaoRescisao';
+import SimulacaoDocumentoButton from '@/components/funcionarios/documentos/SimulacaoDocumentoButton';
+import AnexoTrabalhistaButton from '@/components/funcionarios/documentos/AnexoTrabalhistaButton';
 
 const STATUS_RESCISAO = {
   pre_calculo: { label: 'Pré-cálculo', color: 'bg-yellow-100 text-yellow-700' },
@@ -67,7 +69,7 @@ export default function RescisoesTab({ funcionarios, onChanged }) {
                   <span className="font-semibold text-sm">{r.funcionario_nome}</span>
                   <span className="text-xs text-muted-foreground">{formatDate(r.data_desligamento)} · {TIPOS_RESCISAO[r.tipo_rescisao] || r.tipo_rescisao} · aviso {r.aviso_previo}</span>
                   <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${sc.color}`}>{sc.label}</span>
-                  {!r.anexo_url && (
+                  {!r.anexo_url && !r.documento_file_uri && (
                     <span className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-orange-100 text-orange-700 inline-flex items-center gap-1">
                       <FileWarning className="w-3 h-3" /> Sem termo anexado
                     </span>
@@ -79,11 +81,8 @@ export default function RescisoesTab({ funcionarios, onChanged }) {
                   )}
                   <span className="ml-auto flex items-center gap-2">
                     <span className="font-bold text-primary">{formatCurrency(r.total_liquido)}</span>
-                    {r.anexo_url && (
-                      <a href={r.anexo_url} target="_blank" rel="noreferrer" title={r.anexo_nome || 'Ver anexo'}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600"><Paperclip className="w-4 h-4" /></Button>
-                      </a>
-                    )}
+                    <AnexoTrabalhistaButton uri={r.documento_file_uri} url={r.anexo_url} nome={r.documento_nome || r.anexo_nome} />
+                    <SimulacaoDocumentoButton registro={r} entidade="RescisaoFuncionario" onSaved={load} />
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" title="Excluir" onClick={() => handleExcluir(r)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -106,8 +105,8 @@ export default function RescisoesTab({ funcionarios, onChanged }) {
         </div>
       )}
 
-      <RescisaoForm open={showForm} onClose={() => setShowForm(false)} funcionarios={funcionarios} onSaved={() => { load(); onChanged?.(); }} />
-      <HomologacaoRescisao rescisao={homologando} onClose={() => setHomologando(null)} onSaved={load} />
+      {showForm && <RescisaoForm open={showForm} onClose={() => setShowForm(false)} funcionarios={funcionarios} onSaved={() => { load(); onChanged?.(); }} />}
+      {homologando && <HomologacaoRescisao key={homologando.id} rescisao={homologando} onClose={() => setHomologando(null)} onSaved={load} />}
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { calcularSituacaoFerias, FERIAS_STATUS_CONFIG, SITUACAO_CONFIG } from '@/lib/feriasEngine';
 import FeriasForm from './FeriasForm';
 import SimuladorFerias from './SimuladorFerias';
+import SimulacaoDocumentoButton from '@/components/funcionarios/documentos/SimulacaoDocumentoButton';
+import AnexoTrabalhistaButton from '@/components/funcionarios/documentos/AnexoTrabalhistaButton';
 
 export default function ControleFerias({ funcionarios }) {
   const [ferias, setFerias] = useState([]);
@@ -168,7 +170,9 @@ export default function ControleFerias({ funcionarios }) {
                     </span>
                   )}
                   <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${sc.color}`}>{sc.label}</span>
-                  <span className="ml-auto flex gap-1">
+                  <span className="ml-auto flex flex-wrap gap-1">
+                    <AnexoTrabalhistaButton uri={f.documento_file_uri} nome={f.documento_nome} />
+                    <SimulacaoDocumentoButton registro={f} entidade="FeriasFuncionario" onSaved={load} />
                     {f.status !== 'concluida' && f.status !== 'cancelada' && (
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600" title="Marcar como concluída" onClick={() => handleConcluir(f)}>
                         <CheckCircle2 className="w-4 h-4" />
@@ -185,7 +189,7 @@ export default function ControleFerias({ funcionarios }) {
         )}
       </div>
 
-      <FeriasForm open={showForm} onClose={() => setShowForm(false)} funcionarios={funcionarios} ferias={ferias} onSaved={load} />
+      {showForm && <FeriasForm open={showForm} onClose={() => setShowForm(false)} funcionarios={funcionarios} ferias={ferias} onSaved={load} />}
       <SimuladorFerias open={showSimulador} onClose={() => setShowSimulador(false)} funcionarios={funcionarios} />
     </div>
   );

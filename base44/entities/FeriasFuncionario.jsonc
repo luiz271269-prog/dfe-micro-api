@@ -81,6 +81,61 @@
     "observacoes": {
       "type": "string",
       "title": "Observa\u00e7\u00f5es"
+    },
+    "documento_file_uri": {
+      "type": "string",
+      "title": "Documento privado"
+    },
+    "documento_nome": {
+      "type": "string"
+    },
+    "documento_dados_json": {
+      "type": "string",
+      "maxLength": 20000,
+      "title": "Dados extra\u00eddos originais para confer\u00eancia"
+    },
+    "valor_documento_bruto": {
+      "type": "number",
+      "minimum": 0
+    },
+    "valor_documento_descontos": {
+      "type": "number",
+      "minimum": 0
+    },
+    "valor_documento_liquido": {
+      "type": "number",
+      "minimum": 0
+    },
+    "simulacao_manual": {
+      "type": "array",
+      "maxItems": 30,
+      "default": [],
+      "description": "Simula\u00e7\u00e3o isolada, sem efeito sobre folha, pagamentos ou caixa.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "base": {
+            "type": "number",
+            "minimum": 0
+          },
+          "quantidade": {
+            "type": "number",
+            "minimum": 0
+          },
+          "acrescimos": {
+            "type": "number",
+            "minimum": 0
+          },
+          "descontos": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
     }
   },
   "required": [

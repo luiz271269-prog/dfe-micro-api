@@ -24,7 +24,7 @@ export default function DuplicatasFolhaButton({ folha, onSaved }) {
     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="Revisar e excluir folha duplicada" aria-label="Revisar e excluir folha duplicada" onClick={() => { setError(''); setOpen(true); }}><Trash2 /></Button>
     <Dialog open={open} onOpenChange={value => { if (!busy) setOpen(value); }}>
       <DialogContent className="max-w-xl"><DialogHeader><DialogTitle>Folhas duplicadas · {folha.competencia}</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">{folha.funcionario_nome}: mantenha uma folha por mês e confira as verbas antes de excluir; registros pagos ou conciliados são protegidos.</p>
+        <p className="text-sm text-muted-foreground">{folha.funcionario_nome}: mantenha uma folha de cada tipo por mês e confira as verbas antes de excluir; férias, salário e rescisão são registros distintos, e pagamentos ou conciliações são protegidos.</p>
         {folha._duplicatas.map(f => <div key={f.id} className="flex items-center justify-between gap-3 rounded border p-3">
           <div className="text-sm"><b>{f.tipo || 'mensal'}</b> · {formatCurrency(f.salario_liquido)}<p className="text-xs text-muted-foreground">{f.status} · {f.created_date ? new Date(f.created_date).toLocaleString('pt-BR') : f.id}{f.id === folha.id ? ' · exibida na tabela' : ''}</p></div>
           <Button variant="ghost" size="icon" disabled={!!busy} title="Excluir este lançamento" aria-label={`Excluir folha ${f.tipo || 'mensal'}`} onClick={() => excluir(f)} className="text-destructive"><Trash2 className={busy === f.id ? 'animate-pulse' : ''} /></Button>

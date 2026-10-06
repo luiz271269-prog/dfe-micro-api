@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { extrairDocumentoTrabalhista } from '../../shared/documentoTrabalhista.ts';
 
 const PROMPTS = {
   extrato_bancario: `Você é um sistema de extração de dados bancários. Analise este extrato bancário Sicredi e extraia TODOS os lançamentos em JSON.
@@ -70,14 +71,16 @@ Regras:
 
 };
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
 
-    const { fileData, fileType, docType } = await req.json();
+    const body = await req.json();
+    if (['rh_rescisao', 'rh_ferias'].includes(body.docType)) return Response.json(await extrairDocumentoTrabalhista(base44, body));
+    const { fileData, fileType, docType } = body;
 
     const prompt = PROMPTS[docType];
     if (!prompt) return Response.json({ error: `Tipo desconhecido: ${docType}` }, { status: 400 });
@@ -88,7 +91,7 @@ Deno.serve(async (req) => {
     const uploadFile = new File([binaryData], `upload.${ext}`, { type: fileType });
     const { file_url } = await base44.integrations.Core.UploadFile({ file: uploadFile });
 
-    const result = await base44.integrations.Core.InvokeLLM({
+    const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: prompt,
       file_urls: [file_url],
       model: 'claude_sonnet_4_6',
@@ -109,4 +112,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

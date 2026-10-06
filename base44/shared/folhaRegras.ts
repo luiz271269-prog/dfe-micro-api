@@ -33,12 +33,16 @@ export async function impedimentoFolha(entities, func, competencia, tipo = 'mens
   if (!desligamento && func.status === 'desligado') return 'Funcionário desligado: informe a data de demissão no cadastro antes de gerar folhas históricas.';
   return null;
 }
+export function queryTipoFolha(tipo = 'mensal') {
+  return tipo === 'mensal' ? { $or: [{ tipo: 'mensal' }, { tipo: { $exists: false } }, { tipo: '' }, { tipo: null }] } : { tipo };
+}
 export async function validarNovaFolha(entities, data) {
+  if (!['mensal','ferias','rescisao','decimo_terceiro'].includes(data.tipo || 'mensal')) throw new Error('Tipo de folha inválido.');
   const func = await resolverFuncionario(entities, data);
   const motivo = await impedimentoFolha(entities, func, data.competencia, data.tipo || 'mensal');
   if (motivo) throw new Error(motivo);
-  const count = await entities.FolhaPagamento.count({ ...queryFuncionario(func), competencia: data.competencia });
-  if (count) throw new Error('Já existe folha para este funcionário nesta competência. Lance as verbas na folha existente, sem criar outro lançamento.');
+  const count = await entities.FolhaPagamento.count({ $and: [queryFuncionario(func), { competencia: data.competencia }, queryTipoFolha(data.tipo)] });
+  if (count) throw new Error('Já existe folha deste tipo para este funcionário nesta competência. Revise o lançamento existente; férias e rescisão não substituem a folha mensal.');
   return func;
 }
 export async function criarFolhaValidada(entities, data) {

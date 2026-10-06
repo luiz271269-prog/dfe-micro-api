@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { validarNovaFolha, criarFolhaValidada, resolverFuncionario, queryFuncionario, impedimentoFolha } from '../../shared/folhaRegras.ts';
+import { validarNovaFolha, criarFolhaValidada, resolverFuncionario, queryFuncionario, impedimentoFolha, queryTipoFolha } from '../../shared/folhaRegras.ts';
 
 export default async function(req) {
   try {
@@ -26,16 +26,19 @@ export default async function(req) {
       }
       return Response.json({ items, has_more: page.has_more, next_cursor: page.next_cursor });
     }
-    if (action === 'excluir') {
+    if (['excluir', 'excluir_pos_rescisao'].includes(action)) {
       if (typeof id !== 'string' || !id) return Response.json({ error: 'Selecione a folha.' }, { status: 400 });
       const folha = await entities.FolhaPagamento.get(id);
       const func = await resolverFuncionario(entities, folha);
       const [quantidade, vinculos, sugestoes] = await Promise.all([
-        entities.FolhaPagamento.count({ ...queryFuncionario(func), competencia: folha.competencia }),
+        entities.FolhaPagamento.count({ $and: [queryFuncionario(func), { competencia: folha.competencia }, queryTipoFolha(folha.tipo)] }),
         entities.VinculoExtrato.count({ entidade_tipo: 'FolhaPagamento', entidade_id: id }),
         entities.SugestaoConciliacao.count({ entidade_tipo: 'FolhaPagamento', entidade_id: id }),
       ]);
-      if (quantidade < 2) throw new Error('Não há duplicidade: a única folha do mês não pode ser excluída por esta ação.');
+      if (action === 'excluir_pos_rescisao') {
+        const motivo = await impedimentoFolha(entities, func, folha.competencia, folha.tipo || 'mensal');
+        if (!motivo?.includes('rescisão') || !folha.gerada_automaticamente || (folha.tipo || 'mensal') !== 'mensal') throw new Error('Somente previsões mensais automáticas indevidas após rescisão podem ser excluídas por esta ação.');
+      } else if (quantidade < 2) throw new Error('Não há duplicidade: a única folha do mês não pode ser excluída por esta ação.');
       if (folha.status === 'pago' || folha.status === 'adiantamento' || folha.valor_pago > 0 || folha.pagamentos_manuais?.length || folha.lancamento_bancario_id || vinculos || sugestoes) throw new Error('Esta folha possui pagamento ou vínculo de conciliação. Resolva os vínculos antes de excluir.');
       const refs = await Promise.all(['RescisaoFuncionario', 'FeriasFuncionario'].map(async name => {
         const page = await entities[name].filter({ folha_pagamento_id: id }, { limit: 50 });

@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Calculator, Paperclip } from 'lucide-react';
+import { Calculator } from 'lucide-react';
+import DocumentoTrabalhistaImportador from '@/components/funcionarios/documentos/DocumentoTrabalhistaImportador';
+import CalculoManualSeparado from '@/components/funcionarios/documentos/CalculoManualSeparado';
+import { dadosDocumentoSalvos, formularioDocumento } from '@/components/funcionarios/documentos/documentoTrabalhista';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { calcularPeriodosAquisitivos } from '@/lib/feriasEngine';
 import { calcularRescisao, TIPOS_RESCISAO } from '@/lib/rescisaoEngine';
@@ -32,8 +35,13 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
   const [ferias, setFerias] = useState([]);
   const [folhas, setFolhas] = useState([]);
   const [bancoHoras, setBancoHoras] = useState([]);
-  const [anexar, setAnexar] = useState(false);
-  const [file, setFile] = useState(null);
+  const [documento, setDocumento] = useState(null);
+  const [simulacao, setSimulacao] = useState([]);
+  const [importando, setImportando] = useState(false);
+  function receberDocumento(doc) {
+    if (doc.file_uri !== documento?.file_uri) { setForm(prev => ({ ...prev, ...formularioDocumento(doc, funcionarios) })); setCalculo(null); }
+    setDocumento(doc);
+  }
   const [homologada, setHomologada] = useState(false);
   const [calculo, setCalculo] = useState(null);
   const [error, setError] = useState('');
@@ -92,21 +100,18 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
   async function handleSubmit(e) {
     e.preventDefault();
     if (!func) return;
-    if (homologada && !file) {
+    if (importando || (documento && !documento.revisado)) { setError('Conclua a leitura e confira o documento antes de salvar.'); return; }
+    if (homologada && !documento?.file_uri) {
       setError('Para marcar como homologada, anexe o termo de rescisão.');
       return;
     }
     setError('');
+    if (documento?.dados.total_liquido !== undefined && Math.abs(documento.dados.total_liquido - totalLiquido) > 0.01) { setError('O total das verbas diverge do líquido do documento; confira os valores oficiais antes de salvar. Ajustes hipotéticos devem ficar somente na simulação.'); return; }
     if (saving) return;
     setSaving(true);
     try {
     if (efetivar) await validarFolha({ funcionario_id: func.id, competencia: form.data_desligamento.slice(0, 7), tipo: 'rescisao' });
-    let anexo_url = '', anexo_nome = '';
-    if (anexar && file) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      anexo_url = file_url;
-      anexo_nome = file.name;
-    }
+    const anexo_nome = documento?.nome || '';
     const num = (k) => parseFloat(form[k]) || 0;
     const calcBase = calcularRescisao({
       salarioBase: func.salario_base, mediaVariaveis: mediaVariavel.media, dataAdmissao: func.data_admissao, dataDesligamento: form.data_desligamento,
@@ -129,10 +134,10 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
       meses_media_remuneracao: mediaVariavel.meses,
       saldo_banco_horas: Math.round(deficitBanco.saldo * 100) / 100,
       desconto_banco_horas: num('desconto_banco_horas'),
-      anexo_url, anexo_nome,
-      homologada: homologada && !!anexo_url,
-      ...(homologada && anexo_url ? { homologada_em: new Date().toISOString() } : {}),
-      status: homologada && anexo_url ? 'homologada' : 'pre_calculo',
+      anexo_nome, ...dadosDocumentoSalvos(documento, simulacao),
+      homologada: homologada && !!documento?.file_uri,
+      ...(homologada && documento?.file_uri ? { homologada_em: new Date().toISOString() } : {}),
+      status: homologada && documento?.file_uri ? 'homologada' : 'pre_calculo',
       empresa: func.empresa, observacoes: form.observacoes,
     });
     if (efetivar) {
@@ -155,9 +160,13 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Rescisão de Contrato</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <DocumentoTrabalhistaImportador tipo="rescisao" value={documento} onChange={receberDocumento} onBusy={setImportando} disabled={saving} />
+          {documento && !form.funcionario_nome && <p className="text-sm text-warning">Nome importado: {documento.dados.funcionario_nome || 'não identificado'}; selecione e confirme o funcionário cadastrado.</p>}
+          {documento?.dados.total_liquido !== undefined && <p className="text-sm text-muted-foreground">Líquido no documento: <b>{formatCurrency(documento.dados.total_liquido)}</b> · total das verbas abaixo: <b>{formatCurrency(totalLiquido)}</b>{Math.abs(documento.dados.total_liquido - totalLiquido) > 0.01 ? ' · Divergência: confira descontos, terços e multa FGTS antes de salvar.' : ''}</p>}
+          {documento && <p className="text-xs text-muted-foreground">Os dados originais ficam preservados; alterações abaixo exigem sua conferência.</p>}
           <div className="grid grid-cols-2 gap-4">
             <div><Label>Funcionário</Label>
               <Select value={form.funcionario_nome} onValueChange={(v) => setForm({ ...form, funcionario_nome: v })}>
@@ -187,7 +196,7 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
           </div>
           <div className="flex items-end gap-3">
             <div className="flex-1"><Label>Saldo FGTS p/ multa (R$)</Label><Input type="number" step="0.01" value={form.saldo_fgts} onChange={(e) => setForm({ ...form, saldo_fgts: e.target.value })} placeholder="Consultar extrato FGTS" /></div>
-            <Button type="button" variant="outline" onClick={preCalcular} disabled={!func} className="gap-2">
+            <Button type="button" variant="outline" onClick={preCalcular} disabled={!func || !!documento} title={documento ? 'Documento importado: utilize o cálculo manual separado para simular sem substituir os valores oficiais.' : ''} className="gap-2">
               <Calculator className="w-4 h-4" /> Pré-calcular Verbas
             </Button>
           </div>
@@ -215,14 +224,10 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
             <span className="font-bold text-lg text-primary">Líquido: {formatCurrency(totalLiquido)}</span>
           </div>
 
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={anexar} onChange={(e) => setAnexar(e.target.checked)} className="rounded" />
-            <Paperclip className="w-4 h-4 text-muted-foreground" /> Anexar termo de rescisão (PDF/imagem)
-          </label>
-          {anexar && <Input type="file" accept=".pdf,image/*" onChange={(e) => { setFile(e.target.files?.[0] || null); setError(''); }} />}
+          <CalculoManualSeparado value={simulacao} onChange={setSimulacao} disabled={saving || importando} />
 
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" checked={homologada} onChange={(e) => { setHomologada(e.target.checked); if (e.target.checked) setAnexar(true); }} className="rounded" />
+            <input type="checkbox" checked={homologada} onChange={(e) => setHomologada(e.target.checked)} className="rounded" />
             Rescisão homologada (exige termo anexado)
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -235,7 +240,7 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
           <div><Label>Observações</Label><Input value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
 
           <p className="text-[11px] text-muted-foreground">Estimativa baseada nas regras CLT gerais. A conferência final deve considerar convenção coletiva, médias remuneratórias, descontos e validação contábil.</p>
-          <Button type="submit" className="w-full" disabled={saving || !func}>
+          <Button type="submit" className="w-full" disabled={saving || importando || !func || (!!documento && !documento.revisado)}>
             {saving ? 'Salvando...' : 'Salvar Rescisão'}
           </Button>
         </form>
