@@ -1,159 +1,66 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
-
-// Gera folhas de pagamento pendentes clonando sempre a última folha do funcionário.
-// Regra de negócio: a folha é praticamente idêntica à anterior, então a competência
-// do MÊS SEGUINTE ao atual já nasce pré-gerada (virada do mês via workflow ou botão manual).
-// - Para cada funcionário ativo (ou de férias), gera as competências faltantes
-//   desde a última folha registrada até o mês seguinte ao atual.
-// - Clona salário bruto, descontos, FGTS e empresa da última folha mensal.
-//   Comissão e horas extras (variáveis) começam zeradas.
-// - Idempotente: nunca duplica competência já existente (qualquer tipo).
-
-function normalizar(s) {
-  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-}
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { criarFolhaValidada, impedimentoFolha, queryFuncionario } from '../../shared/folhaRegras.ts';
 
 function proximaCompetencia(comp) {
   const [ano, mes] = comp.split('-').map(Number);
-  const d = new Date(Date.UTC(ano, mes, 1)); // mes é 1-based → Date UTC mes = próximo
+  const d = new Date(Date.UTC(ano, mes, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req);
-    const body = await req.json().catch(() => ({}));
-    const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
-    if (!internoOk) {
-      const user = await base44.auth.me().catch(() => null);
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const client = createClientFromRequest(req);
+    const user = await client.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const svc = base44.asServiceRole.entities;
-    if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
-
-    const [funcionarios, folhas] = await Promise.all([
-      svc.Funcionario.list('', 200),
-      svc.FolhaPagamento.list('-competencia', 1000),
-    ]);
-
-    // Competência alvo = MÊS SEGUINTE ao atual: a próxima folha nasce pré-preenchida
-    // (clone da anterior) para o RH ajustar proventos/descontos ao longo do mês.
-    const hoje = new Date();
-    const alvoDate = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + 1, 1));
-    const competenciaAlvo = `${alvoDate.getUTCFullYear()}-${String(alvoDate.getUTCMonth() + 1).padStart(2, '0')}`;
-
-    const ativos = funcionarios.filter(f => f.status === 'ativo' || f.status === 'ferias');
-    const geradas = [];
+    const body = await req.json();
+    if (body.competencia && !/^\d{4}-(0[1-9]|1[0-2])$/.test(body.competencia)) return Response.json({ error: 'Competência inválida.' }, { status: 400 });
+    const svc = client.entities;
+    const parts = new Intl.DateTimeFormat('en', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+    const hoje = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+    const competenciaAlvo = body.competencia || proximaCompetencia(hoje);
+    const dryRun = body.validate_only === true;
     const detalhes = [];
-
-    for (const func of ativos) {
-      const nomeNorm = normalizar(func.nome);
-      // O identificador do cadastro é a fonte principal; nome exato atende apenas registros legados.
-      const folhasFunc = folhas.filter(fl =>
-        (fl.funcionario_id === func.id && nomeFolhaCompativel(fl.funcionario_nome, func.nome))
-        || (!fl.funcionario_id && normalizar(fl.funcionario_nome) === nomeNorm)
-      ).sort((a, b) => (b.competencia || '').localeCompare(a.competencia || ''));
-
-      const competenciasExistentes = new Set(folhasFunc.filter(fl => (fl.tipo || 'mensal') === 'mensal').map(fl => fl.competencia));
-      // Modelo = última folha MENSAL registrada (clona valores fixos)
-      const modelo = folhasFunc.find(fl => (fl.tipo || 'mensal') === 'mensal');
-
-      // Ponto de partida: mês seguinte à última folha; sem histórico → só a competência alvo
-      let comp = modelo ? proximaCompetencia(modelo.competencia) : competenciaAlvo;
-
-      let guarda = 0;
-      while (comp <= competenciaAlvo && guarda < 12) {
-        guarda++;
-        if (!competenciasExistentes.has(comp)) {
+    let cursor, avaliados = 0;
+    do {
+      const page = await svc.Funcionario.filter(body.competencia ? {} : { status: { $in: ['ativo', 'ferias'] } }, { sort: 'id', limit: 50, cursor });
+      for (const func of page.items) {
+        avaliados++;
+        const query = queryFuncionario(func);
+        const modelos = await svc.FolhaPagamento.filter({ ...query, $and: [{ $or: [{ tipo: 'mensal' }, { tipo: { $exists: false } }] }], competencia: { $lt: competenciaAlvo } }, { sort: '-competencia', limit: 1 });
+        const modelo = modelos.items[0];
+        let comp = body.competencia || (modelo ? proximaCompetencia(modelo.competencia) : competenciaAlvo);
+        const planejadas = new Set();
+        for (let guarda = 0; comp <= competenciaAlvo && guarda < 12; guarda++, comp = proximaCompetencia(comp)) {
+          if (await impedimentoFolha(svc, func, comp)) continue;
+          if (await svc.FolhaPagamento.count({ ...query, competencia: comp })) continue;
           const bruto = modelo?.salario_bruto ?? func.salario_base ?? 0;
-          // Eventos avulsos: só os marcados como recorrentes seguem para o mês seguinte
-          const eventos = (modelo?.eventos || []).filter((e) => e.recorrente).map((e) => ({ ...e }));
-          const somaEv = (tipo) => eventos.filter((e) => e.tipo === tipo).reduce((s, e) => s + (e.valor || 0), 0);
-          const descontos = (modelo
-            ? (modelo.desconto_inss || 0) + (modelo.desconto_irrf || 0) + (modelo.desconto_vt || 0) + (modelo.desconto_vr || 0) + (modelo.outros_descontos || 0)
-            : 0) + somaEv('desconto');
-          const proventosEv = somaEv('provento');
-          const nova = {
-            funcionario_id: func.id,
-            funcionario_nome: func.nome,
-            competencia: comp,
-            tipo: 'mensal',
-            salario_bruto: bruto,
-            desconto_inss: modelo?.desconto_inss || 0,
-            desconto_irrf: modelo?.desconto_irrf || 0,
-            desconto_vt: modelo?.desconto_vt || 0,
-            desconto_vr: modelo?.desconto_vr || 0,
-            outros_descontos: modelo?.outros_descontos || 0,
-            horas_extras: 0,
-            comissao: 0,
-            eventos,
-            salario_liquido: Math.round((bruto + proventosEv - descontos) * 100) / 100,
-            status: 'pendente',
-            fgts_valor: modelo?.fgts_valor || 0,
-            empresa: modelo?.empresa || func.empresa,
-            origem_compra: 'empresa',
-            tipo_compra: 'folha',
-            gerada_automaticamente: true,
-          };
-          const criada = await svc.FolhaPagamento.create(nova);
-          geradas.push(criada.id);
-          detalhes.push({ funcionario: nova.funcionario_nome, competencia: comp, liquido: nova.salario_liquido, base: modelo ? `folha ${modelo.competencia}` : 'salário base do cadastro' });
+          const eventos = (modelo?.eventos || []).filter(e => e.recorrente).map(e => ({ ...e }));
+          const soma = tipo => eventos.filter(e => e.tipo === tipo).reduce((s, e) => s + (e.valor || 0), 0);
+          const nova = { funcionario_id: func.id, funcionario_nome: func.nome, competencia: comp, tipo: 'mensal', salario_bruto: bruto,
+            horas_extras: 0, comissao: 0, eventos, status: 'pendente', fgts_valor: modelo?.fgts_valor || 0,
+            empresa: func.empresa, origem_compra: 'empresa', tipo_compra: 'folha', gerada_automaticamente: true };
+          for (const campo of ['desconto_inss','desconto_irrf','desconto_vt','desconto_vr','outros_descontos']) nova[campo] = modelo?.[campo] || 0;
+          const descontos = nova.desconto_inss + nova.desconto_irrf + nova.desconto_vt + nova.desconto_vr + nova.outros_descontos + soma('desconto');
+          nova.salario_liquido = Math.round((bruto + soma('provento') - descontos) * 100) / 100;
+          if (!dryRun) await criarFolhaValidada(svc, nova);
+          planejadas.add(comp);
+          detalhes.push({ funcionario: func.nome, competencia: comp, liquido: nova.salario_liquido });
         }
-        comp = proximaCompetencia(comp);
+        if (!func.ferias_inicio) continue;
+        const compFerias = func.ferias_inicio.slice(0, 7);
+        if (body.competencia && compFerias !== body.competencia) continue;
+        if (new Date(func.ferias_inicio + 'T00:00:00Z').getTime() - Date.now() > 30 * 86400000) continue;
+        if (planejadas.has(compFerias) || await impedimentoFolha(svc, func, compFerias, 'ferias')) continue;
+        if (await svc.FolhaPagamento.count({ ...query, competencia: compFerias })) continue;
+        const dias = func.ferias_fim ? Math.round((Date.parse(func.ferias_fim) - Date.parse(func.ferias_inicio)) / 86400000) + 1 : 30;
+        const valor = Math.round((func.salario_base || 0) / 30 * dias * 4 / 3 * 100) / 100;
+        if (valor <= 0) continue;
+        if (!dryRun) await criarFolhaValidada(svc, { funcionario_id: func.id, competencia: compFerias, tipo: 'ferias', salario_bruto: valor, salario_liquido: valor, status: 'pendente', origem_compra: 'empresa', tipo_compra: 'folha', gerada_automaticamente: true });
+        detalhes.push({ funcionario: func.nome, competencia: compFerias, liquido: valor });
       }
-    }
-
-    // FÉRIAS — gera folha de férias (salário + 1/3) quando há período registrado no cadastro.
-    // Regra: férias são pagas até 2 dias ANTES do início, então gera assim que o início
-    // estiver a até 30 dias à frente (ou já tiver passado).
-    for (const func of ativos) {
-      if (!func.ferias_inicio) continue;
-      const inicioFerias = new Date(func.ferias_inicio + 'T00:00:00Z');
-      if (inicioFerias.getTime() - Date.now() > 30 * 86400000) continue;
-
-      const compFerias = `${inicioFerias.getUTCFullYear()}-${String(inicioFerias.getUTCMonth() + 1).padStart(2, '0')}`;
-      const nomeNorm = normalizar(func.nome);
-      const jaExiste = folhas.some(fl => {
-        if (fl.tipo !== 'ferias' || fl.competencia !== compFerias) return false;
-        return (fl.funcionario_id === func.id && nomeFolhaCompativel(fl.funcionario_nome, func.nome))
-          || (!fl.funcionario_id && normalizar(fl.funcionario_nome) === nomeNorm);
-      });
-      if (jaExiste) continue;
-
-      const fimFerias = func.ferias_fim ? new Date(func.ferias_fim + 'T00:00:00Z') : null;
-      const dias = fimFerias ? Math.round((fimFerias.getTime() - inicioFerias.getTime()) / 86400000) + 1 : 30;
-      const base = func.salario_base || 0;
-      const valorFerias = Math.round((base / 30) * dias * (4 / 3) * 100) / 100;
-      if (valorFerias <= 0) continue;
-
-      const criada = await svc.FolhaPagamento.create({
-        funcionario_id: func.id,
-        funcionario_nome: func.nome,
-        competencia: compFerias,
-        tipo: 'ferias',
-        salario_bruto: valorFerias,
-        salario_liquido: valorFerias,
-        status: 'pendente',
-        empresa: func.empresa,
-        origem_compra: 'empresa',
-        tipo_compra: 'folha',
-        gerada_automaticamente: true,
-      });
-      geradas.push(criada.id);
-      detalhes.push({ funcionario: func.nome, competencia: compFerias, liquido: valorFerias, base: `férias ${dias} dia(s) + 1/3` });
-    }
-
-    return Response.json({
-      success: true,
-      competencia_alvo: competenciaAlvo,
-      funcionarios_avaliados: ativos.length,
-      folhas_geradas: geradas.length,
-      detalhes,
-    });
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-});
+      cursor = page.has_more ? page.next_cursor : null;
+    } while (cursor);
+    return Response.json({ success: true, mode: dryRun ? 'validation' : 'generation', competencia_alvo: competenciaAlvo, funcionarios_avaliados: avaliados, folhas_geradas: dryRun ? 0 : detalhes.length, folhas_previstas: detalhes.length, detalhes });
+  } catch (error) { return Response.json({ error: error.message }, { status: 400 }); }
+}

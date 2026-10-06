@@ -29,6 +29,10 @@ import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
 import { calcularINSS, calcularFGTS } from '../lib/encargosEngine';
 import { gerarFolhasPendentes } from '@/functions/gerarFolhasPendentes';
 import { consolidarFolhasPorFuncionario } from '../lib/folhaIdentidade';
+import { criarFolha, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
+import { gerenciarFolha } from '@/functions/gerenciarFolha';
+import FuncionarioSemFolha from '@/components/funcionarios/folha/FuncionarioSemFolha';
+import DuplicatasFolhaButton from '@/components/funcionarios/folha/DuplicatasFolhaButton';
 
 const SETORES = ['vendas', 'assistencia', 'financeiro', 'compras', 'administrativo', 'telemarketing'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -205,17 +209,41 @@ export default function Funcionarios() {
   });
   const [conciliando, setConciliando] = useState(false);
   const [gerando, setGerando] = useState(false);
+  const [salvandoFolha, setSalvandoFolha] = useState(false);
+  const [erroFormularioFolha, setErroFormularioFolha] = useState('');
+  const [semFolha, setSemFolha] = useState([]);
+  const [cursorSemFolha, setCursorSemFolha] = useState(null);
+  const [carregandoAusentes, setCarregandoAusentes] = useState(false);
+  const [erroAusentes, setErroAusentes] = useState('');
+  const [refreshFolha, setRefreshFolha] = useState(0);
+  useEffect(() => {
+    let ativo = true;
+    setSemFolha([]); setCursorSemFolha(null); setCarregandoAusentes(true); setErroAusentes('');
+    gerenciarFolha({ action: 'ausentes', competencia }).then(res => {
+      if (!ativo) return;
+      setSemFolha(res.data.items); setCursorSemFolha(res.data.has_more ? res.data.next_cursor : null);
+    }).catch(err => { if (ativo) setErroAusentes(erroFolha(err)); }).finally(() => { if (ativo) setCarregandoAusentes(false); });
+    return () => { ativo = false; };
+  }, [competencia, refreshFolha]);
+  async function maisAusentes() {
+    setCarregandoAusentes(true); setErroAusentes('');
+    try {
+      const res = await gerenciarFolha({ action: 'ausentes', competencia, cursor: cursorSemFolha });
+      setSemFolha(prev => [...prev, ...res.data.items]); setCursorSemFolha(res.data.has_more ? res.data.next_cursor : null);
+    } catch (err) { setErroAusentes(erroFolha(err)); }
+    finally { setCarregandoAusentes(false); }
+  }
 
   async function handleGerarFolhas() {
     setGerando(true);
     try {
-      const res = await gerarFolhasPendentes({});
+      const res = await gerarFolhasPendentes({ competencia });
       const { folhas_geradas = 0, competencia_alvo, detalhes = [] } = res?.data || {};
       setToastFolha({
         type: folhas_geradas > 0 ? 'success' : 'info',
         msg: folhas_geradas > 0
           ? `✓ ${folhas_geradas} folha(s) gerada(s) até ${competencia_alvo}: ${[...new Set(detalhes.map(d => d.funcionario.split(' ')[0]))].join(', ')}`
-          : `Nenhuma folha faltando — todas as competências até ${competencia_alvo} já existem`,
+          : `Nenhuma folha elegível para gerar em ${competencia_alvo}: folhas existentes e admissões/rescisões foram respeitadas.`, 
       });
       loadData();
     } catch (err) {
@@ -265,6 +293,7 @@ export default function Funcionarios() {
       somaPorFolha[v.entidade_id] = (somaPorFolha[v.entidade_id] || 0) + (v.valor_alocado || 0);
     });
     setVinculosFolha(somaPorFolha);
+    setRefreshFolha(v => v + 1);
     setLoading(false);
   }
 
@@ -287,10 +316,13 @@ export default function Funcionarios() {
 
   async function handleFolhaSubmit(e) {
     e.preventDefault();
+    if (salvandoFolha) return;
+    setSalvandoFolha(true); setErroFormularioFolha('');
+    try {
     const descontos = ['desconto_inss','desconto_irrf','desconto_vt','desconto_vr','outros_descontos'].reduce((s,k)=>s+(parseFloat(folhaForm[k])||0),0);
     const adicionais = (parseFloat(folhaForm.horas_extras)||0)+(parseFloat(folhaForm.comissao)||0);
     const liquido = (parseFloat(folhaForm.salario_bruto)||0) + adicionais - descontos;
-    await base44.entities.FolhaPagamento.create({
+    await criarFolha({
       ...folhaForm,
       salario_bruto: parseFloat(folhaForm.salario_bruto),
       desconto_inss: parseFloat(folhaForm.desconto_inss)||0,
@@ -304,11 +336,13 @@ export default function Funcionarios() {
       fgts_valor: parseFloat(folhaForm.fgts_valor)||0,
     });
     setShowFolhaForm(false);
-    loadData();
+    await loadData();
+    } catch (err) { setErroFormularioFolha(erroFolha(err)); }
+    finally { setSalvandoFolha(false); }
   }
 
   const folhasConsolidadas = useMemo(
-    () => consolidarFolhasPorFuncionario(folhas, funcionarios),
+    () => consolidarFolhasPorFuncionario(folhas, funcionarios, true),
     [folhas, funcionarios]
   );
   const folhasMes = useMemo(
@@ -359,8 +393,13 @@ export default function Funcionarios() {
       if (!grupos[setor]) grupos[setor] = [];
       grupos[setor].push({ ...f, _setor: setor });
     });
+    semFolha.forEach(func => {
+      const setor = func.setor || 'outros';
+      if (!grupos[setor]) grupos[setor] = [];
+      grupos[setor].push({ id: `ausente-${func.id}`, _semFolha: true, _funcionario: func });
+    });
     return grupos;
-  }, [folhasMes, funcionarios]);
+  }, [folhasMes, funcionarios, semFolha]);
 
   const funcionariosAtivos = funcionarios.filter(f => f.status === 'ativo').length;
 
@@ -412,7 +451,7 @@ export default function Funcionarios() {
               )}
             </Button>
             <Button variant="outline" onClick={exportar} className="gap-2"><Download className="w-4 h-4" /> Exportar</Button>
-            <Button onClick={() => setShowFolhaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Lançar Folha</Button>
+            <Button onClick={() => { setErroFormularioFolha(''); setFolhaForm(f => ({ ...f, competencia })); setShowFolhaForm(true); }} className="gap-2"><Plus className="w-4 h-4" /> Lançar Folha</Button>
           </div>
         )}
       </PageHeader>
@@ -525,7 +564,10 @@ export default function Funcionarios() {
           <KPIsFolha atual={resumoAtual} anterior={resumoAnterior} totalPago={totalPago} totalSaldo={totalSaldo} />
 
           {/* Tabela por setor + coluna lateral de eventos (desktop) */}
-          {folhasMes.length === 0 ? (
+          {carregandoAusentes && <p className="text-sm text-muted-foreground py-2">Conferindo funcionários sem folha...</p>}
+          {erroAusentes && <p role="alert" className="text-sm text-destructive">{erroAusentes}</p>}
+          {cursorSemFolha && <Button variant="outline" disabled={carregandoAusentes} onClick={maisAusentes}>Carregar mais funcionários sem folha</Button>}
+          {folhasMes.length === 0 && semFolha.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground border rounded-xl bg-card">
               <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Nenhuma folha para {competencia}</p>
@@ -567,6 +609,7 @@ export default function Funcionarios() {
                           </thead>
                           <tbody>
                             {itens.map(f => {
+                              if (f._semFolha) return <FuncionarioSemFolha key={f.id} funcionario={f._funcionario} />;
                               const tot = calcularTotaisFolha(f);
                               const desc = tot.descontos;
                               const extras = (f.horas_extras||0) + tot.proventosEventos;
@@ -582,6 +625,7 @@ export default function Funcionarios() {
                                   className={`border-b hover:bg-muted/20 transition-colors cursor-pointer ${folhaEventos?.id === f.id ? 'bg-primary/5 ring-1 ring-inset ring-primary/30' : ''}`}>
                                   <td className="px-4 py-2.5 font-semibold">
                                     {f.funcionario_nome}
+                                    {!!f._duplicatas?.length && <><span className="ml-2 text-xs text-destructive">Duplicidade</span><DuplicatasFolhaButton folha={f} onSaved={async () => { setFolhaEventos(null); await loadData(); }} /></>}
                                     {(f.eventos?.length || 0) > 0 && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">{f.eventos.length} evento{f.eventos.length > 1 ? 's' : ''}</span>}
                                     {f.tipo === 'ferias' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold inline-flex items-center gap-1"><Palmtree className="w-3 h-3" /> Férias</span>}
                                     {f.tipo === 'decimo_terceiro' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">13º</span>}
@@ -698,12 +742,12 @@ export default function Funcionarios() {
           <form onSubmit={handleFolhaSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Funcionário</Label>
-                <Select value={folhaForm.funcionario_nome} onValueChange={v => {
-                  const f = funcionarios.find(fn => fn.nome === v);
-                  setFolhaForm({...folhaForm, funcionario_nome: v, salario_bruto: f?.salario_base?.toString() || '', empresa: f?.empresa || ''});
+                <Select value={folhaForm.funcionario_id || ''} onValueChange={v => {
+                  const f = funcionarios.find(fn => fn.id === v);
+                  setFolhaForm({...folhaForm, funcionario_id: v, funcionario_nome: f?.nome || '', salario_bruto: f?.salario_base?.toString() || '', empresa: f?.empresa || ''});
                 }}>
                   <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                  <SelectContent>{funcionarios.filter(f=>f.status==='ativo').map(f => <SelectItem key={f.id} value={f.nome}>{f.nome}</SelectItem>)}</SelectContent>
+                  <SelectContent>{funcionarios.map(f => <SelectItem key={f.id} value={f.id}>{f.nome} · {f.empresa}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Competência</Label><Input type="month" value={folhaForm.competencia} onChange={e => setFolhaForm({...folhaForm, competencia: e.target.value})} required /></div>
@@ -751,7 +795,8 @@ export default function Funcionarios() {
                 </Select>
               </div>
             </div>
-            <Button type="submit" className="w-full">Salvar Folha</Button>
+            {erroFormularioFolha && <p role="alert" className="text-sm text-destructive">{erroFormularioFolha}</p>}
+            <Button type="submit" className="w-full" disabled={salvandoFolha || !folhaForm.funcionario_id}>{salvandoFolha ? 'Salvando...' : 'Salvar Folha'}</Button>
           </form>
         </DialogContent>
       </Dialog>
