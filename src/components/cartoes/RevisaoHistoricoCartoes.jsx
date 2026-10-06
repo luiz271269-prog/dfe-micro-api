@@ -30,7 +30,7 @@ export default function RevisaoHistoricoCartoes({ mes, anual }) {
   const revisao = dados?.revisoes[0], r = revisao?.resumo;
   return <section className="bg-card border rounded-xl p-4 mb-5 space-y-3">
     <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-semibold">Revisão pelo mês anterior · {mes}</h2><Button size="sm" variant="outline" disabled={loading} onClick={() => atualizar()}>{loading ? 'Analisando...' : 'Atualizar revisão'}</Button></div>
-    <p className="text-xs text-muted-foreground">Mesmo cartão e mesmo estabelecimento, comparados exclusivamente com o mês anterior. Classifique ou confirme a sugestão nas ações de cada grupo; a alteração será salva somente nos lançamentos dessa fatura. Igual ao histórico não comprova a finalidade da compra.</p>
+    <p className="text-xs text-muted-foreground">Abra “Ver dados da fatura e classificação salva” para conferir data, descrição, parcelas informadas, valor e classificação de cada lançamento como estão no cartão. As sugestões do mês anterior ficam separadas e só são salvas após confirmação. As ações continuam limitadas ao grupo desta fatura; igual ao histórico não comprova a finalidade da compra.</p>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-sm text-destructive' : 'text-sm text-success'}>{feedback.texto}</p>}
     {revisao && <>
