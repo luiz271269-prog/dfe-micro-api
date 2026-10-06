@@ -131,7 +131,8 @@ export default async function(req) {
       if (tiposPermitidos.includes('folha')) for (const f of folhas) {
         if (Math.abs(f.salario_liquido - valorAbs) > 0.50) continue;
         if (!dataNoMesPagamento(f, lanc.data)) continue;
-        const venc = vencimentoFolha(f);
+        const [y, m] = (f.competencia || '').split('-').map(Number);
+        const venc = (f.tipo || 'mensal') === 'mensal' ? vencimentoFolha(f) : (y && m ? new Date(y, m, 5).toISOString().slice(0, 10) : null);
         if (!venc) continue;
         const dd = diffDias(venc, lanc.data);
         if (dd > 15) continue;

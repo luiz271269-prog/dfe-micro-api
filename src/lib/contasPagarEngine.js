@@ -85,7 +85,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
   });
 
   folhas.filter(f => ['pendente', 'adiantamento'].includes(f.status) && (f.salario_liquido || 0) - (f.valor_pago || 0) > 0.009).forEach(f => {
-    const venc = vencimentoFolha(f);
+    const [y, m] = (f.competencia || '').split('-').map(Number);
+    const venc = (f.tipo || 'mensal') === 'mensal' ? vencimentoFolha(f) : (y && m ? new Date(y, m, 5).toISOString().slice(0, 10) : null);
     itens.push({
       id: `folha-${f.id}`,
       origem_id: f.id,

@@ -93,8 +93,9 @@ export default async function(req) {
       if (tipo === 'FolhaPagamento') {
         // valor pode bater com líquido, líquido+comissão ou comissão isolada
         const elegiveis = folhasLivres.filter(f => dataNoMesPagamento(f, lanc.data));
-        return candFiltro(elegiveis, f => f.salario_liquido || 0, vencimentoFolha)
-          || candFiltro(elegiveis, f => f.comissao || 0, vencimentoFolha);
+        const referencia = f => (f.tipo || 'mensal') === 'mensal' ? vencimentoFolha(f) : f.data_pagamento || (f.competencia ? f.competencia + '-05' : null);
+        return candFiltro(elegiveis, f => f.salario_liquido || 0, referencia)
+          || candFiltro(elegiveis, f => f.comissao || 0, referencia);
       }
       if (tipo === 'DespesaOperacional') {
         return candFiltro(despesasLivres, d => d.valor || 0, d => d.data || d.data_vencimento);

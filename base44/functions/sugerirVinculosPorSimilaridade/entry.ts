@@ -86,7 +86,7 @@ export default async function (req) {
         .map((t) => ({ id: t.id, valor: t.valor_pago || t.valor_original || 0, data: t.data_pagamento || t.data_vencimento, desc: t.descricao || t.tipo, forn: t.tipo, venc: t.data_vencimento })),
       FolhaPagamento: folhas
         .filter((f) => !f.lancamento_bancario_id && !entidadesOcupadas.has(f.id))
-        .map((f) => ({ id: f.id, valor: f.salario_liquido || 0, data: vencimentoFolha(f), desc: `Folha ${f.funcionario_nome}`, forn: f.funcionario_nome, venc: vencimentoFolha(f), folha: f })),
+        .map((f) => ({ id: f.id, valor: f.salario_liquido || 0, data: (f.tipo || 'mensal') === 'mensal' ? vencimentoFolha(f) : f.data_pagamento || (f.competencia ? f.competencia + '-05' : null), desc: `Folha ${f.funcionario_nome}`, forn: f.funcionario_nome, venc: (f.tipo || 'mensal') === 'mensal' ? vencimentoFolha(f) : f.data_pagamento, folha: f })),
       FaturaCartao: faturas
         .filter((f) => !f.lancamento_bancario_id && !entidadesOcupadas.has(f.id))
         .map((f) => ({ id: f.id, valor: f.valor_total || 0, data: f.data_pagamento || f.data_vencimento, desc: `Fatura ${f.mes_referencia}`, forn: 'Cartão', venc: f.data_vencimento })),
