@@ -10,6 +10,7 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { calcularPeriodosAquisitivos } from '@/lib/feriasEngine';
 import { calcularRescisao, TIPOS_RESCISAO } from '@/lib/rescisaoEngine';
 import { calcularMediaVariaveis, calcularDeficitBancoHoras } from '@/lib/rescisaoRemuneracao';
+import { criarFolha, validarFolha, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
 
 const VERBAS = [
   ['saldo_salario', 'Saldo de Salário'],
@@ -96,7 +97,10 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
       return;
     }
     setError('');
+    if (saving) return;
     setSaving(true);
+    try {
+    if (efetivar) await validarFolha({ funcionario_id: func.id, competencia: form.data_desligamento.slice(0, 7), tipo: 'rescisao' });
     let anexo_url = '', anexo_nome = '';
     if (anexar && file) {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
@@ -133,7 +137,7 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
     });
     if (efetivar) {
       await base44.entities.Funcionario.update(func.id, { status: 'desligado', data_demissao: form.data_desligamento });
-      const folha = await base44.entities.FolhaPagamento.create({
+      const folha = await criarFolha({
         funcionario_id: func.id, funcionario_nome: func.nome,
         competencia: form.data_desligamento.slice(0, 7), tipo: 'rescisao',
         salario_bruto: Math.round(totalBruto * 100) / 100,
@@ -143,9 +147,10 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
       });
       await base44.entities.RescisaoFuncionario.update(resc.id, { folha_pagamento_id: folha.id });
     }
-    setSaving(false);
     onSaved();
     onClose();
+    } catch (err) { setError(`${erroFolha(err)} Para registrar somente a rescisão, desmarque “Efetivar desligamento agora”.`); }
+    finally { setSaving(false); }
   }
 
   return (

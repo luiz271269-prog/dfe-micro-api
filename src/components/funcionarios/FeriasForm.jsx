@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { calcularFimGozo, calcularSituacaoFerias, simularCustoFerias } from '@/lib/feriasEngine';
+import { criarFolha, validarFolha, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
 
 export default function FeriasForm({ open, onClose, funcionarios, ferias, onSaved }) {
   const [form, setForm] = useState({
@@ -14,6 +15,7 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
     pagamento_adiantado: false, data_pagamento: '', valor_pago: '', status: 'planejada', observacoes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const func = funcionarios.find((f) => f.nome === form.funcionario_nome);
   const dataFim = calcularFimGozo(form.data_inicio_gozo, parseInt(form.dias_gozo) || 0);
@@ -22,7 +24,13 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
   async function handleSubmit(e) {
     e.preventDefault();
     if (!func || !dataFim) return;
-    setSaving(true);
+    if (saving) return;
+    setSaving(true); setError('');
+    try {
+    const competencia = form.data_inicio_gozo.slice(0, 7);
+    const existentes = await base44.entities.FolhaPagamento.filter({ funcionario_id: func.id, competencia, tipo: 'ferias' }, { limit: 1 });
+    let folhaId = existentes.items[0]?.id;
+    if (!folhaId) await validarFolha({ funcionario_id: func.id, competencia, tipo: 'ferias' });
     const sit = calcularSituacaoFerias(func, ferias.filter((f) => f.funcionario_nome === func.nome));
     const record = {
       funcionario_id: func.id,
@@ -47,13 +55,10 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
       ferias_fim: dataFim,
     });
     // Cria a folha de férias vinculada (se ainda não existir para a competência)
-    const competencia = form.data_inicio_gozo.slice(0, 7);
-    const existentes = await base44.entities.FolhaPagamento.filter({ funcionario_nome: func.nome, competencia, tipo: 'ferias' });
-    let folhaId = existentes[0]?.id;
     if (!folhaId) {
       const custo = simularCustoFerias(func.salario_base || 0, record.dias_gozo, record.dias_abono);
       const total = Math.round(custo.totalPagamento * 100) / 100;
-      const folha = await base44.entities.FolhaPagamento.create({
+      const folha = await criarFolha({
         funcionario_id: func.id,
         funcionario_nome: func.nome,
         competencia,
@@ -76,6 +81,8 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
     setForm({ funcionario_nome: '', data_inicio_gozo: '', dias_gozo: '30', dias_abono: '0', pagamento_adiantado: false, data_pagamento: '', valor_pago: '', status: 'planejada', observacoes: '' });
     onSaved();
     onClose();
+    } catch (err) { setError(erroFolha(err)); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -123,6 +130,7 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
             </Select>
           </div>
           <div><Label>Observações</Label><Input value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={saving || !func}>{saving ? 'Salvando...' : 'Salvar Férias'}</Button>
         </form>
       </DialogContent>

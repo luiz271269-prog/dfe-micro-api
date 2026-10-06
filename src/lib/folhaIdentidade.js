@@ -20,8 +20,11 @@ function funcionarioValido(folha, funcionarios) {
 export function consolidarFolhasPorFuncionario(folhas, funcionarios, umaPorMes = false) {
   const grupos = new Map();
   for (const folha of folhas) {
-    const funcionario = funcionarioValido(folha, funcionarios);
+    let funcionario = funcionarioValido(folha, funcionarios);
     if (!funcionario) continue;
+    if (umaPorMes && /^\d{11}$/.test(String(funcionario.cpf || '').replace(/\D/g, '')) && funcionario.data_admissao) {
+      funcionario = funcionarios.filter(f => f.cpf === funcionario.cpf && f.empresa === funcionario.empresa && f.data_admissao === funcionario.data_admissao).sort((a, b) => String(a.created_date).localeCompare(String(b.created_date)))[0];
+    }
     const chave = `${funcionario.id}|${folha.competencia}|${umaPorMes ? '' : folha.tipo || 'mensal'}`;
     if (!grupos.has(chave)) grupos.set(chave, []);
     grupos.get(chave).push({ ...folha, funcionario_nome: funcionario.nome, _funcionario: funcionario });

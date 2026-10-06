@@ -16,10 +16,11 @@ export default async function(req) {
       const page = await entities.Funcionario.filter({ data_admissao: { $lte: fim }, $or: [{ data_demissao: { $exists: false } }, { data_demissao: '' }, { data_demissao: null }, { data_demissao: { $gte: competencia + '-01' } }] }, { sort: 'nome', limit: 50, cursor });
       const items = [];
       for (let i = 0; i < page.items.length; i += 3) {
-        const batch = await Promise.all(page.items.slice(i, i + 3).map(async func => {
-          if (await impedimentoFolha(entities, func, competencia)) return null;
+        const batch = await Promise.all(page.items.slice(i, i + 3).map(async cadastro => {
+          const func = await resolverFuncionario(entities, { funcionario_id: cadastro.id });
+          if (func.id !== cadastro.id || await impedimentoFolha(entities, func, competencia)) return null;
           const count = await entities.FolhaPagamento.count({ ...queryFuncionario(func), competencia });
-          return count ? null : func;
+          return count ? null : { id: func.id, nome: func.nome, setor: func.setor, data_admissao: func.data_admissao };
         }));
         items.push(...batch.filter(Boolean));
       }

@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { criarFolhaValidada, impedimentoFolha, queryFuncionario } from '../../shared/folhaRegras.ts';
+import { criarFolhaValidada, impedimentoFolha, queryFuncionario, resolverFuncionario } from '../../shared/folhaRegras.ts';
 
 function proximaCompetencia(comp) {
   const [ano, mes] = comp.split('-').map(Number);
@@ -24,7 +24,9 @@ export default async function(req) {
     let cursor, avaliados = 0;
     do {
       const page = await svc.Funcionario.filter(body.competencia ? {} : { status: { $in: ['ativo', 'ferias'] } }, { sort: 'id', limit: 50, cursor });
-      for (const func of page.items) {
+      for (const cadastro of page.items) {
+        const func = await resolverFuncionario(svc, { funcionario_id: cadastro.id });
+        if (func.id !== cadastro.id) continue;
         avaliados++;
         const query = queryFuncionario(func);
         const modelos = await svc.FolhaPagamento.filter({ ...query, $and: [{ $or: [{ tipo: 'mensal' }, { tipo: { $exists: false } }] }], competencia: { $lt: competenciaAlvo } }, { sort: '-competencia', limit: 1 });

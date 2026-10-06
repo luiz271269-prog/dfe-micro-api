@@ -29,7 +29,7 @@ export default function RescisoesTab({ funcionarios, onChanged }) {
   async function handleExcluir(r) {
     if (!confirm(`Excluir a rescisão de ${r.funcionario_nome}?`)) return;
     await base44.entities.RescisaoFuncionario.delete(r.id);
-    load();
+    load(); onChanged?.();
   }
 
   if (loading) return (

@@ -1,17 +1,25 @@
 const escapar = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function queryFuncionario(func) {
-  return { $or: [{ funcionario_id: func.id }, { $and: [
+  return { $or: [{ funcionario_id: { $in: func._idsIdentidade || [func.id] } }, { $and: [
     { $or: [{ funcionario_id: { $exists: false } }, { funcionario_id: '' }, { funcionario_id: null }] },
     { funcionario_nome: { $regex: `^${escapar(func.nome)}$`, $options: 'i' } },
     { $or: [{ empresa: func.empresa }, { empresa: { $exists: false } }, { empresa: '' }] },
   ] }] };
 }
 export async function resolverFuncionario(entities, folha) {
-  if (folha.funcionario_id) return await entities.Funcionario.get(folha.funcionario_id);
-  const query = { nome: { $regex: `^${escapar(folha.funcionario_nome)}$`, $options: 'i' }, ...(folha.empresa ? { empresa: folha.empresa } : {}) };
-  const { items } = await entities.Funcionario.filter(query, { limit: 2 });
-  if (items.length !== 1) throw new Error('Selecione um funcionário cadastrado, identificado sem ambiguidade.');
-  return items[0];
+  let func;
+  if (folha.funcionario_id) func = await entities.Funcionario.get(folha.funcionario_id);
+  else {
+    const query = { nome: { $regex: `^${escapar(folha.funcionario_nome)}$`, $options: 'i' }, ...(folha.empresa ? { empresa: folha.empresa } : {}) };
+    const { items } = await entities.Funcionario.filter(query, { limit: 2 });
+    if (items.length !== 1) throw new Error('Selecione um funcionário cadastrado, identificado sem ambiguidade.');
+    func = items[0];
+  }
+  if (!func) throw new Error('Funcionário não encontrado.');
+  if (!/^\d{11}$/.test(String(func.cpf || '').replace(/\D/g, '')) || !func.data_admissao) return func;
+  const page = await entities.Funcionario.filter({ cpf: func.cpf, empresa: func.empresa, data_admissao: func.data_admissao }, { sort: 'created_date', limit: 50 });
+  if (page.has_more) throw new Error('Revise os cadastros repetidos deste funcionário.');
+  return { ...page.items[0], _idsIdentidade: page.items.map(f => f.id), data_demissao: page.items.map(f => f.data_demissao).filter(Boolean).sort()[0] || func.data_demissao };
 }
 export async function impedimentoFolha(entities, func, competencia, tipo = 'mensal') {
   if (!func || !/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia || '')) return 'Funcionário ou competência inválida.';

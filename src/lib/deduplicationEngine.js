@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { criarFolha } from '@/components/funcionarios/folha/folhaOperacoes';
 
 /**
  * Motor de deduplicação genérico e reutilizável
@@ -219,6 +220,12 @@ export async function saveDeduplicatedRecords(entityType, recordsWithStatus) {
   // Respeita seleção explícita do usuário — salva tudo que está marcado (inclusive 'erro' se usuário confirmou)
   const toSave = recordsWithStatus.filter(r => r.selected);
 
+  // Folhas passam pela mesma validação dos formulários, em sequência para evitar duplicatas no lote.
+  if (entityType === 'FolhaPagamento') {
+    let saved = 0;
+    for (const record of toSave) { await criarFolha(record.data); saved++; }
+    return { saved, errors: 0, duplicates: recordsWithStatus.filter(r => r.status === 'duplicata').length, invalid: recordsWithStatus.filter(r => r.status === 'erro').length };
+  }
   // Salvar em paralelo (lotes de 5) para maior velocidade
   let saved = 0;
   let errors = 0;
