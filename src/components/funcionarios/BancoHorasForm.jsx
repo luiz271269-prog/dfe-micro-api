@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { validarAdmissaoFuncionario, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,13 +9,16 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 
 export default function BancoHorasForm({ open, onClose, funcionarios, onSaved }) {
   const [form, setForm] = useState({ funcionario_nome: '', data: '', tipo: 'credito', horas: '', descricao: '' });
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false), [erro, setErro] = useState('');
+  const selecionado = funcionarios.find(f => f.nome === form.funcionario_nome);
 
   async function handleSubmit(e) {
     e.preventDefault();
     const func = funcionarios.find((f) => f.nome === form.funcionario_nome);
     if (!func) return;
-    setSaving(true);
+    setSaving(true); setErro('');
+    try {
+    await validarAdmissaoFuncionario(func, [form.data]);
     await base44.entities.BancoHoras.create({
       funcionario_id: func.id,
       funcionario_nome: func.nome,
@@ -28,6 +32,8 @@ export default function BancoHorasForm({ open, onClose, funcionarios, onSaved })
     setForm({ funcionario_nome: '', data: '', tipo: 'credito', horas: '', descricao: '' });
     onSaved();
     onClose();
+    } catch (err) { setErro(erroFolha(err)); }
+    finally { setSaving(false); }
   }
 
   return (
@@ -46,7 +52,7 @@ export default function BancoHorasForm({ open, onClose, funcionarios, onSaved })
             </Select>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>Data</Label><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} required /></div>
+            <div><Label>Data</Label><Input type="date" min={selecionado?.data_admissao} value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} required /></div>
             <div><Label>Tipo</Label>
               <Select value={form.tipo} onValueChange={(v) => setForm({ ...form, tipo: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -59,7 +65,8 @@ export default function BancoHorasForm({ open, onClose, funcionarios, onSaved })
             <div><Label>Horas</Label><Input type="number" step="0.5" min="0.5" value={form.horas} onChange={(e) => setForm({ ...form, horas: e.target.value })} required /></div>
           </div>
           <div><Label>Descrição / Motivo</Label><Input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} placeholder="Ex: hora extra sábado, folga compensada..." /></div>
-          <Button type="submit" className="w-full" disabled={saving}>{saving ? 'Salvando...' : 'Salvar Lançamento'}</Button>
+          {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
+          <Button type="submit" className="w-full" disabled={saving || !selecionado}>{saving ? 'Salvando...' : 'Salvar Lançamento'}</Button>
         </form>
       </DialogContent>
     </Dialog>

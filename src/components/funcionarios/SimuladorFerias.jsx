@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { validarAdmissaoFuncionario, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import { simularCustoFerias, dataLimitePagamento, calcularFimGozo } from '@/lib/
 export default function SimuladorFerias({ open, onClose, funcionarios }) {
   const [form, setForm] = useState({ funcionario_nome: '', data_inicio_gozo: '', dias_gozo: '30', dias_abono: '0' });
   const [lancando, setLancando] = useState(false);
-  const [lancado, setLancado] = useState(false);
+  const [lancado, setLancado] = useState(false), [erro, setErro] = useState('');
 
   const func = funcionarios.find((f) => f.nome === form.funcionario_nome);
   const diasGozo = parseInt(form.dias_gozo) || 0;
@@ -23,7 +24,9 @@ export default function SimuladorFerias({ open, onClose, funcionarios }) {
 
   async function handleLancarFluxo() {
     if (!sim || !dataPagamento) return;
-    setLancando(true);
+    setLancando(true); setErro('');
+    try {
+    await validarAdmissaoFuncionario(func, [form.data_inicio_gozo, dataFim, dataPagamento]);
     await base44.entities.FluxoCaixa.create({
       data_prevista: dataPagamento,
       tipo: 'saida',
@@ -38,6 +41,8 @@ export default function SimuladorFerias({ open, onClose, funcionarios }) {
     setLancando(false);
     setLancado(true);
     setTimeout(() => setLancado(false), 5000);
+    } catch (err) { setErro(erroFolha(err)); }
+    finally { setLancando(false); }
   }
 
   return (
@@ -58,7 +63,7 @@ export default function SimuladorFerias({ open, onClose, funcionarios }) {
             </Select>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>Início do Gozo</Label><Input type="date" value={form.data_inicio_gozo} onChange={(e) => setForm({ ...form, data_inicio_gozo: e.target.value })} /></div>
+            <div><Label>Início do Gozo</Label><Input type="date" min={func?.data_admissao} value={form.data_inicio_gozo} onChange={(e) => setForm({ ...form, data_inicio_gozo: e.target.value })} /></div>
             <div><Label>Dias de Gozo</Label><Input type="number" min="1" max="30" value={form.dias_gozo} onChange={(e) => setForm({ ...form, dias_gozo: e.target.value })} /></div>
             <div><Label>Abono (vendidos)</Label><Input type="number" min="0" max="10" value={form.dias_abono} onChange={(e) => setForm({ ...form, dias_abono: e.target.value })} /></div>
           </div>
@@ -85,6 +90,7 @@ export default function SimuladorFerias({ open, onClose, funcionarios }) {
             </div>
           )}
 
+          {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
           {lancado ? (
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2.5 text-sm text-green-700 font-medium">
               <CheckCircle2 className="w-4 h-4" /> Previsão lançada no Fluxo de Caixa de {dataPagamento.slice(0, 7)}
