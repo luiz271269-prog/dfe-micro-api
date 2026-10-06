@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
+import { vencimentoFolha, dataNoMesPagamento } from '../../shared/folhaCalendario.ts';
 
 /**
  * Conciliação automática em lote.
@@ -15,14 +16,15 @@ function diffDias(d1, d2) {
   return Math.abs((new Date(d1) - new Date(d2)) / 86400000);
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-    const { mes_referencia } = await req.json().catch(() => ({}));
+    const { mes_referencia, validate_only } = await req.json().catch(() => ({}));
+    if (validate_only === true) return Response.json({ success: true, mode: 'validation' });
 
     // 1) Carregar dados — REGRA: conciliação lê o BANCO inteiro (pendências),
     // nunca "a última importação". Sem mês informado, busca todos os lançamentos
@@ -128,9 +130,9 @@ Deno.serve(async (req) => {
       }
       if (tiposPermitidos.includes('folha')) for (const f of folhas) {
         if (Math.abs(f.salario_liquido - valorAbs) > 0.50) continue;
-        const [y, m] = (f.competencia || '').split('-').map(Number);
-        if (!y || !m) continue;
-        const venc = new Date(y, m, 5).toISOString().slice(0, 10);
+        if (!dataNoMesPagamento(f, lanc.data)) continue;
+        const venc = vencimentoFolha(f);
+        if (!venc) continue;
         const dd = diffDias(venc, lanc.data);
         if (dd > 15) continue;
         candidatos.push({ tipo: 'folha', ref: f, score: dd * 10 + Math.abs(f.salario_liquido - valorAbs) });
@@ -217,4 +219,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

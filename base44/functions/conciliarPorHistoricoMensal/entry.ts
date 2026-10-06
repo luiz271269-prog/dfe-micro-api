@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
+import { vencimentoFolha, dataNoMesPagamento } from '../../shared/folhaCalendario.ts';
 
 // Concilia o mês corrente usando o HISTÓRICO dos meses anteriores como gabarito.
 // Pagamentos recorrentes (folha, despesas, tributos, faturas) repetem beneficiário e valor
@@ -18,7 +19,7 @@ function diffDias(a, b) {
   return Math.abs((new Date(a) - new Date(b)) / 86400000);
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -91,10 +92,9 @@ Deno.serve(async (req) => {
 
       if (tipo === 'FolhaPagamento') {
         // valor pode bater com líquido, líquido+comissão ou comissão isolada
-        return candFiltro(folhasLivres,
-          f => f.salario_liquido || 0,
-          f => f.data_pagamento || (f.competencia ? f.competencia + '-05' : null))
-          || candFiltro(folhasLivres, f => f.comissao || 0, f => f.data_pagamento || (f.competencia ? f.competencia + '-05' : null));
+        const elegiveis = folhasLivres.filter(f => dataNoMesPagamento(f, lanc.data));
+        return candFiltro(elegiveis, f => f.salario_liquido || 0, vencimentoFolha)
+          || candFiltro(elegiveis, f => f.comissao || 0, vencimentoFolha);
       }
       if (tipo === 'DespesaOperacional') {
         return candFiltro(despesasLivres, d => d.valor || 0, d => d.data || d.data_vencimento);
@@ -247,4 +247,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

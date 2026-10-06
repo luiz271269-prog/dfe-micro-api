@@ -13,6 +13,7 @@
 import { ehSaidaContasPagar } from './extratoNatureza';
 import { calcularProLabore } from './proLaboreContasPagar';
 import { consolidarTitulosCompras } from './titulosCompras';
+import { vencimentoFolha, dataNoMesPagamento } from '@/lib/folhaCalendario';
 
 // Registros antigos sem tipo permanecem pendentes até a classificação manual.
 
@@ -84,13 +85,13 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
   });
 
   folhas.filter(f => ['pendente', 'adiantamento'].includes(f.status) && (f.salario_liquido || 0) - (f.valor_pago || 0) > 0.009).forEach(f => {
-    // Folha vence dia 5 do mês seguinte à competência
-    const [y, m] = (f.competencia || '').split('-').map(Number);
-    const venc = y && m ? new Date(y, m, 5).toISOString().slice(0, 10) : null;
+    const venc = vencimentoFolha(f);
     itens.push({
       id: `folha-${f.id}`,
       origem_id: f.id,
       origem_tipo: 'folha',
+      competencia: f.competencia,
+      tipo: f.tipo || 'mensal',
       descricao: `Salário — ${f.funcionario_nome}`,
       fornecedor: f.funcionario_nome,
       categoria: 'folha',
@@ -245,6 +246,7 @@ export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias =
   const candidatos = contasPagar
     .map(c => {
       if (c.is_planejado || c.is_grouped) return null; // projeções e títulos agregados exigem conciliação individual
+      if (c.origem_tipo === 'folha' && !dataNoMesPagamento(c, lanc.data)) return null;
       if (Math.abs(c.valor - valor) > toleranciaValor) return null;
       if (!c.data_vencimento) return null;
       // Folha e cartão podem ter variação maior de data

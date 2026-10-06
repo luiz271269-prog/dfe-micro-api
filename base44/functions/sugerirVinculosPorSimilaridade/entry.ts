@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { vencimentoFolha, dataNoMesPagamento } from '../../shared/folhaCalendario.ts';
 
 // Sugere vínculos para lançamentos ainda não conciliados, aprendendo com as descrições
 // de lançamentos que JÁ possuem VinculoExtrato. Não altera nada de forma definitiva:
@@ -36,6 +37,8 @@ export default async function (req) {
     if (user.role !== 'admin') {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
+    const body = await req.json().catch(() => ({}));
+    if (body.validate_only === true) return Response.json({ success: true, mode: 'validation' });
     const svc = base44.asServiceRole.entities;
 
     const [lancs, vincs, sugestoes, despesas, tributos, folhas, faturas] = await Promise.all([
@@ -83,7 +86,7 @@ export default async function (req) {
         .map((t) => ({ id: t.id, valor: t.valor_pago || t.valor_original || 0, data: t.data_pagamento || t.data_vencimento, desc: t.descricao || t.tipo, forn: t.tipo, venc: t.data_vencimento })),
       FolhaPagamento: folhas
         .filter((f) => !f.lancamento_bancario_id && !entidadesOcupadas.has(f.id))
-        .map((f) => ({ id: f.id, valor: f.salario_liquido || 0, data: f.data_pagamento || (f.competencia ? f.competencia + '-05' : null), desc: `Folha ${f.funcionario_nome}`, forn: f.funcionario_nome, venc: f.data_pagamento })),
+        .map((f) => ({ id: f.id, valor: f.salario_liquido || 0, data: vencimentoFolha(f), desc: `Folha ${f.funcionario_nome}`, forn: f.funcionario_nome, venc: vencimentoFolha(f), folha: f })),
       FaturaCartao: faturas
         .filter((f) => !f.lancamento_bancario_id && !entidadesOcupadas.has(f.id))
         .map((f) => ({ id: f.id, valor: f.valor_total || 0, data: f.data_pagamento || f.data_vencimento, desc: `Fatura ${f.mes_referencia}`, forn: 'Cartão', venc: f.data_vencimento })),
@@ -124,6 +127,7 @@ export default async function (req) {
 
       const valor = Math.abs(lanc.valor || 0);
       const alvo = (candidatosPorTipo[tipo] || [])
+        .filter(c => tipo !== 'FolhaPagamento' || dataNoMesPagamento(c.folha, lanc.data))
         .filter((c) => !usados.has(c.id) && Math.abs(c.valor - valor) <= Math.max(valor * 0.02, 0.5))
         .map((c) => ({ c, dias: diffDias(c.data, lanc.data) }))
         .filter((x) => x.dias <= 25)

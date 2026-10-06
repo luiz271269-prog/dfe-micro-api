@@ -1,11 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
+import { periodoPagamentoFolha } from '../../shared/folhaCalendario.ts';
 
 // Concilia FolhaPagamento pendente com PIX do extrato bancário.
 // Regras de negócio (NeuralTec):
-//  - Salário: pago no 5º dia útil do mês seguinte à competência
+//  - Salário: previsto entre o 5º e o 7º dia útil bancário do mês seguinte à competência
 //  - Comissão: um ou mais PIX do dia 10 em diante (vendedores: Tiago e Thaís)
-//  - PIX extras dentro do mês da competência = adiantamento (vale)
+//  - Folha mensal nunca concilia automaticamente PIX do próprio mês da competência
 //
 // Estratégia v2 (anti falso-positivo):
 //  1. Extrai o NOME COMPLETO do beneficiário da descrição do PIX
@@ -60,11 +61,14 @@ function competenciaParaJanela(competencia, tipo) {
       fim: new Date(Date.UTC(ano, mes, 0)).toISOString().split('T')[0],
     };
   }
-  // Mensal: do dia 15 da competência (vales) até o último dia do mês seguinte (salário 5º dia útil + comissões dia 10+)
-  return {
-    inicio: new Date(Date.UTC(ano, mes - 1, 15)).toISOString().split('T')[0],
-    fim: new Date(Date.UTC(ano, mes + 1, 0)).toISOString().split('T')[0],
+  // Salário e comissão da folha mensal pertencem ao caixa do mês seguinte.
+  // A previsão é 5º–7º dia útil; PIX antecipado ou atrasado no mês seguinte mantém a data real.
+  if (!tipo || tipo === 'mensal') return {
+    inicio: new Date(Date.UTC(ano, mes, 1)).toISOString().slice(0, 10),
+    fim: new Date(Date.UTC(ano, mes + 1, 0)).toISOString().slice(0, 10),
   };
+  // Preserva a janela anterior dos pagamentos especiais (13º/rescisão).
+  return { inicio: new Date(Date.UTC(ano, mes - 1, 15)).toISOString().slice(0, 10), fim: new Date(Date.UTC(ano, mes + 1, 0)).toISOString().slice(0, 10) };
 }
 
 // Classifica um PIX no contexto da folha
@@ -89,7 +93,7 @@ function classificarPix(pixValor, pixData, folha, totalAlocadoAntes) {
   return 'adiantamento';
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -101,7 +105,10 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole.entities;
-    if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
+    if (body?.validate_only) {
+      if (body.competencia && !periodoPagamentoFolha(body.competencia)) return Response.json({ error: 'Competência inválida.' }, { status: 400 });
+      return Response.json({ success: true, mode: 'validation', previsao: periodoPagamentoFolha(body.competencia), janela_pix: body.competencia ? competenciaParaJanela(body.competencia, 'mensal') : null });
+    }
 
     const [folhasPendentesRaw, funcionarios, lancamentos, vinculosExistentes] = await Promise.all([
       svc.FolhaPagamento.filter({ status: 'pendente' }),
@@ -291,4 +298,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

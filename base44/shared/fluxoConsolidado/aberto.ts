@@ -1,5 +1,6 @@
 // Carteira em aberto (a receber × a pagar) com aging, e adimplência do mês — posição na data "hoje".
 import { linha, arred, noMes, dentroPerimetro } from './evidencia.ts';
+import { vencimentoFolha } from '../folhaCalendario.ts';
 
 const FAIXAS = [['0-30', 0, 30], ['31-60', 31, 60], ['61-90', 61, 90], ['>90', 91, Infinity]];
 const dias = (a, b) => Math.floor((new Date(a) - new Date(b)) / 86400000);
@@ -46,7 +47,7 @@ export function calcularAberto(dados, mes, perimetro, hojeReal) {
     ...dados.DespesaOperacional.filter((d) => ['pendente', 'vencido'].includes(d.status) && dentroPerimetro(d.empresa, perimetro))
       .map((d) => ({ id: d.id, entidade: 'DespesaOperacional', data_vencimento: d.data_vencimento || d.data, valor: d.valor })),
     ...dados.FolhaPagamento.filter((f) => f.status === 'pendente' && dentroPerimetro(f.empresa, perimetro))
-      .map((f) => ({ id: f.id, entidade: 'FolhaPagamento', data_vencimento: f.data_pagamento || null, valor: f.salario_liquido })),
+      .map((f) => ({ id: f.id, entidade: 'FolhaPagamento', data_vencimento: vencimentoFolha(f), valor: f.salario_liquido })),
     ...dados.ItemCompra.filter((c) => ['pendente', 'parcial', 'nao_identificado'].includes(c.status_pagamento) && !c.lancamento_cartao_id && dentroPerimetro(c.empresa, perimetro) && (c.valor_total || 0) - (c.valor_pago || 0) > 0.01)
       .map((c) => ({ id: c.id, entidade: 'ItemCompra', data_vencimento: c.data_vencimento || null, valor: (c.valor_total || 0) - (c.valor_pago || 0) })),
     ...dados.FaturaCartao.filter((f) => f.status !== 'paga_total')

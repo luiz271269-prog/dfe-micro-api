@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { vencimentoFolha } from '@/lib/folhaCalendario';
 
 // Carrega todas as obrigações em aberto (não vinculadas ao extrato) num formato único
 // { entidade_tipo, entidade_id, descricao, fornecedor, valor, data_vencimento, tipo_label }
@@ -48,7 +49,7 @@ export async function carregarObrigacoesAbertas() {
     lista.push({
       entidade_tipo: 'FolhaPagamento', entidade_id: f.id, tipo_label: 'folha',
       descricao: `Folha ${f.competencia} — ${f.funcionario_nome}`, fornecedor: f.funcionario_nome,
-      valor: f.salario_liquido || 0, data_vencimento: f.data_pagamento || null,
+      valor: f.salario_liquido || 0, data_vencimento: vencimentoFolha(f),
     });
   });
 

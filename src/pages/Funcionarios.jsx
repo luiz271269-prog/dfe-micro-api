@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import PeriodoPagamentoFolha from '@/components/funcionarios/folha/PeriodoPagamentoFolha';
 import { base44 } from '@/api/base44Client';
 import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2, CalendarPlus, Palmtree, Wallet, UserMinus, ScanSearch } from 'lucide-react';
 import TabsNexus from '../components/funcionarios/TabsNexus';
@@ -561,6 +562,7 @@ export default function Funcionarios() {
       {activeTab === 'folha' && (
         <>
           <NavegacaoTemporalFolha resumos={resumos12} competencia={competencia} onChange={setCompetencia} />
+          <PeriodoPagamentoFolha competencia={competencia} />
 
           <KPIsFolha atual={resumoAtual} anterior={resumoAnterior} totalPago={totalPago} totalSaldo={totalSaldo} />
 
@@ -785,7 +787,7 @@ export default function Funcionarios() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div><Label>FGTS</Label><Input type="number" step="0.01" value={folhaForm.fgts_valor} onChange={e => setFolhaForm({...folhaForm, fgts_valor: e.target.value})} /></div>
-              <div><Label>Data Pagamento</Label><Input type="date" value={folhaForm.data_pagamento} onChange={e => setFolhaForm({...folhaForm, data_pagamento: e.target.value})} /></div>
+              <div><Label>Data efetiva do pagamento</Label><Input type="date" value={folhaForm.data_pagamento} onChange={e => setFolhaForm({...folhaForm, data_pagamento: e.target.value})} /></div>
               <div><Label>Status</Label>
                 <Select value={folhaForm.status} onValueChange={v => setFolhaForm({...folhaForm, status: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
