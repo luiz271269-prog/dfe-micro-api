@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import PeriodoPagamentoFolha from '@/components/funcionarios/folha/PeriodoPagamentoFolha';
 import VinculoJornadaFields from '@/components/funcionarios/VinculoJornadaFields';
 import VinculoJornadaSection from '@/components/funcionarios/VinculoJornadaSection';
+import ExcluirFuncionarioDuplicadoButton from '@/components/funcionarios/ExcluirFuncionarioDuplicadoButton';
+import { gerenciarFuncionario } from '@/functions/gerenciarFuncionario';
 import { dadosJornadaSalvos } from '@/lib/jornadaTrabalho';
 import { base44 } from '@/api/base44Client';
 import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2, CalendarPlus, Palmtree, Wallet, UserMinus, ScanSearch } from 'lucide-react';
@@ -108,7 +110,7 @@ function FuncRow({ func, folhas, onClick }) {
   );
 }
 
-function FuncModal({ func, folhas, onClose, onSaved }) {
+function FuncModal({ func, folhas, onClose, onSaved, onDeleted }) {
   if (!func) return null;
   const historico = folhas.filter(f => f.funcionario_nome === func.nome).sort((a,b) => b.competencia.localeCompare(a.competencia));
   const setor = SETOR_CONFIG[func.setor] || { label: func.setor, color: 'bg-slate-100 text-slate-700 border-slate-200' };
@@ -158,6 +160,7 @@ function FuncModal({ func, folhas, onClose, onSaved }) {
             <p className="font-semibold font-mono text-xs">{func.cpf || '—'}</p>
           </div>
         </div>
+        <div className="flex justify-end mb-3"><ExcluirFuncionarioDuplicadoButton func={func} onDeleted={onDeleted} /></div>
         <VinculoJornadaSection key={func.id} func={func} onSaved={onSaved} />
         {func.observacoes && <p className="text-xs text-muted-foreground italic mb-4 bg-yellow-50 border border-yellow-200 rounded p-2">{func.observacoes}</p>}
         <FeriasSection func={func} />
@@ -317,11 +320,11 @@ export default function Funcionarios() {
     e.preventDefault(); if (salvandoFuncionario) return;
     setSalvandoFuncionario(true); setErroFuncionario('');
     try {
-      await base44.entities.Funcionario.create({ ...funcForm, ...dadosJornadaSalvos(funcForm), salario_base: parseFloat(funcForm.salario_base) });
+      await gerenciarFuncionario({ action: 'criar', data: { ...funcForm, ...dadosJornadaSalvos(funcForm), salario_base: parseFloat(funcForm.salario_base) } });
       setShowFuncForm(false);
       setFuncForm({ nome:'',cpf:'',telefone:'',cargo:'',setor:'',data_admissao:'',data_fichamento:'',jornada_trabalho:[],jornada_referencia_diaria:8,jornada_referencia_semanal:44,status:'ativo',salario_base:'',tipo_contrato:'CLT',empresa:'NeuralTec' });
       await loadData();
-    } catch (err) { setErroFuncionario(err.message); }
+    } catch (err) { setErroFuncionario(erroFolha(err)); }
     finally { setSalvandoFuncionario(false); }
   }
 
@@ -701,7 +704,7 @@ export default function Funcionarios() {
       {activeTab === 'rastreio' && <RelatorioPixFuncionarios />}
 
       {/* Modal detalhe funcionário */}
-      <FuncModal func={selectedFunc} folhas={folhasConsolidadas} onClose={() => setSelectedFunc(null)} onSaved={func => { setSelectedFunc(func); loadData(); }} />
+      <FuncModal func={selectedFunc} folhas={folhasConsolidadas} onClose={() => setSelectedFunc(null)} onSaved={func => { setSelectedFunc(func); loadData(); }} onDeleted={async () => { setSelectedFunc(null); await loadData(); }} />
 
       {/* Painel de eventos em janela — só em telas pequenas (no desktop fica em coluna ao lado da folha) */}
       {!isDesktop && <FolhaEventosDialog folha={folhaEventos} folhas={folhas} funcionario={folhaEventos ? (funcionarios.find(fn => fn.nome === folhaEventos.funcionario_nome) || null) : null} onClose={() => setFolhaEventos(null)} onSaved={loadData} />}
