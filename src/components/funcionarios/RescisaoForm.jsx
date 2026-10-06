@@ -13,7 +13,7 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 import { calcularPeriodosAquisitivos } from '@/lib/feriasEngine';
 import { calcularRescisao, TIPOS_RESCISAO } from '@/lib/rescisaoEngine';
 import { calcularMediaVariaveis, calcularDeficitBancoHoras } from '@/lib/rescisaoRemuneracao';
-import { criarFolha, validarFolha, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
+import { criarFolha, validarFolha, validarAdmissaoFuncionario, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
 
 const VERBAS = [
   ['saldo_salario', 'Saldo de Salário'],
@@ -75,6 +75,7 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
 
   function preCalcular() {
     if (!func) return;
+    if (!func.data_admissao || form.data_desligamento < func.data_admissao) { setError('A rescisão não pode ser anterior à admissão.'); return; }
     const c = calcularRescisao({
       salarioBase: func.salario_base, mediaVariaveis: mediaVariavel.media, dataAdmissao: func.data_admissao, dataDesligamento: form.data_desligamento,
       tipo: form.tipo_rescisao, avisoPrevio: form.aviso_previo, saldoFgts: parseFloat(form.saldo_fgts) || 0,
@@ -110,6 +111,7 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
     if (saving) return;
     setSaving(true);
     try {
+    await validarAdmissaoFuncionario(func, [form.data_desligamento]);
     if (efetivar) await validarFolha({ funcionario_id: func.id, competencia: form.data_desligamento.slice(0, 7), tipo: 'rescisao' });
     const anexo_nome = documento?.nome || '';
     const num = (k) => parseFloat(form[k]) || 0;
@@ -174,7 +176,7 @@ export default function RescisaoForm({ open, onClose, funcionarios, onSaved }) {
                 <SelectContent>{funcionarios.filter((f) => f.status !== 'desligado').map((f) => <SelectItem key={f.id} value={f.nome}>{f.nome} — {formatCurrency(f.salario_base)}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Data do Desligamento</Label><Input type="date" value={form.data_desligamento} onChange={(e) => setForm({ ...form, data_desligamento: e.target.value })} required /></div>
+            <div><Label>Data do Desligamento</Label><Input type="date" min={func?.data_admissao} value={form.data_desligamento} onChange={(e) => setForm({ ...form, data_desligamento: e.target.value })} required /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><Label>Tipo de Rescisão</Label>

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { calcularFimGozo, calcularSituacaoFerias, simularCustoFerias } from '@/lib/feriasEngine';
-import { criarFolha, validarFolha, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
+import { criarFolha, validarFolha, validarAdmissaoFuncionario, erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
 import DocumentoTrabalhistaImportador from '@/components/funcionarios/documentos/DocumentoTrabalhistaImportador';
 import CalculoManualSeparado from '@/components/funcionarios/documentos/CalculoManualSeparado';
 import { dadosDocumentoSalvos, formularioDocumento } from '@/components/funcionarios/documentos/documentoTrabalhista';
@@ -39,6 +39,7 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
     if (documento?.dados.data_fim_gozo && documento.dados.data_fim_gozo !== dataFim) { setError('Confira o início e os dias de gozo: o fim calculado difere do documento.'); return; }
     setSaving(true); setError('');
     try {
+    await validarAdmissaoFuncionario(func, [form.data_inicio_gozo, dataFim, form.data_pagamento, form.periodo_aquisitivo_inicio, form.periodo_aquisitivo_fim]);
     const competencia = form.data_inicio_gozo.slice(0, 7);
     const existentes = await base44.entities.FolhaPagamento.filter({ funcionario_id: func.id, competencia, tipo: 'ferias' }, { limit: 1 });
     let folhaId = existentes.items[0]?.id;
@@ -63,6 +64,7 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
       ...dadosDocumentoSalvos(documento, simulacao),
       ...(documento ? { valor_documento_bruto:Number(form.valor_documento_bruto), valor_documento_descontos:Number(form.valor_documento_descontos), valor_documento_liquido:Number(form.valor_documento_liquido) } : {}),
     };
+    await validarAdmissaoFuncionario(func, [record.periodo_aquisitivo_inicio, record.periodo_aquisitivo_fim]);
     const created = await base44.entities.FeriasFuncionario.create(record);
     // Alimenta as datas no cadastro — a geração automática da folha de férias usa esses campos
     await base44.entities.Funcionario.update(func.id, {
@@ -122,7 +124,7 @@ export default function FeriasForm({ open, onClose, funcionarios, ferias, onSave
             </Select>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div><Label>Início do Gozo</Label><Input type="date" value={form.data_inicio_gozo} onChange={(e) => setForm({ ...form, data_inicio_gozo: e.target.value })} required /></div>
+            <div><Label>Início do Gozo</Label><Input type="date" min={func?.data_admissao} value={form.data_inicio_gozo} onChange={(e) => setForm({ ...form, data_inicio_gozo: e.target.value })} required /></div>
             <div><Label>Dias de Gozo</Label><Input type="number" min="1" max="30" value={form.dias_gozo} onChange={(e) => setForm({ ...form, dias_gozo: e.target.value })} required /></div>
             <div><Label>Abono (vendidos)</Label><Input type="number" min="0" max="10" value={form.dias_abono} onChange={(e) => setForm({ ...form, dias_abono: e.target.value })} /></div>
           </div>

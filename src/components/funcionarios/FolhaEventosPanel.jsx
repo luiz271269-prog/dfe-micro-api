@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { gerenciarFolha } from '@/functions/gerenciarFolha';
+import { erroFolha } from '@/components/funcionarios/folha/folhaOperacoes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +17,7 @@ const CAMPOS_NUM = [...CAMPOS_PROVENTO, ...CAMPOS_DESCONTO].map(([k]) => k);
 // Conteúdo do painel "Eventos Detalhados da Folha" — usado inline (coluna lateral) ou dentro de um Dialog.
 export default function FolhaEventosPanel({ folha, folhas = [], funcionario = null, onClose, onSaved, showClose = false }) {
   const [form, setForm] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false), [erro, setErro] = useState('');
 
   useEffect(() => {
     if (!folha) { setForm(null); return; }
@@ -28,10 +29,12 @@ export default function FolhaEventosPanel({ folha, folhas = [], funcionario = nu
   const anterior = useMemo(() => {
     if (!folha) return null;
     const comp = competenciaAnterior(folha.competencia);
+    if (funcionario?.data_admissao && comp < funcionario.data_admissao.slice(0, 7)) return null;
     return folhas.find(x => x.competencia === comp && x.funcionario_nome === folha.funcionario_nome && (x.tipo || 'mensal') === (folha.tipo || 'mensal')) || null;
-  }, [folha, folhas]);
+  }, [folha, folhas, funcionario]);
 
   if (!folha || !form) return null;
+  if (funcionario?.data_admissao && folha.competencia < funcionario.data_admissao.slice(0, 7)) return <div className="space-y-3"><p role="alert" className="text-sm text-destructive">Folha anterior à admissão: eventos bloqueados. O registro histórico foi preservado para revisão.</p><Button variant="outline" onClick={onClose}>Fechar</Button></div>;
   const totais = calcularTotaisFolha(form);
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const setEvento = (i, patch) => setForm(p => ({ ...p, eventos: p.eventos.map((e, idx) => idx === i ? { ...e, ...patch } : e) }));
@@ -46,14 +49,16 @@ export default function FolhaEventosPanel({ folha, folhas = [], funcionario = nu
   }
 
   async function salvar() {
-    setSaving(true);
-    const payload = { salario_bruto: parseFloat(form.salario_bruto) || 0, eventos: form.eventos.map(e => ({ ...e, valor: parseFloat(e.valor) || 0 })) };
-    CAMPOS_NUM.forEach(k => { payload[k] = parseFloat(form[k]) || 0; });
-    payload.salario_liquido = Math.round(calcularTotaisFolha(payload).liquido * 100) / 100;
-    await base44.entities.FolhaPagamento.update(folha.id, payload);
-    setSaving(false);
-    onSaved?.();
-    onClose();
+    if (saving) return;
+    setSaving(true); setErro('');
+    try {
+      const payload = { salario_bruto: parseFloat(form.salario_bruto) || 0, eventos: form.eventos.map(e => ({ ...e, valor: parseFloat(e.valor) || 0 })) };
+      CAMPOS_NUM.forEach(k => { payload[k] = parseFloat(form[k]) || 0; });
+      payload.salario_liquido = Math.round(calcularTotaisFolha(payload).liquido * 100) / 100;
+      await gerenciarFolha({ action: 'atualizar_eventos', id: folha.id, data: payload });
+      onSaved?.(); onClose();
+    } catch (err) { setErro(erroFolha(err)); }
+    finally { setSaving(false); }
   }
 
   const idx = (tipo) => form.eventos.map((e, i) => [e, i]).filter(([e]) => e.tipo === tipo);
@@ -125,6 +130,7 @@ export default function FolhaEventosPanel({ folha, folhas = [], funcionario = nu
       </div>
       <p className="text-[11px] text-muted-foreground -mt-2">Ícone <span className="inline-block align-middle">↻</span> marca eventos recorrentes — herdados automaticamente na folha do mês seguinte.</p>
 
+      {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
       <Button onClick={salvar} disabled={saving} className="w-full gap-2">
         {saving ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />} Salvar Folha
       </Button>

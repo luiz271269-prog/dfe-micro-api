@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import PeriodoPagamentoFolha from '@/components/funcionarios/folha/PeriodoPagamentoFolha';
+import VinculoJornadaFields from '@/components/funcionarios/VinculoJornadaFields';
+import VinculoJornadaSection from '@/components/funcionarios/VinculoJornadaSection';
+import { dadosJornadaSalvos } from '@/lib/jornadaTrabalho';
 import { base44 } from '@/api/base44Client';
 import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2, CalendarPlus, Palmtree, Wallet, UserMinus, ScanSearch } from 'lucide-react';
 import TabsNexus from '../components/funcionarios/TabsNexus';
@@ -105,7 +108,7 @@ function FuncRow({ func, folhas, onClick }) {
   );
 }
 
-function FuncModal({ func, folhas, onClose }) {
+function FuncModal({ func, folhas, onClose, onSaved }) {
   if (!func) return null;
   const historico = folhas.filter(f => f.funcionario_nome === func.nome).sort((a,b) => b.competencia.localeCompare(a.competencia));
   const setor = SETOR_CONFIG[func.setor] || { label: func.setor, color: 'bg-slate-100 text-slate-700 border-slate-200' };
@@ -155,6 +158,7 @@ function FuncModal({ func, folhas, onClose }) {
             <p className="font-semibold font-mono text-xs">{func.cpf || '—'}</p>
           </div>
         </div>
+        <VinculoJornadaSection key={func.id} func={func} onSaved={onSaved} />
         {func.observacoes && <p className="text-xs text-muted-foreground italic mb-4 bg-yellow-50 border border-yellow-200 rounded p-2">{func.observacoes}</p>}
         <FeriasSection func={func} />
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Histórico de Folhas</p>
@@ -202,8 +206,9 @@ export default function Funcionarios() {
   }, []);
   const [competencia, setCompetencia] = useState(getCurrentMonth());
   const [funcForm, setFuncForm] = useState({
-    nome: '', cpf: '', telefone: '', cargo: '', setor: '', data_admissao: '', status: 'ativo', salario_base: '', tipo_contrato: 'CLT', empresa: 'NeuralTec'
+    nome: '', cpf: '', telefone: '', cargo: '', setor: '', data_admissao: '', data_fichamento: '', jornada_trabalho: [], jornada_referencia_diaria: 8, jornada_referencia_semanal: 44, status: 'ativo', salario_base: '', tipo_contrato: 'CLT', empresa: 'NeuralTec'
   });
+  const [salvandoFuncionario, setSalvandoFuncionario] = useState(false), [erroFuncionario, setErroFuncionario] = useState('');
   const [folhaForm, setFolhaForm] = useState({
     funcionario_nome: '', competencia: '', tipo: 'mensal', salario_bruto: '', desconto_inss: '0', desconto_irrf: '0',
     desconto_vt: '0', desconto_vr: '0', outros_descontos: '0', horas_extras: '0', comissao: '0',
@@ -309,11 +314,15 @@ export default function Funcionarios() {
   }, []);
 
   async function handleFuncSubmit(e) {
-    e.preventDefault();
-    await base44.entities.Funcionario.create({ ...funcForm, salario_base: parseFloat(funcForm.salario_base) });
-    setShowFuncForm(false);
-    setFuncForm({ nome:'',cpf:'',telefone:'',cargo:'',setor:'',data_admissao:'',status:'ativo',salario_base:'',tipo_contrato:'CLT',empresa:'NeuralTec' });
-    loadData();
+    e.preventDefault(); if (salvandoFuncionario) return;
+    setSalvandoFuncionario(true); setErroFuncionario('');
+    try {
+      await base44.entities.Funcionario.create({ ...funcForm, ...dadosJornadaSalvos(funcForm), salario_base: parseFloat(funcForm.salario_base) });
+      setShowFuncForm(false);
+      setFuncForm({ nome:'',cpf:'',telefone:'',cargo:'',setor:'',data_admissao:'',data_fichamento:'',jornada_trabalho:[],jornada_referencia_diaria:8,jornada_referencia_semanal:44,status:'ativo',salario_base:'',tipo_contrato:'CLT',empresa:'NeuralTec' });
+      await loadData();
+    } catch (err) { setErroFuncionario(err.message); }
+    finally { setSalvandoFuncionario(false); }
   }
 
   async function handleFolhaSubmit(e) {
@@ -692,14 +701,14 @@ export default function Funcionarios() {
       {activeTab === 'rastreio' && <RelatorioPixFuncionarios />}
 
       {/* Modal detalhe funcionário */}
-      <FuncModal func={selectedFunc} folhas={folhasConsolidadas} onClose={() => setSelectedFunc(null)} />
+      <FuncModal func={selectedFunc} folhas={folhasConsolidadas} onClose={() => setSelectedFunc(null)} onSaved={func => { setSelectedFunc(func); loadData(); }} />
 
       {/* Painel de eventos em janela — só em telas pequenas (no desktop fica em coluna ao lado da folha) */}
       {!isDesktop && <FolhaEventosDialog folha={folhaEventos} folhas={folhas} funcionario={folhaEventos ? (funcionarios.find(fn => fn.nome === folhaEventos.funcionario_nome) || null) : null} onClose={() => setFolhaEventos(null)} onSaved={loadData} />}
 
       {/* Form novo funcionário */}
       <Dialog open={showFuncForm} onOpenChange={setShowFuncForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Novo Funcionário</DialogTitle></DialogHeader>
           <form onSubmit={handleFuncSubmit} className="space-y-4">
             <div><Label>Nome</Label><Input value={funcForm.nome} onChange={e => setFuncForm({...funcForm, nome: e.target.value})} required /></div>
@@ -734,7 +743,9 @@ export default function Funcionarios() {
               </div>
             </div>
             <div><Label>Salário Base</Label><Input type="number" step="0.01" value={funcForm.salario_base} onChange={e => setFuncForm({...funcForm, salario_base: e.target.value})} required /></div>
-            <Button type="submit" className="w-full">Salvar Funcionário</Button>
+            <VinculoJornadaFields value={funcForm} onChange={setFuncForm} disabled={salvandoFuncionario} />
+            {erroFuncionario && <p role="alert" className="text-sm text-destructive">{erroFuncionario}</p>}
+            <Button type="submit" className="w-full" disabled={salvandoFuncionario}>{salvandoFuncionario ? 'Salvando...' : 'Salvar Funcionário'}</Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -754,7 +765,7 @@ export default function Funcionarios() {
                   <SelectContent>{funcionarios.map(f => <SelectItem key={f.id} value={f.id}>{f.nome} · {f.empresa}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label>Competência</Label><Input type="month" value={folhaForm.competencia} onChange={e => setFolhaForm({...folhaForm, competencia: e.target.value})} required /></div>
+              <div><Label>Competência</Label><Input type="month" min={funcionarios.find(f => f.id === folhaForm.funcionario_id)?.data_admissao?.slice(0, 7)} value={folhaForm.competencia} onChange={e => setFolhaForm({...folhaForm, competencia: e.target.value})} required /></div>
             </div>
             <div><Label>Tipo de Folha</Label>
               <Select value={folhaForm.tipo} onValueChange={v => setFolhaForm({...folhaForm, tipo: v})}>

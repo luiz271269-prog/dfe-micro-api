@@ -1,3 +1,4 @@
+import { impedimentoAdmissao } from './admissaoFuncionario.ts';
 const escapar = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function queryFuncionario(func) {
   return { $or: [{ funcionario_id: { $in: func._idsIdentidade || [func.id] } }, { $and: [
@@ -23,7 +24,8 @@ export async function resolverFuncionario(entities, folha) {
 }
 export async function impedimentoFolha(entities, func, competencia, tipo = 'mensal') {
   if (!func || !/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia || '')) return 'Funcionário ou competência inválida.';
-  if (func.data_admissao && competencia < func.data_admissao.slice(0, 7)) return 'Não é permitido gerar folha anterior à admissão.';
+  const admissao = impedimentoAdmissao(func, competencia);
+  if (admissao) return admissao;
   const { items } = await entities.RescisaoFuncionario.filter(queryFuncionario(func), { sort: 'data_desligamento', limit: 1, fields: ['data_desligamento'] });
   const datas = [func.data_demissao, items[0]?.data_desligamento].filter(Boolean).sort();
   const desligamento = datas[0];
@@ -41,6 +43,8 @@ export async function validarNovaFolha(entities, data) {
   const func = await resolverFuncionario(entities, data);
   const motivo = await impedimentoFolha(entities, func, data.competencia, data.tipo || 'mensal');
   if (motivo) throw new Error(motivo);
+  const datas = impedimentoAdmissao(func, undefined, [data.data_pagamento].filter(Boolean));
+  if (datas) throw new Error(datas);
   const count = await entities.FolhaPagamento.count({ $and: [queryFuncionario(func), { competencia: data.competencia }, queryTipoFolha(data.tipo)] });
   if (count) throw new Error('Já existe folha deste tipo para este funcionário nesta competência. Revise o lançamento existente; férias e rescisão não substituem a folha mensal.');
   return func;

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { criarFolhaValidada, impedimentoFolha, queryFuncionario, resolverFuncionario } from '../../shared/folhaRegras.ts';
+import { impedimentoAdmissao } from '../../shared/admissaoFuncionario.ts';
 
 function proximaCompetencia(comp) {
   const [ano, mes] = comp.split('-').map(Number);
@@ -29,7 +30,7 @@ export default async function(req) {
         if (func.id !== cadastro.id) continue;
         avaliados++;
         const query = queryFuncionario(func);
-        const modelos = await svc.FolhaPagamento.filter({ ...query, $and: [{ $or: [{ tipo: 'mensal' }, { tipo: { $exists: false } }] }], competencia: { $lt: competenciaAlvo } }, { sort: '-competencia', limit: 1 });
+        const modelos = await svc.FolhaPagamento.filter({ ...query, $and: [{ $or: [{ tipo: 'mensal' }, { tipo: { $exists: false } }] }], competencia: { $lt: competenciaAlvo, ...(func.data_admissao ? { $gte: func.data_admissao.slice(0, 7) } : {}) } }, { sort: '-competencia', limit: 1 });
         const modelo = modelos.items[0];
         let comp = body.competencia || (modelo ? proximaCompetencia(modelo.competencia) : competenciaAlvo);
         const planejadas = new Set();
@@ -49,7 +50,8 @@ export default async function(req) {
           planejadas.add(comp);
           detalhes.push({ funcionario: func.nome, competencia: comp, liquido: nova.salario_liquido });
         }
-        if (!func.ferias_inicio) continue;
+        if (!func.ferias_inicio || impedimentoAdmissao(func, undefined, [func.ferias_inicio, func.ferias_fim].filter(Boolean))) continue;
+        if (func.ferias_fim && func.ferias_fim < func.ferias_inicio) continue;
         const compFerias = func.ferias_inicio.slice(0, 7);
         if (body.competencia && compFerias !== body.competencia) continue;
         if (new Date(func.ferias_inicio + 'T00:00:00Z').getTime() - Date.now() > 30 * 86400000) continue;

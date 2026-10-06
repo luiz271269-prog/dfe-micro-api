@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { validarNovaFolha, criarFolhaValidada, resolverFuncionario, queryFuncionario, impedimentoFolha, queryTipoFolha } from '../../shared/folhaRegras.ts';
+import { impedimentoAdmissao } from '../../shared/admissaoFuncionario.ts';
 
 export default async function(req) {
   try {
@@ -9,6 +10,27 @@ export default async function(req) {
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
     const entities = client.entities;
     const { action, data, id, competencia, cursor } = await req.json();
+    if (action === 'validar_admissao') {
+      if (!data?.funcionario_id) throw new Error('Selecione um funcionário cadastrado.');
+      const func = await resolverFuncionario(entities, data);
+      const motivo = impedimentoAdmissao(func, data.competencia, data.datas || []);
+      if (motivo) throw new Error(motivo);
+      return Response.json({ ok: true });
+    }
+    if (action === 'atualizar_eventos') {
+      if (typeof id !== 'string' || !id || !data || typeof data !== 'object') throw new Error('Selecione a folha e informe os eventos.');
+      const folha = await entities.FolhaPagamento.get(id);
+      const func = await resolverFuncionario(entities, folha);
+      const motivo = impedimentoAdmissao(func, folha.competencia);
+      if (motivo) throw new Error(motivo);
+      const numericos = ['salario_bruto','horas_extras','comissao','desconto_inss','desconto_irrf','desconto_vt','desconto_vr','outros_descontos','salario_liquido'];
+      const payload = Object.fromEntries(numericos.filter(k => data[k] !== undefined).map(k => [k, data[k]]));
+      if (Object.values(payload).some(v => !Number.isFinite(v))) throw new Error('Valores dos eventos inválidos.');
+      if (!Array.isArray(data.eventos) || data.eventos.length > 200 || data.eventos.some(e => !e || typeof e.descricao !== 'string' || !['provento','desconto'].includes(e.tipo) || !Number.isFinite(e.valor))) throw new Error('Eventos da folha inválidos.');
+      payload.eventos = data.eventos.map(e => ({ descricao: e.descricao, tipo: e.tipo, valor: e.valor, recorrente: !!e.recorrente }));
+      await entities.FolhaPagamento.update(id, payload);
+      return Response.json({ ok: true });
+    }
     if (action === 'ausentes') {
       if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia || '')) return Response.json({ error: 'Competência inválida.' }, { status: 400 });
       const [ano, mes] = competencia.split('-').map(Number);
