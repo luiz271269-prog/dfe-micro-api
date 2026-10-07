@@ -13,7 +13,8 @@ export default function ConciliarFaturasButton({ onDone }) {
     try {
       const res = await conciliarFaturasCartao({});
       const d = res?.data || {};
-      const msg = `✅ ${d.conciliados || 0} pagamento(s) vinculado(s) · ${d.atualizadas_pagas || 0} fatura(s) marcada(s) como paga · ${d.nao_conciliados || 0} sem match`;
+      const revisao = (d.detalhes || []).filter(item => item.status === 'revisao').length;
+      const msg = `${d.conciliados || 0} fatura(s) atualizada(s) · ${d.atualizadas_pagas || 0} quitada(s) · ${revisao} para revisão; valores originais preservados`;
       setToast({ type: 'success', msg });
       if (onDone) onDone();
     } catch (err) {

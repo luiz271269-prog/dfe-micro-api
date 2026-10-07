@@ -30,14 +30,16 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
+    let usuarioId = 'pipeline';
     if (!internoOk) {
       const user = await base44.auth.me().catch(() => null);
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+      usuarioId = user.id;
     }
 
     const svc = base44.asServiceRole.entities;
-    const cartaoSeguro = await conciliarComprasCartao(svc, body, 'pipeline', ['ItemCompra']);
+    const cartaoSeguro = await conciliarComprasCartao(svc, body, usuarioId, ['ItemCompra']);
     if (body.dry_run === true || body.acao === 'analisar') return Response.json(cartaoSeguro);
     const [compras, lancCartao, lancBanc, vincs, sugestoes] = await Promise.all([
       svc.ItemCompra.list('-data_emissao', 3000),

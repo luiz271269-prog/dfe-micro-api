@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { secrets } from 'base44:runtime';
 import { lerCompleto } from '../../shared/conciliacaoLeitura.ts';
 
@@ -58,12 +58,12 @@ export default async function(req) {
       const pagoAnterior = pagoConciliado + manual;
       const saldo = Math.max(0, valorFatura - pagoAnterior);
       if (saldo <= 0.01) continue;
-      const contaEsperada = norm(cartao.conta_bancaria_pagamento).split(' ')[0];
+      const contaEsperada = String(cartao.conta_bancaria_pagamento || '').match(/\b\d{4,8}-\d\b/)?.[0] || norm(cartao.conta_bancaria_pagamento).trim();
       const candidatos = bancos.filter(l => {
         if (!(l.valor < 0) || l.status_conciliacao === 'ignorar' || l.alerta_duplicidade || !perto(l.data, fat.data_vencimento)) return false;
         const disponivel = Math.abs(l.valor) - (alocadoBanco.get(l.id) || 0);
         if (disponivel <= 0.01) return false;
-        const contaBate = !contaEsperada || norm(l.conta_bancaria).includes(contaEsperada);
+        const contaBate = Boolean(contaEsperada && norm(l.conta_bancaria).includes(norm(contaEsperada)));
         const texto = `${l.descricao || ''} ${l.detalhe || ''}`;
         const pagamentoCartao = /FATURA|CART[AÃ]O|CREDIT CARD|LUIZACRED/i.test(texto);
         if (!contaBate || !pagamentoCartao || !nomeBate(texto, cartao)) return false;
@@ -97,7 +97,8 @@ export default async function(req) {
         updatesBanco.set(lanc.id, { id: lanc.id, status_conciliacao: Math.abs(lanc.valor) - (alocadoBanco.get(lanc.id) || 0) <= 0.01 ? 'conciliado' : 'parcial', vinculos_count: (lanc.vinculos_count || 0) + 1, valor_conciliado: alocadoBanco.get(lanc.id) || 0 });
       }
       const quitada = valorFatura - novoPago <= 0.01;
-      updatesFatura.push({ id: fat.id, valor_pago: novoPago, status: quitada ? 'paga_total' : 'aberta', data_pagamento: escolhidos.map(l => l.data).sort().pop(), lancamento_bancario_id: escolhidos.length === 1 && pagoAnterior === 0 ? escolhidos[0].id : null });
+      const bancosDaFatura = [...new Set([...vinculosFatura.filter(v => v.entidade_id === fat.id).map(v => v.lancamento_bancario_id), ...escolhidos.map(l => l.id)])];
+      updatesFatura.push({ id: fat.id, valor_pago: novoPago, status: quitada ? 'paga_total' : 'aberta', data_pagamento: [...escolhidos.map(l => l.data), fat.data_pagamento, ...(fat.pagamentos_manuais || []).map(p => p.data)].filter(Boolean).sort().pop(), lancamento_bancario_id: bancosDaFatura.length === 1 ? bancosDaFatura[0] : null });
       detalhes.push({ fatura_id: fat.id, cartao: cartao.nome, mes: fat.mes_referencia, valor_fatura: valorFatura, pago_anterior: pagoAnterior, valor_pago: novoPago, saldo_restante: Math.max(0, valorFatura - novoPago), status: quitada ? 'paga_total' : 'parcial' });
     }
     if (!dry_run) {

@@ -134,7 +134,7 @@ export default function DiagnosticoConciliacao() {
         />
         {link.type !== "ok" && (
           <text x={mx} y={my - 5} fill={colors[link.type]} fontSize="9" textAnchor="middle" opacity={0.8} fontFamily="monospace">
-            {link.type === "missing" ? "FALTA" : "QUEBRADO"}
+            {"VALIDAR"}
           </text>
         )}
       </g>
@@ -217,8 +217,8 @@ export default function DiagnosticoConciliacao() {
           { label: "P1 Crítico", value: p1, color: "#ef4444", bg: "rgba(239,68,68,0.1)", desc: "Bloqueiam auditoria" },
           { label: "P2 Importante", value: p2, color: "#f59e0b", bg: "rgba(245,158,11,0.1)", desc: "Conciliação manual" },
           { label: "P3 Melhoria", value: p3, color: "#6b7280", bg: "rgba(107,114,128,0.1)", desc: "Rastreabilidade" },
-          { label: "Conexões OK", value: totalOk, color: "#22c55e", bg: "rgba(34,197,94,0.1)", desc: "Funcionais" },
-          { label: "Lacunas", value: totalBroken, color: "#8b5cf6", bg: "rgba(139,92,246,0.1)", desc: "Total de gaps" },
+          { label: "Relações catalogadas", value: totalOk, color: "#22c55e", bg: "rgba(34,197,94,0.1)", desc: "Referência estrutural" },
+          { label: "Relações a validar", value: totalBroken, color: "#8b5cf6", bg: "rgba(139,92,246,0.1)", desc: "Mapa histórico" },
         ].map(k => (
           <div key={k.label} style={{
             background: k.bg,
@@ -271,9 +271,9 @@ export default function DiagnosticoConciliacao() {
         }}>
           <div style={{ display: "flex", gap: 20, marginBottom: 12, flexWrap: "wrap" }}>
             {[
-              { color: "#4ade80", dash: "none", label: "Conexão OK" },
-              { color: "#ef4444", dash: "6,4", label: "FK ausente (missing)" },
-              { color: "#f97316", dash: "2,3", label: "FK quebrado / nulo" },
+              { color: "#4ade80", dash: "none", label: "Relação catalogada" },
+              { color: "#ef4444", dash: "6,4", label: "Relação histórica pendente" },
+              { color: "#f97316", dash: "2,3", label: "Referência a verificar" },
             ].map(l => (
               <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <svg width="28" height="10">
