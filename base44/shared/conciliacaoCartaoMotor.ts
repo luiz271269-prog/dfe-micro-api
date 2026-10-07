@@ -2,15 +2,16 @@ import { lerCompleto } from './conciliacaoLeitura.ts';
 import { compraReal, evidenciasCartao } from './conciliacaoCartaoRegras.ts';
 import { carregarCandidatosCartao } from './conciliacaoCartaoDados.ts';
 import { aplicarVinculoCartao } from './conciliacaoCartaoAplicar.ts';
+import { recuperarTrilhaCartao } from './conciliacaoCartaoRecuperar.ts';
 export async function conciliarComprasCartao(db, payload, userId, escopo = ['ItemCompra','DespesaOperacional','ObraReforma']) {
   const mes = payload.mes || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0,7);
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new Error('Mês inválido.');
-  const acao = payload.acao || (payload.dry_run ? 'analisar' : 'aplicar');
-  if (!['analisar','aplicar','confirmar'].includes(acao)) throw new Error('Ação inválida.');
+  const acao = payload.dry_run === true ? 'analisar' : (payload.acao || 'aplicar');
+  if (!['analisar','aplicar','confirmar','reparar'].includes(acao)) throw new Error('Ação inválida.');
   if (payload.cursor && (typeof payload.cursor !== 'string' || payload.cursor.length > 4096)) throw new Error('Página inválida.');
   const faturas = await lerCompleto(db, 'FaturaCartao', { mes_referencia: mes }, ['conta_cartao_id']);
   const ids = faturas.map(f=>f.id);
-  const page = ids.length ? await db.LancamentoCartao.filter({ fatura_id: { $in: ids }, valor: { $gt: 0 } }, { sort: 'id', limit: 20, cursor: payload.cursor }) : { items: [], has_more: false };
+  const page = ids.length ? await db.LancamentoCartao.filter({ fatura_id: { $in: ids }, valor: { $gt: 0 } }, { sort: 'id', limit: 20, cursor: payload.cursor || undefined }) : { items: [], has_more: false };
   const charges = page.items.filter(compraReal);
   const dados = await carregarCandidatosCartao(db, charges);
   const ocupado = l => l.item_compra_id || dados.referencias.some(d=>d.reg.lancamento_cartao_id === l.id) || dados.trilhas.some(t=>t.lancamento_cartao_id === l.id);
@@ -25,16 +26,22 @@ export async function conciliarComprasCartao(db, payload, userId, escopo = ['Ite
     });
     const automatico = candidatos.length===1 && candidatos[0].auto;
     return { id:l.id,versao:l.updated_date,descricao:l.estabelecimento, data:l.data_lancamento,valor:l.valor,empresa:l.empresa_beneficiada||'',tipo_compra:l.tipo_compra||'',origem_compra:l.origem_compra||'',fatura_id:l.fatura_id,candidatos,
-      status: destinos.size>1 ? 'conflito' : ocupado(l) ? 'vinculado' : automatico ? 'automatico' : candidatos.length ? 'revisao' : 'sem_correspondencia',
-      vinculos:[...destinos], auditado:trilhas.length>0,
+      status: destinos.size>1 ? 'conflito' : trilhas.some(t=>t.fase!=='confirmado') ? 'trilha_pendente' : ocupado(l) ? 'vinculado' : automatico ? 'automatico' : candidatos.length ? 'revisao' : 'sem_correspondencia',
+      vinculos:[...destinos], auditado:trilhas.length>0 && trilhas.every(t=>t.fase==='confirmado'),
+      historico:trilhas.map(t=>({id:t.id,origem:t.origem,fase:t.fase,motivo:t.motivo,erro:t.erro,antes:JSON.parse(t.antes_json||'{}'),depois:JSON.parse(t.depois_json||'{}')})), 
     };
   });
   const aplicados=[]; const erros=[];
-  if (acao==='confirmar') {
+  if (acao==='reparar') {
+    const row=detalhes.find(d=>d.id===payload.lancamento_cartao_id && d.status==='trilha_pendente');
+    if(!row) throw new Error('A compra não possui trilha pendente nesta página.');
+    aplicados.push(await recuperarTrilhaCartao(db,row.id));
+    row.status='vinculado';
+  } else if (acao==='confirmar') {
     if (typeof payload.motivo !== 'string' || payload.motivo.trim().length<10 || payload.motivo.length>500) throw new Error('Descreva a evidência conferida (10 a 500 caracteres).');
     const row=detalhes.find(d=>d.id===payload.lancamento_cartao_id);
     const candidato=row?.candidatos.find(c=>c.tipo===payload.entidade_tipo && c.id===payload.entidade_id);
-    if (!candidato || !escopo.includes(candidato.tipo) || payload.versao!==candidato.versao) throw new Error('Candidato desatualizado ou não elegível. Atualize a análise.');
+    if (!candidato || !escopo.includes(candidato.tipo) || payload.versao!==candidato.versao || payload.versao_cartao!==row.versao) throw new Error('Candidato desatualizado ou não elegível. Atualize a análise.');
     aplicados.push(await aplicarVinculoCartao(db,row,candidato,userId,true,payload.motivo.trim()));
     row.status='vinculado';
   } else if (acao==='aplicar') {

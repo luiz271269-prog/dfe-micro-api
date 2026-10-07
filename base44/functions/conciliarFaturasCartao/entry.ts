@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { secrets } from 'base44:runtime';
+import { lerCompleto } from '../../shared/conciliacaoLeitura.ts';
 
 const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 const perto = (a, b, dias = 14) => a && b && Math.abs(Date.parse(a) - Date.parse(b)) <= dias * 86400000;
@@ -23,7 +24,7 @@ export default async function(req) {
     const dry_run = payload.dry_run === true;
     const db = chamadaInterna ? base44.asServiceRole.entities : base44.entities;
     const [cartoes, faturas, bancos, itensCartao, vinculos] = await Promise.all([
-      db.ContaCartao.list('id', 500), db.FaturaCartao.list('id', 1000), db.LancamentoBancario.list('-data', 5000), db.LancamentoCartao.list('id', 5000), db.VinculoExtrato.list('id', 5000),
+      lerCompleto(db, 'ContaCartao', {}), lerCompleto(db, 'FaturaCartao', {}), lerCompleto(db, 'LancamentoBancario', { valor: { $lt: 0 } }), lerCompleto(db, 'LancamentoCartao', {}), lerCompleto(db, 'VinculoExtrato', {}),
     ]);
     const cartaoPorId = new Map(cartoes.map(c => [c.id, c]));
     const itensPorFatura = new Map();
@@ -46,34 +47,43 @@ export default async function(req) {
       if (!cartao) continue;
       const itens = itensPorFatura.get(fat.id) || [];
       const somaReal = itens.reduce((total, item) => total + (item.valor || 0), 0);
-      const valorFatura = somaReal > 0.01 ? somaReal : (fat.valor_total || 0);
-      const pagoAnterior = pagosPorFatura.get(fat.id) || 0;
+      // O reconhecimento da quitação nunca reescreve o valor original da fatura.
+      const valorFatura = fat.valor_total || 0;
+      const pagoConciliado = pagosPorFatura.get(fat.id) || 0;
+      const manual = (fat.pagamentos_manuais || []).reduce((s, p) => s + Math.max(0, Number(p.valor) || 0), 0);
+      if ((fat.valor_pago || 0) > pagoConciliado + manual + 0.01) {
+        detalhes.push({ fatura_id: fat.id, cartao: cartao.nome, status: 'revisao', motivo: 'Pagamento anterior sem alocação ou histórico manual suficiente; valor preservado.' });
+        continue;
+      }
+      const pagoAnterior = pagoConciliado + manual;
       const saldo = Math.max(0, valorFatura - pagoAnterior);
       if (saldo <= 0.01) continue;
       const contaEsperada = norm(cartao.conta_bancaria_pagamento).split(' ')[0];
       const candidatos = bancos.filter(l => {
-        if (!(l.valor < 0) || !perto(l.data, fat.data_vencimento)) return false;
+        if (!(l.valor < 0) || l.status_conciliacao === 'ignorar' || l.alerta_duplicidade || !perto(l.data, fat.data_vencimento)) return false;
         const disponivel = Math.abs(l.valor) - (alocadoBanco.get(l.id) || 0);
         if (disponivel <= 0.01) return false;
         const contaBate = !contaEsperada || norm(l.conta_bancaria).includes(contaEsperada);
-        return contaBate || nomeBate(`${l.descricao} ${l.detalhe}`, cartao);
+        const texto = `${l.descricao || ''} ${l.detalhe || ''}`;
+        const pagamentoCartao = /FATURA|CART[AÃ]O|CREDIT CARD|LUIZACRED/i.test(texto);
+        if (!contaBate || !pagamentoCartao || !nomeBate(texto, cartao)) return false;
+        // Uma evidência que também cabe em outra fatura não pode ser usada automaticamente.
+        return !abertas.some(outra => outra.id !== fat.id && perto(l.data, outra.data_vencimento) && nomeBate(texto, cartaoPorId.get(outra.conta_cartao_id)));
       });
-      const tolerancia = Math.max(10, saldo * 0.05);
-      let escolhidos = [];
-      let melhorDiferenca = Infinity;
-      for (const lanc of candidatos) {
-        const disponivel = Math.abs(lanc.valor) - (alocadoBanco.get(lanc.id) || 0);
-        const diferenca = Math.abs(disponivel - saldo);
-        if (diferenca <= tolerancia && diferenca < melhorDiferenca) { escolhidos = [lanc]; melhorDiferenca = diferenca; }
-      }
+      const tolerancia = 0.01;
+      const alternativas = candidatos.filter(l => Math.abs(Math.abs(l.valor) - (alocadoBanco.get(l.id) || 0) - saldo) <= tolerancia).map(l => [l]);
       const pool = candidatos.slice(0, 25);
-      if (!escolhidos.length) {
-        outer: for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) {
-          const soma = [pool[i], pool[j]].reduce((s, l) => s + Math.abs(l.valor) - (alocadoBanco.get(l.id) || 0), 0);
-          if (Math.abs(soma - saldo) <= tolerancia) { escolhidos = [pool[i], pool[j]]; break outer; }
-        }
+      for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) {
+        const soma = [pool[i], pool[j]].reduce((s, l) => s + Math.abs(l.valor) - (alocadoBanco.get(l.id) || 0), 0);
+        if (Math.abs(soma - saldo) <= tolerancia) alternativas.push([pool[i], pool[j]]);
       }
-      if (!escolhidos.length) continue;
+      // Pagamento parcial: apenas uma evidência inequívoca, menor que o saldo.
+      if (!alternativas.length && candidatos.length === 1 && Math.abs(candidatos[0].valor) - (alocadoBanco.get(candidatos[0].id) || 0) < saldo) alternativas.push([candidatos[0]]);
+      if (alternativas.length !== 1 || candidatos.length > 25) {
+        if (candidatos.length) detalhes.push({ fatura_id: fat.id, cartao: cartao.nome, status: 'revisao', motivo: 'Combinação de pagamentos ambígua ou divergência de valor. Nenhuma baixa aplicada.' });
+        continue;
+      }
+      const escolhidos = alternativas[0];
       let restante = saldo;
       let novoPago = pagoAnterior;
       for (const lanc of escolhidos) {
@@ -87,10 +97,16 @@ export default async function(req) {
         updatesBanco.set(lanc.id, { id: lanc.id, status_conciliacao: Math.abs(lanc.valor) - (alocadoBanco.get(lanc.id) || 0) <= 0.01 ? 'conciliado' : 'parcial', vinculos_count: (lanc.vinculos_count || 0) + 1, valor_conciliado: alocadoBanco.get(lanc.id) || 0 });
       }
       const quitada = valorFatura - novoPago <= 0.01;
-      updatesFatura.push({ id: fat.id, valor_total: valorFatura, valor_pago: novoPago, status: quitada ? 'paga_total' : 'aberta', data_pagamento: escolhidos.map(l => l.data).sort().pop(), lancamento_bancario_id: escolhidos.length === 1 && pagoAnterior === 0 ? escolhidos[0].id : null });
+      updatesFatura.push({ id: fat.id, valor_pago: novoPago, status: quitada ? 'paga_total' : 'aberta', data_pagamento: escolhidos.map(l => l.data).sort().pop(), lancamento_bancario_id: escolhidos.length === 1 && pagoAnterior === 0 ? escolhidos[0].id : null });
       detalhes.push({ fatura_id: fat.id, cartao: cartao.nome, mes: fat.mes_referencia, valor_fatura: valorFatura, pago_anterior: pagoAnterior, valor_pago: novoPago, saldo_restante: Math.max(0, valorFatura - novoPago), status: quitada ? 'paga_total' : 'parcial' });
     }
     if (!dry_run) {
+      if (updatesFatura.length) await db.AuditoriaClassificacao.bulkCreate(updatesFatura.map(depois => {
+        const antes = faturas.find(f => f.id === depois.id);
+        return { execucao_id: crypto.randomUUID(), entidade_tipo: 'FaturaCartao', entidade_id: depois.id, origem_alteracao: 'automatica', confianca: 95,
+          motivos: ['Intenção de quitação da dívida do cartão, sem reconhecer nova despesa. Confirmar aplicação pelos vínculos de extrato.', 'Valor original e pagamentos anteriores preservados.'],
+          antes_json: JSON.stringify({ status: antes.status, valor_pago: antes.valor_pago, data_pagamento: antes.data_pagamento, lancamento_bancario_id: antes.lancamento_bancario_id }), depois_json: JSON.stringify(depois) };
+      }));
       if (novosVinculos.length) await db.VinculoExtrato.bulkCreate(novosVinculos);
       if (updatesFatura.length) await db.FaturaCartao.bulkUpdate(updatesFatura);
       if (updatesBanco.size) await db.LancamentoBancario.bulkUpdate([...updatesBanco.values()]);

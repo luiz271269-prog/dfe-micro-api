@@ -12,7 +12,7 @@ export async function carregarCandidatosCartao(db, lancamentos) {
     return (await lerCompleto(db, tipo, { $and: [{ [data]: intervalo }, valores(campo)] })).map(reg => ({ tipo, reg }));
   }));
   const documentos = listas.flat();
-  const concorrentes = await lerCompleto(db, 'LancamentoCartao', { $and: [{ data_lancamento: intervalo }, valores('valor')] });
+  const concorrentes = await lerCompleto(db, 'LancamentoCartao', { $and: [{ data_lancamento: { $gte: dataMaisDias(datas[0], -6), $lte: dataMaisDias(datas.at(-1), 6) } }, valores('valor')] });
   const ids = [...new Set([...lancamentos, ...concorrentes].map(l => l.id))];
   const referencias = (await Promise.all(TIPOS_VINCULO_CARTAO.map(async tipo => (await lerCompleto(db, tipo, { lancamento_cartao_id: { $in: ids } })).map(reg => ({ tipo, reg }))))).flat();
   const [trilhas, bancos] = await Promise.all([

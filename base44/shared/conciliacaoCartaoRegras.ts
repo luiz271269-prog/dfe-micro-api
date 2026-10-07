@@ -9,7 +9,7 @@ export function evidenciasCartao(l, r, tipo) {
   const dias = Math.abs(Date.parse(l.data_lancamento) - Date.parse(data)) / 86400000;
   const termos = normConciliacao(fornecedor).split(' ').filter(x => x.length >= 4 && !stop.has(x));
   const nome = normConciliacao(l.estabelecimento).split(' ');
-  const nomeConfere = termos.length > 0 && termos.some(t => nome.includes(t));
+  const nomeConfere = termos.length > 1 ? termos.every(t => nome.includes(t)) : termos.length === 1 && termos[0].length >= 5 && nome.includes(termos[0]);
   const empresaA = normConciliacao(l.empresa_beneficiada), empresaB = normConciliacao(r.empresa);
   const motivos = [];
   const protegido = r.lancamento_bancario_id || r.lancamento_cartao_id || r.status === 'pago' || r.status_pagamento === 'pago' || Number(r.valor_pago) > 0 || r.pagamentos_manuais?.length;
