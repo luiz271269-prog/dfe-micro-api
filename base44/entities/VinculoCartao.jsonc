@@ -1,7 +1,7 @@
 {
   "name": "VinculoCartao",
   "type": "object",
-  "description": "V\u00ednculo audit\u00e1vel de uma compra no cart\u00e3o com seu documento de origem. N\u00e3o representa pagamento banc\u00e1rio da fatura. A fase preparado registra a inten\u00e7\u00e3o antes de alterar o documento; confirmado comprova sua aplica\u00e7\u00e3o.",
+  "description": "V\u00ednculo audit\u00e1vel da compra no cart\u00e3o com seu documento, separado da quita\u00e7\u00e3o banc\u00e1ria. Cancelamentos preservam o v\u00ednculo original e registram a restaura\u00e7\u00e3o, sem excluir o hist\u00f3rico.",
   "properties": {
     "lancamento_cartao_id": {
       "type": "string"
@@ -46,7 +46,9 @@
       "enum": [
         "preparado",
         "confirmado",
-        "falha"
+        "falha",
+        "cancelamento_preparado",
+        "cancelado"
       ],
       "default": "preparado"
     },
@@ -59,6 +61,25 @@
       "maxLength": 8000
     },
     "depois_json": {
+      "type": "string",
+      "maxLength": 8000
+    },
+    "cancelado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancelado_por": {
+      "type": "string"
+    },
+    "cancelamento_motivo": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "cancelamento_antes_json": {
+      "type": "string",
+      "maxLength": 8000
+    },
+    "cancelamento_depois_json": {
       "type": "string",
       "maxLength": 8000
     }

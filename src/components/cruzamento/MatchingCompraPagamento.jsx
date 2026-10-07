@@ -1,7 +1,6 @@
-import { useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
-import { vincularCompraPagamento } from '@/functions/vincularCompraPagamento';
-import { desvincularCompraPagamento } from '@/functions/desvincularCompraPagamento';
+import { useMemo } from 'react';
+import useMatchingCompraAcoes from '@/components/cruzamento/useMatchingCompraAcoes';
+import EvidenciaCompraCartao from '@/components/cruzamento/EvidenciaCompraCartao';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Link2, Unlink, CreditCard, Landmark, CheckCircle2, AlertTriangle, HelpCircle } from 'lucide-react';
@@ -22,8 +21,7 @@ const CONF_CFG = {
 };
 
 export default function MatchingCompraPagamento({ compras, lancamentosBanco, lancamentosCartao, onRefresh }) {
-  const [compraAberta, setCompraAberta] = useState(null);
-  const [salvando, setSalvando] = useState(false);
+  const { compraAberta, setCompraAberta, abrirCompra, salvando, erro, motivo, setMotivo, vincular, desvincular, autoVincularLote } = useMatchingCompraAcoes({ compras, lancamentosBanco, lancamentosCartao, onRefresh });
 
   // Agrupa compras por status
   const stats = useMemo(() => {
@@ -42,42 +40,11 @@ export default function MatchingCompraPagamento({ compras, lancamentosBanco, lan
     return acharPagamentosParaCompra(compraAberta, { lancamentosBanco, lancamentosCartao }).slice(0, 8);
   }, [compraAberta, lancamentosBanco, lancamentosCartao]);
 
-  async function vincular(tipo, ref_id) {
-    setSalvando(true);
-    await vincularCompraPagamento({ item_compra_id: compraAberta.id, tipo, ref_id });
-    setSalvando(false);
-    setCompraAberta(null);
-    onRefresh?.();
-  }
 
-  async function desvincular(compra) {
-    if (!confirm('Remover vínculo de pagamento desta compra?')) return;
-    setSalvando(true);
-    await desvincularCompraPagamento({ item_compra_id: compra.id });
-    setSalvando(false);
-    onRefresh?.();
-  }
-
-  // Auto-vincular alta confiança em lote
-  async function autoVincularLote() {
-    const pendentes = compras.filter(c => (c.status_pagamento || 'nao_identificado') !== 'pago');
-    let vinculados = 0;
-    setSalvando(true);
-    for (const c of pendentes) {
-      const cands = acharPagamentosParaCompra(c, { lancamentosBanco, lancamentosCartao });
-      const best = cands[0];
-      if (best && nivelConfianca(best.score) === 'alta') {
-        await vincularCompraPagamento({ item_compra_id: c.id, tipo: best.tipo, ref_id: best.ref.id });
-        vinculados++;
-      }
-    }
-    setSalvando(false);
-    onRefresh?.();
-    alert(`✓ ${vinculados} compras vinculadas automaticamente (alta confiança)`);
-  }
 
   return (
     <div>
+      {erro && !compraAberta && <p role="alert" className="mb-3 text-sm text-destructive">{erro}</p>}
       {/* Barra de stats */}
       <div className="grid grid-cols-5 gap-3 mb-4">
         <div className="bg-card rounded-xl border p-3">
@@ -150,7 +117,7 @@ export default function MatchingCompraPagamento({ compras, lancamentosBanco, lan
                           <Unlink className="w-3 h-3 mr-1" /> Desvincular
                         </Button>
                       ) : (
-                        <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => setCompraAberta(c)}>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => abrirCompra(c)}>
                           <Link2 className="w-3 h-3 mr-1" /> Vincular
                         </Button>
                       )}
@@ -176,6 +143,7 @@ export default function MatchingCompraPagamento({ compras, lancamentosBanco, lan
                 <p className="font-semibold">{compraAberta.fornecedor} · {compraAberta.descricao_produto}</p>
                 <p className="text-sm font-bold">{formatCurrency(compraAberta.valor_total)} · {compraAberta.data_emissao}</p>
               </div>
+              <EvidenciaCompraCartao motivo={motivo} onChange={setMotivo} erro={erro} visivel={candidatos.some(c => c.tipo === 'cartao')} />
               <p className="text-xs font-bold uppercase text-muted-foreground">Candidatos encontrados</p>
               {candidatos.length === 0 && (
                 <p className="text-sm text-muted-foreground italic py-4">Nenhum pagamento compatível encontrado nos últimos 60 dias.</p>
@@ -201,7 +169,7 @@ export default function MatchingCompraPagamento({ compras, lancamentosBanco, lan
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-sm font-bold">{formatCurrency(Math.abs(c.ref.valor || 0))}</p>
-                        <Button size="sm" className="mt-1 h-7 text-[11px]" onClick={() => vincular(c.tipo, c.ref.id)} disabled={salvando}>
+                        <Button size="sm" className="mt-1 h-7 text-[11px]" onClick={() => vincular(c.tipo, c.ref.id)} disabled={salvando || (c.tipo === 'cartao' && motivo.trim().length < 10)}>
                           Vincular
                         </Button>
                       </div>

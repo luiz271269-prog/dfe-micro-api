@@ -1,9 +1,15 @@
 import { lerCompleto, centavos } from './conciliacaoLeitura.ts';
 import { TIPOS_VINCULO_CARTAO } from './conciliacaoCartaoRegras.ts';
+import { desfazerCompraCartao } from './conciliacaoCartaoDesfazer.ts';
 export async function recuperarTrilhaCartao(db,id) {
-  const trilhas=await lerCompleto(db,'VinculoCartao',{lancamento_cartao_id:id});
+  const trilhas=await lerCompleto(db,'VinculoCartao',{lancamento_cartao_id:id,fase:{$ne:'cancelado'}});
   if(trilhas.length!==1 || trilhas[0].fase==='confirmado') throw new Error('Não existe uma trilha pendente única para completar.');
   const t=trilhas[0];
+  if(t.fase==='cancelamento_preparado') {
+    if(t.entidade_tipo!=='ItemCompra') throw new Error('Cancelamento não suportado para este documento.');
+    const resultado=await desfazerCompraCartao(db,t.entidade_id,t.cancelado_por,t.cancelamento_motivo);
+    return {id,entidade_tipo:t.entidade_tipo,entidade_id:t.entidade_id,cancelado:true,...resultado};
+  }
   const [charge,doc]=await Promise.all([db.LancamentoCartao.get(id),db[t.entidade_tipo].get(t.entidade_id)]);
   const refs=(await Promise.all(TIPOS_VINCULO_CARTAO.map(async tipo=>(await lerCompleto(db,tipo,{lancamento_cartao_id:id},['id'])).map(r=>`${tipo}|${r.id}`)))).flat();
   if(refs.length!==1 || refs[0]!==`${t.entidade_tipo}|${doc.id}` || doc.lancamento_cartao_id!==id || doc.lancamento_bancario_id || centavos(charge.valor)!==centavos(t.valor_alocado) || charge.fatura_id!==t.fatura_id) throw new Error('A intenção não corresponde a um vínculo aplicado único. Revise os documentos, sem exclusão automática.');

@@ -14,11 +14,12 @@ export async function conciliarComprasCartao(db, payload, userId, escopo = ['Ite
   const page = ids.length ? await db.LancamentoCartao.filter({ fatura_id: { $in: ids }, valor: { $gt: 0 } }, { sort: 'id', limit: 20, cursor: payload.cursor || undefined }) : { items: [], has_more: false };
   const charges = page.items.filter(compraReal);
   const dados = await carregarCandidatosCartao(db, charges);
-  const ocupado = l => l.item_compra_id || dados.referencias.some(d=>d.reg.lancamento_cartao_id === l.id) || dados.trilhas.some(t=>t.lancamento_cartao_id === l.id);
+  const ocupado = l => l.item_compra_id || dados.referencias.some(d=>d.reg.lancamento_cartao_id === l.id) || dados.trilhas.some(t=>t.lancamento_cartao_id === l.id && t.fase !== 'cancelado');
   const candidatosPara = l => dados.documentos.map(d=>({ ...d, evidencia: evidenciasCartao(l,d.reg,d.tipo) })).filter(d=>d.evidencia.elegivel && !dados.bancos.some(v=>v.entidade_tipo===d.tipo && v.entidade_id===d.reg.id));
   const detalhes = charges.map(l=>{
     const refs = dados.referencias.filter(d=>d.reg.lancamento_cartao_id===l.id);
-    const trilhas = dados.trilhas.filter(t=>t.lancamento_cartao_id===l.id);
+    const historico = dados.trilhas.filter(t=>t.lancamento_cartao_id===l.id);
+    const trilhas = historico.filter(t=>t.fase!=='cancelado');
     const destinos = new Set([...refs.map(d=>`${d.tipo}|${d.reg.id}`), ...trilhas.map(t=>`${t.entidade_tipo}|${t.entidade_id}`), ...(l.item_compra_id ? [`ItemCompra|${l.item_compra_id}`] : [])]);
     const candidatos = ocupado(l) ? [] : candidatosPara(l).map(d=>{
       const outros = dados.concorrentes.filter(x=>compraReal(x) && !ocupado(x) && evidenciasCartao(x,d.reg,d.tipo).elegivel);
@@ -28,15 +29,16 @@ export async function conciliarComprasCartao(db, payload, userId, escopo = ['Ite
     return { id:l.id,versao:l.updated_date,descricao:l.estabelecimento, data:l.data_lancamento,valor:l.valor,empresa:l.empresa_beneficiada||'',tipo_compra:l.tipo_compra||'',origem_compra:l.origem_compra||'',fatura_id:l.fatura_id,candidatos,
       status: destinos.size>1 ? 'conflito' : trilhas.some(t=>t.fase!=='confirmado') ? 'trilha_pendente' : ocupado(l) ? 'vinculado' : automatico ? 'automatico' : candidatos.length ? 'revisao' : 'sem_correspondencia',
       vinculos:[...destinos], auditado:trilhas.length>0 && trilhas.every(t=>t.fase==='confirmado'),
-      historico:trilhas.map(t=>({id:t.id,origem:t.origem,fase:t.fase,motivo:t.motivo,erro:t.erro,antes:JSON.parse(t.antes_json||'{}'),depois:JSON.parse(t.depois_json||'{}')})), 
+      historico:historico.map(t=>({id:t.id,origem:t.origem,fase:t.fase,motivo:t.motivo,erro:t.erro,antes:JSON.parse(t.antes_json||'{}'),depois:JSON.parse(t.depois_json||'{}'),cancelado_em:t.cancelado_em,cancelado_por:t.cancelado_por,cancelamento_motivo:t.cancelamento_motivo,cancelamento_depois:JSON.parse(t.cancelamento_depois_json||'{}')})), 
     };
   });
   const aplicados=[]; const erros=[];
   if (acao==='reparar') {
     const row=detalhes.find(d=>d.id===payload.lancamento_cartao_id && d.status==='trilha_pendente');
     if(!row) throw new Error('A compra não possui trilha pendente nesta página.');
-    aplicados.push(await recuperarTrilhaCartao(db,row.id));
-    row.status='vinculado';
+    const reparado=await recuperarTrilhaCartao(db,row.id);
+    aplicados.push(reparado);
+    row.status=reparado.cancelado ? 'sem_correspondencia' : 'vinculado';
   } else if (acao==='confirmar') {
     if (typeof payload.motivo !== 'string' || payload.motivo.trim().length<10 || payload.motivo.length>500) throw new Error('Descreva a evidência conferida (10 a 500 caracteres).');
     const row=detalhes.find(d=>d.id===payload.lancamento_cartao_id);
