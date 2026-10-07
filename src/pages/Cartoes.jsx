@@ -25,6 +25,7 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import { getCor } from '../lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import RevisaoHistoricoCartoes from '@/components/cartoes/RevisaoHistoricoCartoes';
+import ConciliacaoComprasCartao from '@/components/cartoes/ConciliacaoComprasCartao';
 
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
 
@@ -306,6 +307,7 @@ export default function Cartoes() {
         </div>
       </div>
 
+      <ConciliacaoComprasCartao mes={selectedMonth} anual={isAnnual} />
       <RevisaoHistoricoCartoes mes={selectedMonth} anual={isAnnual} />
 
       {/* Conciliação */}

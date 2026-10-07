@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
+import { conciliarComprasCartao } from '../../shared/conciliacaoCartaoMotor.ts';
 
 // Concilia Compras (ItemCompra) ↔ Cartões de Crédito e Extrato Bancário.
 // REGRAS (conservadoras, para evitar falso positivo):
@@ -24,7 +25,7 @@ function diffDias(a, b) {
   return (new Date(b) - new Date(a)) / 86400000;
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -36,6 +37,8 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole.entities;
+    const cartaoSeguro = await conciliarComprasCartao(svc, body, 'pipeline', ['ItemCompra']);
+    if (body.dry_run === true || body.acao === 'analisar') return Response.json(cartaoSeguro);
     const [compras, lancCartao, lancBanc, vincs, sugestoes] = await Promise.all([
       svc.ItemCompra.list('-data_emissao', 3000),
       svc.LancamentoCartao.list('-data_lancamento', 5000),
@@ -65,7 +68,7 @@ Deno.serve(async (req) => {
     const TOL = 0.50;
     const JANELA = 40; // dias após emissão (cobre boleto 28/35 dias)
 
-    let autoCartao = 0, autoBanco = 0, sugestoesCriadas = 0;
+    let autoCartao = cartaoSeguro.baixas_automaticas, autoBanco = 0, sugestoesCriadas = 0;
     const detalhes = [];
 
     for (const [, itens] of grupos) {
@@ -75,27 +78,8 @@ Deno.serve(async (req) => {
       const valorNota = itens.reduce((s, i) => s + (i.valor_total || 0), 0);
       if (valorNota < 0.01 || !dataEmissao) continue;
 
-      // 1) CARTÃO — estabelecimento similar + valor da nota + janela
-      const matchCartao = lancCartao.find(l => {
-        if (cartaoUsado.has(l.id)) return false;
-        if (Math.abs(Math.abs(l.valor) - valorNota) > TOL) return false;
-        const d = diffDias(dataEmissao, l.data_lancamento);
-        if (d < -2 || d > JANELA) return false;
-        return nomesSimilares(fornecedor, l.estabelecimento);
-      });
-
-      if (matchCartao) {
-        for (const i of itens) {
-          await svc.ItemCompra.update(i.id, {
-            status_pagamento: 'pago', forma_pagamento: 'cartao',
-            lancamento_cartao_id: matchCartao.id, valor_pago: i.valor_total || 0,
-          });
-        }
-        cartaoUsado.add(matchCartao.id);
-        autoCartao++;
-        detalhes.push({ via: 'cartao', fornecedor, nota: itens[0].numero_nota, valor: valorNota });
-        continue;
-      }
+      // Compras declaradas no cartão não podem ser baixadas novamente pelo banco.
+      if (itens.some(i => i.forma_pagamento === 'cartao')) continue;
 
       // 2) EXTRATO — descrição contém fornecedor + valor da nota + janela
       const matchBanco = lancBanc.find(l => {
@@ -175,4 +159,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

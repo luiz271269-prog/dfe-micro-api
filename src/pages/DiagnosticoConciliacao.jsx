@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PlanoConciliacaoEtapas from '@/components/conciliacao/PlanoConciliacaoEtapas';
+import ConciliacaoComprasCartao from '@/components/cartoes/ConciliacaoComprasCartao';
 import { PLANO_INTEGRAL } from '@/components/conciliacao/planoIntegral';
 
 const ENTITIES = {
@@ -385,6 +386,7 @@ export default function DiagnosticoConciliacao() {
         </div>
       )}
 
+      <ConciliacaoComprasCartao />
       <PlanoConciliacaoEtapas />
     </div>
   );
