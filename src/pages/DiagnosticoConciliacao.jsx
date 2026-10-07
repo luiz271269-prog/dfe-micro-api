@@ -1,4 +1,6 @@
 import { useState } from "react";
+import PlanoConciliacaoEtapas from '@/components/conciliacao/PlanoConciliacaoEtapas';
+import { PLANO_INTEGRAL } from '@/components/conciliacao/planoIntegral';
 
 const ENTITIES = {
   // Receita
@@ -72,68 +74,7 @@ const LINKS = [
   { from: "RelatorioFaturamento", to: "NotaFiscal",        type: "missing", label: "⚠️ sem reconciliação automática" },
 ];
 
-const GAPS = [
-  { id: 1, priority: "P1", icon: "🔴", title: "FolhaPagamento → LancamentoBancario",
-    desc: "Salário é registrado mas não existe campo para vincular ao débito no extrato. Impossível confirmar se o pagamento saiu da conta.",
-    fix: "Adicionar campo lancamento_bancario_id em FolhaPagamento",
-    impact: "Fluxo de caixa real x previsto sempre diverge" },
-  { id: 2, priority: "P1", icon: "🔴", title: "Tributo → LancamentoBancario",
-    desc: "Tributos (DAS, INSS, FGTS…) têm data_pagamento e valor_pago mas nenhum FK para o lançamento bancário que confirmou o pagamento.",
-    fix: "Adicionar lancamento_bancario_id em Tributo",
-    impact: "DAS marcado como pago mesmo sem débito confirmado no extrato" },
-  { id: 3, priority: "P1", icon: "🔴", title: "FaturaCartao → LancamentoBancario",
-    desc: "O pagamento da fatura do cartão aparece como débito no extrato, mas FaturaCartao não tem FK para esse lançamento. Cadeia quebrada: LancamentoCartao→FaturaCartao→??? ✗ LancamentoBancario",
-    fix: "Adicionar lancamento_bancario_id em FaturaCartao",
-    impact: "Valor da fatura conta duplamente (como cartão E como débito bancário)" },
-  { id: 4, priority: "P1", icon: "🔴", title: "TituloCobranca.nota_fiscal_id: 169 registros nulos",
-    desc: "Todos os 169 TituloCobranca importados têm nota_fiscal_id = null. O elo entre cobrança Sicredi e NF emitida está totalmente quebrado.",
-    fix: "Cruzar nosso_numero/seu_numero com campos da NotaFiscal e popular nota_fiscal_id",
-    impact: "Inadimplência não consegue ser atribuída a NF específica" },
-  { id: 5, priority: "P1", icon: "🔴", title: "DespesaOperacional: sem FK de pagamento",
-    desc: "DespesaOperacional tem forma_pagamento (pix/boleto/cartao) mas nenhum campo lancamento_bancario_id nem lancamento_cartao_id. Despesa fica suspensa no ar após ser registrada.",
-    fix: "Adicionar lancamento_bancario_id e lancamento_cartao_id em DespesaOperacional",
-    impact: "Conciliação automática não consegue baixar despesas pagas" },
-  { id: 6, priority: "P2", icon: "🟡", title: "ObraReforma → LancamentoBancario (ausente)",
-    desc: "ObraReforma tem lancamento_cartao_id mas NÃO tem lancamento_bancario_id. Obras pagas via PIX ou boleto ficam sem confirmação de pagamento.",
-    fix: "Adicionar lancamento_bancario_id em ObraReforma",
-    impact: "Obras pagas via banco não conseguem baixa automática" },
-  { id: 7, priority: "P2", icon: "🟡", title: "ConciliacaoItem → TituloCobranca (ausente)",
-    desc: "ConciliacaoItem liga LancamentoBancario↔NotaFiscal mas pula o TituloCobranca. Quando o pagamento vem de boleto Sicredi, o título não é baixado automaticamente pelo item de conciliação.",
-    fix: "Adicionar titulo_cobranca_id em ConciliacaoItem",
-    impact: "Títulos Sicredi exigem baixa manual mesmo após conciliação" },
-  { id: 8, priority: "P2", icon: "🟡", title: "TituloCobranca → LancamentoBancario (direto ausente)",
-    desc: "Não existe FK direto entre TituloCobranca e LancamentoBancario. A trilha Sicredi↔Extrato depende inteiramente do ConciliacaoItem como intermediário.",
-    fix: "Adicionar lancamento_bancario_id em TituloCobranca",
-    impact: "Relatório de cobrança não sabe qual extrato liquidou o título" },
-  { id: 9, priority: "P2", icon: "🟡", title: "FluxoCaixa → LancamentoBancario (realização)",
-    desc: "FluxoCaixa tem status 'realizado' mas sem FK para o lançamento bancário que realizou. O fluxo previsto nunca fecha o ciclo com o extrato real.",
-    fix: "Adicionar lancamento_bancario_id em FluxoCaixa",
-    impact: "Variância previsto x realizado calculada manualmente" },
-  { id: 10, priority: "P2", icon: "🟡", title: "NFeAnalise: 4-way match incompleto",
-    desc: "NFeAnalise→ItemCompra existe, mas não há link para LancamentoBancario/LancamentoCartao. O XML fiscal comprova a compra mas não confirma se foi paga.",
-    fix: "Adicionar lancamento_ids[] em NFeAnalise",
-    impact: "Compliance fiscal não verifica se a NF de entrada foi paga" },
-  { id: 11, priority: "P3", icon: "⚪", title: "FolhaPagamento.funcionario_id: string fraca",
-    desc: "funcionario_id é string livre, não FK para Funcionario.id. Causou duplicatas de 5 funcionários em fevereiro/2026.",
-    fix: "Normalizar para usar o _id real do Funcionario",
-    impact: "Relatórios de RH produzem duplicatas" },
-  { id: 12, priority: "P3", icon: "⚪", title: "NotaFiscal sem campo empresa",
-    desc: "NotaFiscal não tem campo empresa (NeuralTec/Liesch). Impossível segregar faturamento por CNPJ nos relatórios consolidados.",
-    fix: "Adicionar campo empresa com enum ['NeuralTec','Liesch']",
-    impact: "DRE por empresa não é possível automaticamente" },
-  { id: 13, priority: "P3", icon: "⚪", title: "RegraRecorrente sem rastreamento de saída",
-    desc: "RegraRecorrente define padrões de matching mas não registra quais LancamentoBancario ou DespesaOperacional foram identificados por ela.",
-    fix: "Adicionar regra_recorrente_id em DespesaOperacional/LancamentoBancario",
-    impact: "Auditoria das regras é impossível" },
-  { id: 14, priority: "P3", icon: "⚪", title: "ImportBatch sem FK para registros criados",
-    desc: "ImportBatch registra metadados do lote mas não tem FK para os registros criados. Impossível rastrear 'qual import gerou qual lançamento'.",
-    fix: "Adicionar import_batch_id em LancamentoBancario, TituloCobranca, ItemCompra, etc.",
-    impact: "Desfazer um import exige busca manual" },
-  { id: 15, priority: "P3", icon: "⚪", title: "RelatorioFaturamento sem reconciliação com NotaFiscal",
-    desc: "RelatorioFaturamento (fonte externa: Fabris/Ellitte) não tem job automático que some as NotaFiscal do mesmo mês e alerta sobre divergência.",
-    fix: "Job mensal: Σ NotaFiscal.valor_total WHERE mes = referencia → comparar com RelatorioFaturamento.total",
-    impact: "Divergência entre fiscal e gerencial passa despercebida" },
-];
+const GAPS = PLANO_INTEGRAL;
 
 const COLS = { receita: "#22c55e", centro: "#f59e0b", pagamento: "#ef4444", cartao: "#8b5cf6", compra: "#3b82f6", rh: "#ec4899", infra: "#6b7280" };
 const GCOLS = { receita: "rgba(34,197,94,0.08)", centro: "rgba(245,158,11,0.08)", pagamento: "rgba(239,68,68,0.08)", cartao: "rgba(139,92,246,0.08)", compra: "rgba(59,130,246,0.08)", rh: "rgba(236,72,153,0.08)", infra: "rgba(107,114,128,0.08)" };
@@ -265,10 +206,11 @@ export default function DiagnosticoConciliacao() {
           Análise Forense dos Fluxos
         </h1>
         <p style={{ fontSize: 13, color: "#64748b", margin: "4px 0 0" }}>
-          {totalOk} conexões funcionais · {totalBroken} lacunas identificadas · {GAPS.length} gaps para corrigir
+          {totalOk} relações catalogadas · {totalBroken} relações históricas a validar · {GAPS.length} frentes planejadas (não são contagens atuais do banco)
         </p>
       </div>
 
+      <div className="mb-5 border border-border rounded-lg bg-card text-card-foreground p-4 text-sm">Mapa histórico de arquitetura: os rótulos do diagrama não comprovam ausência de campos nem integridade dos registros atuais. A validação financeira exige documentos e vínculos reais.</div>
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         {[
           { label: "P1 Crítico", value: p1, color: "#ef4444", bg: "rgba(239,68,68,0.1)", desc: "Bloqueiam auditoria" },
@@ -443,49 +385,7 @@ export default function DiagnosticoConciliacao() {
         </div>
       )}
 
-      <div style={{ background: "#0d1117", border: "1px solid #1e293b", borderRadius: 10, padding: 16 }}>
-        <div style={{ fontSize: 11, color: "#475569", fontWeight: 600, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Resumo — campos FK ausentes por entidade</div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid #1e293b" }}>
-                {["Entidade", "FK Ausente", "Destino", "Prioridade", "Efeito"].map(h => (
-                  <th key={h} style={{ textAlign: "left", padding: "6px 12px", color: "#475569", fontWeight: 600, fontSize: 10, textTransform: "uppercase", letterSpacing: 1 }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { ent: "FolhaPagamento", fk: "lancamento_bancario_id", dest: "LancamentoBancario", p: "P1", ef: "Pagamento de salário sem confirmação de extrato" },
-                { ent: "Tributo", fk: "lancamento_bancario_id", dest: "LancamentoBancario", p: "P1", ef: "DAS/FGTS sem prova de débito bancário" },
-                { ent: "FaturaCartao", fk: "lancamento_bancario_id", dest: "LancamentoBancario", p: "P1", ef: "Fatura paga não fecha ciclo com extrato" },
-                { ent: "DespesaOperacional", fk: "lancamento_bancario_id + lancamento_cartao_id", dest: "LancamentoBancario / LancamentoCartao", p: "P1", ef: "Despesa registrada sem confirmação de pagamento" },
-                { ent: "TituloCobranca", fk: "nota_fiscal_id (169 nulls)", dest: "NotaFiscal", p: "P1", ef: "Cobrança Sicredi não rastreia NF de origem" },
-                { ent: "ObraReforma", fk: "lancamento_bancario_id", dest: "LancamentoBancario", p: "P2", ef: "Obra paga via PIX sem confirmação" },
-                { ent: "ConciliacaoItem", fk: "titulo_cobranca_id", dest: "TituloCobranca", p: "P2", ef: "Conciliação pula título, não dá baixa automática" },
-                { ent: "TituloCobranca", fk: "lancamento_bancario_id", dest: "LancamentoBancario", p: "P2", ef: "Título não sabe qual extrato o liquidou" },
-                { ent: "FluxoCaixa", fk: "lancamento_bancario_id", dest: "LancamentoBancario", p: "P2", ef: "Previsto nunca fecha com realizado" },
-                { ent: "NotaFiscal", fk: "empresa", dest: "—", p: "P3", ef: "DRE por CNPJ impossível automaticamente" },
-                { ent: "ImportBatch", fk: "FK nos registros criados", dest: "múltiplas entidades", p: "P3", ef: "Import não é rastreável nem reversível" },
-              ].map((row, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid #0f172a", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.01)" }}>
-                  <td style={{ padding: "7px 12px", color: "#60a5fa", fontFamily: "monospace", fontSize: 11 }}>{row.ent}</td>
-                  <td style={{ padding: "7px 12px", color: "#fca5a5", fontFamily: "monospace", fontSize: 11 }}>{row.fk}</td>
-                  <td style={{ padding: "7px 12px", color: "#4ade80", fontFamily: "monospace", fontSize: 11 }}>{row.dest}</td>
-                  <td style={{ padding: "7px 12px" }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 4,
-                      background: row.p === "P1" ? "rgba(239,68,68,0.15)" : row.p === "P2" ? "rgba(245,158,11,0.15)" : "rgba(107,114,128,0.15)",
-                      color: row.p === "P1" ? "#ef4444" : row.p === "P2" ? "#f59e0b" : "#6b7280",
-                    }}>{row.p}</span>
-                  </td>
-                  <td style={{ padding: "7px 12px", color: "#64748b", fontSize: 11 }}>{row.ef}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <PlanoConciliacaoEtapas />
     </div>
   );
 }

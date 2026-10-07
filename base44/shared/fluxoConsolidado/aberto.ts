@@ -44,7 +44,7 @@ export function calcularAberto(dados, mes, perimetro, hojeReal) {
   const aPagar = [
     ...dados.Tributo.filter((t) => ['a_vencer', 'vencido'].includes(t.status) && dentroPerimetro(t.empresa, perimetro))
       .map((t) => ({ id: t.id, entidade: 'Tributo', data_vencimento: t.data_vencimento, valor: t.valor_original })),
-    ...dados.DespesaOperacional.filter((d) => ['pendente', 'vencido'].includes(d.status) && dentroPerimetro(d.empresa, perimetro))
+    ...dados.DespesaOperacional.filter((d) => ['pendente', 'vencido'].includes(d.status) && !d.lancamento_cartao_id && dentroPerimetro(d.empresa, perimetro))
       .map((d) => ({ id: d.id, entidade: 'DespesaOperacional', data_vencimento: d.data_vencimento || d.data, valor: d.valor })),
     ...dados.FolhaPagamento.filter((f) => f.status === 'pendente' && dentroPerimetro(f.empresa, perimetro))
       .map((f) => ({ id: f.id, entidade: 'FolhaPagamento', data_vencimento: vencimentoFolha(f), valor: f.salario_liquido })),
