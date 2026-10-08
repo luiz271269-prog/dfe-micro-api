@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { conciliarTributos } from '../../shared/tributoConciliacao.ts';
 import { ehPagamentoTributo } from '../../shared/tributoRegras.ts';
 
@@ -188,8 +188,6 @@ Deno.serve(async (req) => {
         // Atualiza entidade origem — match perfeito 1:1, grava o FK direto para o LancamentoBancario
         if (match.origem_tipo === 'despesa') {
           await svc.DespesaOperacional.update(match.origem_id, { status: 'pago', data: lanc.data, lancamento_bancario_id: lanc.id });
-        } else if (match.origem_tipo === 'tributo') {
-          await svc.Tributo.update(match.origem_id, { status: 'pago', data_pagamento: lanc.data, valor_pago: valorAlocado, lancamento_bancario_id: lanc.id });
         } else if (match.origem_tipo === 'fatura') {
           await svc.FaturaCartao.update(match.origem_id, { status: 'paga_total', data_pagamento: lanc.data, valor_pago: valorAlocado, lancamento_bancario_id: lanc.id });
         } else if (match.origem_tipo === 'compra') {

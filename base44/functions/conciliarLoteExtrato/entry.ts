@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
 import { conciliarTributos } from '../../shared/tributoConciliacao.ts';
 import { ehPagamentoTributo } from '../../shared/tributoRegras.ts';
@@ -170,10 +170,6 @@ export default async function(req) {
         if (best.tipo === 'despesa') {
           await base44.asServiceRole.entities.DespesaOperacional.update(best.ref.id, {
             status: 'pago', data: lanc.data,
-          });
-        } else if (best.tipo === 'tributo') {
-          await base44.asServiceRole.entities.Tributo.update(best.ref.id, {
-            status: 'pago', data_pagamento: lanc.data, valor_pago: valorAbs,
           });
         } else if (best.tipo === 'folha') {
           await base44.asServiceRole.entities.FolhaPagamento.update(best.ref.id, {

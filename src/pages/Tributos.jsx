@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, AlertTriangle, Calendar, AlertCircle, DollarSign, CheckCircle } from 'lucide-react';
+import { Plus, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';

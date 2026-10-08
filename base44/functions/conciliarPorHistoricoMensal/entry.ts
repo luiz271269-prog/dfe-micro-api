@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
 import { conciliarTributos } from '../../shared/tributoConciliacao.ts';
 import { ehPagamentoTributo } from '../../shared/tributoRegras.ts';
@@ -201,8 +201,6 @@ export default async function(req) {
           await svc.FolhaPagamento.update(r.id, { lancamento_bancario_id: lanc.id, status: 'pago', data_pagamento: lanc.data });
         } else if (!criadoAgora && tipoFinal === 'DespesaOperacional') {
           await svc.DespesaOperacional.update(r.id, { lancamento_bancario_id: lanc.id, status: 'pago' });
-        } else if (!criadoAgora && tipoFinal === 'Tributo') {
-          await svc.Tributo.update(r.id, { lancamento_bancario_id: lanc.id, status: 'pago', data_pagamento: lanc.data, valor_pago: valor });
         } else if (tipoFinal === 'FaturaCartao') {
           await svc.FaturaCartao.update(r.id, { lancamento_bancario_id: lanc.id, status: 'paga_total', data_pagamento: lanc.data, valor_pago: valor });
         }

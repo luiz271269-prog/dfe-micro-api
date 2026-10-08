@@ -1,11 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { deslocarCompetencia, correspondeTributo, saldoTributo, empresaExtrato } from '../../shared/tributoRegras.ts';
+import { validarBaixaTributo } from '../../shared/validarBaixaTributo.ts';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error:'Não autenticado' }, { status:401 });
     const body = await req.json();
+    if (body.acao === 'validar_baixa') return Response.json(await validarBaixaTributo());
     if (body.acao === 'validar_regras') {
       const guia={ tipo:'DAS', empresa:'NeuralTec', competencia:'2026-09', data_vencimento:'2026-10-20', valor_original:100, juros_multa:10, valor_pago:0, status:'a_vencer' };
       const lanc={ descricao:'DAS ref 09/2026', conta_bancaria:'NeuralTec 36092-2', data:'2026-10-20', valor:-110, categoria:'tributo' };

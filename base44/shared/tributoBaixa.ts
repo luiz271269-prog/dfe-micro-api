@@ -27,7 +27,7 @@ export async function baixarTributo(db, body) {
       if(!empresaExtrato(lanc)||empresaExtrato(lanc)!==trib.empresa)throw new Error('Empresa da conta bancária não identificada ou diferente da guia.');
       if(lanc.tipo_compra&&lanc.tipo_compra!=='impostos')throw new Error('Pagamento classificado em outro módulo.');
       const tipo=tipoTributo(`${lanc.descricao||''} ${lanc.detalhe||''}`);
-      if(tipo&&tipo!==(trib.tipo==='GPS'?'INSS':trib.tipo))throw new Error('Tipo do pagamento diferente da guia.');
+      if(tipo&&tipo!==(trib.tipo==='GPS'?'INSS':trib.tipo) && !(body.conciliado_por!=='auto' && tipo==='DARF' && trib.tipo==='INSS'))throw new Error('Tipo do pagamento diferente da guia.');
       const referencia=competenciaExtrato(lanc);
       if(referencia.explicita&&referencia.competencia!==trib.competencia)throw new Error('Competência explícita do pagamento diferente da guia.');
       if(vinculo) {if(centavos(vinculo.valor_alocado)!==centavos(valor))throw new Error('Vínculo existente com valor diferente.');idempotente=true;}
