@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Wallet } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
+import CarteiraPagarEstado from '@/components/painel/CarteiraPagarEstado';
 
-export default function ContasAbertoCard({ aberto }) {
+export default function ContasAbertoCard({ aberto, carteira }) {
   const [aba, setAba] = useState('receber');
   const g = aba === 'receber' ? aberto.aReceber : aberto.aPagar;
   const link = aba === 'receber' ? '/cobrancas' : '/contas-a-pagar';
@@ -19,6 +20,7 @@ export default function ContasAbertoCard({ aberto }) {
           <button key={k} onClick={() => setAba(k)} className={`text-xs font-semibold rounded-md py-1 transition-colors ${aba === k ? 'bg-primary text-primary-foreground shadow' : 'hover:bg-background'}`}>{l}</button>
         ))}
       </div>
+      {aba === 'pagar' && carteira ? <CarteiraPagarEstado consulta={carteira} /> : <>
       <div className="h-32">
         <ResponsiveContainer>
           <BarChart data={g.faixas} margin={{ top: 5, right: 5, left: -15, bottom: 0 }} barCategoryGap="25%">
@@ -36,6 +38,7 @@ export default function ContasAbertoCard({ aberto }) {
       </div>
       <p className="text-[11px] text-muted-foreground text-center mt-2">{g.registros} registro(s) · total {formatCurrency(g.total)}</p>
       {aberto.dataCorte && <p className="text-[10px] text-muted-foreground text-center">Aging {aberto.modoAging === 'fechamento' ? 'do fechamento' : 'operacional'} · corte em {aberto.dataCorte.split('-').reverse().join('/')}</p>}
+      </>}
     </div>
   );
 }

@@ -12,6 +12,8 @@ import EvolucaoCard from '@/components/painel/EvolucaoCard';
 import ContasAbertoCard from '@/components/painel/ContasAbertoCard';
 import PosicaoFinalCard from '@/components/painel/PosicaoFinalCard';
 import RodapePainel from '@/components/painel/RodapePainel';
+import CarteiraPagarCard from '@/components/painel/CarteiraPagarCard';
+import useCarteiraPagar from '@/components/painel/useCarteiraPagar';
 import DrilldownDialog from '@/components/dashboard/DrilldownDialog';
 
 export default function Dashboard() {
@@ -19,18 +21,21 @@ export default function Dashboard() {
   const [perimetro, setPerimetro] = useState('grupo');
   const [drill, setDrill] = useState(null);
   const { data, isLoading, isError, error, refetch, isFetching, dataUpdatedAt } = useFluxoConsolidado(mes, perimetro);
+  const carteira = useCarteiraPagar(mes, perimetro);
+  const atualizar = () => { refetch(); carteira.refetch(); };
 
   useEffect(() => {
-    const h = () => refetch();
+    const h = () => { refetch(); carteira.refetch(); };
     window.addEventListener('neuralfinRefresh', h);
     return () => window.removeEventListener('neuralfinRefresh', h);
-  }, [refetch]);
+  }, [refetch, carteira.refetch]);
 
   const onDrill = async (linha) => setDrill(await carregarDrill(linha, fmtMesLong(mes)));
 
   return (
     <div className="lg:px-6 lg:py-6 max-w-[1600px] mx-auto space-y-4">
-      <PainelHeader mes={mes} onMes={setMes} perimetro={perimetro} onPerimetro={setPerimetro} onRefresh={refetch} refreshing={isFetching} />
+      <PainelHeader mes={mes} onMes={setMes} perimetro={perimetro} onPerimetro={setPerimetro} onRefresh={atualizar} refreshing={isFetching || carteira.isFetching} />
+      <CarteiraPagarCard consulta={carteira} />
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-32 gap-3 text-sm text-muted-foreground">
@@ -51,7 +56,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <FaturamentoFonteCard operacao={data.operacao} mes={mes} onDrill={onDrill} />
             <EvolucaoCard historico={data.historico} />
-            <ContasAbertoCard aberto={data.aberto} />
+            <ContasAbertoCard aberto={data.aberto} carteira={carteira} />
           </div>
           <PosicaoFinalCard posicao={data.posicao} loopR={data.loopR} mes={mes} />
           <RodapePainel dados={data} atualizadoEm={dataUpdatedAt} />

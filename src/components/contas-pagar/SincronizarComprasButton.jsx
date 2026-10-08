@@ -18,7 +18,10 @@ export default function SincronizarComprasButton({ onDone }) {
       const { data } = await sincronizarComprasCentral({});
       if (data?.error || data?.motivo && !data?.ok) throw new Error(data.error || data.motivo);
       setResultado(`${data.criados} nova(s) · ${data.atualizados} atualizada(s)`);
-      await queryClient.invalidateQueries({ queryKey: ['fluxoConsolidado'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['fluxoConsolidado'] }),
+        queryClient.invalidateQueries({ queryKey: ['carteiraPagarPainel'] }),
+      ]);
       onDone?.();
     } catch (err) {
       setResultado(`Erro: ${err.response?.data?.motivo || err.message}`);
