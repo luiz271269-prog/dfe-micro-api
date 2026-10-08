@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import RevisaoFixaLinha from '@/components/recorrentes/RevisaoFixaLinha';
 
-export default function RevisaoFixasDialog({ open, onOpenChange, inicio, fim, sugestoes, onRefresh }) {
+export default function RevisaoFixasDialog({ open, onOpenChange, inicio, fim, sugestoes, onRefresh, loading }) {
   const [busy, setBusy] = useState(false), [erro, setErro] = useState(''), [mensagem, setMensagem] = useState('');
   const [pagina, setPagina] = useState(0), [status, setStatus] = useState('pendente');
   const itens = sugestoes.filter(s => s.competencia >= inicio && s.competencia <= fim && s.status === status).sort((a, b) => a.data_extrato.localeCompare(b.data_extrato));
@@ -25,8 +25,8 @@ export default function RevisaoFixasDialog({ open, onOpenChange, inicio, fim, su
     finally { setBusy(false); }
   }
   return <Dialog open={open} onOpenChange={v => { if (!busy) onOpenChange(v); }}><DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-    <DialogHeader><DialogTitle>Revisar despesas fixas</DialogTitle><DialogDescription>Extrato = pagamento. Cartão = compra. Nenhum vínculo é confirmado pela análise.</DialogDescription></DialogHeader>
-    <div className="flex flex-wrap gap-2 items-center"><Button disabled={busy} onClick={analisar}>{busy ? 'Analisando...' : 'Analisar período'}</Button><select aria-label="Status das sugestões" className="border rounded-md bg-background p-2 text-sm" value={status} onChange={e => { setStatus(e.target.value); setPagina(0); }}><option value="pendente">Aguardando revisão</option><option value="confirmada">Confirmadas</option><option value="rejeitada">Rejeitadas</option></select></div>
+    <DialogHeader><DialogTitle>Revisar despesas fixas</DialogTitle><DialogDescription>Extrato confirma pagamento. Cartão reconhece despesa operacional na fatura. A análise não confirma vínculos.</DialogDescription></DialogHeader>
+    <div className="flex flex-wrap gap-2 items-center"><Button disabled={busy||loading} onClick={analisar}>{busy ? 'Analisando...' : 'Analisar período'}</Button><select aria-label="Status das sugestões" className="border rounded-md bg-background p-2 text-sm" value={status} onChange={e => { setStatus(e.target.value); setPagina(0); }}><option value="pendente">Aguardando revisão</option><option value="confirmada">Confirmadas</option><option value="rejeitada">Rejeitadas</option></select></div>
     <p className="text-xs text-muted-foreground">{inicio} a {fim} · {itens.length} sugestão(ões)</p>
     {mensagem && <p role="status" className="text-xs text-muted-foreground">{mensagem}</p>}{erro && <p role="alert" className="text-xs text-destructive">{erro}</p>}
     <div className="space-y-3">{itens.slice(pagina * 20, (pagina + 1) * 20).map(s => <RevisaoFixaLinha key={s.id} sugestao={s} onRefresh={onRefresh} disabled={busy} />)}{!itens.length && <p className="text-sm text-muted-foreground py-6">Nenhuma sugestão neste status. Use Analisar período para cruzar as fixas cadastradas com extrato e cartão.</p>}</div>

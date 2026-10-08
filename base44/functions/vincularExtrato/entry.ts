@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { eixosDoVinculo, TIPO_POR_ENTIDADE } from '../../shared/classificacaoPadrao.ts';
 import { baixarTributo } from '../../shared/tributoBaixa.ts';
+import { baixarDespesa } from '../../shared/despesaBaixa.ts';
 
 /**
  * SERVIÇO CENTRAL DE VÍNCULO (fonte única de verdade da conciliação).
@@ -46,9 +47,11 @@ Deno.serve(async (req) => {
     const svc = base44.asServiceRole.entities;
     if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
     if (body.acao === 'criar' && body.entidade_tipo === 'Tributo') return Response.json(await baixarTributo(svc, body));
+    if (body.acao === 'criar' && body.entidade_tipo === 'DespesaOperacional') return Response.json(await baixarDespesa(svc, body));
     if (body.acao === 'remover' && body.vinculo_id) {
       const vinculo = await svc.VinculoExtrato.get(body.vinculo_id);
       if (vinculo.entidade_tipo === 'Tributo') return Response.json(await baixarTributo(svc, body));
+      if (vinculo.entidade_tipo === 'DespesaOperacional') return Response.json(await baixarDespesa(svc, body));
     }
 
     async function recalcularCache(lancId) {

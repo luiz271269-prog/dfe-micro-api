@@ -31,9 +31,10 @@ export function avaliarFixa(r, l, canal) {
   return { bloqueada: motivos.length > 0, motivo: motivos.join(' · ') || 'Descrição, data e valor compatíveis; confirmar após revisão', data, valor: Math.abs(l.valor), diff_dias: freq === 'semanal' ? 0 : esperado ? dia - esperado : 0, vencimento: freq === 'semanal' ? data : `${data.slice(0, 7)}-${String(esperado || dia).padStart(2, '0')}` };
 }
 export async function validarClassificacaoFixa(db, regra) {
-  if (!regra.origem_compra || !regra.tipo_compra || !regra.categoria) throw new Error('Complete a classificação da despesa fixa.');
+  if (!['NeuralTec','Liesch'].includes(regra.empresa)) throw new Error('Defina a empresa da despesa fixa antes de conciliar.');
+  if (regra.origem_compra !== 'empresa' || regra.tipo_compra !== 'despesas' || !regra.categoria) throw new Error('Despesa fixa deve ter natureza operacional e centro de custo empresa. Revise o cadastro, sem alterar o histórico.');
   const categorias = await db.CadastroClassificacao.filter({ eixo: 'categoria', chave: regra.categoria, ativo: true });
   if (!categorias.length) throw new Error('Conta do plano de contas ausente ou inativa. Revise o cadastro.');
   const naturezas = categorias[0].naturezas_vinculadas?.length ? categorias[0].naturezas_vinculadas : [categorias[0].natureza_vinculada].filter(Boolean);
-  if (naturezas.length && !naturezas.includes(regra.tipo_compra)) throw new Error('Conta incompatível com o tipo de compra.');
+  if (!naturezas.includes('despesas')) throw new Error('Selecione uma conta operacional do plano de contas.');
 }

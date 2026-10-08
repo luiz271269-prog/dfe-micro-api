@@ -1,12 +1,16 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { painelDespesasFixas } from '../../shared/despesasFixasPainel.ts';
+import { confirmarDespesaFixa } from '../../shared/despesaFixaConfirmar.ts';
 import { carregarFixas, avaliarFixa, validarClassificacaoFixa } from '../../shared/despesasFixas.ts';
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req), user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Não autenticado' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Apenas administradores podem revisar despesas fixas' }, { status: 403 });
     const body = await req.json(), db = base44.entities;
+    if (body.acao === 'painel') return Response.json(await painelDespesasFixas(db,body));
+    if (user.role !== 'admin') return Response.json({ error: 'Apenas administradores podem revisar despesas fixas' }, { status: 403 });
+    if (body.validate_only) return Response.json({success:true,mode:'validation'});
     if (body.acao === 'analisar') {
       if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(body.mes || '')) return Response.json({ error: 'Informe um mês válido' }, { status: 400 });
       const [ano, mes] = body.mes.split('-').map(Number), fim = `${body.mes}-${new Date(Date.UTC(ano, mes, 0)).getUTCDate()}`;
@@ -72,26 +76,7 @@ export default async function(req) {
     const periodo = { $gte: `${s.competencia}-01`, $lte: `${s.competencia}-31` };
     const atuais = await carregarFixas(db, canal === 'cartao' ? 'LancamentoCartao' : 'LancamentoBancario', { [canal === 'cartao' ? 'data_lancamento' : 'data']: periodo });
     if (atuais.filter(x => { const m = avaliarFixa(r, x, canal); return m && m.vencimento === match.vencimento; }).length !== 1) return Response.json({ error: 'Mais de um lançamento corresponde ao ciclo; revise o cadastro' }, { status: 409 });
-    if (canal === 'cartao') {
-      if (l.item_compra_id) return Response.json({ error: 'Compra já vinculada a outro módulo' }, { status: 409 });
-      const conflitos = await Promise.all(['ItemCompra', 'ObraReforma'].map(t => db[t].filter({ lancamento_cartao_id: l.id }, 'id', 1)));
-      if (conflitos.some(rows => rows.length)) return Response.json({ error: 'Compra já registrada em outro módulo; revise o vínculo existente para não duplicar despesas' }, { status: 409 });
-      const existentes = await db.DespesaOperacional.filter({ lancamento_cartao_id: l.id });
-      if (existentes.length > 1 || existentes.some(d => d.lancamento_bancario_id || Math.abs(d.valor - match.valor) > 0.01 || (d.empresa && d.empresa !== r.empresa) || d.categoria !== r.categoria || d.tipo_compra !== r.tipo_compra || d.origem_compra !== r.origem_compra)) return Response.json({ error: 'Despesa existente com classificação ou vínculo divergente. Revise antes de associar à fixa.' }, { status: 409 });
-      const [fatura] = await db.FaturaCartao.filter({ id: l.fatura_id });
-      if (!fatura) return Response.json({ error: 'Fatura não encontrada; regularize o cartão antes de confirmar' }, { status: 409 });
-      await db.LancamentoCartao.update(l.id, { categoria: r.categoria, origem_compra: r.origem_compra, tipo_compra: r.tipo_compra, empresa_beneficiada: r.empresa, natureza: ['pessoal', 'pro_labore'].includes(r.origem_compra) ? 'pessoal' : 'empresarial' });
-      if (existentes[0] && !existentes[0].recorrente) await db.DespesaOperacional.update(existentes[0].id, { recorrente: true });
-      // O vínculo persistente é esta sugestão confirmada. Não cria outra despesa nem baixa a fatura.
-    } else {
-      const diretas = await db.DespesaOperacional.filter({ lancamento_bancario_id: l.id });
-      const jaFeita = diretas.find(d => d.observacoes?.includes(`Regra recorrente ${r.id} ·`));
-      const vinculos = await db.VinculoExtrato.filter({ lancamento_bancario_id: l.id });
-      if (!(jaFeita && vinculos.some(v => v.entidade_tipo === 'DespesaOperacional' && v.entidade_id === jaFeita.id && Math.abs(v.valor_alocado - match.valor) < 0.01))) {
-        const res = await base44.functions.invoke('conciliarRegraRecorrente', { regra_id: r.id, lancamento_id: l.id });
-        if (!res.data?.success) return Response.json({ error: res.data?.error || 'Não foi possível conciliar' }, { status: 409 });
-      }
-    }
+    await confirmarDespesaFixa(base44,{regra_id:r.id,lancamento_id:l.id,canal},user.id);
     await db.SugestaoConciliacao.update(s.id, { status: 'confirmada', resolvida_em: new Date().toISOString(), confirmada_por: user.id });
     return Response.json({ success: true, canal });
   } catch (error) { return Response.json({ error: error.message }, { status: 500 }); }

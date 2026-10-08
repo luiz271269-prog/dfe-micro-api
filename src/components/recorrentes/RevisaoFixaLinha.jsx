@@ -21,8 +21,8 @@ export default function RevisaoFixaLinha({ sugestao: s, onRefresh, disabled }) {
     <p>Previsto: {formatCurrency(s.valor_esperado)} · {formatDate(s.data_vencimento)}</p>
     <p>Encontrado: <b>{formatCurrency(s.valor_extrato)}</b> · {formatDate(s.data_extrato)}</p>
     <p className={s.bloqueada ? 'text-destructive' : 'text-muted-foreground'}>{s.motivo}</p>
-    {s.canal === 'cartao' && <p className="text-muted-foreground">Confirma a compra desta despesa fixa na fatura; não cria outra despesa nem registra saída bancária.</p>}
-    {s.status === 'pendente' ? <div className="flex gap-2 flex-wrap"><Button size="sm" disabled={busy || disabled || s.bloqueada} onClick={() => resolver('confirmar')}>{busy ? 'Processando...' : s.canal === 'cartao' ? 'Confirmar compra' : 'Confirmar pagamento'}</Button><Button size="sm" variant="outline" disabled={busy || disabled} onClick={() => resolver('rejeitar')}>Rejeitar</Button></div> : <p className="font-semibold text-success">{s.status === 'confirmada' ? 'Confirmada' : 'Rejeitada'}</p>}
+    {s.canal === 'cartao' && <p className="text-muted-foreground">Reconhece uma única despesa operacional na competência e vincula o lançamento do cartão. A saída bancária ocorre somente na quitação da fatura.</p>}
+    {s.status === 'pendente' ? <div className="flex gap-2 flex-wrap"><Button size="sm" disabled={busy || disabled || s.bloqueada} onClick={() => resolver('confirmar')}>{busy ? 'Processando...' : s.canal === 'cartao' ? 'Reconhecer no cartão' : 'Confirmar pagamento'}</Button><Button size="sm" variant="outline" disabled={busy || disabled} onClick={() => resolver('rejeitar')}>Rejeitar</Button></div> : <p className="font-semibold text-success">{s.status === 'confirmada' ? 'Confirmada' : 'Rejeitada'}</p>}
     {erro && <p role="alert" className="text-destructive">{erro}</p>}
   </article>;
 }

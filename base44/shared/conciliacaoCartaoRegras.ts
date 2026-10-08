@@ -18,7 +18,8 @@ export function evidenciasCartao(l, r, tipo, manual = false) {
   // A confirmação individual de compras conserva a janela legada; a execução automática permanece estrita.
   const confirmadoIndividualmente = manual && tipo === 'ItemCompra';
   const valorConfere = confirmadoIndividualmente ? Math.abs(centavos(l.valor) - centavos(valor)) <= 50 : centavos(l.valor) === centavos(valor);
-  const elegivel = compraReal(l) && Number(valor) > 0 && valorConfere && Number.isFinite(dias) && dias <= (confirmadoIndividualmente ? 60 : 3) && !protegido && !conflitante && (confirmadoIndividualmente || !parcelado);
+  const fixaConfirmada = manual && tipo === 'DespesaOperacional' && Boolean(r.regra_recorrente_id);
+  const elegivel = compraReal(l) && Number(valor) > 0 && valorConfere && Number.isFinite(dias) && dias <= (confirmadoIndividualmente ? 60 : fixaConfirmada ? 31 : 3) && !protegido && !conflitante && (confirmadoIndividualmente || !parcelado);
   if (!nomeConfere) motivos.push('Fornecedor não comprovado');
   if (!empresaA || !empresaB) motivos.push('Empresa não comprovada nos dois registros');
   if (!l.tipo_compra || !r.tipo_compra || !l.origem_compra || !r.origem_compra) motivos.push('Classificação incompleta');

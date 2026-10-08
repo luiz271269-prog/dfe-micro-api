@@ -1,7 +1,7 @@
 {
   "name": "RegraRecorrente",
   "type": "object",
-  "description": "Cadastro pr\u00e9vio de despesas fixas. A previs\u00e3o existe antes da compra ou pagamento; categoria \u00e9 a chave da conta no plano de contas.",
+  "description": "Cadastro de despesas operacionais fixas. Previs\u00e3o, realiza\u00e7\u00e3o por compet\u00eancia e pagamento s\u00e3o etapas distintas; categoria referencia o plano de contas.",
   "properties": {
     "nome": {
       "type": "string",
@@ -46,13 +46,15 @@
     },
     "categoria": {
       "type": "string",
-      "title": "Chave da conta no plano de contas"
+      "title": "Conta do plano de contas"
     },
     "origem_compra": {
-      "type": "string"
+      "type": "string",
+      "title": "Centro de custo"
     },
     "tipo_compra": {
-      "type": "string"
+      "type": "string",
+      "title": "Natureza da despesa"
     },
     "empresa": {
       "type": "string",
@@ -87,6 +89,13 @@
     },
     "observacoes": {
       "type": "string"
+    },
+    "conciliacao_token": {
+      "type": "string"
+    },
+    "conciliacao_iniciada_em": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

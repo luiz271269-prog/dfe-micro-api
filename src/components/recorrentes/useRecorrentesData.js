@@ -10,10 +10,11 @@ async function todos(entity, filtro, ordem) {
     if (pagina.length < 500) return resultado;
   }
 }
-export default function useRecorrentesData(mes) {
+export default function useRecorrentesData(mes,enabled=true) {
   const ano = Number(mes.slice(0, 4));
   const query = useQuery({
     queryKey: ['recorrentes-periodo', ano],
+    enabled,
     queryFn: async () => {
       const [regras, lancs, cartoes, sugestoes, despesas, faturas, usuario] = await Promise.all([
         todos('RegraRecorrente', {}, 'id'),
