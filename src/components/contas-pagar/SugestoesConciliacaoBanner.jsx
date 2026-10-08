@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { vincularExtrato } from '@/functions/vincularExtrato';
 import { Sparkles, Check, ChevronDown, ChevronUp, AlertTriangle, SearchCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -37,6 +38,14 @@ export default function SugestoesConciliacaoBanner() {
   async function confirmar(s) {
     setProcessandoId(s.id);
     try {
+      if (s.entidade_tipo === 'Tributo') {
+        const { data } = await vincularExtrato({ acao:'criar', entidade_tipo:'Tributo', entidade_id:s.entidade_id, lancamento_bancario_id:s.lancamento_bancario_id, valor_alocado:Math.abs(s.valor_extrato), observacao:`Sugestão confirmada · ${s.descricao_conta}` });
+        if (data?.error) throw new Error(data.error);
+        await base44.entities.SugestaoConciliacao.update(s.id, { status:'confirmada', resolvida_em:new Date().toISOString() });
+        window.dispatchEvent(new Event('neuralfinRefresh'));
+        setProcessandoId(null);
+        return;
+      }
       // Atualiza entidade origem
       if (s.entidade_tipo === 'DespesaOperacional') {
         await base44.entities.DespesaOperacional.update(s.entidade_id, { status: 'pago', data: s.data_extrato });

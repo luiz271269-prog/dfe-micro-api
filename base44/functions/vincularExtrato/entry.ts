@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { eixosDoVinculo, TIPO_POR_ENTIDADE } from '../../shared/classificacaoPadrao.ts';
+import { baixarTributo } from '../../shared/tributoBaixa.ts';
 
 /**
  * SERVIÇO CENTRAL DE VÍNCULO (fonte única de verdade da conciliação).
@@ -35,11 +36,20 @@ Deno.serve(async (req) => {
     if (!internoOk) {
       const user = await base44.auth.me().catch(() => null);
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-      if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+      if (user.role !== 'admin') {
+        if (body.acao !== 'criar' || body.entidade_tipo !== 'Tributo') return Response.json({ error: 'Forbidden' }, { status: 403 });
+        const [guia, banco] = await Promise.all([base44.entities.Tributo.get(body.entidade_id), base44.entities.LancamentoBancario.get(body.lancamento_bancario_id)]);
+        if (guia.created_by_id !== user.id || banco.created_by_id !== user.id) return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     const svc = base44.asServiceRole.entities;
     if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
+    if (body.acao === 'criar' && body.entidade_tipo === 'Tributo') return Response.json(await baixarTributo(svc, body));
+    if (body.acao === 'remover' && body.vinculo_id) {
+      const vinculo = await svc.VinculoExtrato.get(body.vinculo_id);
+      if (vinculo.entidade_tipo === 'Tributo') return Response.json(await baixarTributo(svc, body));
+    }
 
     async function recalcularCache(lancId) {
       if (!lancId) return null;

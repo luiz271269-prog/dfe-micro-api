@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
+import { conciliarTributos } from '../../shared/tributoConciliacao.ts';
+import { ehPagamentoTributo } from '../../shared/tributoRegras.ts';
 import { vencimentoFolha, dataNoMesPagamento } from '../../shared/folhaCalendario.ts';
 
 // Concilia o mês corrente usando o HISTÓRICO dos meses anteriores como gabarito.
@@ -31,6 +33,7 @@ export default async function(req) {
     }
     const svc = base44.asServiceRole.entities;
     if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
+    const fiscal = await conciliarTributos(base44, body);
 
     const [lancs, vincs, folhas, funcionarios, despesas, tributos, faturas] = await Promise.all([
       svc.LancamentoBancario.list('-data', 5000),
@@ -63,7 +66,7 @@ export default async function(req) {
 
     // 2. Débitos não conciliados com padrão conhecido
     const pendentes = lancs.filter(l =>
-      l.valor < 0 &&
+      !ehPagamentoTributo(l) && l.valor < 0 &&
       l.status_conciliacao !== 'conciliado' &&
       l.status_conciliacao !== 'ignorar' &&
       !['transferencia', 'interno', 'recebimento'].includes(l.categoria)
@@ -138,15 +141,7 @@ export default async function(req) {
       if (!ambosPequenos && Math.abs(valor - modelo.valorHist) > tolerancia) return null;
       const mes = (lanc.data || '').slice(0, 7);
       const m = modelo.reg;
-      if (tipo === 'Tributo') {
-        return await svc.Tributo.create({
-          tipo: m.tipo || 'OUTRO', descricao: m.descricao || lanc.descricao, competencia: mes,
-          data_vencimento: lanc.data, data_pagamento: lanc.data,
-          valor_original: valor, valor_pago: valor, status: 'pago',
-          empresa: m.empresa || 'NeuralTec', lancamento_bancario_id: lanc.id,
-          observacoes: 'Gerado automaticamente — recorrência mensal (espelho do mês anterior)',
-        });
-      }
+      if (tipo === 'Tributo') return null; // Recorrência não é cópia de valor nem criação por pagamento.
       // Folhas nunca são criadas pelo histórico bancário. Elas só podem nascer do cadastro de funcionários.
       if (tipo === 'FolhaPagamento') return null;
       if (tipo === 'DespesaOperacional') {
@@ -172,7 +167,7 @@ export default async function(req) {
       const t = termoChave(lanc.descricao);
       if (!t) continue;
       const tipo = tipoDominante(t);
-      if (!tipo) continue;
+      if (!tipo || tipo === 'Tributo') continue;
 
       const alvo = buscarAlvo(tipo, lanc);
       const valor = Math.abs(lanc.valor);
@@ -237,7 +232,8 @@ export default async function(req) {
 
     return Response.json({
       success: true,
-      conciliados,
+      ...fiscal,
+      conciliados: conciliados + fiscal.baixas_automaticas,
       criados_espelho_mes_anterior: criadosEspelho,
       padroes_aprendidos: padroes.size,
       pendentes_analisados: pendentes.length,

@@ -199,7 +199,9 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole.entities;
     const results = {};
-    const targets = only ? ENTITIES_CONFIG.filter(c => only.includes(c.name)) : ENTITIES_CONFIG;
+    if (body.validate_only === true) return Response.json({ success: true, mode: 'validation', entidades_protegidas: ['Tributo'] });
+    // Guias distintas podem ter mesmo tipo, empresa e competência. Nunca apagá-las pela chave mensal.
+    const targets = ENTITIES_CONFIG.filter(c => c.name !== 'Tributo' && (!only || only.includes(c.name)));
 
     for (const cfg of targets) {
       try {

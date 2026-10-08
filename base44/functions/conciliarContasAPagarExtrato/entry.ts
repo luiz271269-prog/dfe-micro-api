@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { conciliarTributos } from '../../shared/tributoConciliacao.ts';
+import { ehPagamentoTributo } from '../../shared/tributoRegras.ts';
 
 // Conciliação contínua de Contas a Pagar com Extrato Bancário.
 // REGRAS:
@@ -116,6 +118,9 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole.entities;
     if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
+    if (body.empresa && !['NeuralTec','Liesch'].includes(body.empresa)) throw new Error('Empresa inválida.');
+    const fiscal = await conciliarTributos(base44, body);
+    if (body.somente_tributos === true || body.dry_run === true) return Response.json({ success: true, ...fiscal });
 
     const [despesas, tributos, faturas, cartoes, compras, obras, lancamentos, vinculos, sugestoesAntigas] = await Promise.all([
       svc.DespesaOperacional.list('-data', 2000),
@@ -129,7 +134,7 @@ Deno.serve(async (req) => {
       svc.SugestaoConciliacao.filter({ status: 'pendente' }),
     ]);
 
-    const itens = consolidarContasAbertas({ despesas, tributos, faturas, cartoes, compras, obras });
+    const itens = consolidarContasAbertas({ despesas, tributos: [], faturas, cartoes, compras, obras });
 
     // Excluir contas já vinculadas e lançamentos já vinculados/em sugestão
     const lancsVinculados = new Set(vinculos.map(v => v.lancamento_bancario_id));
@@ -144,7 +149,7 @@ Deno.serve(async (req) => {
     });
 
     const debitos = lancamentos.filter(l =>
-      l.valor < 0 &&
+      !ehPagamentoTributo(l) && l.valor < 0 &&
       l.status_conciliacao !== 'conciliado' &&
       l.categoria !== 'transferencia' &&
       l.categoria !== 'interno' &&
@@ -160,62 +165,7 @@ Deno.serve(async (req) => {
     const contasUsadas = new Set();
     const lancsUsados = new Set();
 
-    // PASSO 0 — AUTO-CRIAR TRIBUTOS a partir de débitos do extrato com categoria='tributo' sem vínculo
-    // Resolve o gap: DAS/Simples Nacional no extrato mas sem registro de Tributo → cobertura 0%
-    let tributosAutoCriados = 0;
-    const debitosTributo = lancamentos.filter(l =>
-      l.valor < 0 &&
-      l.categoria === 'tributo' &&
-      !lancsVinculados.has(l.id) &&
-      !lancsEmSugestao.has(l.id) &&
-      l.status_conciliacao !== 'conciliado'
-    );
-
-    for (const debito of debitosTributo) {
-      const jaExiste = tributos.some(t => t.lancamento_bancario_id === debito.id);
-      if (jaExiste) continue;
-
-      const desc = norm(debito.descricao);
-      let tipo = 'OUTRO';
-      if (desc.includes('das') || desc.includes('simples nacional') || desc.includes('arrecadacao das')) tipo = 'DAS';
-      else if (desc.includes('gps') || (desc.includes('inss') && !desc.includes('fgts'))) tipo = 'INSS';
-      else if (desc.includes('darf')) tipo = 'DARF';
-      else if (desc.includes('icms')) tipo = 'ICMS';
-      else if (desc.includes('iss')) tipo = 'ISS';
-      else if (desc.includes('fgts')) tipo = 'FGTS';
-      else if (desc.includes('iptu')) tipo = 'IPTU';
-
-      let empresa = 'NeuralTec';
-      if (desc.includes('liesch')) empresa = 'Liesch';
-
-      const dataPag = debito.data;
-      const [ano, mes] = dataPag.split('-');
-      const competencia = `${ano}-${mes}`;
-
-      try {
-        const novoTributo = await svc.Tributo.create({
-          tipo, descricao: debito.descricao, competencia,
-          data_vencimento: dataPag, data_pagamento: dataPag,
-          valor_original: Math.abs(debito.valor), valor_pago: Math.abs(debito.valor),
-          status: 'pago', empresa, conta_pagamento: debito.conta_bancaria || '',
-          origem_compra: 'empresa', tipo_compra: 'impostos',
-          lancamento_bancario_id: debito.id,
-        });
-        await svc.VinculoExtrato.create({
-          lancamento_bancario_id: debito.id, entidade_tipo: 'Tributo', entidade_id: novoTributo.id,
-          valor_alocado: Math.abs(debito.valor), origem_compra: 'empresa', tipo_compra: 'impostos', tipo_vinculo: 'pagamento_integral',
-          conciliado_por: 'auto', confianca: 100,
-          observacao: `Tributo auto-criado do extrato · ${tipo}`,
-        });
-        await svc.LancamentoBancario.update(debito.id, {
-          status_conciliacao: 'conciliado', vinculos_count: 1, valor_conciliado: Math.abs(debito.valor),
-        });
-        lancsUsados.add(debito.id);
-        tributosAutoCriados++;
-      } catch (err) {
-        console.error('Erro auto-criar tributo:', err.message);
-      }
-    }
+    // Tributos: apuração é independente do extrato; o motor fiscal apenas baixa guias existentes.
 
     // PASSO 1 — MATCH PERFEITO (mesma data, mesmo valor)
     for (const lanc of debitos) {
@@ -324,8 +274,9 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
-      tributos_auto_criados: tributosAutoCriados,
-      baixas_automaticas: baixasAuto,
+      ...fiscal,
+      tributos_auto_criados: 0,
+      baixas_automaticas: baixasAuto + fiscal.baixas_automaticas,
       sugestoes_criadas: sugestoesCriadas,
       total_debitos_analisados: debitos.length,
       total_contas_abertas: contasAbertas.length,

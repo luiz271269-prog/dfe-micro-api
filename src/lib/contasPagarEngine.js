@@ -14,6 +14,8 @@ import { ehSaidaContasPagar } from './extratoNatureza';
 import { calcularProLabore } from './proLaboreContasPagar';
 import { consolidarTitulosCompras } from './titulosCompras';
 import { vencimentoFolha, dataNoMesPagamento } from '@/lib/folhaCalendario';
+import { vincularExtrato } from '@/functions/vincularExtrato';
+import { saldoGuia } from '@/components/tributos/tributoFluxo';
 
 // Registros antigos sem tipo permanecem pendentes até a classificação manual.
 
@@ -68,7 +70,7 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  tributos.filter(t => t.status === 'a_vencer' || t.status === 'vencido').forEach(t => {
+  tributos.filter(t => ['a_vencer','vencido','parcelado'].includes(t.status) && saldoGuia(t) > 0).forEach(t => {
     itens.push({
       id: `trib-${t.id}`,
       origem_id: t.id,
@@ -76,7 +78,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       descricao: t.descricao || `${t.tipo} ${t.competencia}`,
       fornecedor: 'Receita / Governo',
       categoria: t.tipo,
-      valor: (t.valor_original || 0) - (t.valor_pago || 0),
+      competencia: t.competencia,
+      valor: saldoGuia(t),
       data_vencimento: t.data_vencimento,
       empresa: t.empresa,
       forma_pagamento: 'boleto',
@@ -340,6 +343,11 @@ async function aplicarBaixa(base44, lanc, conta) {
   const entidadeTipo = mapearTipoEntidade(conta.origem_tipo);
   const valorAlocado = Math.abs(lanc.valor);
 
+  if (conta.origem_tipo === 'tributo') {
+    const { data } = await vincularExtrato({ acao:'criar', entidade_tipo:'Tributo', entidade_id:conta.origem_id, lancamento_bancario_id:lanc.id, valor_alocado:valorAlocado, conciliado_por:'auto', observacao:`Guia conciliada · ${conta.descricao}` });
+    if (data?.error) throw new Error(data.error);
+    return;
+  }
   // 1. Atualiza a entidade-origem para status 'pago'
   if (conta.origem_tipo === 'despesa') {
     // Loop-R: `data` é competência (documento) e nunca muda; a data bancária vai para data_pagamento.

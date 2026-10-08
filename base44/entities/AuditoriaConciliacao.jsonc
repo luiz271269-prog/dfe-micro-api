@@ -1,7 +1,7 @@
 {
   "name": "AuditoriaConciliacao",
   "type": "object",
-  "description": "Trilha de auditoria do saneamento de concilia\u00e7\u00e3o. Cada registro guarda o payload completo do v\u00ednculo removido/alterado, permitindo revers\u00e3o manual. Nunca \u00e9 apagado.",
+  "description": "Trilha de auditoria do saneamento e das baixas tribut\u00e1rias. Preserva o estado anterior para confer\u00eancia e recupera\u00e7\u00e3o, sem apagar hist\u00f3rico.",
   "properties": {
     "execucao_id": {
       "type": "string",
@@ -14,7 +14,10 @@
         "obrigacao_reaberta",
         "cache_recalculado",
         "alerta_limpo",
-        "sugestao_normalizada"
+        "sugestao_normalizada",
+        "vinculo_preparado",
+        "vinculo_confirmado",
+        "vinculo_falha"
       ],
       "title": "A\u00e7\u00e3o executada"
     },

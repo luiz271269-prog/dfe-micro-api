@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
 import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
+import { conciliarTributos } from '../../shared/tributoConciliacao.ts';
+import { ehPagamentoTributo } from '../../shared/tributoRegras.ts';
 import { vencimentoFolha, dataNoMesPagamento } from '../../shared/folhaCalendario.ts';
 
 /**
@@ -25,6 +27,7 @@ export default async function(req) {
 
     const { mes_referencia, validate_only } = await req.json().catch(() => ({}));
     if (validate_only === true) return Response.json({ success: true, mode: 'validation' });
+    const fiscal = await conciliarTributos(base44, { mes_referencia });
 
     // 1) Carregar dados — REGRA: conciliação lê o BANCO inteiro (pendências),
     // nunca "a última importação". Sem mês informado, busca todos os lançamentos
@@ -42,12 +45,12 @@ export default async function(req) {
     // Só pendências entram na conciliação
     const lancs = (lancsAll || []).filter(l => l.status_conciliacao !== 'conciliado');
 
-    const tributosAbertos = tributos.filter(t => t.status === 'a_vencer' || t.status === 'vencido');
+    const tributosAbertos = []; // Baixas fiscais somente pelo motor central, sem gerar imposto do extrato.
     const faturasAbertas = faturas.filter(f => f.status === 'aberta' || f.status === 'vencida');
 
     // Exclui transferências e movimentos internos — nunca são contas a pagar
     const debitos = (lancs || []).filter(l =>
-      (l.valor || 0) < 0 &&
+      (l.valor || 0) < 0 && !ehPagamentoTributo(l) &&
       l.categoria !== 'transferencia' &&
       l.categoria !== 'interno'
     );
@@ -213,9 +216,10 @@ export default async function(req) {
 
     return Response.json({
       processados: debitos.length,
-      baixas_automaticas: baixas.length,
+      ...fiscal,
+      baixas_automaticas: baixas.length + fiscal.baixas_automaticas,
       duplicidades_detectadas: duplicidades.length,
-      detalhes: { baixas, duplicidades },
+      detalhes: { baixas: [...baixas, ...fiscal.detalhes], duplicidades },
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

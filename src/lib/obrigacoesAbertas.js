@@ -1,5 +1,7 @@
 import { base44 } from '@/api/base44Client';
 import { vencimentoFolha } from '@/lib/folhaCalendario';
+import { vincularExtrato } from '@/functions/vincularExtrato';
+import { saldoGuia } from '@/components/tributos/tributoFluxo';
 
 // Carrega todas as obrigações em aberto (não vinculadas ao extrato) num formato único
 // { entidade_tipo, entidade_id, descricao, fornecedor, valor, data_vencimento, tipo_label }
@@ -25,12 +27,11 @@ export async function carregarObrigacoesAbertas() {
     });
   });
 
-  tributos.filter(t => t.status === 'a_vencer' || t.status === 'vencido').forEach(t => {
-    if (vinc.has(`Tributo-${t.id}`)) return;
+  tributos.filter(t => ['a_vencer','vencido','parcelado'].includes(t.status) && saldoGuia(t) > 0).forEach(t => {
     lista.push({
       entidade_tipo: 'Tributo', entidade_id: t.id, tipo_label: 'tributo',
       descricao: t.descricao || `${t.tipo} ${t.competencia}`, fornecedor: 'Receita / Governo',
-      valor: (t.valor_original || 0) - (t.valor_pago || 0), data_vencimento: t.data_vencimento,
+      valor: saldoGuia(t), data_vencimento: t.data_vencimento,
     });
   });
 
@@ -60,6 +61,11 @@ export async function carregarObrigacoesAbertas() {
 export async function conciliarObrigacaoComLancamento(obrigacao, lancamento, observacao) {
   const valor = Math.abs(lancamento.valor || 0);
   const data = lancamento.data;
+  if (obrigacao.entidade_tipo === 'Tributo') {
+    const { data: resultado } = await vincularExtrato({ acao:'criar', entidade_tipo:'Tributo', entidade_id:obrigacao.entidade_id, lancamento_bancario_id:lancamento.id, valor_alocado:valor, observacao });
+    if (resultado?.error) throw new Error(resultado.error);
+    return resultado;
+  }
 
   if (obrigacao.entidade_tipo === 'DespesaOperacional') {
     await base44.entities.DespesaOperacional.update(obrigacao.entidade_id, { status: 'pago', data });

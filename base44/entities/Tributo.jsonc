@@ -102,6 +102,14 @@
     "lancamento_bancario_id": {
       "type": "string",
       "title": "ID do LancamentoBancario que confirmou o pagamento (FK direto)"
+    },
+    "conciliacao_token": {
+      "type": "string",
+      "description": "Reserva tempor\u00e1ria da baixa de tributo"
+    },
+    "conciliacao_iniciada_em": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

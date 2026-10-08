@@ -39,6 +39,7 @@ export default async function(req) {
       }
     }
 
+    if (payload.validate_only === true) return Response.json({ success: true, mode: 'validation' });
     // 1. Roda cada motor em sequência via HTTP direto com token interno
     // (funciona tanto em automação agendada quanto em chamada manual)
     const resultadosEngines = {};
@@ -58,7 +59,8 @@ export default async function(req) {
 
     // 2. Auto-aprovação de sugestões com confiança alta
     const sugestoes = await svc.SugestaoConciliacao.filter({ status: 'pendente' });
-    const altas = sugestoes.filter(s => (s.confianca || 0) >= CONFIANCA_AUTO);
+    // Tributos são aprovados pelo motor fiscal (empresa, guia, saldo e unicidade), nunca só pelo score.
+    const altas = sugestoes.filter(s => s.entidade_tipo !== 'Tributo' && (s.confianca || 0) >= CONFIANCA_AUTO);
 
     let aprovadas = 0;
     const errosAprovacao = [];

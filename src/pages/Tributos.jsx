@@ -18,6 +18,8 @@ import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import DASAlertBar from '@/components/dre/DASAlertBar';
 import TributoMobileCard from '@/components/tributos/TributoMobileCard';
+import ObrigacoesMensais from '@/components/tributos/ObrigacoesMensais';
+import { competenciaAnterior, empresaDaConta, saldoGuia } from '@/components/tributos/tributoFluxo';
 
 const TIPOS = ['DAS', 'ICMS', 'ISS', 'PIS', 'COFINS', 'IRPJ', 'CSLL', 'INSS', 'FGTS', 'GPS', 'DARF', 'IPTU', 'ALVARA', 'TAXA_BOMBEIRO', 'OUTRO'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -44,6 +46,7 @@ export default function Tributos() {
   const [lancamentosExtrato, setLancamentosExtrato] = useState([]);
   const [vinculos, setVinculos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [revision, setRevision] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
@@ -67,6 +70,7 @@ export default function Tributos() {
     setLancamentosExtrato(extrato);
     setVinculos(vinculosData);
     setLoading(false);
+    setRevision(r => r + 1);
   }
 
   useEffect(() => {
@@ -99,21 +103,21 @@ export default function Tributos() {
     ]);
     const pagamentosRegistrados = new Set(tributos
       .filter(t => t.status === 'pago')
-      .map(t => `${t.data_pagamento || t.data_vencimento}|${Math.round((t.valor_pago || t.valor_original || 0) * 100)}`));
+      .map(t => `${t.empresa}|${t.data_pagamento || t.data_vencimento}|${Math.round((t.valor_pago || t.valor_original || 0) * 100)}`));
     const vindosDoExtrato = lancamentosExtrato
       .filter(l => (l.valor || 0) < 0 && (l.tipo_compra === 'impostos' || l.categoria === 'tributo') && l.status_conciliacao !== 'ignorar')
-      .filter(l => !idsVinculados.has(l.id) && !pagamentosRegistrados.has(`${l.data}|${Math.round(Math.abs(l.valor || 0) * 100)}`))
+      .filter(l => !idsVinculados.has(l.id) && !pagamentosRegistrados.has(`${empresaDaConta(l.conta_bancaria)}|${l.data}|${Math.round(Math.abs(l.valor || 0) * 100)}`))
       .map(l => ({
         id: `extrato-${l.id}`,
         tipo: identificarTipoTributo(`${l.descricao} ${l.detalhe || ''}`),
         descricao: l.descricao,
-        competencia: l.mes_referencia || l.data?.slice(0, 7),
+        competencia: ['DAS','FGTS','INSS','GPS'].includes(identificarTipoTributo(`${l.descricao} ${l.detalhe || ''}`)) ? competenciaAnterior(l.data?.slice(0,7)) : '',
         data_vencimento: l.data,
         data_pagamento: l.data,
         valor_original: Math.abs(l.valor || 0),
         valor_pago: Math.abs(l.valor || 0),
         status: 'pago',
-        empresa: /liesch|37101/i.test(`${l.conta_bancaria || ''} ${l.descricao || ''}`) ? 'Liesch' : 'NeuralTec',
+        empresa: empresaDaConta(l.conta_bancaria) || 'A identificar',
         origem_compra: l.origem_compra || 'empresa',
         tipo_compra: 'impostos',
         _lancamento: l,
@@ -141,7 +145,7 @@ export default function Tributos() {
 
   const { sorted, sortField, sortDir, handleSort } = useTableSort(filtrados, 'data_vencimento', 'desc');
 
-  const totalAPagar = filtrados.filter(t => ['a_vencer', 'vencido', 'parcelado'].includes(t.status)).reduce((s, t) => s + (t.valor_original || 0), 0);
+  const totalAPagar = filtrados.filter(t => ['a_vencer', 'vencido', 'parcelado'].includes(t.status)).reduce((s, t) => s + saldoGuia(t), 0);
   const totalPago = filtrados.filter(t => t.status === 'pago').reduce((s, t) => s + (t.valor_pago || t.valor_original || 0), 0);
   const vencidos = filtrados.filter(t => t.status === 'vencido').length;
   const dasVencidos = todosTributos.filter(t => t.tipo === 'DAS' && statusEfetivo(t) === 'vencido');
@@ -165,6 +169,10 @@ export default function Tributos() {
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Tributo</Button>
       </PageHeader>
 
+      <ObrigacoesMensais mesPagamento={selectedMonth} empresa={filterEmpresa} revision={revision} onCadastrar={item => {
+        setForm({ tipo:item.tipo, empresa:item.empresa, competencia:item.competencia, descricao:`${item.tipo} referente à competência ${item.competencia}`, data_vencimento:'', data_pagamento:'', valor_original:item.valor_sugerido ?? '', valor_pago:'0', juros_multa:'0', status:'a_vencer', origem_compra:'empresa', tipo_compra:'impostos', observacoes:item.aviso });
+        setShowForm(true);
+      }} />
       <DASAlertBar mesReferencia={isAnnual ? null : selectedMonth} />
 
       {dasVencidos.length > 0 && (
@@ -263,7 +271,7 @@ export default function Tributos() {
                   <td className="px-4 py-3 font-semibold">{t.tipo}</td>
                   <td className="hidden sm:table-cell px-4 py-3">
                     <p>{t.descricao || '—'}</p>
-                    {t._lancamento && <p className="text-[10px] text-muted-foreground">Pago pelo extrato · {t._lancamento.conta_bancaria || 'Conta corrente'}</p>}
+                    {t._lancamento && <p className="text-[10px] text-muted-foreground">Pagamento sem guia cadastrada · competência a conferir · {t._lancamento.conta_bancaria || 'Conta corrente'}</p>}
                   </td>
                   <td className="hidden md:table-cell px-4 py-3 text-xs text-muted-foreground">{t.competencia}</td>
                   <td className="hidden sm:table-cell px-4 py-3 text-xs">{formatDate(t.data_vencimento)}</td>
@@ -307,7 +315,7 @@ export default function Tributos() {
               <CampoClassificacao eixo="tipo" label="Tipo de compra" value={form.tipo_compra} onChange={v => setForm({...form, tipo_compra: v})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Competência</Label><Input type="month" value={form.competencia} onChange={e => setForm({...form, competencia: e.target.value})} required /></div>
+              <div><Label>Competência da apuração (mês do faturamento/folha)</Label><Input type="month" value={form.competencia} onChange={e => setForm({...form, competencia: e.target.value})} required /></div>
               <div><Label>Vencimento</Label><Input type="date" value={form.data_vencimento} onChange={e => setForm({...form, data_vencimento: e.target.value})} required /></div>
             </div>
             <div className="grid grid-cols-3 gap-4">
