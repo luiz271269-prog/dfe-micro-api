@@ -128,10 +128,18 @@ export default function ContasAPagarPanel() {
   const abertosRaw = useMemo(() => consolidarContasPagar(dados).map(i => ({ ...i, _situacao: i.is_planejado ? 'previsto' : 'aberto' })), [dados]);
   // Mantém a consulta histórica por emissão; ela não é um relatório de caixa.
   const pagosRaw = useMemo(() => consolidarContasPagas(dados).map(i => ({ ...i, data_vencimento: i.data_emissao, _situacao: 'pago' })), [dados]);
+  const pertenceAoPeriodo = item => {
+    const data = item.data_vencimento || '';
+    const referencia = isAnnual ? mesReferencia.slice(0, 4) : mesReferencia;
+    if (data.slice(0, isAnnual ? 4 : 7) === referencia) return true;
+    // Na consulta atual, dívida anterior e sem vencimento não deixa de estar em aberto.
+    const consultaAtual = referencia === mesAtualISO().slice(0, isAnnual ? 4 : 7);
+    const inicioPeriodo = isAnnual ? `${referencia}-01-01` : `${referencia}-01`;
+    return consultaAtual && item._situacao === 'aberto' && (!data || data < inicioPeriodo);
+  };
   const recorte = lista => lista.filter(i => {
-    const periodo = (i.data_vencimento || '').slice(0, isAnnual ? 4 : 7);
     const tipo = i.origem_tipo === 'fatura' ? 'fatura' : tipoGastoValido(i.tipo_compra) ? i.tipo_compra : 'pendente';
-    return periodo === (isAnnual ? mesReferencia.slice(0, 4) : mesReferencia) && pertenceAoFiltroEmpresa(i, filtroEmpresa) && (filtroOrigem === 'todos' || tipo === filtroOrigem);
+    return pertenceAoPeriodo(i) && pertenceAoFiltroEmpresa(i, filtroEmpresa) && (filtroOrigem === 'todos' || tipo === filtroOrigem);
   });
   const abertosRecorte = recorte(abertosRaw.filter(i => !i.is_planejado));
   const pagosRecorte = recorte(pagosRaw);
@@ -150,7 +158,7 @@ export default function ContasAPagarPanel() {
     if (filtroStatus === 'vencidos') return ag.vencidos;
     return confirmados;
   }, [abertosRaw, pagosRaw, filtroStatus]);
-  const itensPeriodo = useMemo(() => itensRaw.filter(i => (i.data_vencimento || '').slice(0, isAnnual ? 4 : 7) === (isAnnual ? mesReferencia.slice(0, 4) : mesReferencia)), [itensRaw, mesReferencia, isAnnual]);
+  const itensPeriodo = itensRaw.filter(pertenceAoPeriodo);
   const itens = recorte(itensRaw);
 
   const aging = useMemo(() => calcularAging(itens.filter(i => i._situacao === 'aberto')), [itens]);
@@ -206,6 +214,7 @@ export default function ContasAPagarPanel() {
       </div>
 
       <ResumoSituacaoCarteira abertos={abertosRecorte} pagos={pagosRecorte} versao={versaoResumo} />
+      {(isAnnual ? mesReferencia.slice(0, 4) === mesAtualISO().slice(0, 4) : mesReferencia === mesAtualISO()) && <p className="text-xs text-muted-foreground mb-3">A consulta atual também inclui contas em aberto de períodos anteriores e sem vencimento; documentos quitados continuam restritos ao período selecionado.</p>}
       <ResumoPorInstrumento itens={itens} tituloTotal={tituloConsulta} />
       {modo === 'todos' && <p className="text-xs text-muted-foreground mb-3">“Todos” reúne saldos em aberto, documentos quitados e previsões. O total desta consulta não representa dívida pendente.</p>}
       {modo === 'previstos' && <p className="text-xs text-muted-foreground mb-3">Estimativas de planejamento, sem documento confirmado e sem baixa automática.</p>}
@@ -231,7 +240,7 @@ export default function ContasAPagarPanel() {
             <p className="text-lg font-bold text-orange-700">{formatCurrency(totalSemana)}</p>
           </div>
           <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-200" title="Total do período selecionado">
-            <p className="text-[10px] font-bold uppercase text-blue-700">{isAnnual ? 'Ano selecionado' : 'Mês selecionado'}</p>
+            <p className="text-[10px] font-bold uppercase text-blue-700">Total da consulta selecionada</p>
             <p className="text-lg font-bold text-blue-700">{formatCurrency(total)}</p>
           </div>
         </>)}
@@ -276,6 +285,10 @@ export default function ContasAPagarPanel() {
         </div>
       )}
 
+      <section aria-label="Contas do sistema e boletos bancários" className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <CalendarioSemanal itens={itens} conciliadosSet={conciliadosSet} mesReferencia={mesReferencia} modo={modo} isAnnual={isAnnual} />
+        <PainelDDA lancamentos={lancamentos} contasPagar={abertosRecorte} mesReferencia={mesReferencia} isAnnual={isAnnual} />
+      </section>
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4 items-stretch">
         <div className="min-w-0">
           <IntegradosModuloPanel modulo="contasPagar" titulo="Contas externas a pagar · fora dos totais" compact />
@@ -288,22 +301,7 @@ export default function ContasAPagarPanel() {
         </div>
       </div>
 
-      {/* Duas colunas: Calendário (sistema) × DDA (banco) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <CalendarioSemanal
-          itens={itens}
-          conciliadosSet={conciliadosSet}
-          mesReferencia={mesReferencia}
-          modo={modo}
-          isAnnual={isAnnual}
-        />
-        <PainelDDA
-          lancamentos={lancamentos}
-          contasPagar={abertosRecorte}
-          mesReferencia={mesReferencia}
-          isAnnual={isAnnual}
-        />
-      </div>
+
     </>
   );
 }

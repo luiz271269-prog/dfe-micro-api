@@ -33,6 +33,6 @@ export default function ResumoSituacaoCarteira({ abertos, pagos, versao }) {
       <p className="text-xs text-muted-foreground">{descricao}</p>
     </div>)}
     {error && <p role="alert" className="text-sm text-destructive sm:col-span-2">{error.message}</p>}
-    <p className="text-xs text-muted-foreground sm:col-span-2">Resumo dos registros carregados no mês/ano, empresa e natureza selecionados. Previsões sem documento ficam separadas e não são dívida confirmada.</p>
+    <p className="text-xs text-muted-foreground sm:col-span-2">Resumo dos registros carregados na consulta, empresa e natureza selecionadas. Previsões sem documento ficam separadas e não são dívida confirmada.</p>
   </section>;
 }
