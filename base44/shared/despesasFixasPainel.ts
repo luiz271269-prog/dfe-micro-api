@@ -25,7 +25,11 @@ export async function painelDespesasFixas(db,body) {
     if(items.length===50){if(i+1<lista.length)next_cursor=JSON.stringify({grupo:i+1});break;}
   }
   const ids=items.map(r=>r.id),esc=ids.map(id=>id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
-  const despesas=ids.length?await db.DespesaOperacional.aggregate({query:{recorrente:true,data:{$gte:`${inicio}-01`,$lte:`${fim}-31`},$or:[{regra_recorrente_id:{$in:ids}},{observacoes:{$regex:`Regra recorrente (${esc}) ·`}}]},groupBy:['regra_recorrente_id','observacoes','lancamento_bancario_id','lancamento_cartao_id'],sum:['valor','valor_pago'],limit:1000}):{rows:[]};
+  const [anoFim,mesFim]=fim.split('-').map(Number);
+  const periodo={$gte:`${inicio}-01`,$lt:new Date(Date.UTC(anoFim,mesFim,1)).toISOString().slice(0,10)};
+  const legadas=ids.length?await lerCompleto(db,'DespesaOperacional',{recorrente:true,data:periodo,$or:ids.map(id=>({observacoes:{$regex:`Regra recorrente ${id} ·`}}))},['id']):[];
+  const destinos=legadas.length?{$or:[{regra_recorrente_id:{$in:ids}},{id:{$in:legadas.map(d=>d.id)}}]}:{regra_recorrente_id:{$in:ids}};
+  const despesas=ids.length?await db.DespesaOperacional.aggregate({query:{recorrente:true,data:periodo,...destinos},groupBy:['regra_recorrente_id','observacoes','lancamento_bancario_id','lancamento_cartao_id'],sum:['valor','valor_pago'],limit:1000}):{rows:[]};
   if(despesas.truncated)throw new Error('Histórico excede o limite seguro do período.');
   const realizados={};
   for(const g of despesas.rows){const id=g.regra_recorrente_id||g.observacoes?.match(/Regra recorrente ([^ ]+) ·/)?.[1];if(!ids.includes(id))continue;
