@@ -5,7 +5,8 @@ const CHIPS = [
   { key: 'aberto',   label: 'Em Aberto' },
   { key: 'semana',   label: 'Vencendo esta semana', alerta: true },
   { key: 'vencidos', label: 'Vencidos', alerta: true },
-  { key: 'pagos',    label: 'Pagos' },
+  { key: 'pagos',    label: 'Quitados por emissão' },
+  { key: 'previstos', label: 'Previsões sem documento' },
 ];
 
 export default function ChipsStatusContas({ status, onChange, contagens = {} }) {
@@ -28,7 +29,7 @@ export default function ChipsStatusContas({ status, onChange, contagens = {} }) 
           >
             {c.alerta && !ativo && <AlertTriangle className="w-3 h-3" />}
             {c.label}
-            <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${ativo ? 'bg-white/20' : 'bg-muted'}`}>{qtd}</span>
+            {c.key !== 'previstos' && <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${ativo ? 'bg-white/20' : 'bg-muted'}`}>{qtd}</span>}
           </button>
         );
       })}

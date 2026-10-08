@@ -18,12 +18,13 @@ import RevisaoTiposGasto from '@/components/classificacao/RevisaoTiposGasto';
 import { tipoGastoValido } from '@/lib/classificacaoUnificada';
 import IntegradosModuloPanel from '@/components/integracoes/IntegradosModuloPanel';
 import ResumoPorInstrumento from './ResumoPorInstrumento';
+import ResumoSituacaoCarteira from '@/components/contas-pagar/ResumoSituacaoCarteira';
 
 
 
 function mesAtualISO() {
   const d = new Date();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  return d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
 }
 function deslocarMes(mesIso, delta) {
   const [y, m] = mesIso.split('-').map(Number);
@@ -55,7 +56,9 @@ export default function ContasAPagarPanel() {
   const [conciliando, setConciliando] = useState(false);
   const [resultadoBaixa, setResultadoBaixa] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState('todos'); // todos · aberto · semana · vencidos · pagos
-  const modo = filtroStatus === 'pagos' ? 'pagos' : 'aberto';
+  const modo = filtroStatus === 'pagos' ? 'pagos' : filtroStatus === 'previstos' ? 'previstos' : filtroStatus === 'todos' ? 'todos' : 'aberto';
+  const tituloConsulta = { todos: 'Documentos e previsões no recorte', aberto: 'Saldo em aberto', pagos: 'Documentos quitados por emissão', previstos: 'Previsões sem documento' }[modo];
+  const [versaoResumo, setVersaoResumo] = useState(0);
   const [filtroOrigem, setFiltroOrigem] = useState('todos');
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [mesReferencia, setMesReferencia] = useState(mesAtualISO());
@@ -99,6 +102,7 @@ export default function ContasAPagarPanel() {
     setDados({ despesas, tributos, folhas, faturas, cartoes, compras, obras, lancamentos: lancs, lancamentosCartao: lancsCartao });
     setVinculos(vincs);
     setLancamentos(lancs);
+    setVersaoResumo(v => v + 1);
     setLoading(false);
   }
   useEffect(() => {
@@ -121,47 +125,35 @@ export default function ContasAPagarPanel() {
     };
   }, []);
 
-  const abertosRaw = useMemo(() => consolidarContasPagar(dados), [dados]);
-  // Pagos: o eixo temporal passa a ser a emissão do documento
-  const pagosRaw = useMemo(
-    () => consolidarContasPagas(dados).map(i => ({ ...i, data_vencimento: i.data_emissao })),
-    [dados]
-  );
-
+  const abertosRaw = useMemo(() => consolidarContasPagar(dados).map(i => ({ ...i, _situacao: i.is_planejado ? 'previsto' : 'aberto' })), [dados]);
+  // Mantém a consulta histórica por emissão; ela não é um relatório de caixa.
+  const pagosRaw = useMemo(() => consolidarContasPagas(dados).map(i => ({ ...i, data_vencimento: i.data_emissao, _situacao: 'pago' })), [dados]);
+  const recorte = lista => lista.filter(i => {
+    const periodo = (i.data_vencimento || '').slice(0, isAnnual ? 4 : 7);
+    const tipo = i.origem_tipo === 'fatura' ? 'fatura' : tipoGastoValido(i.tipo_compra) ? i.tipo_compra : 'pendente';
+    return periodo === (isAnnual ? mesReferencia.slice(0, 4) : mesReferencia) && pertenceAoFiltroEmpresa(i, filtroEmpresa) && (filtroOrigem === 'todos' || tipo === filtroOrigem);
+  });
+  const abertosRecorte = recorte(abertosRaw.filter(i => !i.is_planejado));
+  const pagosRecorte = recorte(pagosRaw);
+  const previsoesRecorte = recorte(abertosRaw.filter(i => i.is_planejado));
   const contagens = useMemo(() => {
-    const ag = calcularAging(abertosRaw);
-    return {
-      todos: abertosRaw.length + pagosRaw.length,
-      aberto: abertosRaw.length,
-      semana: ag.hoje.length + ag.semana.length,
-      vencidos: ag.vencidos.length,
-      pagos: pagosRaw.length,
-    };
-  }, [abertosRaw, pagosRaw]);
-
+    const ag = calcularAging(abertosRecorte);
+    return { todos: abertosRecorte.length + pagosRecorte.length + previsoesRecorte.length, aberto: abertosRecorte.length, semana: ag.hoje.length + ag.semana.length, vencidos: ag.vencidos.length, pagos: pagosRecorte.length };
+  }, [abertosRecorte, pagosRecorte, previsoesRecorte]);
   const itensRaw = useMemo(() => {
     if (filtroStatus === 'pagos') return pagosRaw;
+    if (filtroStatus === 'previstos') return abertosRaw.filter(i => i.is_planejado);
     if (filtroStatus === 'todos') return [...abertosRaw, ...pagosRaw];
-    const ag = calcularAging(abertosRaw);
+    const confirmados = abertosRaw.filter(i => !i.is_planejado);
+    const ag = calcularAging(confirmados);
     if (filtroStatus === 'semana') return [...ag.hoje, ...ag.semana];
     if (filtroStatus === 'vencidos') return ag.vencidos;
-    return abertosRaw;
+    return confirmados;
   }, [abertosRaw, pagosRaw, filtroStatus]);
-  const itensPeriodo = useMemo(() => itensRaw.filter((i) => {
-    const periodo = (i.data_vencimento || '').slice(0, isAnnual ? 4 : 7);
-    return periodo === (isAnnual ? mesReferencia.slice(0, 4) : mesReferencia);
-  }), [itensRaw, mesReferencia, isAnnual]);
+  const itensPeriodo = useMemo(() => itensRaw.filter(i => (i.data_vencimento || '').slice(0, isAnnual ? 4 : 7) === (isAnnual ? mesReferencia.slice(0, 4) : mesReferencia)), [itensRaw, mesReferencia, isAnnual]);
+  const itens = recorte(itensRaw);
 
-  const itens = useMemo(() => {
-    return itensPeriodo.filter(i => {
-      const tipo = i.origem_tipo === 'fatura' ? 'fatura' : tipoGastoValido(i.tipo_compra) ? i.tipo_compra : 'pendente';
-      if (filtroOrigem !== 'todos' && tipo !== filtroOrigem) return false;
-      if (!pertenceAoFiltroEmpresa(i, filtroEmpresa)) return false;
-      return true;
-    });
-  }, [itensPeriodo, filtroOrigem, filtroEmpresa]);
-
-  const aging = useMemo(() => calcularAging(itens), [itens]);
+  const aging = useMemo(() => calcularAging(itens.filter(i => i._situacao === 'aberto')), [itens]);
 
   // Set de itens já conciliados (têm VinculoExtrato apontando)
   const conciliadosSet = useMemo(() => {
@@ -182,12 +174,12 @@ export default function ContasAPagarPanel() {
   // Totais por mês de vencimento — alimentam a barra de meses (inclui meses futuros)
   const totaisPorMes = useMemo(() => {
     const t = {};
-    itensRaw.forEach((i) => {
+    itensRaw.filter(i => pertenceAoFiltroEmpresa(i, filtroEmpresa) && (filtroOrigem === 'todos' || (i.origem_tipo === 'fatura' ? 'fatura' : tipoGastoValido(i.tipo_compra) ? i.tipo_compra : 'pendente') === filtroOrigem)).forEach((i) => {
       const m = (i.data_vencimento || '').slice(0, 7);
       if (/^\d{4}-\d{2}$/.test(m)) t[m] = (t[m] || 0) + (i.valor || 0);
     });
     return t;
-  }, [itensRaw]);
+  }, [itensRaw, filtroEmpresa, filtroOrigem]);
 
   if (loading) return <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>;
 
@@ -213,12 +205,15 @@ export default function ContasAPagarPanel() {
         />
       </div>
 
-      <ResumoPorInstrumento itens={itens} />
+      <ResumoSituacaoCarteira abertos={abertosRecorte} pagos={pagosRecorte} versao={versaoResumo} />
+      <ResumoPorInstrumento itens={itens} tituloTotal={tituloConsulta} />
+      {modo === 'todos' && <p className="text-xs text-muted-foreground mb-3">“Todos” reúne saldos em aberto, documentos quitados e previsões. O total desta consulta não representa dívida pendente.</p>}
+      {modo === 'previstos' && <p className="text-xs text-muted-foreground mb-3">Estimativas de planejamento, sem documento confirmado e sem baixa automática.</p>}
 
       {/* Totais e classificação do período selecionado */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
         <div className="bg-gradient-to-br from-slate-700 to-slate-900 text-white rounded-xl px-3 py-2 shadow" title={`${itens.length} itens`}>
-          <p className="text-[10px] font-bold uppercase opacity-80">{modo === 'aberto' ? 'Total a pagar' : 'Total pago'}</p>
+          <p className="text-[10px] font-bold uppercase opacity-80">{tituloConsulta}</p>
           <p className="text-xl font-bold">{formatCurrency(total)}</p>
         </div>
         {modo === 'pagos' ? (
@@ -228,11 +223,11 @@ export default function ContasAPagarPanel() {
           </div>
         ) : (<>
           <div className="bg-red-50 rounded-xl px-3 py-2 border border-red-200" title={`${aging.vencidos.length} item(ns) em atraso`}>
-            <p className="text-[10px] font-bold uppercase text-red-700">Vencido</p>
+            <p className="text-[10px] font-bold uppercase text-red-700">Saldo confirmado vencido</p>
             <p className="text-lg font-bold text-red-700">{formatCurrency(totalVencido)}</p>
           </div>
           <div className="bg-orange-50 rounded-xl px-3 py-2 border border-orange-200" title={`${aging.hoje.length + aging.semana.length} item(ns)`}>
-            <p className="text-[10px] font-bold uppercase text-orange-700">Próximos 7 dias</p>
+            <p className="text-[10px] font-bold uppercase text-orange-700">Confirmado nos próximos 7 dias</p>
             <p className="text-lg font-bold text-orange-700">{formatCurrency(totalSemana)}</p>
           </div>
           <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-200" title="Total do período selecionado">
@@ -251,7 +246,7 @@ export default function ContasAPagarPanel() {
         <RevisaoTiposGasto />
         <LancarDespesaFotoButton onSaved={load} />
         <SincronizarComprasButton onDone={load} />
-        {modo === 'aberto' && <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+        {['aberto', 'todos'].includes(modo) && <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
           {conciliando ? (
             <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Conciliando...</>
           ) : (
@@ -283,13 +278,13 @@ export default function ContasAPagarPanel() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4 items-stretch">
         <div className="min-w-0">
-          <IntegradosModuloPanel modulo="contasPagar" titulo="Contas externas a pagar" compact />
+          <IntegradosModuloPanel modulo="contasPagar" titulo="Contas externas a pagar · fora dos totais" compact />
         </div>
         <div className="min-w-0 [&>div]:h-full [&>div]:mb-0">
-          <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} evaporados={evaporados} />
+          <FluxoContasAPagar faturas={dados.faturas} cartoes={dados.cartoes} lancamentos={lancamentos} mesReferencia={mesReferencia} isAnnual={isAnnual} evaporados={evaporados} />
         </div>
         <div className="min-w-0 [&>div]:h-full [&>div]:mb-0">
-          <PainelComprasImportadas compras={dados.compras} mesReferencia={mesReferencia} />
+          <PainelComprasImportadas compras={dados.compras.filter(c => pertenceAoFiltroEmpresa(c, filtroEmpresa) && (filtroOrigem === 'todos' || (tipoGastoValido(c.tipo_compra) ? c.tipo_compra : 'pendente') === filtroOrigem))} mesReferencia={mesReferencia} isAnnual={isAnnual} />
         </div>
       </div>
 
@@ -300,11 +295,13 @@ export default function ContasAPagarPanel() {
           conciliadosSet={conciliadosSet}
           mesReferencia={mesReferencia}
           modo={modo}
+          isAnnual={isAnnual}
         />
         <PainelDDA
           lancamentos={lancamentos}
-          contasPagar={itensRaw}
+          contasPagar={abertosRecorte}
           mesReferencia={mesReferencia}
+          isAnnual={isAnnual}
         />
       </div>
     </>

@@ -4,21 +4,22 @@ import { Search, FileText, Link2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import { acharContaPagarPorLancamento } from '../../lib/contasPagarEngine';
 
-export default function PainelDDA({ lancamentos, contasPagar, mesReferencia }) {
+export default function PainelDDA({ lancamentos, contasPagar, mesReferencia, isAnnual = false }) {
   const [searchDDA, setSearchDDA] = useState('');
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
   const ddaItems = useMemo(() => {
     return lancamentos.filter(l => {
       const mes = l.mes_referencia || (l.data || '').slice(0, 7);
       const isFuturo = l.data >= hoje;
       if (!isFuturo) return false;
-      if (mes !== mesReferencia) return false;
+      if (mes.slice(0, isAnnual ? 4 : 7) !== mesReferencia.slice(0, isAnnual ? 4 : 7)) return false;
+      if (!(l.valor < 0)) return false;
       if (l.categoria === 'transferencia' || l.categoria === 'interno') return false;
       if (searchDDA && !l.descricao?.toLowerCase().includes(searchDDA.toLowerCase())) return false;
       return true;
     }).sort((a, b) => (a.data || '').localeCompare(b.data || ''));
-  }, [lancamentos, mesReferencia, searchDDA, hoje]);
+  }, [lancamentos, mesReferencia, isAnnual, searchDDA, hoje]);
 
   const matchMap = useMemo(() => {
     const m = new Map();
@@ -41,7 +42,7 @@ export default function PainelDDA({ lancamentos, contasPagar, mesReferencia }) {
           <span className="text-xs font-bold text-orange-700">{formatCurrency(totalDDA)}</span>
         </div>
         <p className="text-[11px] text-orange-700/80">
-          {ddaItems.length} item(ns) · {matchMap.size} conciliados com sistema
+          {ddaItems.length} item(ns) · {matchMap.size} correspondências sugeridas, ainda não conciliadas
         </p>
       </div>
       <div className="p-3 border-b">
@@ -52,7 +53,7 @@ export default function PainelDDA({ lancamentos, contasPagar, mesReferencia }) {
       </div>
       <div className="overflow-y-auto max-h-[600px]">
         {ddaItems.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">Nenhum boleto a vencer no mês</div>
+          <div className="text-center py-12 text-muted-foreground text-sm">Nenhum boleto a vencer no período</div>
         ) : ddaItems.map(dda => {
           const match = matchMap.get(dda.id);
           return (

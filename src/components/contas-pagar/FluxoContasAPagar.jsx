@@ -10,9 +10,10 @@ import { classificarNaturezaExtrato, ehSaidaContasPagar } from '../../lib/extrat
 //   → pagas no CARTÃO: o item "evapora" para a fatura (só a fatura fica a pagar)
 //   → pagas no BANCO: cruzam com o extrato bancário (baixa automática)
 //  Sinaliza gaps: faturas de contas não monitoradas, fatura sem cartão, duplicidades.
-export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamentos = [], mesReferencia, evaporados = null }) {
+export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamentos = [], mesReferencia, isAnnual = false, evaporados = null }) {
   const [aberto, setAberto] = useState(true);
 
+  const periodo = isAnnual ? mesReferencia?.slice(0, 4) : mesReferencia;
   const diag = useMemo(() => {
     // Contas bancárias com extrato importado (monitoradas)
     const contasMonitoradas = new Set();
@@ -23,7 +24,7 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
 
     const abertas = faturas.filter(f =>
       (f.status === 'aberta' || f.status === 'vencida') &&
-      (!mesReferencia || (f.data_vencimento || f.mes_referencia || '').startsWith(mesReferencia))
+      (!periodo || (f.data_vencimento || f.mes_referencia || '').startsWith(periodo))
     );
     const semCartao = [];
     const contaNaoMonitorada = [];
@@ -45,9 +46,9 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
     const duplicados = lancamentos.filter(l =>
       l.alerta_duplicidade &&
       l.status_conciliacao !== 'ignorar' &&
-      (!mesReferencia || (l.data || '').startsWith(mesReferencia))
+      (!periodo || (l.data || '').startsWith(periodo))
     );
-    const movimentosMes = lancamentos.filter((l) => !mesReferencia || (l.data || '').startsWith(mesReferencia));
+    const movimentosMes = lancamentos.filter((l) => !periodo || (l.data || '').startsWith(periodo));
     const extrato = movimentosMes.reduce((acc, l) => {
       const natureza = classificarNaturezaExtrato(l);
       if (natureza === 'entrada') acc.entradas += Math.abs(l.valor || 0);
@@ -64,7 +65,7 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
       totalMonitorado: soma(monitoradas),
       duplicados, extrato,
     };
-  }, [faturas, cartoes, lancamentos, mesReferencia]);
+  }, [faturas, cartoes, lancamentos, periodo]);
 
   return (
     <div className="bg-card border rounded-xl mb-4 overflow-hidden">
@@ -96,6 +97,7 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
               <p className="text-sm font-bold text-blue-800 whitespace-nowrap">{formatCurrency(diag.extrato.aplicacoes)}</p>
             </div>
           </div>
+          <p className="text-xs text-muted-foreground">Diagnóstico bancário geral do período; independente dos filtros de empresa, natureza e situação da carteira.</p>
           {/* Mapa do fluxo — pipeline conectado */}
           <PipelineFluxo />
 

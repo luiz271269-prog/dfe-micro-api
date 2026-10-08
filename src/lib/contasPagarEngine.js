@@ -54,7 +54,7 @@ function eixos(reg, origem_tipo) {
 export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [], faturas = [], cartoes = [], compras = [], obras = [], lancamentos = [], lancamentosCartao = [] }) {
   const itens = [];
 
-  despesas.filter(d => d.status === 'pendente' && !evaporou(d) && (d.valor || 0) > 0.01).forEach(d => {
+  despesas.filter(d => ['pendente', 'vencido'].includes(d.status) && !evaporou(d) && (d.valor || 0) - (d.valor_pago || 0) > 0.01).forEach(d => {
     itens.push({
       id: `desp-${d.id}`,
       origem_id: d.id,
@@ -62,7 +62,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
       descricao: d.descricao,
       fornecedor: d.fornecedor || '—',
       categoria: d.categoria,
-      valor: d.valor,
+      valor: Math.max(0, (d.valor || 0) - (d.valor_pago || 0)),
+      valor_pago: d.valor_pago || 0,
       data_vencimento: d.data_vencimento || d.data,
       empresa: d.empresa,
       forma_pagamento: d.forma_pagamento,
@@ -162,8 +163,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
  * Retorna: { vencidos, hoje, semana, ate15, ate30, acima30 }
  */
 export function calcularAging(itens, hoje = new Date()) {
-  const hojeStr = hoje.toISOString().slice(0, 10);
-  const addDias = n => new Date(hoje.getTime() + n * 86400000).toISOString().slice(0, 10);
+  const hojeStr = hoje.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const addDias = n => new Date(Date.parse(`${hojeStr}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
   const d7 = addDias(7);
   const d15 = addDias(15);
   const d30 = addDias(30);

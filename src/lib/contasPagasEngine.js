@@ -24,7 +24,7 @@ export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [
       descricao: d.descricao, fornecedor: d.fornecedor || '—', categoria: d.categoria,
       valor: d.valor,
       data_emissao: d.data,
-      data_pagamento: d.data,
+      data_pagamento: d.data_pagamento || null,
       empresa: d.empresa, forma_pagamento: d.forma_pagamento,
       ...eixos(d, 'despesa'),
     });

@@ -31,7 +31,7 @@ function valorDoStatus(c) {
  * Foco nas compras sincronizadas da Central de Compras (pedido_central_id), com opção de ver todas.
  * Somente leitura — não altera nenhuma regra do Contas a Pagar.
  */
-export default function PainelComprasImportadas({ compras = [], mesReferencia }) {
+export default function PainelComprasImportadas({ compras = [], mesReferencia, isAnnual = false }) {
   const [aberto, setAberto] = useState(true);
   const [soImportadas, setSoImportadas] = useState(true);
   const [celula, setCelula] = useState(null); // { status, mes }
@@ -39,9 +39,9 @@ export default function PainelComprasImportadas({ compras = [], mesReferencia })
   const base = useMemo(
     () => compras.filter(c =>
       (soImportadas ? !!c.pedido_central_id : true) &&
-      (!mesReferencia || mesDe(c) === mesReferencia)
+      (!mesReferencia || mesDe(c).slice(0, isAnnual ? 4 : 7) === mesReferencia.slice(0, isAnnual ? 4 : 7))
     ),
-    [compras, soImportadas, mesReferencia]
+    [compras, soImportadas, mesReferencia, isAnnual]
   );
 
   const { meses, matriz, totaisMes, totaisStatus, total, totalPago } = useMemo(() => {

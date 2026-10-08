@@ -44,12 +44,12 @@ function gerarSemanasDoMes(mesRef) {
   return semanas;
 }
 
-export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia, modo = 'aberto' }) {
+export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia, modo = 'aberto', isAnnual = false }) {
   const porEmissao = modo === 'pagos';
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
   const grupos = useMemo(() => {
-    const semanas = gerarSemanasDoMes(mesReferencia);
+    const semanas = isAnnual ? Array.from({ length: 12 }, (_, i) => gerarSemanasDoMes(`${mesReferencia.slice(0, 4)}-${String(i + 1).padStart(2, '0')}`)).flat() : gerarSemanasDoMes(mesReferencia);
     const buckets = semanas.map((s, idx) => ({
       ...s,
       idx: idx + 1,
@@ -61,9 +61,9 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
       const dv = i.data_vencimento;
       if (!dv) { semData.push(i); return; }
       // Vencidos: antes de hoje E não pertencem ao mês referência
-      if (dv < hoje && dv.slice(0, 7) < mesReferencia) { vencidos.push(i); return; }
+      if (dv < hoje && (isAnnual ? dv.slice(0, 4) < mesReferencia.slice(0, 4) : dv.slice(0, 7) < mesReferencia)) { vencidos.push(i); return; }
       // Se o vencimento é no mês de referência, distribui por semana
-      if (dv.slice(0, 7) === mesReferencia) {
+      if (isAnnual ? dv.slice(0, 4) === mesReferencia.slice(0, 4) : dv.slice(0, 7) === mesReferencia) {
         const b = buckets.find(s => dv >= s.inicio && dv <= s.fim);
         if (b) b.itens.push(i);
         else if (dv < hoje) vencidos.push(i);
@@ -74,13 +74,15 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
       // Datas futuras de outros meses não entram aqui (o filtro de mês já trata)
     });
     return { semanas: buckets, vencidos, semData };
-  }, [itens, mesReferencia, hoje]);
+  }, [itens, mesReferencia, hoje, isAnnual]);
 
   function renderItem(i) {
     const cfg = ORIGEM_CONFIG[i.origem_tipo] || ORIGEM_FALLBACK;
     const OIcon = cfg.icon;
     const entityName = mapearTipoEntidade(i.origem_tipo);
-    const ok = modo === 'pagos' && conciliadosSet.has(i);
+    const pago = i._situacao === 'pago' || modo === 'pagos';
+    const previsto = i.is_planejado || i._situacao === 'previsto';
+    const ok = pago && conciliadosSet.has(i);
     return (
       <div key={i.id} className="flex items-start gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-muted/30">
         <span className={`flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded ${cfg.color}`}>
@@ -94,7 +96,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
             {ok ? (
               <span className="inline-flex items-center gap-0.5 text-emerald-700 font-semibold"><Link2 className="w-2.5 h-2.5" /> {porEmissao ? 'Conciliado' : 'OK'}</span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> {i.valor_pago > 0 ? 'Parcial · saldo em aberto' : 'Pendente'}</span>
+              <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> {previsto ? 'Previsão · sem documento' : pago ? 'Quitado · sem vínculo bancário' : i.valor_pago > 0 ? 'Parcial · saldo em aberto' : 'Pendente'}</span>
             )}
           </div>
           {entityName === 'ItemCompra' && <VerPedidoCentralButton compra={i} />}
@@ -118,7 +120,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className="text-xs font-bold text-rose-600 tabular-nums whitespace-nowrap">{formatCurrency(i.valor)}</span>
-          {['FolhaPagamento', 'FaturaCartao'].includes(entityName) && <BaixaManualButton entidade={entityName} registroId={i.origem_id} className="h-6 px-2 text-[10px]" />}
+          {!pago && !previsto && ['FolhaPagamento', 'FaturaCartao'].includes(entityName) && <BaixaManualButton entidade={entityName} registroId={i.origem_id} className="h-6 px-2 text-[10px]" />}
           <Link to={cfg.href} className="text-[10px] text-muted-foreground hover:text-primary inline-flex items-center gap-0.5">
             ver <ArrowRight className="w-2.5 h-2.5" />
           </Link>
@@ -144,9 +146,9 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
   return (
     <div className="bg-card rounded-xl border overflow-hidden flex flex-col">
       <div className="bg-slate-50 border-b px-4 py-3">
-        <h3 className="font-bold text-sm flex items-center gap-2"><Calendar className="w-4 h-4" /> Calendário do Mês — por Semana</h3>
+        <h3 className="font-bold text-sm flex items-center gap-2"><Calendar className="w-4 h-4" /> Calendário do {isAnnual ? 'Ano' : 'Mês'} — por Semana</h3>
         <p className="text-[11px] text-muted-foreground mt-0.5">
-          {porEmissao ? 'Pagos, distribuídos pela data de emissão' : 'Obrigações distribuídas semana a semana'} de {mesReferencia}
+          {porEmissao ? 'Quitados por emissão, não por data de pagamento' : modo === 'todos' ? 'Consulta mista: saldos por vencimento, quitados por emissão e previsões' : 'Obrigações distribuídas semana a semana'} de {isAnnual ? mesReferencia.slice(0, 4) : mesReferencia}
         </p>
       </div>
       <div className="overflow-y-auto max-h-[600px]">
