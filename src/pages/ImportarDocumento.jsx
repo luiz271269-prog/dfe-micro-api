@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { UploadFile } from '@/integrations/Core';
+import useArquivoIdentificacao from '@/components/importar/useArquivoIdentificacao';
+import IdentificacaoArquivo from '@/components/importar/IdentificacaoArquivo';
+import PapelArquivo from '@/components/importar/PapelArquivo';
+import HistoricoImportacoes from '@/components/importar/HistoricoImportacoes';
+import EditorReleitura from '@/components/importar/EditorReleitura';
+import CorrecaoImportacao from '@/components/importar/CorrecaoImportacao';
+import { arquivoDoLote } from '@/lib/papelImportacao';
+import validarLeituraImportacao from '@/lib/validarLeituraImportacao';
 import { processDocument } from '@/functions/processDocument';
 import { importarFonteVendas } from '@/functions/importarFonteVendas';
 import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, XIcon, Calendar, Wallet, Trash2 } from 'lucide-react';
@@ -96,6 +103,10 @@ export default function ImportarDocumento() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [lastImports, setLastImports] = useState({});
   const [fileUrl, setFileUrl] = useState(null);
+  const [fileUri, setFileUri] = useState(null);
+  const [releitura, setReleitura] = useState(null);
+  const [revisaoVersao, setRevisaoVersao] = useState(0);
+  const { identificacao, identificando, identificar, limpar: limparIdentificacao } = useArquivoIdentificacao();
   const [fileHash, setFileHash] = useState(null);
   const [step, setStep] = useState(1);
   const [dedupRunning, setDedupRunning] = useState(false);
@@ -143,8 +154,9 @@ export default function ImportarDocumento() {
   }
 
   async function loadHistory() {
-    const batches = await base44.entities.ImportBatch.list('-created_date', 100);
-    setHistory(batches.slice(0, 20));
+    const page = await base44.entities.ImportBatch.filter({}, { sort: '-created_date', limit: 50 });
+    const batches = page.items;
+    setHistory(batches);
     // Última importação por tipo
     const map = {};
     batches.forEach((b) => {
@@ -159,10 +171,29 @@ export default function ImportarDocumento() {
     setTimeout(() => setToast(null), 5000);
   }
 
-  function handleFileSelect(f) {
-    if (!f) return;
-    setFile(f);
-    setStep(Math.max(step, 2));
+  async function handleFileSelect(f, batch = null) {
+    if (!f || processing || saving) return;
+    setFile(f);setReleitura(batch);setFileUrl(null);setFileUri(null);setRecords([]);setRawText(null);setStep(1);setSelectedType(null);setSelectedCartaoId('');
+    try {
+      const resultado = await identificar(f);
+      if (!resultado) return;
+      setFileUri(resultado.uri);setFileUrl(resultado.url);setStep(2);
+      if (resultado.identificacao.seguro && DOC_TYPES.some(t => t.id === resultado.identificacao.tipo)) setSelectedType(resultado.identificacao.tipo);
+      if (batch) { const meta = batch.notes?.startsWith('{') ? JSON.parse(batch.notes) : {}; const c = contasCartao.find(x => x.nome === meta.nome_cartao); if (c) setSelectedCartaoId(c.id); }
+    } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+  }
+
+  async function relerArquivo(batch, original) {
+    try {
+      if (original) return await handleFileSelect(original, batch);
+      const a = arquivoDoLote(batch);
+      const url = a.uri ? (await base44.integrations.Core.CreateFileSignedUrl({ file_uri: a.uri })).signed_url : a.url;
+      if (!url) throw new Error('Original não armazenado. Anexe o arquivo original para reler.');
+      const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+      if (!res.ok) throw new Error('Original indisponível. Reanexe o arquivo para reler.');
+      const blob = await res.blob();
+      await handleFileSelect(new File([blob], batch.file_name || 'original.pdf', { type: blob.type }), batch);
+    } catch (e) { showToast(e.message, 'error'); }
   }
 
   function onDrop(e) {
@@ -173,13 +204,12 @@ export default function ImportarDocumento() {
   }
 
   async function processWithAI() {
-    if (!selectedType || !file) return showToast('Selecione o tipo de documento e faça upload do arquivo.', 'error');
+    if (!selectedType || !file || !identificacao || identificando) return showToast('Primeiro identifique o arquivo e confirme o tipo de documento.', 'error');
     // selectedCartaoId é opcional para fatura_cartao — a IA tentará identificar automaticamente
     setProcessing(true);
     setProcessingStage('hash');
     setRecords([]);
     setRawText(null);
-    setFileUrl(null);
     setFaturaValidacao(null);
     setExtratoValidacao(null);
     try {
@@ -192,10 +222,8 @@ export default function ImportarDocumento() {
       let cachedFileUrl = null;
       let cacheSource = null;
 
-      const todosBatchesDoTipo = await base44.entities.ImportBatch.filter({
-        batch_type: selectedType,
-        status: 'completed'
-      });
+      const cache = releitura ? { items: [] } : await base44.entities.ImportBatch.filter({ batch_type: selectedType, status: 'completed', file_hash: hashCalculado }, { sort: '-created_date', limit: 1 });
+      const todosBatchesDoTipo = cache.items;
       console.log('[CACHE] Batches anteriores deste tipo:', todosBatchesDoTipo?.length || 0);
 
       // Match 1: hash idêntico (mesmo arquivo byte-a-byte)
@@ -217,10 +245,12 @@ export default function ImportarDocumento() {
       if (hitBatch) {
         // ai_extraction pode ser: (a) o JSON inline (legado) ou (b) uma URL para o JSON salvo no storage
         const ext = hitBatch.ai_extraction;
-        if (ext.startsWith('http')) {
+        if (ext.startsWith('http') || (!ext.trim().startsWith('{') && !ext.trim().startsWith('['))) {
           // Baixa o JSON salvo no storage
           try {
-            const resp = await fetch(ext);
+            const extractionUrl = ext.startsWith('http') ? ext : (await base44.integrations.Core.CreateFileSignedUrl({ file_uri: ext })).signed_url;
+            const resp = await fetch(extractionUrl);
+            if (!resp.ok) throw new Error('Extração anterior indisponível.');
             rawStr = await resp.text();
           } catch (e) {
             console.warn('[CACHE] Falha ao baixar extração do storage, vai reprocessar:', e);
@@ -236,7 +266,7 @@ export default function ImportarDocumento() {
             cachedFileUrl = hitBatch.notes?.startsWith('http') ? hitBatch.notes : null;
           }
           showToast(`✓ Cache acionado (${cacheSource}) — reusando extração anterior sem chamar IA.`, 'success');
-          if (cachedFileUrl) setFileUrl(cachedFileUrl);
+          // O original recém-enviado permanece disponível para futuras releituras.
         }
       }
 
@@ -244,12 +274,12 @@ export default function ImportarDocumento() {
         console.log('[CACHE] ✗ MISS — nenhum batch anterior com mesmo arquivo. Processando com IA...');
         // 1. Upload via integração nativa Base44
         setProcessingStage('upload');
-        const { file_url } = await UploadFile({ file });
-        setFileUrl(file_url);
+        const file_url = fileUri ? (await base44.integrations.Core.CreateFileSignedUrl({ file_uri: fileUri, expires_in: 3600 })).signed_url : fileUrl;
+        if (!file_url) throw new Error('Identifique o arquivo novamente antes da extração.');
         setProcessingStage('ai');
 
         // Extração limitada ao tipo de documento, com regras mantidas no servidor.
-        const resposta = await processDocument({ docType: selectedType, fileUrl: file_url, fileName: file.name, fileSize: file.size });
+        const resposta = await processDocument({ docType: selectedType, fileUrl: file_url, fileName: file.name, fileSize: file.size, identificacao, confirmacao_manual: selectedType !== identificacao.tipo || !identificacao.seguro });
         if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Extração não concluída');
         rawStr = resposta.data.rawText;
       }
@@ -433,6 +463,8 @@ export default function ImportarDocumento() {
   }
 
   async function confirmSave() {
+    const erroLeitura = validarLeituraImportacao(selectedType, records);
+    if (erroLeitura) return showToast(erroLeitura, 'error');
     if (selectedType === 'extrato_bancario' && extratoValidacao && !extratoValidacao.ok) {
       return showToast('A sequência de saldos não bate. Corrija a extração antes de salvar.', 'error');
     }
@@ -543,13 +575,13 @@ export default function ImportarDocumento() {
       const dupes = records.filter((r) => r.status === 'duplicata').length;
 
       // Salvar metadados extras no notes como JSON conforme tipo
-      let notesValue = fileUrl || '';
+      let notesValue = JSON.stringify({ file_uri: fileUri || '' });
       if (selectedType === 'folha_pagamento') {
         const competencias = [...new Set(
           records.filter((r) => r.data.competencia).map((r) => r.data.competencia)
         )];
         notesValue = JSON.stringify({
-          file_url: fileUrl || '',
+          file_uri: fileUri || '',
           competencias,
           competencia: competencias[0] || null
         });
@@ -557,7 +589,7 @@ export default function ImportarDocumento() {
         const faturaRec2 = records.find((r) => r.data.__type === 'FaturaCartao');
         const cartaoInfo = contasCartao.find((c) => c.id === (faturaRec2?.data?.conta_cartao_id || selectedCartaoId));
         notesValue = JSON.stringify({
-          file_url: fileUrl || '',
+          file_uri: fileUri || '',
           valor_total: faturaRec2?.data?.valor_total || null,
           data_vencimento: faturaRec2?.data?.data_vencimento || null,
           nome_cartao: cartaoInfo?.nome || null,
@@ -572,8 +604,8 @@ export default function ImportarDocumento() {
         try {
           const jsonBlob = new Blob([rawText], { type: 'application/json' });
           const jsonFile = new File([jsonBlob], `extracao_${selectedType}_${Date.now()}.json`, { type: 'application/json' });
-          const { file_url: jsonUrl } = await UploadFile({ file: jsonFile });
-          aiExtractionUrl = jsonUrl;
+          const { file_uri: jsonUri } = await base44.integrations.Core.UploadPrivateFile({ file: jsonFile });
+          aiExtractionUrl = jsonUri;
         } catch (e) {
           console.warn('Falha ao salvar extração no storage:', e);
         }
@@ -584,6 +616,8 @@ export default function ImportarDocumento() {
         batch_type: selectedType,
         file_name: file?.name || '',
         file_hash: fileHash || '',
+        file_uri: fileUri || '',
+        identificacao,
         ai_extraction: aiExtractionUrl,
         total_records: records.length,
         success_count: saved,
@@ -640,6 +674,7 @@ export default function ImportarDocumento() {
   function reset() {
     setSelectedType(preselected || null);
     setFile(null);
+    setFileUri(null);setReleitura(null);limparIdentificacao();
     setFileUrl(null);
     setFileHash(null);
     setRecords([]);setRawText(null);setStep(1);
@@ -703,7 +738,7 @@ export default function ImportarDocumento() {
       {/* Steps + Upload compacto ao lado */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-6">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 flex-1">
-          {['Selecionar tipo', 'Fazer upload', 'Revisar dados', 'Concluído'].map((s, i) =>
+          {['Identificar arquivo', 'Confirmar tipo', 'Revisar dados', 'Concluído'].map((s, i) =>
           <div key={i} className="flex items-center gap-2 shrink-0">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white transition-all ${step > i + 1 ? 'bg-gradient-to-br from-violet-600 to-indigo-600' : step === i + 1 ? 'bg-gradient-to-br from-fuchsia-600 to-indigo-600 ring-4 ring-violet-200 shadow-md' : 'bg-slate-400'}`}>
                 {step > i + 1 ? '✓' : i + 1}
@@ -727,7 +762,7 @@ export default function ImportarDocumento() {
           <>
               <FileText className="w-5 h-5 text-primary shrink-0" />
               <span className="text-xs font-semibold truncate flex-1 text-left">{file.name}</span>
-              <button onClick={(e) => {e.stopPropagation();setFile(null);}} className="text-red-500 shrink-0"><XIcon className="w-4 h-4" /></button>
+              <button onClick={(e) => {e.stopPropagation();setFile(null);setFileUri(null);setFileUrl(null);setSelectedType(null);setRecords([]);setRawText(null);limparIdentificacao();}} className="text-red-500 shrink-0"><XIcon className="w-4 h-4" /></button>
             </> :
           <>
               <Upload className="w-5 h-5 text-muted-foreground shrink-0" />
@@ -762,19 +797,20 @@ export default function ImportarDocumento() {
                       const isActive = selectedType === dt.id;
                       const colors = COLOR_MAP[dt.color];
                       return (
-                        <button key={dt.id} onClick={() => {setSelectedType(dt.id);setStep(Math.max(step, 1));}}
+                        <button key={dt.id} disabled={identificando || processing || saving} onClick={() => {setSelectedType(dt.id);setRecords([]);setRawText(null);setStep(file ? 2 : 1);}}
                         className={`flex items-center gap-3 rounded-xl border text-left transition-all pr-1 pl-1 ${isActive ? colors.active : `${colors.card} hover:shadow-sm`}`}>
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${colors.icon}`}>
                               <dt.icon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <span className={`text-sm font-semibold block ${isActive ? 'text-foreground' : 'text-foreground/80'}`}>{dt.label}</span>
+                              <PapelArquivo tipo={dt.id} compacto />
                               {lastImports[dt.id] ?
                             <span className="text-[10px] text-muted-foreground block truncate">
                                   {new Date(lastImports[dt.id].created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} · {lastImports[dt.id].created_by?.split('@')[0] || '—'} · {lastImports[dt.id].success_count ?? 0} registros
                                 </span> :
 
-                            <span className="text-[10px] text-muted-foreground/50 block">Nunca importado</span>
+                            <span className="text-[10px] text-muted-foreground/50 block">Sem importação recente</span>
                             }
                             </div>
                             {isActive && <span className="ml-auto text-primary text-xs font-bold shrink-0">✓</span>}
@@ -850,8 +886,10 @@ export default function ImportarDocumento() {
               </div>
           }
 
-            {file && selectedType &&
-          <Button onClick={processWithAI} disabled={processing} className="w-full mt-4 gap-2 h-11">
+            <IdentificacaoArquivo identificando={identificando} identificacao={identificacao} tipo={selectedType} tipos={DOC_TYPES} />
+            {file && !identificando && !identificacao && <Button variant="outline" onClick={() => handleFileSelect(file, releitura)}>Tentar identificar novamente</Button>}
+            {file && selectedType && identificacao &&
+          <Button onClick={processWithAI} disabled={processing || identificando} className="w-full mt-4 gap-2 h-11">
                 {processing ?
             <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     {processingStage === 'hash' ? 'Verificando cache...' : processingStage === 'upload' ? 'Enviando arquivo...' : 'Analisando com IA (pode levar ~30s)...'}
@@ -867,116 +905,7 @@ export default function ImportarDocumento() {
               </div>
           }
 
-            {/* Histórico inline — abaixo do drop zone */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Histórico de Importações</h2>
-                {selectedType &&
-              <span className="text-[10px] text-primary font-semibold">{DOC_TYPES.find((d) => d.id === selectedType)?.label}</span>
-              }
-              </div>
-              <div className="bg-card rounded-xl border overflow-hidden">
-                {loadingHistory ?
-              <div className="p-6 text-center"><div className="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div> :
-              (() => {
-                const filtered = selectedType ? history.filter((h) => h.batch_type === selectedType) : history;
-                if (filtered.length === 0) return (
-                  <div className="p-6 text-center text-muted-foreground text-xs">
-                      {selectedType ? 'Nenhuma importação deste tipo ainda' : 'Nenhuma importação realizada ainda'}
-                    </div>);
-
-                return (
-                  <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                       <thead>
-                         <tr className="border-b bg-muted/30">
-                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px] w-8">Img</th>
-                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Data/Hora</th>
-                           {!selectedType && <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Documento</th>}
-                           <th className="text-left px-3 py-2 font-semibold text-muted-foreground text-[10px]">Arquivo</th>
-                           <th className="text-right px-3 py-2 font-semibold text-muted-foreground text-[10px]">Salvos</th>
-                           {selectedType === 'fatura_cartao' && <>
-                             <th className="text-right px-3 py-2 font-semibold text-muted-foreground text-[10px]">Total</th>
-                             <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Vencimento</th>
-                           </>}
-                           {selectedType === 'folha_pagamento' &&
-                          <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Competência</th>
-                          }
-                           <th className="text-center px-3 py-2 font-semibold text-muted-foreground text-[10px]">Status</th>
-                         </tr>
-                       </thead>
-                       <tbody>
-                         {filtered.map((h) => {
-                          const dt = DOC_TYPES.find((d) => d.id === h.batch_type);
-                          // Parse notes: pode ser JSON (fatura_cartao) ou URL direta
-                          let notesData = null;
-                          let imgUrl = null;
-                          if (h.notes) {
-                            try {
-                              notesData = JSON.parse(h.notes);
-                              imgUrl = notesData.file_url && notesData.file_url.startsWith('http') ? notesData.file_url : null;
-                            } catch {
-                              imgUrl = h.notes.startsWith('http') ? h.notes : null;
-                            }
-                          }
-                          const isImage = imgUrl && /\.(png|jpg|jpeg|gif|webp)/i.test(imgUrl);
-                          return (
-                            <tr key={h.id} className="border-b hover:bg-muted/20 transition-colors">
-                               <td className="px-3 py-1.5">
-                                 {isImage ?
-                                <a href={imgUrl} target="_blank" rel="noreferrer">
-                                     <img src={imgUrl} alt="thumb" className="w-8 h-8 object-cover rounded-lg border shadow-sm hover:scale-110 transition-transform" />
-                                   </a> :
-                                imgUrl ?
-                                <a href={imgUrl} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg border bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
-                                     <FileText className="w-3.5 h-3.5 text-muted-foreground" />
-                                   </a> :
-
-                                <div className="w-8 h-8 rounded-lg bg-muted/40 flex items-center justify-center">
-                                     {dt && <dt.icon className="w-3.5 h-3.5 text-muted-foreground/40" />}
-                                   </div>
-                                }
-                               </td>
-                               <td className="px-3 py-1.5 text-[10px] text-muted-foreground whitespace-nowrap">
-                                 {h.created_date ? new Date(h.created_date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                 {notesData?.nome_cartao &&
-                                <p className="text-[9px] text-purple-600 font-semibold">
-                                     {notesData.nome_cartao.split('—')[0].trim()}{notesData.bandeira ? ` · ${notesData.bandeira}` : ''}{notesData.dia_vencimento ? ` · dia ${notesData.dia_vencimento}` : ''}
-                                   </p>
-                                }
-                                 {notesData?.competencia &&
-                                <p className="text-[9px] text-blue-600 font-semibold">Competência: {notesData.competencia}</p>
-                                }
-                               </td>
-                               {!selectedType && <td className="px-3 py-1.5 font-semibold text-[10px]">{dt?.label || h.batch_type}</td>}
-                               <td className="px-3 py-1.5 text-[10px] text-primary font-medium truncate max-w-[120px]">{h.file_name || '—'}</td>
-                               <td className="px-3 py-1.5 text-right font-bold text-green-700 text-[10px]">{h.success_count ?? 0}</td>
-                               {selectedType === 'fatura_cartao' && <>
-                                 <td className="px-3 py-1.5 text-right font-bold text-[10px]">
-                                   {notesData?.valor_total ? formatCurrency(notesData.valor_total) : '—'}
-                                 </td>
-                                 <td className="px-3 py-1.5 text-center text-[10px] text-muted-foreground">
-                                   {notesData?.data_vencimento ?
-                                  new Date(notesData.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) :
-                                  '—'}
-                                 </td>
-                               </>}
-                               {selectedType === 'folha_pagamento' &&
-                              <td className="px-3 py-1.5 text-center text-[10px] font-semibold text-blue-700">
-                                   {notesData?.competencia || '—'}
-                                 </td>
-                              }
-                               <td className="px-3 py-1.5 text-center"><StatusBadge status={h.status} /></td>
-                             </tr>);
-
-                        })}
-                        </tbody>
-                      </table>
-                    </div>);
-
-              })()}
-              </div>
-            </div>
+            <HistoricoImportacoes tipos={DOC_TYPES} onReler={relerArquivo} busy={identificando || processing || saving} refresh={memoriaRefresh} />
 
           </div>
         </div>
@@ -996,13 +925,14 @@ export default function ImportarDocumento() {
               <Button variant="outline" size="sm" onClick={() => setRecords((r) => r.map((rec) => ({ ...rec, selected: rec.status === 'novo' })))}>
                 Selecionar novos
               </Button>
-              <Button onClick={confirmSave} disabled={saving || selectedCount === 0} className="gap-2">
+              {!releitura && <Button onClick={confirmSave} disabled={saving || selectedCount === 0} className="gap-2">
                 {saving ?
               <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />{saveProgress}</> :
               `Confirmar e Salvar (${selectedCount})`}
-              </Button>
+              </Button>}
             </div>
           </div>
+          {releitura && <><EditorReleitura records={records} setRecords={setRecords} onChange={() => setRevisaoVersao(v => v + 1)} /><CorrecaoImportacao key={revisaoVersao} batch={releitura} tipo={selectedType} entity={DOC_TYPES.find(t => t.id === selectedType)?.entity} arquivoUri={fileUri} records={records} onNova={() => setReleitura(null)} onSaved={() => {showToast('Correções confirmadas com auditoria; pagamentos e vínculos preservados.');setStep(4);setMemoriaRefresh(v => v + 1);queryClient.invalidateQueries();window.dispatchEvent(new Event('neuralfinRefresh'));}} /></>}
           {selectedType === 'extrato_bancario' && <ExtratoValidationCard validation={extratoValidacao} />}
           {selectedType === 'fatura_cartao' && faturaValidacao &&
         <div className={`mb-3 rounded-xl border p-3 ${faturaValidacao.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>

@@ -1,0 +1,76 @@
+{
+  "name": "AuditoriaImportacao",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "type": "string"
+    },
+    "entidade_tipo": {
+      "type": "string"
+    },
+    "entidade_id": {
+      "type": "string"
+    },
+    "arquivo_uri": {
+      "type": "string",
+      "title": "Original privado usado na releitura",
+      "maxLength": 3000
+    },
+    "antes_json": {
+      "type": "string",
+      "maxLength": 16000
+    },
+    "depois_json": {
+      "type": "string",
+      "maxLength": 16000
+    },
+    "motivo": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "usuario_id": {
+      "type": "string"
+    },
+    "fase": {
+      "type": "string",
+      "enum": [
+        "preparada",
+        "confirmada",
+        "falha"
+      ]
+    },
+    "erro": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "required": [
+    "batch_id",
+    "entidade_tipo",
+    "entidade_id",
+    "motivo",
+    "fase"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

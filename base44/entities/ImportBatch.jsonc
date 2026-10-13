@@ -18,28 +18,45 @@
       "type": "string",
       "title": "Hash SHA-256 do arquivo (cache de extra\u00e7\u00e3o)"
     },
+    "file_uri": {
+      "type": "string",
+      "title": "Original privado para releitura"
+    },
+    "identificacao": {
+      "type": "object",
+      "properties": {
+        "tipo": {
+          "type": "string"
+        },
+        "seguro": {
+          "type": "boolean"
+        },
+        "motivo": {
+          "type": "string"
+        },
+        "evidencia": {
+          "type": "string"
+        }
+      }
+    },
     "ai_extraction": {
       "type": "string",
-      "title": "JSON bruto da extra\u00e7\u00e3o IA (cache)"
+      "title": "Arquivo de extra\u00e7\u00e3o IA ou JSON legado"
     },
     "total_records": {
       "type": "number",
-      "title": "Total de Registros",
       "default": 0
     },
     "success_count": {
       "type": "number",
-      "title": "Salvos",
       "default": 0
     },
     "duplicate_count": {
       "type": "number",
-      "title": "Duplicatas",
       "default": 0
     },
     "error_count": {
       "type": "number",
-      "title": "Erros",
       "default": 0
     },
     "status": {
@@ -49,7 +66,6 @@
         "completed",
         "failed"
       ],
-      "title": "Status",
       "default": "processing"
     },
     "notes": {

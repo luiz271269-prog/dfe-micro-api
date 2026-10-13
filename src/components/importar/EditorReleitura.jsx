@@ -1,0 +1,8 @@
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+export default function EditorReleitura({records,setRecords,onChange}) {
+  const [indice,setIndice]=useState(0),i=Math.min(indice,records.length-1),r=records[i];
+  if(!r)return null;
+  function editar(k,v){onChange();setRecords(old=>old.map((x,j)=>j===i?{...x,data:{...x.data,[k]:v}}:x));}
+  return <section className="my-4 rounded-xl border bg-card p-4"><h3 className="font-semibold">Corrigir a nova leitura antes de comparar</h3><select className="my-3 w-full rounded-md border bg-background p-2" value={i} onChange={e=>setIndice(Number(e.target.value))}>{records.map((x,j)=><option key={j} value={j}>Registro {j+1} · {x.data.cliente || x.data.descricao || x.data.estabelecimento || x.data.fornecedor || x.data.funcionario_nome || x.data.numero || x.data.__type || ''}</option>)}</select><div className="grid grid-cols-1 gap-3 md:grid-cols-3">{Object.entries(r.data).filter(([k,v])=>k!=='__type'&&typeof v!=='object').map(([k,v])=><label key={k} className="text-xs text-muted-foreground">{k.replace(/_/g,' ')}<Input disabled={['status','valor_pago','valor_recebido','data_pagamento','status_pagamento','lancamento_bancario_id','lancamento_cartao_id','nota_fiscal_id','fatura_id'].includes(k)} type={typeof v==='number'?'number':'text'} step="any" value={v ?? ''} onChange={e=>editar(k,typeof v==='number'?Number(e.target.value):e.target.value)} /></label>)}</div><p className="mt-3 text-xs text-muted-foreground">Pagamentos, vínculos e histórico de conciliação não são sobrescritos pela releitura.</p></section>;
+}

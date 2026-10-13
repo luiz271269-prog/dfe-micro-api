@@ -1,0 +1,10 @@
+import { useRef,useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
+import PapelArquivo from '@/components/importar/PapelArquivo';
+import { arquivoDoLote } from '@/lib/papelImportacao';
+export default function HistoricoImportacaoLinha({batch,tipos,onReler,busy}) {
+  const ref=useRef(),[erro,setErro]=useState(''),arquivo=arquivoDoLote(batch),disponivel=!!(arquivo.uri||arquivo.url);
+  async function abrir(){const janela=window.open('','_blank');try{const url=arquivo.uri?(await base44.integrations.Core.CreateFileSignedUrl({file_uri:arquivo.uri})).signed_url:arquivo.url;if(janela)janela.location.href=url;}catch(e){janela?.close();setErro(e.message);}}
+  return <tr className="border-t"><td className="p-3 whitespace-nowrap">{new Date(batch.created_date).toLocaleString('pt-BR')}</td><td className="p-3">{tipos.find(t=>t.id===batch.batch_type)?.label || batch.batch_type}<PapelArquivo tipo={batch.batch_type} compacto /></td><td className="p-3">{disponivel?<button className="text-primary underline" onClick={abrir}>{batch.file_name || 'Abrir arquivo'}</button>:batch.file_name || 'Arquivo sem nome'}{erro&&<p className="text-destructive">{erro}</p>}</td><td className="p-3">{batch.success_count ?? 0}</td><td className="p-3">{{completed:'Concluído',failed:'Falhou',processing:'Processando'}[batch.status] || batch.status}</td><td className="p-3"><Button size="sm" variant="outline" disabled={busy} onClick={()=>disponivel?onReler(batch):ref.current?.click()}>{disponivel?'Reler e revisar':'Anexar original para reler'}</Button>{disponivel&&<Button size="sm" variant="ghost" disabled={busy} onClick={()=>ref.current?.click()}>Reanexar original</Button>}<input ref={ref} type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.csv,.ofx,.qfx,.txt" onChange={e=>{if(e.target.files[0])onReler(batch,e.target.files[0]);e.target.value='';}} /></td></tr>;
+}
