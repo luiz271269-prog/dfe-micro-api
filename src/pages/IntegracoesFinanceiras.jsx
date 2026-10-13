@@ -2,7 +2,8 @@ import { RefreshCw } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import IntegracaoStatusCards from '@/components/integracoes/IntegracaoStatusCards';
-import RegistrosIntegradosTable from '@/components/integracoes/RegistrosIntegradosTable';
+import IntegracoesDirecaoPanel from '@/components/integracoes/IntegracoesDirecaoPanel';
+import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
 import useIntegracoesFinanceiras from '@/hooks/useIntegracoesFinanceiras';
 
 export default function IntegracoesFinanceiras() {
@@ -11,8 +12,8 @@ export default function IntegracoesFinanceiras() {
     <PageHeader title="Integrações Financeiras" subtitle="Locações, condomínio, assistência técnica e contratos sincronizados entre aplicativos">
       <Button onClick={sincronizar} disabled={sincronizando}><RefreshCw className={sincronizando ? 'animate-spin' : ''} />{sincronizando ? 'Sincronizando' : 'Sincronizar agora'}</Button>
     </PageHeader>
-    <IntegracaoStatusCards registros={registros} sincronizando={sincronizando} />
+    <FontesFinanceirasPanel />
     {mensagem && <p className="mb-3 rounded-md border bg-muted px-3 py-2 text-sm">{mensagem}</p>}
-    {carregando ? <p className="py-8 text-center text-muted-foreground">Carregando integrações...</p> : <RegistrosIntegradosTable registros={registros} onChange={alterar} />}
+    <IntegracoesDirecaoPanel onChange={alterar} />
   </div>;
 }

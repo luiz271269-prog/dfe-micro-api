@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { InvokeLLM, UploadFile } from '@/integrations/Core';
+import { UploadFile } from '@/integrations/Core';
+import { processDocument } from '@/functions/processDocument';
+import { importarFonteVendas } from '@/functions/importarFonteVendas';
 import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, XIcon, Calendar, Wallet, Trash2 } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { conciliarNFsTitulosSicredi } from '@/functions/conciliarNFsTitulosSicredi';
@@ -48,244 +50,6 @@ const COLOR_MAP = {
   slate: { card: 'border-slate-200 bg-slate-50', icon: 'text-slate-600 bg-slate-100', active: 'border-slate-500 bg-slate-100 ring-2 ring-slate-300' },
   indigo: { card: 'border-indigo-200 bg-indigo-50', icon: 'text-indigo-600 bg-indigo-100', active: 'border-indigo-500 bg-indigo-100 ring-2 ring-indigo-300' },
   rose: { card: 'border-rose-200 bg-rose-50', icon: 'text-rose-600 bg-rose-100', active: 'border-rose-500 bg-rose-100 ring-2 ring-rose-300' }
-};
-
-const PROMPTS = {
-  extrato_bancario: `Você é um sistema de extração de dados bancários. Analise este extrato (PDF, imagem ou arquivo OFX/QFX do Sicredi ou qualquer banco) e extraia TODOS os lançamentos em JSON.
-Para arquivos OFX/QFX: extraia cada <STMTTRN> — use <DTPOSTED> como data, <TRNAMT> como valor (mantendo sinal), <MEMO> ou <NAME> como descrição, <FITID> como detalhe.
-Retorne APENAS um array JSON válido, sem texto adicional, no formato:
-[{"data":"YYYY-MM-DD","descricao":"descrição exata do extrato","valor":numero_positivo_ou_negativo,"categoria":"recebimento ou fornecedor ou pessoal ou tributo ou despesa_operacional ou financeiro ou saque ou transferencia ou interno","saldo_apos":numero,"conta_bancaria":"NeuralTec 36092-2","detalhe":"documento ex: COB000001 ou PIX_DEB ou FITID ou vazio"}]
-Regras: Créditos=valor POSITIVO, Débitos=valor NEGATIVO, incluir TODOS os lançamentos efetivamente contabilizados. Ignore "SALDO ANTERIOR", linhas de saldo consolidado e lançamentos agendados, projetados ou futuros. A data deve ser a data de contabilização impressa na linha, nunca vencimento ou data prevista. Confira cada dia separadamente: saldo inicial do dia + entradas − saídas = saldo final do mesmo dia; nunca mova um lançamento para outro dia.`,
-
-  boletos_liquidados: `Analise este relatório/comprovante de BOLETOS LIQUIDADOS (Sicredi/Banco) e extraia TODOS os pagamentos em JSON.
-
-Retorne APENAS um array JSON válido (sem texto adicional, sem markdown):
-[{"nosso_numero":"26/100XXX-XIcon","seu_numero":"NF-XXX","cliente":"NOME DO CLIENTE","data_vencimento":"YYYY-MM-DD","data_pagamento":"YYYY-MM-DD","valor_titulo":numero,"valor_pago":numero,"status":"pago","canal_cobranca":"sicredi"}]
-
-REGRAS CRÍTICAS:
-
-1. nosso_numero — OBRIGATÓRIO. É o identificador do título no banco (Sicredi). Procure por:
-   - "Nosso Número", "Nosso Nº", "NN", "Nro Título", "Documento" ou similar.
-   - Formato típico Sicredi: "26/100XXX-XIcon", "26/100123-4", "100123-4" ou apenas dígitos longos (8+ caracteres).
-   - Se o relatório só listar "Seu Número" + data + valor (sem Nosso Número explícito), use a coluna que identifica unicamente o boleto no banco — geralmente é um código numérico longo. NUNCA retorne vazio para nosso_numero.
-   - Se realmente não houver Nosso Número, construa um identificador DETERMINÍSTICO baseado em dados do PRÓPRIO boleto: "BOL-{primeiras_8_letras_alfanum_do_cliente}-{data_pagamento}-{valor_em_centavos}" (ex: "BOL-SAOJUDAS-2026-06-01-130133"). REGRA CRÍTICA: NÃO incluir seu_numero nem nenhum dado variável no BOL — assim duas importações do mesmo boleto geram o MESMO nosso_numero, garantindo deduplicação natural.
-
-2. seu_numero — REFERÊNCIA À NF DE ORIGEM (campo crítico para conciliação). Procure ATIVAMENTE em TODOS os campos do boleto (descrição, histórico, sacado, observações, "Documento", "Referência") por padrões "NF-XXX", "NF XXX", "NFE-XXX", "CI-XXXXXX". Se encontrar, preencha como "NF-XXX" ou "CI-XXXXXX". Esse campo é OBRIGATÓRIO sempre que houver qualquer indício de número de nota fiscal — sem ele, o título não consegue ser conciliado com o relatório de vendas. Deixe vazio APENAS se realmente não houver nenhuma referência a NF/CI no boleto.
-
-3. cliente — nome do sacado/pagador exatamente como aparece no relatório.
-
-4. data_vencimento e data_pagamento — formato YYYY-MM-DD. Se só houver uma data, use a mesma para ambas.
-
-5. valor_titulo — valor original do boleto (use valor_pago se valor_titulo não estiver explícito).
-   valor_pago — valor efetivamente recebido.
-   Formato decimal com PONTO: "3.850,00" → 3850.00.
-
-6. status — "pago" para todos os boletos liquidados (este relatório lista apenas pagos).
-
-7. canal_cobranca — "sicredi" (padrão para este tipo de relatório).
-
-8. EXTRAIA TODOS os boletos do relatório, sem exceção. Conte antes e depois.`,
-
-  relatorio_nfs: `Analise este relatório/XML/PDF de notas fiscais emitidas (sistema fiscal, SEFAZ ou contabilidade) e extraia TODAS as NFs em JSON.
-Retorne APENAS array JSON:
-[{"numero":"77","tipo":"NF","data_emissao":"YYYY-MM-DD","cliente":"NOME COMPLETO DO CLIENTE","valor_total":numero,"vendedor":"Thais ou Tiago ou Fat.Direto","status":"pago","valor_recebido":numero,"valor_aberto":numero}]`,
-
-  relatorio_vendas: `Analise este relatório de vendas do mês (sistema Fabris/Ellitte ou planilha de vendas) e extraia o resumo mensal em JSON.
-Retorne APENAS um objeto JSON:
-{"mes":"YYYY-MM","ano":YYYY,"mes_nome":"Março 2026","saidas":numero_vendas_tiago,"servicos":numero_vendas_thais,"outros":numero_fat_direto,"total":numero_total_geral,"fonte":"fabris","observacoes":"observacao opcional"}
-Onde: saidas=vendas Tiago (V-01), servicos=vendas Thais (V-05), outros=faturamento direto, total=soma geral.`,
-
-  relatorio_vendas_detalhado: `Você é um sistema de extração do RELATÓRIO DE VENDAS DIÁRIO (NeuralTec — sistema Fabris/Ellitte).
-O relatório lista NOTAS FISCAIS (NF-XXX) e CONTRATOS DE INTERMEDIAÇÃO (CI-XXXXXX), com suas PARCELAS de cobrança.
-
-CABEÇALHO DO RELATÓRIO contém o período: "Período: DD/MM/AAAA até DD/MM/AAAA".
-
-ESTRUTURA — duas variantes:
-A) Linha de cabeçalho (NF ou CI): "NF- 180   6.040,00   22855 - SEPE GERACAO DE ENERGIA LTDA   95 - TIAGO - V 01"
-   ou: "CI- 100084  2.799,00  22791 - INC INDUSTRIA NAVAL CATARINENSE  8 - THAIS -V-05"
-B) Linhas de parcelas indentadas: "180/1   3.020,00   21   27/04/2026   SICREDI   27/04/2026   3.020,00"
-
-COLUNAS: DP (nº doc ou parcela) | Valor | Prazo Dias | Venc. | Tipo Cobran. | Pagto. (data) | Valor Pago
-
-Retorne APENAS um objeto JSON válido com DUAS LISTAS:
-{
-  "notas":[
-    {"numero":"180","tipo":"NF","data_emissao":"2026-04-06","cliente":"SEPE GERACAO DE ENERGIA LTDA","vendedor":"Tiago","valor_total":6040.00,"valor_recebido":3020.00,"valor_aberto":3020.00,"status":"parcial","canal_cobranca":"sicredi","data_vencimento_proxima":"2026-05-18"}
-  ],
-  "cobrancas":[
-    {"nosso_numero":"180/1","seu_numero":"NF-180","cliente":"SEPE GERACAO DE ENERGIA LTDA","data_vencimento":"2026-04-27","data_pagamento":"2026-04-27","valor_titulo":3020.00,"valor_pago":3020.00,"status":"pago","canal_cobranca":"sicredi","parcela_numero":1,"parcela_total":2},
-    {"nosso_numero":"180/2","seu_numero":"NF-180","cliente":"SEPE GERACAO DE ENERGIA LTDA","data_vencimento":"2026-05-18","valor_titulo":3020.00,"valor_pago":0,"status":"em_aberto","canal_cobranca":"sicredi","parcela_numero":2,"parcela_total":2}
-  ]
-}
-
-REGRAS CRÍTICAS:
-
-1. EXTRAIA ABSOLUTAMENTE TODOS OS DOCUMENTOS — TODAS as NFs e TODOS os CIs do relatório, sem exceção. Conte antes e depois para garantir.
-
-2. TIPO DO DOCUMENTO:
-   - "NF- XXX" → tipo="NF", numero="XXX" (ex: "180")
-   - "CI- XXXXXX" → tipo="CI", numero="XXXXXX" (ex: "100084")
-
-3. VENDEDOR — identifique pelo final do cabeçalho:
-   - "95 - TIAGO" ou "V 01" ou "V-01" → "Tiago"
-   - "8 - THAIS" ou "V-05" ou "V 05" → "Thais"
-   - "1306 - MATHEUS" → "Matheus"
-   - "138 - BALCAO" → "Balcao"
-   - "2 - FATURAMENTO DIRETO" ou "FAT.DIRETO" → "Fat.Direto"
-   - Se não conseguir identificar, use "Fat.Direto".
-
-4. CLIENTE — extraia APENAS o nome após "código - ". 
-   ATENÇÃO À QUEBRA DE LINHA: às vezes o nome do cliente fica grudado no código do vendedor (ex: "PORTONAVE TERMINAIS PORTUÁRIOS DE NAVEGANTE8 - THAIS -V-05\nS SA" → cliente real é "PORTONAVE TERMINAIS PORTUÁRIOS DE NAVEGANTES SA"). Reconstrua o nome juntando as quebras quando o nome do cliente continua na linha seguinte.
-   Casos especiais: "1 - VENDA A VISTA" → cliente="VENDA A VISTA".
-
-5. CANAL DE COBRANÇA (campo "Tipo Cobran." de cada parcela) — SEMPRE minúsculas:
-   - "SICREDI" → "sicredi"
-   - "CARTEIRA" → "carteira"
-   - "MAGALU" → "magalu"
-   - VAZIO/em branco → "sicredi" (padrão quando o campo aparece vazio em parcelas com prazo)
-   - Para vendas à vista (CI-100088, 100090, 100095): use "carteira".
-
-6. DATA DE EMISSÃO da NF/CI (YYYY-MM-DD):
-   - Se há prazo: data_emissao = data_vencimento_1ª_parcela − prazo_dias.
-   - Exemplo: parcela 21 dias com venc 27/04/2026 → emissão 06/04/2026.
-   - Se SEM prazo (venda à vista): use a data de pagamento como data_emissao, ou a data do vencimento.
-   - VALIDE contra o período do cabeçalho — se sair fora, ajuste para o último dia do período.
-
-7. PAGAMENTO DE PARCELA — REGRA CRÍTICA, LEIA COM ATENÇÃO:
-   - Coluna "Pagto." PREENCHIDA + "Valor Pago" PREENCHIDO → status="pago", data_pagamento=data, valor_pago=valor.
-   - Coluna "Pagto." VAZIA → valor_pago=0, OMITA o campo data_pagamento (não inclua no JSON), status conforme regra 9.
-   - NUNCA invente data_pagamento. NUNCA copie data de vencimento como pagamento.
-
-8. PARCELA SEM PRAZO/VENCIMENTO (vendas à vista — ex: NF-198/1, CI-100088/1, CI-100090/1, CI-100095/1, CI-100092/XIcon com pagto antecipado):
-   - parcela_numero=1, parcela_total=1
-   - Se há data de pagamento → use data_pagamento como data_vencimento E como data_pagamento, status="pago".
-   - canal_cobranca="carteira".
-
-9. STATUS DA COBRANÇA (use a DATA DE REFERÊNCIA fornecida no final deste prompt):
-   - "pago" se valor_pago > 0
-   - "em_aberto" se valor_pago = 0 E data_vencimento >= hoje
-   - "vencido" se valor_pago = 0 E data_vencimento < hoje
-
-10. STATUS DA NF/CI (cabeçalho):
-    - "pago" se TODAS parcelas pagas (valor_recebido = valor_total, tolerância de R$ 0,02)
-    - "parcial" se ≥1 paga e ≥1 não paga
-    - "a_vencer" se nenhuma paga e nenhuma vencida
-    - "vencido" se há ≥1 parcela vencida sem pagamento
-
-11. CÁLCULOS DO CABEÇALHO:
-    - valor_recebido = SOMA dos valor_pago das parcelas (zero se nenhuma paga)
-    - valor_aberto = valor_total − valor_recebido
-    - data_vencimento_proxima = MENOR data_vencimento entre parcelas NÃO pagas; se todas pagas, omita o campo.
-    - canal_cobranca = canal mais frequente entre as parcelas; "sicredi" como padrão.
-
-12. VALORES — formato decimal com PONTO, PRESERVE centavos exatos:
-    - "3.020,00" → 3020.00
-    - "1.301,34" → 1301.34
-    - "1.301,33" → 1301.33 (NÃO arredondar para 1301.34)
-    - Em parcelas desiguais (ex: 1.301,34 / 1.301,33 / 1.301,33), mantenha cada valor EXATO.
-
-13. parcela_numero e parcela_total — extraídos de "180/1":
-    - "180/1" → parcela_numero=1
-    - parcela_total = quantidade de linhas indentadas para essa NF (180/1 + 180/2 → total=2; 200/1 + 200/2 + 200/3 → total=3).
-
-14. seu_numero da cobrança = "NF-XXX" ou "CI-XXXXXX" (com hífen, conforme tipo).
-
-15. CONFERÊNCIA FINAL: o relatório possui rodapé com totais ("Faturado", "Recebido", "Aberto"). Sua extração deve bater com esses totais (tolerância R$ 1,00). Se não bater, revise antes de retornar.
-
-16. ⚠️ IGNORAR COMPLETAMENTE O RODAPÉ — REGRA CRÍTICA:
-    Após a última linha de parcela do último documento, o PDF contém um BLOCO DE TOTAIS E RESUMOS que NÃO deve gerar registros. Identifique e PARE de extrair quando encontrar QUALQUER uma destas palavras-chave/padrões:
-    - "Saldo Ant.", "Saldo Atual", "Totais", "Recebido", "Aberto", "Faturado"
-    - "Notas", "C.I." (em linhas de totalização, isoladas com valores)
-    - "04-Liesch", "06-NeuralTec" (linhas de resumo por empresa)
-    - "Carteira", "LISTO-Credito", "SICREDI-NeuralTec" (linhas de resumo por canal de cobrança, com valores totalizados)
-    - Tabela com colunas "F | J | Total de CI | Total de NF | Total"
-    
-    Essas linhas contêm apenas SOMATÓRIOS — não são NFs nem cobranças individuais. NÃO crie registros a partir delas.
-
-17. ⚠️ DESCARTAR PARCELAS ÓRFÃS — REGRA CRÍTICA:
-    Toda parcela (linha indentada tipo "180/1", "100084/2") DEVE ter um cabeçalho NF-XXX ou CI-XXXXXX EXPLÍCITO acima dela na mesma página ou na imediatamente anterior.
-    Se encontrar uma linha que parece ser parcela mas NÃO consegue identificar com certeza o número da NF/CI pai (formato "NF- XXX" ou "CI- XXXXXX"), DESCARTE essa linha. NÃO invente número, NÃO crie cobrança sem seu_numero válido.
-    Toda TituloCobranca retornada DEVE ter: nosso_numero (preenchido), seu_numero (NF-XXX ou CI-XXXXXX), cliente (não vazio), valor_titulo > 0.`,
-
-  compras_fornecedor: `Analise este relatório de compras e extraia todos os itens em JSON.
-Retorne APENAS array JSON:
-[{"fornecedor":"NOME","numero_nota":"XXXXX","data_emissao":"YYYY-MM-DD","descricao_produto":"NOME DO PRODUTO","categoria_produto":"notebook ou tablet ou componente ou periferico ou software ou outro","quantidade":numero,"valor_unitario":numero,"valor_total":numero}]`,
-
-  fatura_cartao: `Você é um sistema de extração FISCAL de fatura de cartão de crédito. PRECISÃO ABSOLUTA é mandatória.
-
-Retorne APENAS um objeto JSON válido (sem markdown, sem texto extra):
-{
-  "fatura":{"mes_referencia":"YYYY-MM","data_vencimento":"YYYY-MM-DD","valor_total":numero},
-  "lancamentos":[
-    {"data_lancamento":"YYYY-MM-DD","estabelecimento":"TEXTO LITERAL EXATAMENTE COMO IMPRESSO","descricao":"observação adicional (parcelamento, cidade) — vazio se nenhuma","valor":numero,"parcela_numero":1,"parcela_total":1,"natureza":"empresarial ou pessoal","categoria":"outro"}
-  ]
-}
-
-REGRAS CRÍTICAS — LEIA TODAS:
-
-1. FIDELIDADE LITERAL — o campo "estabelecimento" DEVE ser copiado EXATAMENTE como impresso na fatura.
-   - NÃO traduzir, NÃO normalizar, NÃO abreviar, NÃO completar, NÃO corrigir grafia, NÃO trocar maiúsculas/minúsculas.
-   - Manter acentos, asteriscos, números, sufixos de cidade/UF, IDs de transação, espaços e pontuação.
-   - Exemplos: "MERCPAGO*MERCADOLIVRE" permanece "MERCPAGO*MERCADOLIVRE" (NÃO virar "Mercado Livre");
-     "AMZN*Mktp BR" permanece "AMZN*Mktp BR" (NÃO virar "Amazon");
-     "UBER *TRIP HELP.UBER.COM" permanece tal qual.
-
-2. UM LANÇAMENTO POR LINHA IMPRESSA — cada linha do extrato detalhado da fatura = um item no array.
-   - NÃO consolidar várias linhas em uma só.
-   - NÃO incluir o mesmo lançamento duas vezes. Se a mesma compra aparece em dois lugares (ex: resumo + detalhe), inclua APENAS UMA VEZ — prefira o bloco "lançamentos detalhados/transações".
-   - Parcelamento: se a linha indica "PARC 03/10" ou "3/10", use parcela_numero=3 e parcela_total=10, mantendo o estabelecimento original.
-
-3. SOMA DEVE BATER COM O TOTAL — a soma de TODOS os "valor" dos lançamentos DEVE ser igual ao "valor_total" da fatura (tolerância R$ 0,02).
-   - ANTES de retornar, CALCULE a soma e CONFIRA contra o total impresso.
-   - Se não bater: você esqueceu lançamentos OU duplicou alguns. REVISE até bater.
-   - Estornos/créditos a favor entram com valor NEGATIVO (e somam negativamente).
-   - IGNORE COMPLETAMENTE: "Pagamento da fatura anterior", "Saldo anterior", "Limite disponível", "Juros sobre saldo", linhas de resumo/totalizador, encargos de mora calculados.
-
-4. VALOR — decimal com PONTO, preserve centavos EXATOS.
-   - "1.234,56" → 1234.56 · "89,00" → 89.00
-   - Despesa: valor POSITIVO · Estorno/crédito a favor: valor NEGATIVO.
-
-5. data_lancamento — formato YYYY-MM-DD, usar a data IMPRESSA da transação (não a data de vencimento da fatura).
-
-6. mes_referencia e data_vencimento — REGRA CRÍTICA. O "mes_referencia" é SEMPRE o mês do VENCIMENTO da fatura (não o mês dos lançamentos, não o mês de fechamento).
-   PRIORIDADE de inferência:
-   a) NOME DO ARQUIVO — quando o arquivo tem padrão "EMPRESA DIA-MES.pdf" (ex: "ACENTRA LIESCH 11-01.pdf" = venc. 11/01, "SICOOB KLI 22-06.pdf" = venc. 22/06), USE essa data como vencimento. O formato é SEMPRE DD-MM (dia-mês, padrão BR), NUNCA MM-DD.
-   b) CABEÇALHO impresso — "FATURA MARÇO/2026" → "2026-03"; "Vencimento 11/03/2026" → data_vencimento="2026-03-11", mes_referencia="2026-03".
-   c) Se só tiver o dia (ex: "Vencimento 11"), combine com o ano/mês do contexto dos lançamentos: pegue o mês MAIOR (mais recente) dos data_lancamento e some 1 mês para obter o vencimento.
-   FORMATO DE DATA — TODAS as datas no PDF estão em padrão BRASILEIRO (DD/MM/AAAA). "10/03/2026" = 10 de março de 2026, NÃO 3 de outubro. "10/12" = 10 de dezembro, NÃO 12 de outubro. JAMAIS inverta.
-   ANO — se o vencimento for inferido apenas do nome do arquivo (sem ano), use o ano em que esse mês cai LOGO APÓS o último data_lancamento dos lançamentos. Ex: lançamentos em dez/2025, venc. "11-01" → 2026-01-11.
-
-7. natureza — empresarial para fornecedores B2B/hospedagem/SaaS/distribuidores; pessoal para varejo/alimentação/lazer/serviços pessoais. Em dúvida → "pessoal".
-
-8. CONFERÊNCIA FINAL OBRIGATÓRIA antes de retornar o JSON:
-   ✓ Soma dos lançamentos == valor_total (tolerância R$ 0,02)? Se não → REVISE.
-   ✓ Há linhas com mesma data + mesmo estabelecimento + mesmo valor? Se sim → REMOVA as cópias duplicadas.
-   ✓ Todos os estabelecimentos estão LITERAIS como impresso? Se traduziu algum → RESTAURE o texto original.`,
-
-  obra_reforma: `Analise este comprovante de pagamento de obra/reforma e extraia em JSON.
-Retorne APENAS objeto JSON:
-{"data":"YYYY-MM-DD","responsavel":"NOME","valor":numero,"descricao":"descrição","fornecedor_cnpj_cpf":"CPF ou CNPJ","tipo_profissional":"serralheiro ou pedreiro ou pintor ou vidros ou eletricista ou hidraulico ou material ou outros","local_obra":"loja ou pavilhao ou terraco ou outro","forma_pagamento":"PIX ou boleto","tipo":"mao_obra ou material"}`,
-
-  folha_pagamento: `Analise esta planilha de folha de pagamento e extraia os dados de TODOS os funcionários em JSON, capturando TODAS as colunas da planilha NA MESMA ORDEM em que aparecem.
-Retorne APENAS array JSON, um objeto por funcionário, com EXATAMENTE estas chaves nesta ordem:
-[{"funcionario_nome":"NOME","setor":"administracao ou vendas ou assistencia","admissao":"texto da coluna Admissão como está (ex: 19-nov ou 02.03.2020)","folha":numero,"por_fora":numero,"salarios_total":numero,"vantagem":numero,"extras":numero,"premio":numero,"comissao":numero,"salario_total":numero,"dias_trabalhados":numero,"desconto_folha":numero,"compras":numero,"vales":numero,"salario_liquido":numero,"valor_pago":numero,"saldo_a_receber":numero,"competencia":"YYYY-MM","status":"pago ou pendente","empresa":"NeuralTec"}]
-Regras:
-- Mapeie: coluna "Folha"→folha, "Por Fora"→por_fora, "Salários Total"→salarios_total, "Vantagem"→vantagem, "Extras"→extras, "Premio"→premio, "Comissão"→comissao, "Salário Total"→salario_total, "Dias Trab."→dias_trabalhados, "Desc. Folha"→desconto_folha, "Compras"→compras, "Vales"→vales, "LÍQUIDO"→salario_liquido, "Pago"→valor_pago, "Saldo a receber"→saldo_a_receber.
-- salario_bruto = salario_total (ou salarios_total se salario_total vazio).
-- Valores numéricos SEM símbolo R$, use ponto decimal. Célula vazia ou "-" = 0.
-- setor: inferir do agrupamento da planilha (ADMINISTRAÇÃO, VENDAS, ASSISTÊNCIA).
-- status: "pago" se a coluna Pago tiver valor; senão "pendente".
-- competencia: inferir do título ex "FOLHA MÊS maio 2026" → "2026-05".
-- NÃO inclua as linhas de subtotal/total geral, apenas funcionários individuais.`,
-
-  dda_boletos: `Analise este DDA/boletos a vencer e extraia em JSON.
-Retorne APENAS array JSON:
-[{"data":"YYYY-MM-DD","descricao":"NOME DO BENEFICIÁRIO","valor":numero_negativo,"categoria":"fornecedor ou tributo ou financeiro ou despesa_operacional","conta_bancaria":"NeuralTec 36092-2 ou Liesch 37101-4","detalhe":"código se disponível"}]`,
-
-  despesas_operacionais: `Analise este documento de despesas operacionais (nota fiscal, recibo, comprovante, planilha ou extrato) e extraia TODAS as despesas em JSON.
-Retorne APENAS array JSON:
-[{"data":"YYYY-MM-DD","descricao":"descrição da despesa","fornecedor":"nome do fornecedor ou prestador","categoria":"aluguel ou energia ou agua ou internet ou telefone ou manutencao ou limpeza ou marketing ou contabilidade ou juridico ou seguro ou transporte ou alimentacao ou material_escritorio ou outro","valor":numero_positivo,"forma_pagamento":"pix ou boleto ou cartao ou debito_automatico ou dinheiro ou transferencia","status":"pago ou pendente","empresa":"NeuralTec ou Liesch","observacoes":"observação opcional"}]
-Regras: valor SEMPRE positivo. Se data de vencimento informada mas não paga = status pendente. Identificar empresa pelo contexto (NeuralTec ou Liesch).`
 };
 
 function StatusBadge({ status }) {
@@ -483,21 +247,10 @@ export default function ImportarDocumento() {
         setFileUrl(file_url);
         setProcessingStage('ai');
 
-        // 2. Extrair com InvokeLLM nativo Base44 — injeta data atual no prompt
-        const hojeISO = new Date().toISOString().split('T')[0];
-        const promptComContexto = PROMPTS[selectedType].replace(/\{\{HOJE\}\}/g, hojeISO) +
-        `\n\nDATA DE REFERÊNCIA (hoje): ${hojeISO}` +
-        `\nNOME DO ARQUIVO ENVIADO: "${file.name}"  ← USE como pista (padrão "EMPRESA DD-MM.pdf" = dia-mês BR, ex: "11-01" = 11 de janeiro)`;
-        // Modelo: relatorio_vendas_detalhado exige raciocínio robusto (17 regras + cabeçalho+parcelas)
-        // → usa claude_sonnet_4_6. Demais tipos usam gemini_3_flash (rápido e barato).
-        const modeloIA = selectedType === 'relatorio_vendas_detalhado' || selectedType === 'fatura_cartao' ? 'claude_sonnet_4_6' : 'gemini_3_flash';
-        const result = await InvokeLLM({
-          prompt: promptComContexto,
-          file_urls: [file_url],
-          model: modeloIA
-        });
-
-        rawStr = typeof result === 'string' ? result.trim() : JSON.stringify(result);
+        // Extração limitada ao tipo de documento, com regras mantidas no servidor.
+        const resposta = await processDocument({ docType: selectedType, fileUrl: file_url, fileName: file.name, fileSize: file.size });
+        if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Extração não concluída');
+        rawStr = resposta.data.rawText;
       }
       setFileHash(hashCalculado);
       setRawText(rawStr);
@@ -766,13 +519,14 @@ export default function ImportarDocumento() {
         notasToSave.forEach((r) => delete r.data.__type);
         cobsToSave.forEach((r) => delete r.data.__type);
 
-        setSaveProgress(`Salvando ${notasToSave.length} notas + ${cobsToSave.length} cobranças...`);
-        const [statsN, statsC] = await Promise.all([
-        saveDeduplicatedRecords('NotaFiscal', notasToSave),
-        saveDeduplicatedRecords('TituloCobranca', cobsToSave)]
-        );
-        saved = statsN.saved + statsC.saved;
-        errors = statsN.errors + statsC.errors;
+        setSaveProgress(`Importando fonte de vendas: ${notasToSave.length} notas + ${cobsToSave.length} parcelas...`);
+        for (const [campo, registros] of [['notas', notasToSave], ['cobrancas', cobsToSave]]) {
+          for (let i = 0; i < registros.length; i += 200) {
+            const resposta = await importarFonteVendas({ [campo]: registros.slice(i, i + 200).map(r => r.data), empresa: registros[i]?.data?.empresa || 'NeuralTec', arquivo_hash: fileHash || '' });
+            if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Fonte não importada');
+            saved += resposta.data.saved;
+          }
+        }
       } else {
         // Caso genérico: usar motor genérico
         const stats = await saveDeduplicatedRecords(typeConfig.entity, toSave);
@@ -858,14 +612,8 @@ export default function ImportarDocumento() {
       // Conciliação NF ↔ Títulos Sicredi — após importar relatório do Elite ou boletos liquidados
       let nfsConciliadas = 0;
       let titulosVinc = 0;
-      if (selectedType === 'relatorio_vendas_detalhado') {
-        setSaveProgress('Conciliando NFs × títulos Sicredi...');
-        try {
-          const conc = await conciliarNFsTitulosSicredi({});
-          nfsConciliadas = conc?.data?.notas_atualizadas || 0;
-          titulosVinc = conc?.data?.titulos_vinculados || 0;
-        } catch {/* falha silenciosa */}
-      }
+      // Notas e parcelas já ficam vinculadas pela importação da fonte oficial.
+      // Pagamentos informados permanecem separados até conciliar o crédito.
 
       setSaving(false);
       setSaveProgress('');

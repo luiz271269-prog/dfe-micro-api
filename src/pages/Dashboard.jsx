@@ -15,6 +15,7 @@ import RodapePainel from '@/components/painel/RodapePainel';
 import CarteiraPagarCard from '@/components/painel/CarteiraPagarCard';
 import useCarteiraPagar from '@/components/painel/useCarteiraPagar';
 import DrilldownDialog from '@/components/dashboard/DrilldownDialog';
+import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
 
 export default function Dashboard() {
   const [mes, setMes] = useState(getCurrentMonth());
@@ -35,6 +36,7 @@ export default function Dashboard() {
   return (
     <div className="lg:px-6 lg:py-6 max-w-[1600px] mx-auto space-y-4">
       <PainelHeader mes={mes} onMes={setMes} perimetro={perimetro} onPerimetro={setPerimetro} onRefresh={atualizar} refreshing={isFetching || carteira.isFetching} />
+      <FontesFinanceirasPanel />
       <CarteiraPagarCard consulta={carteira} />
 
       {isLoading && (

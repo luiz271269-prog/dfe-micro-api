@@ -17,6 +17,8 @@ import ReconciliarOrfaosButton from '../components/cobrancas/ReconciliarOrfaosBu
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import MensagemLink from '../components/shared/MensagemLink';
+import EvidenciasFinanceirasPanel from '@/components/financeiro/EvidenciasFinanceirasPanel';
+import RecebimentoBancoDialog from '@/components/cobrancas/RecebimentoBancoDialog';
 
 const statusRowColors = {
   em_aberto: 'bg-orange-50/50',
@@ -158,17 +160,7 @@ export default function Cobrancas() {
     setTitulos(prev => prev.map(t => t.cliente === cliente ? { ...t, cliente_telefone: tel } : t));
   }
 
-  async function darBaixa() {
-    if (!baixaId || !baixaValor) return;
-    await base44.entities.TituloCobranca.update(baixaId, {
-      status: 'pago',
-      valor_pago: parseFloat(baixaValor),
-      data_pagamento: new Date().toISOString().split('T')[0]
-    });
-    setBaixaId(null);
-    setBaixaValor('');
-    loadData();
-  }
+
 
   const countVencendoSemana = titulos.filter((t) => {
     if (t.status === 'pago') return false;
@@ -199,7 +191,8 @@ export default function Cobrancas() {
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Título</Button>
       </PageHeader>
 
-      <IntegradosModuloPanel modulo="cobrancas" titulo="Recebimentos de locações e assistência" />
+      <IntegradosModuloPanel modulo="cobrancas" titulo="Entradas · fontes de locações e assistência" />
+      <EvidenciasFinanceirasPanel direcao="entrada" />
 
       {/* Alerta */}
       {alertas.length > 0 &&
@@ -335,15 +328,7 @@ export default function Cobrancas() {
       </div>
 
       {/* Dar baixa modal */}
-      <Dialog open={!!baixaId} onOpenChange={(open) => {if (!open) {setBaixaId(null);setBaixaValor('');}}}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Dar Baixa no Título</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Valor Pago</Label><Input type="number" step="0.01" value={baixaValor} onChange={(e) => setBaixaValor(e.target.value)} /></div>
-            <Button className="w-full" onClick={darBaixa}>Confirmar Baixa</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {baixaId && titulos.find(t => t.id === baixaId) && <RecebimentoBancoDialog titulo={titulos.find(t => t.id === baixaId)} onClose={() => setBaixaId(null)} onSaved={loadData} />}
 
       {/* Form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>

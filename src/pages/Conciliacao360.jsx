@@ -12,6 +12,8 @@ import TabPagamentos from '../components/conciliacao360/TabPagamentos';
 import TabCartoes from '../components/conciliacao360/TabCartoes';
 import TabExcecoes from '../components/conciliacao360/TabExcecoes';
 import TabSugestoes from '../components/conciliacao360/TabSugestoes';
+import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
+import EvidenciasFinanceirasPanel from '@/components/financeiro/EvidenciasFinanceirasPanel';
 
 export default function Conciliacao360() {
   const hoje = new Date();
@@ -99,6 +101,7 @@ export default function Conciliacao360() {
         <MonthNavigator selectedMonth={mes} onSelectMonth={setMes} />
       </PageHeader>
 
+      <FontesFinanceirasPanel />
       {resultadoAuto && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 text-sm">
           <p className="font-bold text-emerald-900">
@@ -144,17 +147,17 @@ export default function Conciliacao360() {
         <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="receita" className="gap-2">
             <TrendingUp className="w-4 h-4" />
-            Receita
+            Entradas
             {stats.receitaPendente > 0 && <span className="ml-1 bg-amber-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold">{stats.receitaPendente}</span>}
           </TabsTrigger>
           <TabsTrigger value="pagamentos" className="gap-2">
             <ArrowDownCircle className="w-4 h-4" />
-            Pagamentos do Extrato
+            Saídas · Extrato
             {stats.pagamentosPendente > 0 && <span className="ml-1 bg-rose-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold">{stats.pagamentosPendente}</span>}
           </TabsTrigger>
           <TabsTrigger value="cartoes" className="gap-2">
             <CreditCard className="w-4 h-4" />
-            Cartões
+            Saídas · Cartões
             {stats.cartaoEmpresarial > 0 && <span className="ml-1 bg-purple-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold">{stats.cartaoEmpresarial}</span>}
           </TabsTrigger>
           <TabsTrigger value="excecoes" className="gap-2">
@@ -163,14 +166,16 @@ export default function Conciliacao360() {
           </TabsTrigger>
           <TabsTrigger value="sugestoes" className="gap-2">
             <Sparkles className="w-4 h-4" />
-            Sugestões Auto
+            Entradas · Sugestões
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="receita">
+          <EvidenciasFinanceirasPanel direcao="entrada" />
           <TabReceita loading={loading} dados={dados} mes={mes} onRefresh={load} />
         </TabsContent>
         <TabsContent value="pagamentos">
+          <EvidenciasFinanceirasPanel direcao="saida" />
           <TabPagamentos loading={loading} dados={dados} mes={mes} onRefresh={load} />
         </TabsContent>
         <TabsContent value="cartoes">

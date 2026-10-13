@@ -12,18 +12,12 @@ function classificarCredito(lanc, titulos, notas) {
   const desc = (lanc.descricao || '').toUpperCase();
   const valor = lanc.valor;
 
-  if (desc.includes('LIQ.COBRANCA') || desc.includes('COB0')) {
+  if (lanc.status_conciliacao !== 'conciliado' && (desc.includes('LIQ.COBRANCA') || desc.includes('COB0'))) {
     return { tipo: 'lote_cobranca', vinculo: null, label: 'Lote COB Sicredi' };
   }
 
-  const titMatch = titulos.find(t =>
-    t.status === 'pago' && Math.abs((t.valor_pago || 0) - valor) < 0.02
-    && t.data_pagamento === lanc.data
-  );
-  if (titMatch) return { tipo: 'venda_conciliada', vinculo: titMatch, label: 'Título pago' };
-
-  const nfMatch = notas.find(n => Math.abs(n.valor_total - valor) < 0.02 && n.data_emissao === lanc.data);
-  if (nfMatch) return { tipo: 'venda_conciliada', vinculo: nfMatch, label: 'NF emitida hoje' };
+  const titMatch = titulos.find(t => t.lancamento_bancario_id === lanc.id);
+  if (lanc.status_conciliacao === 'conciliado' && lanc.vinculos_count > 0) return { tipo: 'venda_conciliada', vinculo: titMatch || null, label: 'Recebimento vinculado' };
 
   if (desc.includes('TRANSFER') || desc.includes('APORTE') || desc.includes('EMPRESTIMO')) {
     return { tipo: 'nao_operacional', vinculo: null, label: 'Não operacional' };
