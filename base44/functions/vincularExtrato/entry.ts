@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { eixosDoVinculo, TIPO_POR_ENTIDADE } from '../../shared/classificacaoPadrao.ts';
 import { baixarTributo } from '../../shared/tributoBaixa.ts';
 import { baixarDespesa } from '../../shared/despesaBaixa.ts';
+import { erroDirecao, RECEBIVEIS, recalcularRecebivel } from '../../shared/direcaoFinanceira.ts';
 
 /**
  * SERVIÇO CENTRAL DE VÍNCULO (fonte única de verdade da conciliação).
@@ -28,7 +29,7 @@ const OBRIGACOES = {
   TituloCobranca:     { devido: r => r.valor_titulo || 0,    tol: 0.5, pago: 'pago',       aberto: 'em_aberto', campos: (data, cobre, soma) => cobre ? { status: 'pago', data_pagamento: data, valor_pago: soma } : { status: 'em_aberto', valor_pago: soma } },
 };
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -45,7 +46,22 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole.entities;
-    if (body?.validate_only) return Response.json({ success: true, mode: 'validation' });
+    if (body?.validate_only) return Response.json({ success: true, mode: 'validation', regra: body.regra ? { erro: erroDirecao(body.regra.lancamento, body.regra.entidade_tipo, body.regra.tipo_vinculo) } : null });
+    if (body.acao === 'criar') {
+      if (!body.lancamento_bancario_id || !body.entidade_id || !body.entidade_tipo || !Number.isFinite(body.valor_alocado) || body.valor_alocado <= 0) return Response.json({ error: 'Informe lançamento, destino e valor positivo.' }, { status: 400 });
+      const banco = await svc.LancamentoBancario.get(body.lancamento_bancario_id);
+      const erro = erroDirecao(banco, body.entidade_tipo, body.tipo_vinculo);
+      if (erro) return Response.json({ error: erro }, { status: 422 });
+      const destino = await svc[body.entidade_tipo].get(body.entidade_id);
+      if (!destino) return Response.json({ error: 'Documento de origem não encontrado.' }, { status: 404 });
+      if (body.entidade_tipo === 'NotaFiscal' && await svc.TituloCobranca.count({ nota_fiscal_id: destino.id }) > 0) return Response.json({ error: 'Concilie a parcela da nota para evitar recebimento em duplicidade.' }, { status: 409 });
+      if (RECEBIVEIS.includes(body.entidade_tipo)) {
+        const total = await svc.VinculoExtrato.aggregate({ query: { entidade_tipo: body.entidade_tipo, entidade_id: destino.id }, sum: 'valor_alocado' });
+        const devido = Number(destino.valor_titulo ?? destino.valor_total ?? 0);
+        if (Number(total.rows[0]?.sum_valor_alocado || 0) + body.valor_alocado > devido + 0.01) return Response.json({ error: 'Valor excede o saldo do recebível.' }, { status: 422 });
+        if (!banco.data) return Response.json({ error: 'Crédito sem data de contabilização.' }, { status: 422 });
+      }
+    }
     if (body.acao === 'criar' && body.entidade_tipo === 'Tributo') return Response.json(await baixarTributo(svc, body));
     if (body.acao === 'criar' && body.entidade_tipo === 'DespesaOperacional') return Response.json(await baixarDespesa(svc, body));
     if (body.acao === 'remover' && body.vinculo_id) {
@@ -74,6 +90,7 @@ Deno.serve(async (req) => {
 
     // Deriva o status da obrigação a partir dos vínculos reais (baixa e reabertura)
     async function recalcularObrigacao(entidadeTipo, entidadeId, dataPagamento) {
+      if (RECEBIVEIS.includes(entidadeTipo)) return await recalcularRecebivel(svc, entidadeTipo, entidadeId);
       const cfg = OBRIGACOES[entidadeTipo];
       if (!cfg) return null; // tipos sem baixa automática (ObraReforma, NotaFiscal, ...)
       const [reg] = await svc[entidadeTipo].filter({ id: entidadeId });
@@ -140,7 +157,7 @@ Deno.serve(async (req) => {
         entidade_id,
         valor_alocado: valorNovo,
         ...eixos,
-        tipo_vinculo: tipo_vinculo || 'pagamento_integral',
+        tipo_vinculo: tipo_vinculo || (RECEBIVEIS.includes(entidade_tipo) ? 'recebimento_parcial' : 'pagamento_integral'),
         conciliado_por: conciliado_por || (internoOk ? 'auto' : 'manual'),
         confianca: confianca ?? 100,
         observacao: observacao || '',
@@ -171,4 +188,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

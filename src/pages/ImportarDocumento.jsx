@@ -15,6 +15,10 @@ import ExtratoValidationCard from '../components/importar/ExtratoValidationCard'
 import { registrarResultado, assinaturaDeRegistros } from '../lib/memoriaImportacaoEngine';
 import { aplicarRegrasHistorico } from '../lib/aplicarRegrasHistorico';
 import { validateExtratoRecords } from '../lib/extratoValidation';
+import { GRUPO_IMPORTACAO, TIPOS_EVIDENCIA } from '@/lib/fontesFinanceiras';
+import { gerenciarEvidenciasFinanceiras } from '@/functions/gerenciarEvidenciasFinanceiras';
+import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
+import EvidenciasFinanceirasPanel from '@/components/financeiro/EvidenciasFinanceirasPanel';
 
 const DOC_TYPES = [
 { id: 'extrato_bancario', label: 'Extrato Bancário Sicredi', icon: Landmark, color: 'blue', entity: 'LancamentoBancario', dedup: ['data', 'valor'], group: 'Visão Geral' },
@@ -30,7 +34,7 @@ const DOC_TYPES = [
 { id: 'compras_fornecedor', label: 'Compras por Fornecedor', icon: ShoppingCart, color: 'orange', entity: 'ItemCompra', dedup: ['fornecedor', 'numero_nota', 'descricao_produto'], group: 'Compras & Estoque' }];
 
 // Ordem oficial dos grupos (espelha o menu lateral de acessos)
-const DOC_GROUPS = ['Visão Geral', 'Receita', 'Pagamentos', 'Compras & Estoque'];
+const DOC_GROUPS = ['Entradas · fontes oficiais', 'Entradas · conciliação', 'Entradas · conferência', 'Saídas · fontes oficiais', 'Saídas · conciliação', 'Saídas · cartão', 'Banco · evidência comum'];
 
 
 const COLOR_MAP = {
@@ -628,8 +632,10 @@ export default function ImportarDocumento() {
         );
 
         enriched = [...dedupNotas, ...dedupCobs];
+      } else if (TIPOS_EVIDENCIA.includes(selectedType)) {
+        enriched = items.map(data => ({ data, selected: true, status: 'novo' }));
       } else {
-        // Caso genérico: aplica deduplicação via motor
+        // Apenas fontes oficiais criam seus documentos de origem.
         enriched = await deduplicateRecords(items, typeConfig.entity);
       }
 
@@ -683,8 +689,14 @@ export default function ImportarDocumento() {
       const typeConfig = DOC_TYPES.find((d) => d.id === selectedType);
       let saved = 0,errors = 0;
 
-      // Usar motor de deduplicação para salvar
-      if (selectedType === 'fatura_cartao') {
+      // Evidências nunca criam documentos de origem ou lançamentos bancários.
+      if (TIPOS_EVIDENCIA.includes(selectedType)) {
+        for (let i = 0; i < toSave.length; i += 200) {
+          const resposta = await gerenciarEvidenciasFinanceiras({ acao: 'importar', tipo: selectedType, registros: toSave.slice(i, i + 200).map(r => r.data), arquivo_nome: file?.name || '', arquivo_hash: fileHash || '' });
+          if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Evidências não registradas');
+          saved += resposta.data.saved;
+        }
+      } else if (selectedType === 'fatura_cartao') {
         // Pegar fatura independente de estar selecionada — lançamentos dependem do ID dela
         const faturaRec = records.find((r) => r.data.__type === 'FaturaCartao');
         const lancRecs = records.filter((r) => r.data.__type === 'LancamentoCartao' && r.selected && r.status !== 'erro');
@@ -839,14 +851,14 @@ export default function ImportarDocumento() {
       setSaveProgress('Verificando duplicatas em todo o sistema...');
       let removidos = 0;
       try {
-        const dedupRes = await deduplicarImportacoes({});
-        removidos = dedupRes?.data?.total || 0;
+        // Importação não deve apagar ou migrar histórico automaticamente.
+        removidos = 0;
       } catch {/* falha silenciosa — importação já foi salva */}
 
       // Conciliação NF ↔ Títulos Sicredi — após importar relatório do Elite ou boletos liquidados
       let nfsConciliadas = 0;
       let titulosVinc = 0;
-      if (selectedType === 'relatorio_vendas_detalhado' || selectedType === 'boletos_liquidados') {
+      if (selectedType === 'relatorio_vendas_detalhado') {
         setSaveProgress('Conciliando NFs × títulos Sicredi...');
         try {
           const conc = await conciliarNFsTitulosSicredi({});
@@ -924,6 +936,8 @@ export default function ImportarDocumento() {
         </Button>
       </PageHeader>
 
+      <FontesFinanceirasPanel />
+      {TIPOS_EVIDENCIA.includes(selectedType) && <EvidenciasFinanceirasPanel direcao={selectedType === 'dda_boletos' ? 'saida' : 'entrada'} />}
       {toast &&
       <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>
           {toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
@@ -984,7 +998,7 @@ export default function ImportarDocumento() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">1. Tipo de Documento</h2>
             <div className="space-y-4">
               {DOC_GROUPS.map((groupLabel) => {
-              const groupTypes = DOC_TYPES.filter((dt) => dt.group === groupLabel);
+              const groupTypes = DOC_TYPES.filter((dt) => GRUPO_IMPORTACAO[dt.id] === groupLabel);
               if (groupTypes.length === 0) return null;
               return (
                 <div key={groupLabel}>

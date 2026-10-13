@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { direcaoBanco } from '../../shared/direcaoFinanceira.ts';
 
 // Concilia Títulos de Cobrança (Sicredi) ↔ Extrato Bancário (recebimentos).
 // REGRAS:
@@ -22,7 +23,7 @@ function clienteNoExtrato(cliente, descricao) {
   return partes.some(p => d.includes(p));
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -34,10 +35,11 @@ Deno.serve(async (req) => {
     }
 
     const svc = base44.asServiceRole.entities;
+    if (body.validate_only) return Response.json({ success: true, direcao: 'entrada' });
 
     const [titulos, lancamentos, vinculos, sugestoesAntigas] = await Promise.all([
-      svc.TituloCobranca.list('-data_vencimento', 3000),
-      svc.LancamentoBancario.list('-data', 5000),
+      svc.TituloCobranca.filter({ status: { $in: ['em_aberto', 'vencido'] } }, { sort: 'data_vencimento', limit: 50 }).then(p => p.items),
+      svc.LancamentoBancario.filter({ valor: { $gt: 0 }, status_conciliacao: { $nin: ['conciliado', 'ignorar'] }, ...(body.mes_referencia ? { mes_referencia: body.mes_referencia } : {}) }, { sort: '-data', limit: 50 }).then(p => p.items),
       svc.VinculoExtrato.list('-created_date', 5000),
       svc.SugestaoConciliacao.filter({ status: 'pendente' }),
     ]);
@@ -61,7 +63,7 @@ Deno.serve(async (req) => {
     );
 
     const creditos = lancamentos.filter(l =>
-      l.valor > 0 &&
+      direcaoBanco(l) === 'entrada' &&
       l.status_conciliacao !== 'conciliado' &&
       l.categoria !== 'transferencia' &&
       l.categoria !== 'interno' &&
@@ -92,27 +94,15 @@ Deno.serve(async (req) => {
       if (!match) continue;
 
       try {
-        await svc.TituloCobranca.update(titulo.id, {
-          status: 'pago',
-          data_pagamento: match.data,
-          valor_pago: match.valor,
-          lancamento_bancario_id: match.id,
+        const resposta = await base44.functions.invoke('vincularExtrato', {
+          acao: 'criar', lancamento_bancario_id: match.id,
+          entidade_tipo: 'TituloCobranca', entidade_id: titulo.id,
+          valor_alocado: match.valor, tipo_vinculo: 'recebimento_integral',
+          conciliado_por: 'auto', confianca: 100,
+          observacao: `Recebimento bancário · ${titulo.cliente} · ${titulo.nosso_numero || ''}`,
+          ...(internoOk ? { internal_token: body.internal_token } : {}),
         });
-        await svc.VinculoExtrato.create({
-          lancamento_bancario_id: match.id,
-          entidade_tipo: 'TituloCobranca',
-          entidade_id: titulo.id,
-          valor_alocado: match.valor,
-          tipo_vinculo: 'pagamento_integral',
-          conciliado_por: 'auto',
-          confianca: 100,
-          observacao: `Match perfeito · ${titulo.cliente} · ${titulo.nosso_numero || ''}`,
-        });
-        await svc.LancamentoBancario.update(match.id, {
-          status_conciliacao: 'conciliado',
-          vinculos_count: (match.vinculos_count || 0) + 1,
-          valor_conciliado: (match.valor_conciliado || 0) + match.valor,
-        });
+        if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Vínculo não confirmado');
         titulosUsados.add(titulo.id);
         lancsUsados.add(match.id);
         baixasAuto++;
@@ -188,4 +178,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

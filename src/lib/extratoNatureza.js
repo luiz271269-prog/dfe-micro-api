@@ -4,6 +4,7 @@ function normalizar(texto) {
 
 export function classificarNaturezaExtrato(lancamento) {
   const texto = normalizar(`${lancamento?.descricao || ''} ${lancamento?.detalhe || ''}`);
+  if (['transferencia', 'transferencia_interna', 'interno', 'aporte', 'emprestimo'].includes(lancamento?.categoria)) return 'conferencia';
   const aplicacao = /\b(aplicacao|investimento|cdb|rdb|lci|lca|tesouro|poupanca|fundo|resgate)\b/.test(texto);
   if (aplicacao) return 'aplicacao';
   if ((lancamento?.valor || 0) > 0) return 'entrada';

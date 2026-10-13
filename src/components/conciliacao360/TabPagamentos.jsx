@@ -6,6 +6,8 @@ import { Link2, CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark,
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import { vincularExtrato } from '@/functions/vincularExtrato';
 import { aplicarRegra } from '../../lib/recurringEngine';
+import { Link } from 'react-router-dom';
+import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
 import { consolidarContasPagar, acharContaPagarPorLancamento } from '../../lib/contasPagarEngine';
 
 /**
@@ -90,7 +92,7 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
   }), [dados]);
 
   const pagamentos = useMemo(() => {
-    const debitos = dados.lancamentos.filter(l => l.valor < 0);
+    const debitos = dados.lancamentos.filter(ehSaidaContasPagar);
     return debitos
       .map(l => ({ ...l, classificacao: classificarDebito(l, dados.faturas, dados.despesas, dados.tributos, dados.regrasRecorrentes || [], contasPagar) }))
       .sort((a, b) => (a.data > b.data ? -1 : 1));
@@ -128,23 +130,7 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
     }
   }
 
-  async function criarDespesaRapida(lanc) {
-    setSalvando(true);
-    await base44.entities.DespesaOperacional.create({
-      data: lanc.data,
-      descricao: lanc.descricao,
-      fornecedor: lanc.descricao,
-      categoria: 'outro',
-      valor: Math.abs(lanc.valor),
-      status: 'pago',
-      forma_pagamento: lanc.detalhe?.includes('PIX') ? 'pix' : 'transferencia',
-      empresa: lanc.conta_bancaria?.includes('Liesch') ? 'Liesch' : 'NeuralTec',
-      observacoes: `Criada a partir do extrato: ${lanc.detalhe || ''}`,
-    });
-    setSalvando(false);
-    setVincularLanc(null);
-    onRefresh();
-  }
+
 
   if (loading) return <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto" /></div>;
 
@@ -270,13 +256,9 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
                 <p className="text-sm text-rose-600 font-bold">{formatCurrency(vincularLanc.valor)} · {formatDate(vincularLanc.data)}</p>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-xs text-blue-900 font-semibold mb-2">Criar despesa operacional rápida:</p>
-                <Button className="w-full" onClick={() => criarDespesaRapida(vincularLanc)} disabled={salvando}>
-                  {salvando ? 'Criando...' : 'Criar DespesaOperacional com estes dados'}
-                </Button>
-                <p className="text-[10px] text-blue-700 mt-2">
-                  A despesa será criada com os dados do extrato (data, valor, descrição). Você pode editar depois em <strong>Despesas</strong>.
-                </p>
+                <p className="text-xs text-blue-900 font-semibold mb-2">Documento de origem não identificado</p>
+                <p className="text-xs mb-3">A conciliação não cria despesas a partir do extrato. Cadastre ou importe o documento no módulo de origem e depois vincule o pagamento.</p>
+                <Button asChild className="w-full"><Link to="/despesas">Abrir fonte · Despesas</Link></Button>
               </div>
             </div>
           )}

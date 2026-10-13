@@ -1,0 +1,116 @@
+{
+  "name": "EvidenciaFinanceira",
+  "type": "object",
+  "description": "Evid\u00eancias de concilia\u00e7\u00e3o, sem criar notas, t\u00edtulos ou movimentos banc\u00e1rios. Confirma\u00e7\u00f5es preservam documento e autoria.",
+  "properties": {
+    "chave": {
+      "type": "string"
+    },
+    "direcao": {
+      "type": "string",
+      "enum": [
+        "entrada",
+        "saida"
+      ]
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "boletos_liquidados",
+        "relatorio_nfs",
+        "dda_boletos"
+      ]
+    },
+    "referencia": {
+      "type": "string"
+    },
+    "referencia_nota": {
+      "type": "string"
+    },
+    "tipo_nota": {
+      "type": "string"
+    },
+    "contraparte": {
+      "type": "string"
+    },
+    "data": {
+      "type": "string"
+    },
+    "vencimento": {
+      "type": "string"
+    },
+    "valor": {
+      "type": "number",
+      "minimum": 0.01
+    },
+    "conta": {
+      "type": "string"
+    },
+    "arquivo_nome": {
+      "type": "string"
+    },
+    "arquivo_hash": {
+      "type": "string"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "confirmada",
+        "rejeitada"
+      ],
+      "default": "pendente"
+    },
+    "entidade_tipo": {
+      "type": "string"
+    },
+    "entidade_id": {
+      "type": "string"
+    },
+    "lancamento_bancario_id": {
+      "type": "string"
+    },
+    "vinculo_id": {
+      "type": "string"
+    },
+    "motivo": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "confirmada_por": {
+      "type": "string"
+    },
+    "confirmada_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "chave",
+    "direcao",
+    "tipo",
+    "valor"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

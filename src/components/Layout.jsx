@@ -10,6 +10,7 @@ import SidebarNav from './SidebarNav';
 import MobileTabBar from './MobileTabBar';
 import DeleteAccountDialog from './DeleteAccountDialog';
 import { navItems } from '@/lib/navConfig';
+import IndicadorDirecao from '@/components/financeiro/IndicadorDirecao';
 
 function Breadcrumb({ location }) {
   const item = navItems.find((n) => n.path === location.pathname);
@@ -112,6 +113,7 @@ export default function Layout() {
           <span className="text-sidebar-accent-foreground font-semibold text-sm">NeuralTec</span>
         </div>
         <div className="relative flex items-center justify-end h-9 border-b bg-card shrink-0 px-4 mx-4">
+          <IndicadorDirecao />
           <PainelNotificacoes />
         </div>
         <Breadcrumb location={location} />

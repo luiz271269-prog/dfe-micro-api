@@ -20,14 +20,14 @@ export const navGroups = [
     ],
   },
   {
-    label: 'Receita',
+    label: 'Entradas · Recebimentos',
     items: [
       { path: '/faturamento', label: 'Faturamento', icon: FileText },
       { path: '/cobrancas', label: 'Cobranças Sicredi', icon: Receipt },
     ],
   },
   {
-    label: 'Pagamentos',
+    label: 'Saídas · Pagamentos',
     items: [
       { path: '/contas-a-pagar', label: 'Contas a Pagar', icon: CircleDollarSign },
       { path: '/tributos', label: 'Tributos', icon: DollarSign },
@@ -38,7 +38,7 @@ export const navGroups = [
     ],
   },
   {
-    label: 'Compras & Estoque',
+    label: 'Saídas · Compras & Estoque',
     items: [
       { path: '/compras', label: 'Compras & Despesas', icon: ShoppingCart },
       { path: '/produtos', label: 'Produtos & Fornecedores', icon: Package },
@@ -47,7 +47,7 @@ export const navGroups = [
     ],
   },
   {
-    label: 'Cartões',
+    label: 'Saídas · Cartões',
     items: [
       { path: '/cartoes', label: 'Cartões de Crédito', icon: CreditCard },
     ],

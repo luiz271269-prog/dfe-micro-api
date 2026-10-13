@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { vincularExtrato } from '@/functions/vincularExtrato';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Zap, AlertTriangle, HelpCircle, Sparkles } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
@@ -33,23 +34,12 @@ export default function TabSugestoes({ loading, dados, onRefresh }) {
 
   async function aplicarSugestao(item, sug) {
     setAplicando(item.lancamento.id);
-    if (sug.tipo === 'TituloCobranca') {
-      await base44.entities.TituloCobranca.update(sug.objeto.id, {
-        status: 'pago',
-        data_pagamento: item.lancamento.data,
-        valor_pago: item.lancamento.valor,
-      });
-    } else if (sug.tipo === 'NotaFiscal') {
-      const novoRecebido = (sug.objeto.valor_recebido || 0) + item.lancamento.valor;
-      const aberto = Math.max(0, sug.objeto.valor_total - novoRecebido);
-      await base44.entities.NotaFiscal.update(sug.objeto.id, {
-        valor_recebido: novoRecebido,
-        valor_aberto: aberto,
-        status: aberto < 0.02 ? 'pago' : 'parcial',
-      });
-    }
-    setAplicando(null);
-    onRefresh();
+    try {
+      await vincularExtrato({ acao: 'criar', lancamento_bancario_id: item.lancamento.id, entidade_tipo: sug.tipo, entidade_id: sug.objeto.id, valor_alocado: item.lancamento.valor, tipo_vinculo: 'recebimento_parcial', observacao: 'Conciliação de entrada · sugestão revisada' });
+      onRefresh();
+    } catch (error) {
+      alert(error.response?.data?.error || error.message);
+    } finally { setAplicando(null); }
   }
 
   async function aplicarLote() {
