@@ -6,7 +6,7 @@ const moeda = value => Number(value || 0).toLocaleString('pt-BR', { style: 'curr
 export default function RegistrosIntegradosTable({ registros, onChange }) {
   if (!registros.length) return <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">Nenhum registro disponível nas entidades expostas pelos aplicativos.</div>;
   return <div className="rounded-lg border bg-card overflow-x-auto"><table className="w-full text-sm">
-    <thead className="bg-muted/60"><tr><th className="p-3 text-left">Origem</th><th className="p-3 text-left">Tipo</th><th className="p-3 text-left">Descrição</th><th className="p-3 text-left">Contraparte</th><th className="p-3 text-left">Vencimento</th><th className="p-3 text-right">Valor</th><th className="p-3 text-left">Status</th></tr></thead>
+    <thead className="bg-muted/60"><tr><th className="p-3 text-left">Origem</th><th className="p-3 text-left">Tipo</th><th className="p-3 text-left">Descrição</th><th className="p-3 text-left">Contraparte</th><th className="p-3 text-left">Vencimento</th><th className="p-3 text-right">Valor</th><th className="p-3 text-left">Status na origem (não conciliação)</th></tr></thead>
     <tbody>{registros.map(item => <tr key={item.id} className="border-t">
       <td className="p-3"><Badge variant="outline">{item.app_origem === 'locacoes' ? 'Locações' : 'Assistência'}</Badge></td>
       <td className="p-3 text-muted-foreground">{item.tipo_registro.replaceAll('_', ' ')}</td>

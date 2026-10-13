@@ -43,7 +43,7 @@ export default function Cobrancas() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [baixaId, setBaixaId] = useState(null);
-  const [baixaValor, setBaixaValor] = useState('');
+
   const [sortConfig, setSortConfig] = useState({ key: 'data_vencimento', direction: 'asc' });
 
   function handleSort(key) {
@@ -301,7 +301,7 @@ export default function Cobrancas() {
                     <td className="px-4 py-3 text-center"><StatusBadge status={status} /></td>
                     <td className="px-4 py-3 text-center">
                       {t.status !== 'pago' ?
-                      <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => {setBaixaId(t.id);setBaixaValor(String(t.valor_titulo));}}>
+                      <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => setBaixaId(t.id)}>
                           <Check className="w-3 h-3" /> Baixa
                         </Button> :
 

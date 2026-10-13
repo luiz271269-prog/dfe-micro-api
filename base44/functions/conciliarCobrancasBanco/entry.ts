@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { secrets } from 'base44:runtime';
 import { direcaoBanco } from '../../shared/direcaoFinanceira.ts';
 
 // Concilia Títulos de Cobrança (Sicredi) ↔ Extrato Bancário (recebimentos).
@@ -27,7 +28,7 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
-    const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
+    const internoOk = !!body?.internal_token && body.internal_token === secrets.get('NEXUS_HUB_TOKEN');
     if (!internoOk) {
       const user = await base44.auth.me().catch(() => null);
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });

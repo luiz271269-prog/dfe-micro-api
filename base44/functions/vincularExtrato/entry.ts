@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { secrets } from 'base44:runtime';
 import { eixosDoVinculo, TIPO_POR_ENTIDADE } from '../../shared/classificacaoPadrao.ts';
 import { baixarTributo } from '../../shared/tributoBaixa.ts';
 import { baixarDespesa } from '../../shared/despesaBaixa.ts';
@@ -35,7 +36,7 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
 
-    const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
+    const internoOk = !!body?.internal_token && body.internal_token === secrets.get('NEXUS_HUB_TOKEN');
     if (!internoOk) {
       const user = await base44.auth.me().catch(() => null);
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -56,6 +57,7 @@ export default async function(req) {
       const destino = await svc[body.entidade_tipo].get(body.entidade_id);
       if (!destino) return Response.json({ error: 'Documento de origem não encontrado.' }, { status: 404 });
       if (body.entidade_tipo === 'MovimentoFinanceiro' && Math.sign(Number(destino.valor)) !== Math.sign(Number(banco.valor))) return Response.json({ error: 'Movimento financeiro tem direção incompatível com o extrato.' }, { status: 422 });
+      if (body.entidade_tipo === 'TituloCobranca' && destino.nota_fiscal_id) await svc.NotaFiscal.get(destino.nota_fiscal_id);
       if (body.entidade_tipo === 'NotaFiscal' && await svc.TituloCobranca.count({ nota_fiscal_id: destino.id }) > 0) return Response.json({ error: 'Concilie a parcela da nota para evitar recebimento em duplicidade.' }, { status: 409 });
       if (RECEBIVEIS.includes(body.entidade_tipo)) {
         const total = await svc.VinculoExtrato.aggregate({ query: { entidade_tipo: body.entidade_tipo, entidade_id: destino.id }, sum: 'valor_alocado' });

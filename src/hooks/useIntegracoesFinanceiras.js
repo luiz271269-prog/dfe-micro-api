@@ -1,27 +1,26 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { sincronizarAppsFinanceiros } from '@/functions/sincronizarAppsFinanceiros';
 
 export default function useIntegracoesFinanceiras() {
-  const [registros, setRegistros] = useState([]);
-  const [carregando, setCarregando] = useState(true);
+  const client = useQueryClient();
   const [sincronizando, setSincronizando] = useState(false);
   const [mensagem, setMensagem] = useState('');
-  const carregar = useCallback(async () => {
-    const dados = await base44.entities.IntegracaoFinanceira.list('-ultima_sincronizacao', 5000);
-    setRegistros(dados);
-    setCarregando(false);
-  }, []);
-  useEffect(() => { carregar(); }, [carregar]);
+  const atualizar = () => client.invalidateQueries({ queryKey: ['integracoes-direcao'] });
   const sincronizar = async () => {
     setSincronizando(true); setMensagem('');
-    const { data } = await sincronizarAppsFinanceiros({});
-    setMensagem(data.ok ? `Loop-R concluído: ${data.recebidos} novos, ${data.atualizados} alterados, ${data.ignorados || 0} sem mudança e ${data.enviados} enviados.` : `Sincronização parcial: ${data.erros?.join(' · ') || data.error}`);
-    await carregar(); setSincronizando(false);
+    try {
+      const { data } = await sincronizarAppsFinanceiros({});
+      setMensagem(data.ok ? `Sincronização: ${data.recebidos} novos, ${data.atualizados} alterados e ${data.enviados} enviados.` : `Sincronização parcial: ${data.erros?.join(' · ') || data.error}`);
+      await atualizar();
+      window.dispatchEvent(new Event('neuralfinRefresh'));
+    } catch (error) { setMensagem(error.response?.data?.error || error.message); }
+    finally { setSincronizando(false); }
   };
   const alterar = async (item, mudanca) => {
     await base44.entities.IntegracaoFinanceira.update(item.id, { ...mudanca, pendente_envio: true, erro_sync: '' });
-    await carregar();
+    await atualizar();
   };
-  return { registros, carregando, sincronizando, mensagem, sincronizar, alterar };
+  return { sincronizando, mensagem, sincronizar, alterar };
 }
