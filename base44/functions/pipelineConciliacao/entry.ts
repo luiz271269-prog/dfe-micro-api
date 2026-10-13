@@ -60,7 +60,7 @@ export default async function(req) {
     // 2. Auto-aprovação de sugestões com confiança alta
     const sugestoes = await svc.SugestaoConciliacao.filter({ status: 'pendente' });
     // Tributos são aprovados pelo motor fiscal (empresa, guia, saldo e unicidade), nunca só pelo score.
-    const altas = sugestoes.filter(s => s.entidade_tipo !== 'Tributo' && (s.confianca || 0) >= CONFIANCA_AUTO);
+    const altas = sugestoes.filter(s => !s.bloqueada && s.entidade_tipo !== 'Tributo' && (s.confianca || 0) >= CONFIANCA_AUTO);
 
     let aprovadas = 0;
     const errosAprovacao = [];
@@ -76,39 +76,17 @@ export default async function(req) {
 
         const isCredito = lanc.valor > 0;
 
-        // Baixa na entidade de origem
-        const baixaPorTipo = {
-          TituloCobranca: { status: 'pago', data_pagamento: lanc.data, valor_pago: Math.abs(lanc.valor), lancamento_bancario_id: lanc.id },
-          DespesaOperacional: { status: 'pago', lancamento_bancario_id: lanc.id },
-          Tributo: { status: 'pago', data_pagamento: lanc.data, valor_pago: Math.abs(lanc.valor), lancamento_bancario_id: lanc.id },
-          FaturaCartao: { status: 'paga_total', data_pagamento: lanc.data, valor_pago: Math.abs(lanc.valor), lancamento_bancario_id: lanc.id },
-          FolhaPagamento: { status: 'pago', data_pagamento: lanc.data, lancamento_bancario_id: lanc.id },
-          ItemCompra: { status_pagamento: 'pago', valor_pago: Math.abs(lanc.valor), lancamento_bancario_id: lanc.id },
-        };
-        const baixa = baixaPorTipo[s.entidade_tipo];
-        if (!baixa) continue;
-        await svc[s.entidade_tipo].update(s.entidade_id, baixa);
-
-        const origemReg = await svc[s.entidade_tipo].get(s.entidade_id).catch(() => null);
-        const eixos = eixosDoVinculo(origemReg, s.entidade_tipo, lanc);
-
-        await svc.VinculoExtrato.create({
-          lancamento_bancario_id: lanc.id,
-          entidade_tipo: s.entidade_tipo,
-          entidade_id: s.entidade_id,
-          valor_alocado: Math.abs(lanc.valor),
-          ...eixos,
-          tipo_vinculo: isCredito ? 'recebimento_integral' : 'pagamento_integral',
-          conciliado_por: 'auto',
-          confianca: s.confianca,
-          observacao: `Pipeline auto (conf. ${s.confianca}) · ${s.descricao_conta || ''}`,
+        // Direção, saldo, vínculo e baixa passam pelo mesmo serviço central.
+        if (!['TituloCobranca','NotaFiscal','DespesaOperacional','FaturaCartao','FolhaPagamento','ItemCompra'].includes(s.entidade_tipo)) continue;
+        const resposta = await base44.functions.invoke('vincularExtrato', {
+          acao:'criar', lancamento_bancario_id:lanc.id, entidade_tipo:s.entidade_tipo,
+          entidade_id:s.entidade_id, valor_alocado:Math.abs(lanc.valor),
+          tipo_vinculo:isCredito ? 'recebimento_parcial' : 'pagamento_integral',
+          conciliado_por:'auto', confianca:s.confianca,
+          observacao:`Pipeline · ${s.descricao_conta || ''}`,
+          internal_token:token,
         });
-
-        await svc.LancamentoBancario.update(lanc.id, {
-          status_conciliacao: 'conciliado',
-          vinculos_count: (lanc.vinculos_count || 0) + 1,
-          valor_conciliado: (lanc.valor_conciliado || 0) + Math.abs(lanc.valor),
-        });
+        if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Conciliação não confirmada');
 
         await svc.SugestaoConciliacao.update(s.id, { status: 'confirmada', resolvida_em: new Date().toISOString() });
         aprovadas++;

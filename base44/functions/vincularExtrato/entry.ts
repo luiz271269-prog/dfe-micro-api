@@ -22,6 +22,7 @@ import { erroDirecao, RECEBIVEIS, recalcularRecebivel } from '../../shared/direc
 
 // Configuração de baixa por tipo de obrigação: valor devido, tolerância e status
 const OBRIGACOES = {
+  ItemCompra: { devido: r => r.valor_total || 0, tol: 0.01, pago: 'pago', aberto: 'pendente', campos: (data, cobre, soma) => ({ status_pagamento: cobre ? 'pago' : soma > 0 ? 'parcial' : 'pendente', valor_pago: soma }) },
   FolhaPagamento:     { devido: r => r.salario_liquido || 0, tol: 50,  pago: 'pago',       aberto: 'pendente',  campos: (data, cobre) => cobre ? { status: 'pago', data_pagamento: data } : { status: 'pendente', data_pagamento: null } },
   DespesaOperacional: { devido: r => r.valor || 0,           tol: 0.5, pago: 'pago',       aberto: 'pendente',  campos: (data, cobre) => cobre ? { status: 'pago' } : { status: 'pendente' } },
   Tributo:            { devido: r => r.valor_original || 0,  tol: 0.5, pago: 'pago',       aberto: 'a_vencer',  campos: (data, cobre, soma) => cobre ? { status: 'pago', data_pagamento: data, valor_pago: soma } : { status: 'a_vencer', data_pagamento: null, valor_pago: soma } },
@@ -54,6 +55,7 @@ export default async function(req) {
       if (erro) return Response.json({ error: erro }, { status: 422 });
       const destino = await svc[body.entidade_tipo].get(body.entidade_id);
       if (!destino) return Response.json({ error: 'Documento de origem não encontrado.' }, { status: 404 });
+      if (body.entidade_tipo === 'MovimentoFinanceiro' && Math.sign(Number(destino.valor)) !== Math.sign(Number(banco.valor))) return Response.json({ error: 'Movimento financeiro tem direção incompatível com o extrato.' }, { status: 422 });
       if (body.entidade_tipo === 'NotaFiscal' && await svc.TituloCobranca.count({ nota_fiscal_id: destino.id }) > 0) return Response.json({ error: 'Concilie a parcela da nota para evitar recebimento em duplicidade.' }, { status: 409 });
       if (RECEBIVEIS.includes(body.entidade_tipo)) {
         const total = await svc.VinculoExtrato.aggregate({ query: { entidade_tipo: body.entidade_tipo, entidade_id: destino.id }, sum: 'valor_alocado' });

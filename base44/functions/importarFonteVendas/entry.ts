@@ -10,6 +10,7 @@ export default async function(req) {
     if(body.validate_only)return Response.json({success:true,fonte:'vendas',direcao:'entrada',pagamentos:'informados, aguardam conciliação'});
     const notas=body.notas || [], cobrancas=body.cobrancas || [], empresa=body.empresa || 'NeuralTec';
     if(!['NeuralTec','Liesch'].includes(empresa)||!Array.isArray(notas)||!Array.isArray(cobrancas)||notas.length>200||cobrancas.length>200||JSON.stringify(body).length>500000)return Response.json({error:'Lote inválido; máximo de 200 notas e 200 parcelas.'},{status:400});
+    if ([...notas,...cobrancas].some(r => r.empresa && r.empresa !== empresa)) return Response.json({error:'O lote deve pertencer a uma única empresa.'},{status:400});
     const hash=String(body.arquivo_hash || '').slice(0,100), hoje=new Date().toISOString().slice(0,10);
     const chave=(tipo,numero)=>`vendas|${empresa}|${tipo}|${String(numero).trim()}`;
     const normalizadas=notas.map(n=>{

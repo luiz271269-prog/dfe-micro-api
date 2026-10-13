@@ -6,7 +6,7 @@ import { processDocument } from '@/functions/processDocument';
 import { importarFonteVendas } from '@/functions/importarFonteVendas';
 import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, XIcon, Calendar, Wallet, Trash2 } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
-import { conciliarNFsTitulosSicredi } from '@/functions/conciliarNFsTitulosSicredi';
+
 import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
 import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
@@ -80,6 +80,7 @@ export default function ImportarDocumento() {
   const preselected = urlParams.get('tipo');
 
   const [selectedType, setSelectedType] = useState(preselected || null);
+  const [empresaFonte, setEmpresaFonte] = useState('NeuralTec');
   const [file, setFile] = useState(null);
   const [contasCartao, setContasCartao] = useState([]);
   const [selectedCartaoId, setSelectedCartaoId] = useState('');
@@ -339,11 +340,13 @@ export default function ImportarDocumento() {
         const notas = (parsed.notas || []).map((n) => ({
           ...n,
           numero: String(n.numero ?? '').trim(),
+          empresa: n.empresa || empresaFonte,
           __type: 'NotaFiscal'
         }));
         const cobrancas = (parsed.cobrancas || []).map((c) => ({
           ...c,
           nosso_numero: String(c.nosso_numero ?? '').trim(),
+          empresa: c.empresa || parsed.notas?.find(n => `${n.tipo}-${n.numero}` === c.seu_numero && n.cliente === c.cliente)?.empresa || empresaFonte,
           __type: 'TituloCobranca'
         }));
         items = [...notas, ...cobrancas];
@@ -521,10 +524,13 @@ export default function ImportarDocumento() {
 
         setSaveProgress(`Importando fonte de vendas: ${notasToSave.length} notas + ${cobsToSave.length} parcelas...`);
         for (const [campo, registros] of [['notas', notasToSave], ['cobrancas', cobsToSave]]) {
-          for (let i = 0; i < registros.length; i += 200) {
-            const resposta = await importarFonteVendas({ [campo]: registros.slice(i, i + 200).map(r => r.data), empresa: registros[i]?.data?.empresa || 'NeuralTec', arquivo_hash: fileHash || '' });
-            if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Fonte não importada');
-            saved += resposta.data.saved;
+          for (const empresa of ['NeuralTec', 'Liesch']) {
+            const lote = registros.filter(r => (r.data.empresa || empresaFonte) === empresa);
+            for (let i = 0; i < lote.length; i += 200) {
+              const resposta = await importarFonteVendas({ [campo]: lote.slice(i, i + 200).map(r => r.data), empresa, arquivo_hash: fileHash || '' });
+              if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Fonte não importada');
+              saved += resposta.data.saved;
+            }
           }
         }
       } else {
@@ -786,6 +792,7 @@ export default function ImportarDocumento() {
           <div>
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">2. Arquivo</h2>
 
+            {selectedType === 'relatorio_vendas_detalhado' && <label className="block mb-4 text-sm">Empresa da fonte, quando não impressa no arquivo<select className="mt-1 w-full rounded-md border bg-background p-2" value={empresaFonte} onChange={e => setEmpresaFonte(e.target.value)}><option>NeuralTec</option><option>Liesch</option></select><span className="block mt-1 text-xs text-muted-foreground">Notas e parcelas têm identidade por empresa. Pagamentos informados aguardam conciliação bancária.</span></label>}
             <PainelMemoriaImportacao
             tipoImport={selectedType}
             label={DOC_TYPES.find((d) => d.id === selectedType)?.label}

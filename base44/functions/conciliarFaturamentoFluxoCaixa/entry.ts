@@ -1,4 +1,5 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { direcaoBanco } from '../../shared/direcaoFinanceira.ts';
 
 // Concilia Faturamento (Notas Fiscais) ↔ Fluxo de Caixa (previsão vs realizado).
 // REGRAS:
@@ -23,7 +24,7 @@ function clienteNoExtrato(cliente, descricao) {
   return partes.some(p => d.includes(p));
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -31,6 +32,8 @@ Deno.serve(async (req) => {
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const svc = base44.asServiceRole.entities;
+    const body = await req.json().catch(() => ({}));
+    if (body.validate_only) return Response.json({success:true,direcao:'entrada'});
 
     const [fluxos, lancamentos, notas, vinculos] = await Promise.all([
       svc.FluxoCaixa.filter({ origem_tipo: 'nota_fiscal' }),
@@ -47,7 +50,7 @@ Deno.serve(async (req) => {
     const lancsVinculados = new Set(vinculos.map(v => v.lancamento_bancario_id));
 
     const creditos = lancamentos.filter(l =>
-      l.valor > 0 &&
+      direcaoBanco(l) === 'entrada' &&
       l.status_conciliacao !== 'conciliado' &&
       l.categoria !== 'transferencia' &&
       l.categoria !== 'interno' &&
@@ -96,37 +99,15 @@ Deno.serve(async (req) => {
       const novoStatus = isRealizado ? 'realizado' : 'confirmado';
 
       try {
-        // Atualiza fluxo de caixa
-        await svc.FluxoCaixa.update(fluxo.id, {
-          status: novoStatus,
-          valor_realizado: match.valor,
-          lancamento_bancario_id: match.id,
+        if (!nf || !nomeMatch || candidatos.length !== 1) { semMatch++; continue; }
+        const resposta = await base44.functions.invoke('vincularExtrato', {
+          acao:'criar', entidade_tipo:'NotaFiscal', entidade_id:nf.id,
+          lancamento_bancario_id:match.id, valor_alocado:match.valor,
+          tipo_vinculo:'recebimento_parcial', conciliado_por:'auto',
+          observacao:`Entrada · previsão ${fluxo.id} · ${nf.cliente}`,
         });
-
-        // Cria vínculo
-        await svc.VinculoExtrato.create({
-          lancamento_bancario_id: match.id,
-          entidade_tipo: 'FluxoCaixa',
-          entidade_id: fluxo.id,
-          valor_alocado: match.valor,
-          tipo_vinculo: isRealizado ? 'pagamento_integral' : 'pagamento_parcial',
-          conciliado_por: 'auto',
-          confianca: isRealizado ? (nomeMatch ? 100 : 85) : (nomeMatch ? 80 : 65),
-          observacao: `${isRealizado ? 'Realizado' : 'Confirmado com atraso'} · ${nf?.cliente || fluxo.descricao} · ${Math.round(diff)} dia(s)`,
-        });
-
-        // Atualiza nota fiscal de origem
-        if (nf) {
-          const novoRecebido = (nf.valor_recebido || 0) + match.valor;
-          const novoAberto = Math.max(0, (nf.valor_total || 0) - novoRecebido);
-          const novoStatusNf = novoAberto <= TOL_VALOR ? 'pago' : 'parcial';
-          await svc.NotaFiscal.update(nf.id, {
-            valor_recebido: novoRecebido,
-            valor_aberto: novoAberto,
-            status: novoStatusNf,
-          });
-        }
-
+        if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Recebimento não confirmado');
+        await svc.FluxoCaixa.update(fluxo.id, { status:novoStatus, valor_realizado:match.valor, lancamento_bancario_id:match.id });
         lancsUsados.add(match.id);
         if (isRealizado) realizados++; else confirmados++;
 
@@ -156,4 +137,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

@@ -46,7 +46,7 @@ export default async function(req) {
 
     // Títulos em aberto sem vínculo bancário
     const titulosAbertos = titulos.filter(t =>
-      (t.status === 'em_aberto' || t.status === 'vencido') && !t.lancamento_bancario_id
+      (t.status === 'em_aberto' || t.status === 'vencido')
     );
 
     // Créditos do extrato não conciliados e não vinculados
@@ -82,16 +82,14 @@ export default async function(req) {
     // PASSO 1 — MATCH PERFEITO (mesmo valor, mesma data)
     for (const titulo of titulosAbertos) {
       if (titulosUsados.has(titulo.id)) continue;
-      const valor = titulo.valor_titulo || 0;
+      const valor = Math.max(0, Number(titulo.valor_titulo || 0) - Number(titulo.valor_pago || 0));
       if (valor < 0.01) continue;
 
-      const match = creditos.find(l => {
-        if (lancsUsados.has(l.id)) return false;
-        if (Math.abs(l.valor - valor) > TOL_VALOR) return false;
-        return l.data === (titulo.data_pagamento || titulo.data_vencimento);
-      });
-
-      if (!match) continue;
+      const candidatosAuto = creditos.filter(l => !lancsUsados.has(l.id) && Math.abs(l.valor - valor) <= 0.01 && l.data === (titulo.data_pagamento_informada || titulo.data_vencimento) && clienteNoExtrato(titulo.cliente, l.descricao));
+      if (candidatosAuto.length !== 1) continue;
+      const match = candidatosAuto[0];
+      const concorrentes = titulosAbertos.filter(t => !titulosUsados.has(t.id) && Math.abs(Number(t.valor_titulo || 0) - Number(t.valor_pago || 0) - match.valor) <= 0.01 && clienteNoExtrato(t.cliente, match.descricao));
+      if (concorrentes.length !== 1) continue;
 
       try {
         const resposta = await base44.functions.invoke('vincularExtrato', {
@@ -115,7 +113,7 @@ export default async function(req) {
     for (const titulo of titulosAbertos) {
       if (titulosUsados.has(titulo.id)) continue;
       if (titulosEmSugestao.has(titulo.id)) continue;
-      const valor = titulo.valor_titulo || 0;
+      const valor = Math.max(0, Number(titulo.valor_titulo || 0) - Number(titulo.valor_pago || 0));
       if (valor < 0.01) continue;
       const dataBase = new Date(titulo.data_vencimento);
 
@@ -157,6 +155,7 @@ export default async function(req) {
           descricao_extrato: match.descricao,
           diff_dias: Math.round(diff),
           confianca,
+          bloqueada: candidatos.length > 1 || titulosAbertos.some(t => t.id !== titulo.id && Math.abs(Number(t.valor_titulo || 0) - Number(t.valor_pago || 0) - match.valor) <= 0.01 && clienteNoExtrato(t.cliente, match.descricao)),
           motivo: `Recebimento: valor bate (R$ ${valor.toFixed(2)})${nomeMatch ? ', cliente confere' : ''}, ${Math.round(diff)} dia(s) do vencimento`,
           status: 'pendente',
         });
