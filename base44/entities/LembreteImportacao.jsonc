@@ -1,0 +1,66 @@
+{
+  "name": "LembreteImportacao",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "extrato_bancario",
+        "dda_boletos",
+        "fatura_cartao",
+        "relatorio_nfs",
+        "relatorio_vendas_detalhado",
+        "relatorio_vendas",
+        "boletos_liquidados",
+        "folha_pagamento",
+        "obra_reforma",
+        "despesas_operacionais",
+        "compras_fornecedor"
+      ]
+    },
+    "frequencia": {
+      "type": "string",
+      "enum": [
+        "diaria",
+        "semanal",
+        "mensal"
+      ]
+    },
+    "primeira_data": {
+      "type": "string",
+      "format": "date"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "tipo",
+    "frequencia",
+    "primeira_data",
+    "ativo"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

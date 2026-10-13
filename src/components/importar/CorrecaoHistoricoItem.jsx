@@ -1,0 +1,5 @@
+export default function CorrecaoHistoricoItem({audit,checked,busy,onSelect}){
+ let campos=[];
+ try{const antes=JSON.parse(audit.antes_json),depois=JSON.parse(audit.depois_json);campos=Object.entries(depois).map(([k,v])=>({nome:k.replace(/_/g,' '),antes:antes[k],depois:v}));}catch{campos=[];}
+ return <label className="flex items-start gap-2 rounded border p-3 text-xs"><input type="radio" name="correcao-reverter" disabled={busy||!!audit.revertida_em||!!audit.reversao_token} checked={checked} onChange={onSelect} /><span className="min-w-0"><strong>{new Date(audit.created_date).toLocaleString('pt-BR')} · {audit.entidade_tipo}</strong><span className="block text-muted-foreground">Registro {audit.entidade_id}</span><span className="block">{audit.motivo}</span><span className="block text-muted-foreground">{audit.revertida_em?'Já revertida':audit.reversao_token?'Reversão em andamento / conferência necessária':'Correção confirmada'}</span>{campos.map(c=><span key={c.nome} className="block break-words">{c.nome}: {String(c.antes ?? 'Ausente')} → <strong>{String(c.depois ?? 'Ausente')}</strong></span>)}</span></label>;
+}

@@ -1,0 +1,11 @@
+import { useQuery,useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { hojeImportacao,proximoLembrete } from '@/lib/lembreteImportacao';
+import LembreteImportacaoForm from '@/components/importar/LembreteImportacaoForm';
+export default function LembreteImportacao({tipo,label,refresh}){
+ const qc=useQueryClient(),q=useQuery({queryKey:['lembrete-importacao',tipo,refresh],queryFn:async()=>{const [c,u]=await Promise.all([base44.entities.LembreteImportacao.filter({tipo},{limit:1}),base44.entities.ImportBatch.filter({batch_type:tipo,status:'completed',success_count:{$gt:0},$or:[{error_count:0},{error_count:{$exists:false}}]},{sort:'-created_date',limit:1,fields:['created_date']})]);return {config:c.items[0],ultimo:u.items[0]};},refetchInterval:60000});
+ if(q.isLoading)return <p className="my-3 text-xs">Carregando lembrete…</p>;
+ if(q.isError)return <p role="alert" className="text-destructive">{q.error.message}</p>;
+ const c=q.data.config,proxima=c?proximoLembrete(c,q.data.ultimo):null,pendente=c?.ativo&&proxima<=hojeImportacao();
+ return <section className="mt-4 rounded-xl border bg-card p-3"><h3 className="text-sm font-semibold">Lembrete periódico · {label}</h3><p role="status" className={pendente?'my-2 text-sm font-semibold text-warning':'my-2 text-xs text-muted-foreground'}>{!c?'Nenhum lembrete configurado.':!c.ativo?'Lembrete pausado.':`${pendente?'Importação pendente desde':'Próximo lembrete em'} ${proxima.split('-').reverse().join('/')}.`}</p><p className="text-xs text-muted-foreground">Configuração por administradores. Aviso nesta tela, em datas de Brasília; não envia e-mail ou push. Uma importação concluída sem erros, com registros salvos a partir do primeiro lembrete, inicia o próximo ciclo.</p><details><summary className="mt-2 cursor-pointer text-xs text-primary">Configurar lembrete</summary><LembreteImportacaoForm key={`${tipo}-${c?.updated_date || 'novo'}`} tipo={tipo} config={c} onSaved={()=>qc.invalidateQueries({queryKey:['lembrete-importacao']})} /></details></section>;
+}

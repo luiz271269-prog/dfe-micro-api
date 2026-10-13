@@ -662,6 +662,8 @@ export default function ImportarDocumento() {
       const concMsg = nfsConciliadas > 0 || titulosVinc > 0 ? ` · 🔗 ${nfsConciliadas} NF(s) conciliadas com ${titulosVinc} título(s) Sicredi` : '';
       showToast(`✓ ${saved} novos registros salvos · ${dupes} ignoradas na importação${dedupMsg}${concMsg}`);
       loadHistory();
+      queryClient.invalidateQueries({ queryKey: ['historico-importacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['lembrete-importacao'] });
       window.dispatchEvent(new Event('neuralfinRefresh'));
       localStorage.setItem('neuralfinPendingRefresh', Date.now().toString());
     } catch (err) {
@@ -905,7 +907,7 @@ export default function ImportarDocumento() {
               </div>
           }
 
-            <HistoricoImportacoes tipos={DOC_TYPES} onReler={relerArquivo} busy={identificando || processing || saving} refresh={memoriaRefresh} />
+            <HistoricoImportacoes tipos={DOC_TYPES} tipo={selectedType} onReler={relerArquivo} busy={identificando || processing || saving} refresh={memoriaRefresh} />
 
           </div>
         </div>

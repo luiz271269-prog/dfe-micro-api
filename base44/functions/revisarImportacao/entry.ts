@@ -1,10 +1,12 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
+import { reverterCorrecao } from '../../shared/reversaoImportacao.ts';
 import { ENTIDADES,CAMPOS,preparar,diferenca,bloqueio } from '../../shared/revisaoImportacao.ts';
 export default async function(req){try{
  const b=createClientFromRequest(req),user=await b.auth.me();if(!user)return Response.json({error:'Unauthorized'},{status:401});if(user.role!=='admin')return Response.json({error:'Forbidden'},{status:403});
  const body=await req.json(),db=b.entities;
- if(!['comparar','aplicar'].includes(body.acao)||!ENTIDADES[body.tipo]||JSON.stringify(body).length>400000)return Response.json({error:'Revisão inválida.'},{status:400});
+ if(!['comparar','aplicar','preverReversao','reverter'].includes(body.acao)||(['comparar','aplicar'].includes(body.acao)&&!ENTIDADES[body.tipo])||JSON.stringify(body).length>400000)return Response.json({error:'Revisão inválida.'},{status:400});
  const batch=await db.ImportBatch.get(body.batch_id);if(!batch)return Response.json({error:'Importação não encontrada.'},{status:404});
+ if(['preverReversao','reverter'].includes(body.acao))return Response.json(await reverterCorrecao(db,batch.id,body,user));
  if(body.acao==='comparar'){
   if(!Array.isArray(body.registros)||body.registros.length>100)return Response.json({error:'Máximo de 100 registros por comparação.'},{status:400});
   const resultados=[];
