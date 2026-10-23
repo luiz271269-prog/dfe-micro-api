@@ -41,6 +41,7 @@ export default async function(req) {
     if (!internoOk) {
       const user = await base44.auth.me().catch(() => null);
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      body.usuario_id = user.id;
       if (user.role !== 'admin') {
         if (body.acao !== 'criar' || body.entidade_tipo !== 'Tributo') return Response.json({ error: 'Forbidden' }, { status: 403 });
         const [guia, banco] = await Promise.all([base44.entities.Tributo.get(body.entidade_id), base44.entities.LancamentoBancario.get(body.lancamento_bancario_id)]);

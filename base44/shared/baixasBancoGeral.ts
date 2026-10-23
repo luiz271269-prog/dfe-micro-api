@@ -25,13 +25,13 @@ export async function baixarBancoGeral(db,body) {
       if(vs.some(v=>TIPO_POR_ENTIDADE[v.entidade_tipo]&&natureza&&TIPO_POR_ENTIDADE[v.entidade_tipo]!==natureza))throw new Error('Débito já pertence a outro módulo.');
       if(soma(vs)+valor>Math.abs(l.valor)+0.001||soma(vd)+valor>totalBaixa(tipo,r)+0.001)throw new Error('Alocação superior ao saldo do débito ou da obrigação.');
     }
-    auditoria=await db.AuditoriaConciliacao.create({execucao_id:banco.token,acao:'vinculo_preparado',entidade_tipo:tipo,entidade_id:id,motivo:body.observacao||'Conciliação central',payload_original:JSON.stringify({antes:estadoBaixa(r),banco:l.id,vinculo:anterior}),detalhe:remover?'Preparando reabertura':'Preparando baixa'});
+    auditoria=await db.AuditoriaConciliacao.create({execucao_id:banco.token,acao:'vinculo_preparado',entidade_tipo:tipo,entidade_id:id,motivo:body.observacao||'Conciliação central',payload_original:JSON.stringify({usuario_id:body.usuario_id||'auto',antes:estadoBaixa(r),banco:l.id,vinculo:anterior}),detalhe:remover?'Preparando reabertura':'Preparando baixa'});
     const novo=remover?null:await db.VinculoExtrato.create({lancamento_bancario_id:bancoId,entidade_tipo:tipo,entidade_id:id,valor_alocado:valor,...eixosDoVinculo(r,tipo,l),tipo_vinculo:body.tipo_vinculo||'pagamento_integral',conciliado_por:body.conciliado_por||'manual',observacao:body.observacao||'',confianca:body.confianca??100});
     if(remover)await db.VinculoExtrato.delete(anterior.id);
     const [atuaisBanco,atuaisDoc]=await Promise.all([lerCompleto(db,'VinculoExtrato',{lancamento_bancario_id:bancoId}),lerCompleto(db,'VinculoExtrato',{entidade_tipo:tipo,entidade_id:id})]);
     const ids=[...new Set(atuaisDoc.map(v=>v.lancamento_bancario_id))],pagamentos=ids.length?await lerCompleto(db,'LancamentoBancario',{id:{$in:ids}},['data']):[];
     const pago=soma(atuaisDoc),alocado=soma(atuaisBanco),patch=patchPagamentoBaixa(tipo,r,pago,pagamentos.map(x=>x.data).sort().at(-1),r.forma_pagamento||'transferencia');
-    if(!r.forma_pagamento&&tipo==='ItemCompra')patch.forma_pagamento='nao_definida';
+    if(!r.forma_pagamento){delete patch.forma_pagamento;if(tipo==='ItemCompra')patch.forma_pagamento='nao_definida';}
     patch.lancamento_bancario_id=ids.length===1&&(tipo!=='ObraReforma'||pago>=totalBaixa(tipo,r))?ids[0]:null;
     await db[tipo].update(id,patch);
     await db.LancamentoBancario.update(bancoId,{valor_conciliado:alocado,vinculos_count:atuaisBanco.length,status_conciliacao:atuaisBanco.length?(alocado>=Math.abs(l.valor)-0.01?'conciliado':'parcial'):'nao_conciliado'});

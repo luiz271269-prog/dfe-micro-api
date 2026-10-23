@@ -23,7 +23,12 @@ export async function consultarListaBaixas(db,b) {
   if(b.empresa&&b.empresa!=='todas'&&tipo==='FaturaCartao'){const ids=await lerCompleto(db,'ContaCartao',{empresa_vinculada:b.empresa},['id']);q.$and.push({conta_cartao_id:{$in:ids.map(x=>x.id)}});}
   if(b.empresa&&b.empresa!=='todas'&&tipo==='LancamentoBancario'){const contas=await lerCompleto(db,'ContaCartao',{},['conta_bancaria_pagamento','empresa_vinculada']);const conhecidas=contas.filter(c=>c.empresa_vinculada===b.empresa).map(c=>c.conta_bancaria_pagamento).filter(Boolean);q.$and.push({$or:[{conta_bancaria:{$in:conhecidas}},{conta_bancaria:{$regex:b.empresa==='NeuralTec'?'NeuralTec|36092':'Liesch|37101',$options:'i'}}]});}
   const page=await db[tipo].filter(q,{sort:'-created_date',limit:40,cursor:b.cursor||undefined});
-  return {...page,items:page.items.map(r=>normalizarBaixa(tipo,r))};
+  const ids=page.items.map(r=>r.id);
+  const [bancos,cartoes,contas]=await Promise.all([
+    db.VinculoExtrato.aggregate({query:tipo==='LancamentoBancario'?{lancamento_bancario_id:{$in:ids}}:{entidade_tipo:tipo,entidade_id:{$in:ids}},groupBy:tipo==='LancamentoBancario'?'lancamento_bancario_id':'entidade_id',sum:'valor_alocado'}),
+    db.VinculoCartao.aggregate({query:tipo==='LancamentoCartao'?{lancamento_cartao_id:{$in:ids},fase:'confirmado'}:{entidade_tipo:tipo,entidade_id:{$in:ids},fase:'confirmado'},groupBy:tipo==='LancamentoCartao'?'lancamento_cartao_id':'entidade_id',sum:'valor_alocado'}),
+    tipo==='FaturaCartao'?lerCompleto(db,'ContaCartao',{id:{$in:page.items.map(r=>r.conta_cartao_id).filter(Boolean)}},['id','empresa_vinculada']):Promise.resolve([])]);
+  return {...page,items:page.items.map(r=>{const row=normalizarBaixa(tipo,r),vb=bancos.rows.find(x=>(x.lancamento_bancario_id||x.entidade_id)===r.id),vc=cartoes.rows.find(x=>(x.lancamento_cartao_id||x.entidade_id)===r.id);row.conciliado=Number(vb?.sum_valor_alocado||0);if(vc||r.lancamento_cartao_id)row.estado='no_cartao';if(tipo==='LancamentoCartao'&&vc){row.saldo=0;row.estado='no_cartao';}if(tipo==='FaturaCartao')row.empresa=contas.find(c=>c.id===r.conta_cartao_id)?.empresa_vinculada||'';if(vb&&!ehMovimento(tipo)&&row.conciliado>=row.total-0.01)row.estado='conciliado';return row;})};
 }
 export async function detalheBaixas(base44,user,tipo,id) {
   const db=base44.entities,r=await db[tipo].get(id);
@@ -34,5 +39,13 @@ export async function detalheBaixas(base44,user,tipo,id) {
     lerCompleto(db,'VinculoExtrato',banco),lerCompleto(db,'VinculoCartao',cartao),
     user.role==='admin'?lerCompleto(db,'EvidenciaFinanceira',tipo==='LancamentoBancario'?{lancamento_bancario_id:id,direcao:'saida'}:{entidade_tipo:tipo,entidade_id:id,direcao:'saida'}):Promise.resolve([]),
     user.role==='admin'?db.AuditoriaConciliacao.filter({entidade_tipo:tipo,entidade_id:id},{sort:'-created_date',limit:60}):Promise.resolve({items:[]})]);
-  return {registro:normalizarBaixa(tipo,r),vinculos,trilhas,evidencias,auditoria:auditoria.items,editaveis:camposEditaveisBaixa[tipo],admin:user.role==='admin',historicoMais:!!auditoria.has_more};
+  const refs=new Map();
+  const adicionar=(t,i)=>{if(MODULOS_BAIXA[t]&&i&&!(t===tipo&&i===id)){const set=refs.get(t)||new Set();set.add(i);refs.set(t,set);}};
+  vinculos.forEach(v=>{adicionar('LancamentoBancario',v.lancamento_bancario_id);adicionar(v.entidade_tipo,v.entidade_id);});
+  trilhas.forEach(v=>{adicionar('LancamentoCartao',v.lancamento_cartao_id);adicionar(v.entidade_tipo,v.entidade_id);adicionar('FaturaCartao',v.fatura_id);});
+  if(r.lancamento_bancario_id)adicionar('LancamentoBancario',r.lancamento_bancario_id);if(r.lancamento_cartao_id)adicionar('LancamentoCartao',r.lancamento_cartao_id);if(r.fatura_id)adicionar('FaturaCartao',r.fatura_id);
+  const relacionados=[];const entradas=[...refs.entries()];for(let i=0;i<entradas.length;i+=6){const partes=await Promise.all(entradas.slice(i,i+6).map(async([t,set])=>(await lerCompleto(db,t,{id:{$in:[...set]}})).map(doc=>({tipo:t,registro:doc}))));relacionados.push(...partes.flat());}
+  const registro=normalizarBaixa(tipo,r);if(trilhas.some(t=>t.fase==='confirmado')){registro.estado='no_cartao';if(tipo==='LancamentoCartao')registro.saldo=0;}
+  if(tipo==='LancamentoBancario'){registro.conciliado=vinculos.reduce((s,v)=>s+Number(v.valor_alocado||0),0);registro.saldo=Math.max(0,Math.round((registro.total-registro.conciliado)*100)/100);if(registro.estado!=='bloqueado')registro.estado=registro.conciliado>=registro.total-0.01?'conciliado':registro.conciliado>0?'parcial':'nao_conciliado';}
+  return {registro,vinculos,trilhas,evidencias,relacionados,auditoria:auditoria.items,editaveis:camposEditaveisBaixa[tipo],admin:user.role==='admin',historicoMais:!!auditoria.has_more};
 }

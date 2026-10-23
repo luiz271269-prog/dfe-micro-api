@@ -5,6 +5,7 @@ import BaixasLista from '@/components/baixas/BaixasLista';
 import BaixasDetalhe from '@/components/baixas/BaixasDetalhe';
 import BaixasConfirmacao from '@/components/baixas/BaixasConfirmacao';
 import useBaixas from '@/components/baixas/useBaixas';
+import BaixasFixas from '@/components/baixas/BaixasFixas';
 export default function Baixas() {
   const b=useBaixas();
   return <div className="p-4 lg:p-6 max-w-[1600px] mx-auto space-y-5">
@@ -14,6 +15,7 @@ export default function Baixas() {
     {b.erro&&!b.confirmacao&&<p role="alert" className="border border-destructive text-destructive rounded-lg p-3 text-sm">{b.erro}</p>}
     {b.sucesso&&<p role="status" className="border border-success text-success rounded-lg p-3 text-sm">{b.sucesso}</p>}
     <div className="grid xl:grid-cols-2 gap-5 items-start"><BaixasLista items={b.items} selecionado={b.detalhe?.registro} onSelect={b.selecionar} loading={b.loading} mais={b.pagina.has_more} onMore={()=>b.consultar(true)}/><BaixasDetalhe key={b.detalhe?`${b.detalhe.registro.tipo}-${b.detalhe.registro.id}`:'vazio'} detalhe={b.detalhe} onSubmit={b.solicitar}/></div>
+    {b.pagina.admin&&<BaixasFixas onSaved={()=>b.consultar(false)}/>}
     <BaixasConfirmacao operacao={b.confirmacao} onClose={()=>b.setConfirmacao(null)} onConfirm={b.executar} busy={b.busy} erro={b.erro}/>
   </div>;
 }

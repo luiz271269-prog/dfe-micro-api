@@ -3,7 +3,7 @@ import { normalizarBaixa } from './baixasContrato.ts';
 import { normConciliacao,lerCompleto } from './conciliacaoLeitura.ts';
 import { evidenciasCartao } from './conciliacaoCartaoRegras.ts';
 export function pontuarBaixa(mov,candidato,evidencias=[]) {
-  const m=normalizarBaixa(mov.tipo,mov.raw),c=candidato,razoes=[],bloqueios=[];let pontos=0;
+  const m=mov,c=candidato,razoes=[],bloqueios=[];let pontos=0;
   const referencia=m.tipo==='LancamentoCartao'?(c.raw.data_emissao||c.raw.data):c.data;
   const diff=Math.abs(m.saldo-c.saldo),dias=Math.abs(Date.parse(m.data)-Date.parse(referencia))/86400000;
   if(diff<0.01){pontos+=45;razoes.push('Valor e saldo coincidem em centavos');}else if(c.saldo>m.total){pontos+=15;razoes.push('Possível pagamento parcial');}else razoes.push('Valores diferentes: confira a alocação');
@@ -23,7 +23,10 @@ export async function candidatosBaixas(base44,user,b) {
   if(!['LancamentoBancario','LancamentoCartao'].includes(b.tipo)||!['ItemCompra','DespesaOperacional','Tributo','FolhaPagamento','FaturaCartao','ObraReforma'].includes(b.destino))throw new Error('Escolha um movimento e um módulo de destino.');
   if(b.tipo==='LancamentoCartao'&&!['ItemCompra','DespesaOperacional','ObraReforma'].includes(b.destino))return {items:[],has_more:false};
   const r=await base44.entities[b.tipo].get(b.id),mov=normalizarBaixa(b.tipo,r);
+  if(b.tipo==='LancamentoBancario'){const a=await base44.entities.VinculoExtrato.aggregate({query:{lancamento_bancario_id:b.id},sum:'valor_alocado'});mov.saldo=Math.max(0,mov.total-Number(a.rows[0]?.sum_valor_alocado||0));}
   const page=await consultarListaBaixas(base44.entities,{tipo:b.destino,busca:b.busca,cursor:b.cursor,estado:'pendente'});
   const ev=user.role==='admin'?await lerCompleto(base44.entities,'EvidenciaFinanceira',{direcao:'saida',...(b.tipo==='LancamentoBancario'?{lancamento_bancario_id:b.id}:{entidade_tipo:b.destino,entidade_id:{$in:page.items.map(x=>x.id)}})}):[];
-  return {...page,items:page.items.map(c=>pontuarBaixa(mov,c,ev)).sort((a,b)=>a.bloqueios.length-b.bloqueios.length||b.pontos-a.pontos),aviso:'Ordem por semelhança nesta página; não é confirmação de pagamento. Outros candidatos podem existir nas próximas páginas.'};
+  const ordenados=page.items.map(c=>pontuarBaixa(mov,c,ev)).sort((a,b)=>a.bloqueios.length-b.bloqueios.length||b.pontos-a.pontos);
+  const elegiveis=ordenados.filter(c=>!c.bloqueios.length);const ambiguo=elegiveis.length>1&&Math.abs(elegiveis[0].pontos-elegiveis[1].pontos)<=5;
+  return {...page,items:ordenados.map(c=>({...c,ambiguo:ambiguo&&!c.bloqueios.length&&c.pontos>=elegiveis[0].pontos-5})),aviso:'Ordem por semelhança nesta página; não é confirmação de pagamento. Outros candidatos podem existir nas próximas páginas.'};
 }

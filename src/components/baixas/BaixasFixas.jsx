@@ -1,0 +1,18 @@
+import { useState } from 'react';
+import { chamarBaixas } from '@/components/baixas/baixasService';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import BaixasDados from '@/components/baixas/BaixasDados';
+import BaixasReversao from '@/components/baixas/BaixasReversao';
+import BaixasConfirmacao from '@/components/baixas/BaixasConfirmacao';
+export default function BaixasFixas({onSaved}) {
+  const [mes,setMes]=useState(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo'}).format(new Date()).slice(0,7)),[rows,setRows]=useState([]),[page,setPage]=useState({}),[busy,setBusy]=useState(false),[erro,setErro]=useState(''),[mensagem,setMensagem]=useState(''),[confirmacao,setConfirmacao]=useState(null);
+  async function carregar(mais=false){const p=await chamarBaixas({acao:'fixasListar',mes,cursor:mais?page.next_cursor:undefined});setRows(prev=>mais?[...prev,...p.items]:p.items);setPage(p);}
+  async function rodar(acao){if(busy)return;setBusy(true);setErro('');try{if(acao==='fixasAnalisar'){await chamarBaixas({acao,mes});setMensagem('Análise concluída. Nenhuma baixa foi confirmada.');}await carregar(acao==='mais');}catch(e){setErro(e.response?.data?.error||e.message);}finally{setBusy(false);}}
+  async function confirmar(){if(busy)return;setBusy(true);setErro('');try{await chamarBaixas(confirmacao.payload);setConfirmacao(null);setMensagem('Revisão individual registrada na origem.');window.dispatchEvent(new Event('neuralfinRefresh'));await carregar();onSaved();}catch(e){setErro(e.response?.data?.error||e.message);}finally{setBusy(false);}}
+  return <details className="border rounded-xl bg-card p-4"><summary className="font-semibold cursor-pointer">Despesas fixas · ocorrências aguardando documento e revisão</summary><div className="space-y-3 mt-4"><p className="text-sm text-muted-foreground">Reaproveita as regras recorrentes cadastradas. A análise apenas sugere; confirmar usa o serviço original e materializa a ocorrência, sem alterar a competência.</p><div className="flex flex-wrap gap-2"><Input aria-label="Mês de revisão das fixas" type="month" className="w-auto" value={mes} disabled={busy} onChange={e=>{setMes(e.target.value);setRows([]);setPage({});}}/><Button variant="outline" disabled={busy} onClick={()=>rodar('listar')}>Consultar sugestões</Button><Button variant="outline" disabled={busy} onClick={()=>rodar('fixasAnalisar')}>Analisar mês</Button></div>{mensagem&&<p className="text-xs text-muted-foreground">{mensagem}</p>}{erro&&!confirmacao&&<p className="text-sm text-destructive">{erro}</p>}{page.items&&!rows.length&&<p className="text-sm text-muted-foreground">Sem sugestões pendentes neste mês.</p>}
+    {rows.map(s=><article key={s.id} className="border rounded-lg p-3"><p className="font-semibold text-sm">{s.descricao_conta||s.fornecedor||s.entidade_id} · {s.canal||'extrato'}</p><BaixasDados dados={s} titulo="Dados da sugestão e evidência"/>{s.bloqueada?<p className="text-xs text-destructive">Ambígua ou bloqueada: revise a regra na origem.</p>:<BaixasReversao acao="fixasConfirmar" params={{sugestao_id:s.id}} descricao="Confirmar ocorrência e vínculo da despesa fixa" onSubmit={(p,resumo)=>setConfirmacao({payload:{...p,mes,pedidoId:crypto.randomUUID()},resumo})}/>}</article>)}
+    {page.has_more&&<Button variant="outline" disabled={busy} onClick={()=>rodar('mais')}>Carregar próximas sugestões</Button>}
+    <BaixasConfirmacao operacao={confirmacao} onClose={()=>setConfirmacao(null)} onConfirm={confirmar} busy={busy} erro={erro}/>
+  </div></details>;
+}

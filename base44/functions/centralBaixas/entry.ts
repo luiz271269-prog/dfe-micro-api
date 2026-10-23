@@ -3,11 +3,13 @@ import { MODULOS_BAIXA } from '../../shared/baixasContrato.ts';
 import { consultarListaBaixas,detalheBaixas } from '../../shared/baixasConsulta.ts';
 import { candidatosBaixas } from '../../shared/baixasSemelhanca.ts';
 import { executarBaixaCentral } from '../../shared/baixasOperacoes.ts';
+import { revisarFixasCentral } from '../../shared/baixasFixas.ts';
 export default async function(req) {
   try {
     const base44=createClientFromRequest(req),user=await base44.auth.me();
     if(!user)return Response.json({error:'Não autorizado.'},{status:401});
     const b=await req.json();
+    if(['fixasListar','fixasAnalisar','fixasConfirmar','fixasRejeitar'].includes(b.acao))return Response.json(await revisarFixasCentral(base44,user,b));
     if(b.acao==='listar')return Response.json({...await consultarListaBaixas(base44.entities,b),admin:user.role==='admin'});
     if(!MODULOS_BAIXA[b.tipo]||typeof b.id!=='string'||!b.id||b.id.length>200)return Response.json({error:'Registro inválido.'},{status:400});
     if(b.acao==='detalhe')return Response.json(await detalheBaixas(base44,user,b.tipo,b.id));
