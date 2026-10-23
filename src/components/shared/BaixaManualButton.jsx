@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import PagamentoManualDialog from '@/components/shared/PagamentoManualDialog';
+import BaixasDialog from '@/components/baixas/BaixasDialog';
 
-export default function BaixaManualButton({ entidade, registroId, onSaved, children = 'Pagamento / histórico', className = '' }) {
-  const [open, setOpen] = useState(false);
+export default function BaixaManualButton({ entidade, registroId, registros, descricao, onSaved, children = 'Baixar / conciliar', className = '', abaInicial = 'dados' }) {
+  const [revisao, setRevisao] = useState(null);
+  const referencias = registros || [{ tipo: entidade, id: registroId, descricao }];
   return <>
-    <Button type="button" size="sm" variant="outline" className={className} onClick={e => { e.stopPropagation(); setOpen(true); }}>{children}</Button>
-    {open && <PagamentoManualDialog entidade={entidade} registroId={registroId} onClose={() => setOpen(false)} onSaved={onSaved} />}
+    <Button type="button" size="sm" variant="outline" disabled={!referencias.length || referencias.some(r => !r.id)} className={className} onClick={e => { e.stopPropagation(); setRevisao(referencias); }}>{children}</Button>
+    {revisao && <BaixasDialog registros={revisao} abaInicial={abaInicial} onClose={() => setRevisao(null)} onSaved={onSaved} />}
   </>;
 }

@@ -6,7 +6,7 @@ import ExcluirFuncionarioDuplicadoButton from '@/components/funcionarios/Excluir
 import { gerenciarFuncionario } from '@/functions/gerenciarFuncionario';
 import { dadosJornadaSalvos } from '@/lib/jornadaTrabalho';
 import { base44 } from '@/api/base44Client';
-import { Plus, Users, Download, Calendar, Briefcase, Building2, Clock, Sparkles, CheckCircle2, CalendarPlus, Palmtree, Wallet, UserMinus, ScanSearch } from 'lucide-react';
+import { Plus, Users, Download, Calendar, Briefcase, Clock, Sparkles, CheckCircle2, CalendarPlus, Palmtree, Wallet, UserMinus, ScanSearch } from 'lucide-react';
 import TabsNexus from '../components/funcionarios/TabsNexus';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,10 +28,11 @@ import FolhaEventosDialog from '../components/funcionarios/FolhaEventosDialog';
 import FolhaEventosPanel from '../components/funcionarios/FolhaEventosPanel';
 import { calcularTotaisFolha } from '../lib/folhaEventos';
 import BaixaFolhaPopover from '../components/funcionarios/BaixaFolhaPopover';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import MensagemLink from '../components/shared/MensagemLink';
-import { conciliarFolhaExtrato } from '@/functions/conciliarFolhaExtrato';
+import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import { calcularINSS, calcularFGTS } from '../lib/encargosEngine';
 import { gerarFolhasPendentes } from '@/functions/gerarFolhasPendentes';
 import { consolidarFolhasPorFuncionario } from '../lib/folhaIdentidade';
@@ -217,7 +218,6 @@ export default function Funcionarios() {
     desconto_vt: '0', desconto_vr: '0', outros_descontos: '0', horas_extras: '0', comissao: '0',
     data_pagamento: '', status: 'pendente', fgts_valor: '0', empresa: 'NeuralTec'
   });
-  const [conciliando, setConciliando] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [salvandoFolha, setSalvandoFolha] = useState(false);
   const [erroFormularioFolha, setErroFormularioFolha] = useState('');
@@ -264,29 +264,6 @@ export default function Funcionarios() {
   }
   const [toastFolha, setToastFolha] = useState(null);
 
-  async function handleConciliarPIX() {
-    setConciliando(true);
-    try {
-      const res = await conciliarFolhaExtrato({});
-      const { conciliadas = 0, parciais = 0, adiantamentos_detectados = 0, sem_match = 0, total_pendentes = 0 } = res?.data || {};
-      const partes = [];
-      if (conciliadas > 0) partes.push(`✓ ${conciliadas} folha(s) baixada(s)`);
-      if (parciais > 0) partes.push(`⚠️ ${parciais} parcial(is) (aguardando comissão)`);
-      if (adiantamentos_detectados > 0) partes.push(`💰 ${adiantamentos_detectados} adiantamento(s) detectado(s)`);
-      if (sem_match > 0) partes.push(`${sem_match} sem PIX correspondente`);
-      setToastFolha({
-        type: conciliadas > 0 || parciais > 0 ? 'success' : 'info',
-        msg: partes.length > 0
-          ? partes.join(' · ')
-          : total_pendentes === 0 ? 'Nenhuma folha pendente — tudo conciliado!' : 'Nenhum PIX correspondente encontrado no extrato',
-      });
-      loadData();
-    } catch (err) {
-      setToastFolha({ type: 'error', msg: `Erro: ${err.message}` });
-    }
-    setConciliando(false);
-    setTimeout(() => setToastFolha(null), 8000);
-  }
 
   async function loadData() {
     const [funcs, fols, vincs] = await Promise.all([
@@ -457,13 +434,7 @@ export default function Funcionarios() {
                 <><CalendarPlus className="w-4 h-4" /> Gerar Folhas Pendentes</>
               )}
             </Button>
-            <Button variant="outline" onClick={handleConciliarPIX} disabled={conciliando} className="gap-2">
-              {conciliando ? (
-                <><div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /> Conciliando...</>
-              ) : (
-                <><Sparkles className="w-4 h-4" /> Conciliar PIX do Extrato</>
-              )}
-            </Button>
+            <BaixaManualButton registros={folhasMes.map(f=>({tipo:'FolhaPagamento',id:f.id,descricao:`${f.funcionario_nome} · ${f.competencia}`}))} abaInicial="conciliar" onSaved={loadData}>Analisar PIX do extrato</BaixaManualButton>
             <Button variant="outline" onClick={exportar} className="gap-2"><Download className="w-4 h-4" /> Exportar</Button>
             <Button onClick={() => { setErroFormularioFolha(''); setFolhaForm(f => ({ ...f, competencia })); setShowFolhaForm(true); }} className="gap-2"><Plus className="w-4 h-4" /> Lançar Folha</Button>
           </div>
@@ -572,7 +543,7 @@ export default function Funcionarios() {
 
       {/* ABA 2 — Folha de Pagamento */}
       {activeTab === 'folha' && (
-        <>
+        <BaixasSelecao registros={folhasMes.filter(f=>!f._semFolha).map(f=>({tipo:'FolhaPagamento',id:f.id,descricao:`${f.funcionario_nome} · ${f.competencia}`}))} onSaved={loadData}>
           <NavegacaoTemporalFolha resumos={resumos12} competencia={competencia} onChange={setCompetencia} />
           <PeriodoPagamentoFolha competencia={competencia} />
 
@@ -694,7 +665,7 @@ export default function Funcionarios() {
             </div>
             </div>
           )}
-        </>
+        </BaixasSelecao>
       )}
 
       {/* ABA 5 — Rescisões */}

@@ -19,6 +19,11 @@ export function pontuarBaixa(mov,candidato,evidencias=[]) {
   if(m.tipo==='LancamentoCartao'){const e=evidenciasCartao(m.raw,c.raw,c.tipo,true);if(!e.elegivel)bloqueios.push(...e.motivos,'Regras do cartão não permitem este vínculo');}
   return {...c,pontos,razoes,bloqueios:[...new Set(bloqueios)]};
 }
+export function ordenarCandidatosBaixa(items) {
+  const ordenados=items.sort((a,b)=>a.bloqueios.length-b.bloqueios.length||b.pontos-a.pontos);
+  const elegiveis=ordenados.filter(c=>!c.bloqueios.length),ambiguo=elegiveis.length>1&&Math.abs(elegiveis[0].pontos-elegiveis[1].pontos)<=5;
+  return ordenados.map(c=>({...c,ambiguo:ambiguo&&!c.bloqueios.length&&c.pontos>=elegiveis[0].pontos-5}));
+}
 export async function candidatosBaixas(base44,user,b) {
   if(!['LancamentoBancario','LancamentoCartao'].includes(b.tipo)||!['ItemCompra','DespesaOperacional','Tributo','FolhaPagamento','FaturaCartao','ObraReforma'].includes(b.destino))throw new Error('Escolha um movimento e um módulo de destino.');
   if(b.tipo==='LancamentoCartao'&&!['ItemCompra','DespesaOperacional','ObraReforma'].includes(b.destino))return {items:[],has_more:false};
@@ -26,7 +31,5 @@ export async function candidatosBaixas(base44,user,b) {
   if(b.tipo==='LancamentoBancario'){const a=await base44.entities.VinculoExtrato.aggregate({query:{lancamento_bancario_id:b.id},sum:'valor_alocado'});mov.saldo=Math.max(0,mov.total-Number(a.rows[0]?.sum_valor_alocado||0));}
   const page=await consultarListaBaixas(base44.entities,{tipo:b.destino,busca:b.busca,cursor:b.cursor,estado:'pendente'});
   const ev=user.role==='admin'?await lerCompleto(base44.entities,'EvidenciaFinanceira',{direcao:'saida',...(b.tipo==='LancamentoBancario'?{lancamento_bancario_id:b.id}:{entidade_tipo:b.destino,entidade_id:{$in:page.items.map(x=>x.id)}})}):[];
-  const ordenados=page.items.map(c=>pontuarBaixa(mov,c,ev)).sort((a,b)=>a.bloqueios.length-b.bloqueios.length||b.pontos-a.pontos);
-  const elegiveis=ordenados.filter(c=>!c.bloqueios.length);const ambiguo=elegiveis.length>1&&Math.abs(elegiveis[0].pontos-elegiveis[1].pontos)<=5;
-  return {...page,items:ordenados.map(c=>({...c,ambiguo:ambiguo&&!c.bloqueios.length&&c.pontos>=elegiveis[0].pontos-5})),aviso:'Ordem por semelhança nesta página; não é confirmação de pagamento. Outros candidatos podem existir nas próximas páginas.'};
+  return {...page,items:ordenarCandidatosBaixa(page.items.map(c=>pontuarBaixa(mov,c,ev))),aviso:'Ordem por semelhança nesta página; não é confirmação de pagamento. Outros candidatos podem existir nas próximas páginas.'};
 }

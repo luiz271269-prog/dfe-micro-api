@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Search, Link2, Check, XIcon, AlertCircle } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
-import { carregarObrigacoesAbertas, conciliarObrigacaoComLancamento } from '@/lib/obrigacoesAbertas';
+import { carregarObrigacoesAbertas } from '@/lib/obrigacoesAbertas';
+import BaixasDialog from '@/components/baixas/BaixasDialog';
 import { ordenarPorSimilaridade, scoreSimilaridadeConciliacao } from '@/lib/similaridadeConciliacao';
 import ColunaSelecao from './ColunaSelecao';
 
@@ -15,6 +16,7 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
   const [lancamentos, setLancamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [revisao, setRevisao] = useState(null);
   const [selObrig, setSelObrig] = useState(null);
   const [selLanc, setSelLanc] = useState(null);
   const [busca, setBusca] = useState('');
@@ -75,18 +77,13 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
     })));
   }
 
-  async function conciliar() {
-    setSalvando(true);
-    try {
-      await conciliarObrigacaoComLancamento(selObrig, selLanc, `Conciliação manual (análise pagtos × extrato) · ${selObrig.descricao}`);
-      await resolverSugestoes(selLanc.id, selObrig);
-      window.dispatchEvent(new Event('neuralfinRefresh'));
-      onResolved?.();
-      await load();
-    } catch (err) {
-      alert(`Erro: ${err.message}`);
-    }
-    setSalvando(false);
+  function conciliar() {
+    setRevisao([{tipo:selObrig.entidade_tipo,id:selObrig.entidade_id,descricao:selObrig.descricao,movimento_id:selLanc.id}]);
+  }
+  async function aoRevisar(comando) {
+    if(comando.acao==='banco') await resolverSugestoes(comando.id,{entidade_tipo:comando.destino,entidade_id:comando.destino_id});
+    await onResolved?.();
+    await load();
   }
 
   async function rejeitarSugestao() {
@@ -121,7 +118,7 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <><Dialog open={open} onOpenChange={(o) => { if (!o && !revisao) onClose(); }}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Analisar pagamentos × extrato</DialogTitle>
@@ -193,11 +190,11 @@ export default function AnalisarPagtosExtratoDialog({ open, onClose, onResolved,
             </Button>
             <Button variant="ghost" onClick={onClose} disabled={salvando}>Fechar</Button>
             <Button onClick={conciliar} disabled={!selObrig || !selLanc || salvando} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
-              <Check className="w-4 h-4" /> {salvando ? 'Processando...' : 'Conciliar'}
+              <Check className="w-4 h-4" /> {salvando ? 'Processando...' : 'Revisar conciliação'}
             </Button>
           </div>
         </div>
       </DialogContent>
-    </Dialog>
+    </Dialog>{revisao&&<BaixasDialog registros={revisao} abaInicial="conciliar" onClose={()=>setRevisao(null)} onSaved={aoRevisar}/>}</>
   );
 }

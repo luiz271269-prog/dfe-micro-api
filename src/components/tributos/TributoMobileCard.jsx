@@ -1,4 +1,5 @@
 import StatusBadge from '@/components/shared/StatusBadge';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 import SeletorClassificacao from '@/components/shared/SeletorClassificacao';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 
@@ -28,6 +29,7 @@ export default function TributoMobileCard({ tributo, onRefresh }) {
         <SeletorClassificacao eixo="origem" entityName={entityName} record={origem} field="origem_compra" onChange={onRefresh} />
         <SeletorClassificacao eixo="tipo" entityName={entityName} record={origem} field="tipo_compra" onChange={onRefresh} />
       </div>
+      <div className="mt-3"><BaixaAcaoRegistro entidade={entityName} registroId={origem.id} descricao={tributo.descricao||tributo.tipo} onSaved={onRefresh} /></div>
     </article>
   );
 }

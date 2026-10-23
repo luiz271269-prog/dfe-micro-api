@@ -22,6 +22,8 @@ import CampoClassificacao from '../components/shared/CampoClassificacao';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizacao';
 
 const TIPOS_TOTALIZADORES = [
@@ -314,6 +316,7 @@ export default function ExtratoBancario() {
       </div>
 
       {/* Listagem responsiva */}
+      <BaixasSelecao registros={filtered.filter(l=>l.valor<0).map(l=>({tipo:'LancamentoBancario',id:l.id,descricao:l.descricao}))} onSaved={loadData} abaInicial="conciliar">
       <ResponsiveListView
         items={filtered}
         loading={loading}
@@ -326,7 +329,7 @@ export default function ExtratoBancario() {
             title={l.descricao}
             subtitle={l.detalhe}
             meta={l.saldo_apos != null ? `Saldo: ${formatCurrency(l.saldo_apos)}` : null}
-            footer={<ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} />}
+            footer={<div className="flex flex-wrap items-center gap-2"><ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} />{l.valor<0&&<BaixaAcaoRegistro entidade="LancamentoBancario" registroId={l.id} descricao={l.descricao} abaInicial="conciliar">Analisar / conciliar</BaixaAcaoRegistro>}</div>}
             badge={
               <span onClick={e => e.stopPropagation()}>
                 <SeletorClassificacao eixo="categoria" entityName="LancamentoBancario" record={l} field="categoria" onChange={(id, f, v) => handleCategoriaChange(id, v)} />
@@ -391,7 +394,7 @@ export default function ExtratoBancario() {
                       {formatCurrency(l.valor)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{l.saldo_apos != null ? formatCurrency(l.saldo_apos) : '—'}</td>
-                    <td className="px-4 py-3"><ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} /></td>
+                    <td className="px-4 py-3"><div className="space-y-2"><ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} />{l.valor<0&&<BaixaAcaoRegistro entidade="LancamentoBancario" registroId={l.id} descricao={l.descricao} abaInicial="conciliar">Analisar / conciliar</BaixaAcaoRegistro>}</div></td>
                   </tr>
                 ))
               )}
@@ -408,6 +411,7 @@ export default function ExtratoBancario() {
           </table>
         }
       />
+      </BaixasSelecao>
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>

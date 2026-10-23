@@ -3,9 +3,12 @@ import { ChevronRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { FORMAS_COMPRA } from '@/components/compras/CompraPagamentoFields';
 import { Button } from '@/components/ui/button';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
 const statusLabel = { pendente: 'Pendente', parcial: 'Parcial', nao_identificado: 'Não identificado' };
-export default function ComprasTitulosTable({ documentos, loading = false, embedded = false }) {
+export default function ComprasTitulosTable({ documentos, loading = false, embedded = false, onSaved }) {
+  const referencias = doc => (doc.itens || []).map(i => ({ tipo: 'ItemCompra', id: i.id, descricao: `${doc.numero} · ${i.descricao_produto || doc.fornecedor}` }));
   const tabela = <div className="overflow-x-auto"><table className="w-full text-sm">
     <thead><tr className="border-b bg-muted/30">
       <th className="p-3 text-left">Vencimento</th><th className="p-3 text-left">Nota / parcela</th>
@@ -21,6 +24,7 @@ export default function ComprasTitulosTable({ documentos, loading = false, embed
         <td className="p-3">{statusLabel[doc.status_pagamento] || doc.status_pagamento}</td>
         <td className="p-3 text-right font-bold tabular-nums text-destructive">{formatCurrency(doc.valor)}</td>
         <td className="p-3 text-right">
+          <BaixaAcaoRegistro registros={referencias(doc)} descricao={doc.numero} onSaved={onSaved} />{' '}
           <Link to={`/pedido-central/${encodeURIComponent(doc.itens?.[0]?.pedido_central_id || doc.numero)}`}>
             <Button size="sm" variant="outline">Mais <ChevronRight className="h-4 w-4" /></Button>
           </Link>
@@ -28,5 +32,5 @@ export default function ComprasTitulosTable({ documentos, loading = false, embed
       </tr>)}</tbody>
     {documentos.length > 0 && <tfoot><tr className="border-t-2 bg-muted/30"><td colSpan={5} className="p-3 font-semibold">Total ({documentos.length} títulos)</td><td className="p-3 text-right font-bold text-destructive">{formatCurrency(documentos.reduce((s, d) => s + d.valor, 0))}</td><td /></tr></tfoot>}
   </table></div>;
-  return embedded ? tabela : <div className="rounded-xl border bg-card overflow-hidden">{tabela}</div>;
+  return <BaixasSelecao registros={documentos.flatMap(referencias)} onSaved={onSaved}>{embedded ? tabela : <div className="rounded-xl border bg-card overflow-hidden">{tabela}</div>}</BaixasSelecao>;
 }

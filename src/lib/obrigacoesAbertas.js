@@ -1,6 +1,6 @@
 import { base44 } from '@/api/base44Client';
 import { vencimentoFolha } from '@/lib/folhaCalendario';
-import { vincularExtrato } from '@/functions/vincularExtrato';
+import { chamarBaixas } from '@/components/baixas/baixasService';
 import { saldoGuia } from '@/components/tributos/tributoFluxo';
 
 // Carrega todas as obrigações em aberto (não vinculadas ao extrato) num formato único
@@ -57,36 +57,14 @@ export async function carregarObrigacoesAbertas() {
   return lista;
 }
 
-// Marca a obrigação como paga e cria o vínculo com o lançamento do extrato
+// Compatibilidade: somente a fachada central executa e audita a baixa.
 export async function conciliarObrigacaoComLancamento(obrigacao, lancamento, observacao) {
-  const valor = Math.abs(lancamento.valor || 0);
-  const data = lancamento.data;
-  if (obrigacao.entidade_tipo === 'Tributo') {
-    const { data: resultado } = await vincularExtrato({ acao:'criar', entidade_tipo:'Tributo', entidade_id:obrigacao.entidade_id, lancamento_bancario_id:lancamento.id, valor_alocado:valor, observacao });
-    if (resultado?.error) throw new Error(resultado.error);
-    return resultado;
-  }
-
-  if (obrigacao.entidade_tipo === 'DespesaOperacional') {
-    await base44.entities.DespesaOperacional.update(obrigacao.entidade_id, { status: 'pago', data });
-  } else if (obrigacao.entidade_tipo === 'Tributo') {
-    await base44.entities.Tributo.update(obrigacao.entidade_id, { status: 'pago', data_pagamento: data, valor_pago: valor });
-  } else if (obrigacao.entidade_tipo === 'FaturaCartao') {
-    await base44.entities.FaturaCartao.update(obrigacao.entidade_id, { status: 'paga_total', data_pagamento: data, valor_pago: valor });
-  } else if (obrigacao.entidade_tipo === 'FolhaPagamento') {
-    await base44.entities.FolhaPagamento.update(obrigacao.entidade_id, { status: 'pago', data_pagamento: data, valor_pago: valor });
-  }
-
-  await base44.entities.VinculoExtrato.create({
-    lancamento_bancario_id: lancamento.id,
-    entidade_tipo: obrigacao.entidade_tipo,
-    entidade_id: obrigacao.entidade_id,
-    valor_alocado: valor,
-    tipo_vinculo: 'pagamento_integral',
-    conciliado_por: 'manual',
-    confianca: 100,
-    observacao: observacao || `Conciliação manual · ${obrigacao.descricao}`,
-  });
-
-  await base44.entities.LancamentoBancario.update(lancamento.id, { status_conciliacao: 'conciliado' });
+  const [movimento, documento] = await Promise.all([
+    base44.entities.LancamentoBancario.get(lancamento.id),
+    base44.entities[obrigacao.entidade_tipo].get(obrigacao.entidade_id),
+  ]);
+  return chamarBaixas({ acao: 'banco', tipo: 'LancamentoBancario', id: movimento.id, versao: movimento.updated_date,
+    destino: obrigacao.entidade_tipo, destino_id: documento.id, destino_versao: documento.updated_date,
+    valor: Math.abs(lancamento.valor || 0), motivo: observacao || `Conciliação manual revisada na origem · ${obrigacao.descricao}`,
+    pedidoId: crypto.randomUUID() });
 }

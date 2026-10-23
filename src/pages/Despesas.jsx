@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Receipt, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Search, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,8 @@ import LancarDespesaFotoButton from '../components/despesas/LancarDespesaFotoBut
 import DespesasPorOrigem from '../components/despesas/DespesasPorOrigem';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
 const CATEGORIAS = ['aluguel','energia','agua','internet','telefone','manutencao','limpeza','marketing','contabilidade','juridico','seguro','transporte','alimentacao','material_escritorio','outro'];
 const FORMAS_PAG = ['pix','boleto','cartao','debito_automatico','dinheiro','transferencia'];
@@ -195,6 +197,7 @@ export default function Despesas() {
       </div>
 
       {/* Tabela */}
+      <BaixasSelecao registros={filtered.map(d=>({tipo:'DespesaOperacional',id:d.id,descricao:d.descricao}))} onSaved={loadData}>
       <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -245,7 +248,7 @@ export default function Despesas() {
                   <td className="px-4 py-3 text-xs hidden md:table-cell">{d.empresa || '—'}</td>
                   <td className="px-4 py-3 text-xs hidden lg:table-cell">{d.forma_pagamento || '—'}</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(d.valor)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
+                  <td className="px-4 py-3"><div className="space-y-2"><StatusBadge status={d.status} /><BaixaAcaoRegistro entidade="DespesaOperacional" registroId={d.id} descricao={d.descricao} /></div></td>
                   <td className="px-4 py-3"><ComprovantePicker entityName="DespesaOperacional" record={d} onChange={loadData} /></td>
                 </tr>
               ))}
@@ -262,6 +265,7 @@ export default function Despesas() {
           </table>
         </div>
       </div>
+      </BaixasSelecao>
 
       {/* Form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>

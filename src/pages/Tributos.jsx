@@ -19,6 +19,8 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import DASAlertBar from '@/components/dre/DASAlertBar';
 import TributoMobileCard from '@/components/tributos/TributoMobileCard';
 import ObrigacoesMensais from '@/components/tributos/ObrigacoesMensais';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 import { competenciaAnterior, empresaDaConta, saldoGuia } from '@/components/tributos/tributoFluxo';
 
 const TIPOS = ['DAS', 'ICMS', 'ISS', 'PIS', 'COFINS', 'IRPJ', 'CSLL', 'INSS', 'FGTS', 'GPS', 'DARF', 'IPTU', 'ALVARA', 'TAXA_BOMBEIRO', 'OUTRO'];
@@ -233,6 +235,7 @@ export default function Tributos() {
         <Input type="month" value={filterMes} onChange={e => setFilterMes(e.target.value)} placeholder="Competência" className="h-8 text-sm" />
       </div>
 
+      <BaixasSelecao registros={filtrados.map(t=>({tipo:t._lancamento?'LancamentoBancario':'Tributo',id:t._lancamento?.id||t.id,descricao:t.descricao||t.tipo}))} onSaved={loadData}>
       {/* Lista mobile */}
       <div className="md:hidden space-y-2">
         {sorted.length === 0
@@ -279,7 +282,7 @@ export default function Tributos() {
                   <td className="px-4 py-3"><SeletorClassificacao eixo="origem" entityName={t._lancamento ? 'LancamentoBancario' : 'Tributo'} record={t._lancamento || t} field="origem_compra" onChange={loadData} /></td>
                   <td className="px-4 py-3"><SeletorClassificacao eixo="tipo" entityName={t._lancamento ? 'LancamentoBancario' : 'Tributo'} record={t._lancamento || t} field="tipo_compra" onChange={loadData} /></td>
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(t.valor_original)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
+                  <td className="px-4 py-3"><div className="space-y-2"><StatusBadge status={t.status} /><BaixaAcaoRegistro entidade={t._lancamento?'LancamentoBancario':'Tributo'} registroId={t._lancamento?.id||t.id} descricao={t.descricao||t.tipo} /></div></td>
                   </tr>
                 ))
               )}
@@ -287,6 +290,7 @@ export default function Tributos() {
           </table>
         </div>
       </div>
+      </BaixasSelecao>
 
       {/* Form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>

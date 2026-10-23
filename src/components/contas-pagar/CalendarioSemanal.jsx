@@ -4,7 +4,9 @@ import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Hammer, Briefcase, C
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import SeletorClassificacao from '../shared/SeletorClassificacao';
 import { mapearTipoEntidade } from '../../lib/contasPagarEngine';
-import BaixaManualButton from '@/components/shared/BaixaManualButton';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import referenciasContaBaixa from '@/components/baixas/referenciasContaBaixa';
 import VerPedidoCentralButton from '@/components/contas-pagar/VerPedidoCentralButton';
 
 const ORIGEM_CONFIG = {
@@ -44,7 +46,7 @@ function gerarSemanasDoMes(mesRef) {
   return semanas;
 }
 
-export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia, modo = 'aberto', isAnnual = false }) {
+export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia, modo = 'aberto', isAnnual = false, onSaved }) {
   const porEmissao = modo === 'pagos';
   const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
@@ -120,7 +122,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
         </div>
         <div className="flex flex-col items-end gap-1">
           <span className="text-xs font-bold text-rose-600 tabular-nums whitespace-nowrap">{formatCurrency(i.valor)}</span>
-          {!pago && !previsto && ['FolhaPagamento', 'FaturaCartao'].includes(entityName) && <BaixaManualButton entidade={entityName} registroId={i.origem_id} className="h-6 px-2 text-[10px]" />}
+          {!previsto && <BaixaAcaoRegistro registros={referenciasContaBaixa(i)} descricao={i.descricao} abaInicial={pago?'historico':'dados'} className="h-7 px-2 text-[10px]">{pago?'Histórico':'Baixar / conciliar'}</BaixaAcaoRegistro>}
           <Link to={cfg.href} className="text-[10px] text-muted-foreground hover:text-primary inline-flex items-center gap-0.5">
             ver <ArrowRight className="w-2.5 h-2.5" />
           </Link>
@@ -144,6 +146,7 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
   }
 
   return (
+    <BaixasSelecao registros={itens.flatMap(referenciasContaBaixa)} onSaved={onSaved}>
     <div className="bg-card rounded-xl border overflow-hidden flex flex-col">
       <div className="bg-slate-50 border-b px-4 py-3">
         <h3 className="font-bold text-sm flex items-center gap-2"><Calendar className="w-4 h-4" /> Calendário do {isAnnual ? 'Ano' : 'Mês'} — por Semana</h3>
@@ -164,5 +167,6 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
         )}
       </div>
     </div>
+    </BaixasSelecao>
   );
 }

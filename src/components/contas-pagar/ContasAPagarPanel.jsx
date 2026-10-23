@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Wallet, Landmark, Users, CreditCard, ShoppingCart, Hammer, Briefcase, AlertTriangle, CheckCircle, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../lib/formatters';
 import { consolidarContasPagar, calcularAging, contarEvaporados } from '../../lib/contasPagarEngine';
 import CalendarioSemanal from './CalendarioSemanal';
@@ -19,6 +18,8 @@ import { tipoGastoValido } from '@/lib/classificacaoUnificada';
 import IntegradosModuloPanel from '@/components/integracoes/IntegradosModuloPanel';
 import ResumoPorInstrumento from './ResumoPorInstrumento';
 import ResumoSituacaoCarteira from '@/components/contas-pagar/ResumoSituacaoCarteira';
+import BaixaManualButton from '@/components/shared/BaixaManualButton';
+import referenciasContaBaixa from '@/components/baixas/referenciasContaBaixa';
 
 
 
@@ -53,8 +54,6 @@ function pertenceAoFiltroEmpresa(item, filtro) {
 
 export default function ContasAPagarPanel() {
   const [loading, setLoading] = useState(true);
-  const [conciliando, setConciliando] = useState(false);
-  const [resultadoBaixa, setResultadoBaixa] = useState(null);
   const [filtroStatus, setFiltroStatus] = useState('todos'); // todos · aberto · semana · vencidos · pagos
   const modo = filtroStatus === 'pagos' ? 'pagos' : filtroStatus === 'previstos' ? 'previstos' : filtroStatus === 'todos' ? 'todos' : 'aberto';
   const tituloConsulta = { todos: 'Documentos e previsões no recorte', aberto: 'Saldo em aberto', pagos: 'Documentos quitados por emissão', previstos: 'Previsões sem documento' }[modo];
@@ -67,23 +66,6 @@ export default function ContasAPagarPanel() {
   const [vinculos, setVinculos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
 
-  // Baixa automática unificada — roda no backend (conciliarContasAPagarExtrato),
-  // cobrindo despesa, compra, obra, tributo e fatura numa única implementação.
-  async function executarBaixa() {
-    if (conciliando) return;
-    setConciliando(true);
-    setResultadoBaixa(null);
-    try {
-      const { data } = await base44.functions.conciliarContasAPagarExtrato({});
-      if (data?.error) throw new Error(data.error);
-      setResultadoBaixa(data);
-      await load();
-      window.dispatchEvent(new Event('neuralfinRefresh'));
-    } catch (err) {
-      setResultadoBaixa({ erro: err.message });
-    }
-    setConciliando(false);
-  }
 
   async function load(showLoading = true) {
     if (showLoading) setLoading(true);
@@ -255,38 +237,13 @@ export default function ContasAPagarPanel() {
         <RevisaoTiposGasto />
         <LancarDespesaFotoButton onSaved={load} />
         <SincronizarComprasButton onDone={load} />
-        {['aberto', 'todos'].includes(modo) && <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
-          {conciliando ? (
-            <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Conciliando...</>
-          ) : (
-            <><Zap className="w-3.5 h-3.5" /> Baixa Automática</>
-          )}
-        </Button>}
+        {['aberto', 'todos'].includes(modo) && <BaixaManualButton registros={itens.filter(i=>i._situacao==='aberto').flatMap(referenciasContaBaixa)} abaInicial="conciliar" onSaved={()=>load(false)}>Analisar saídas da tela</BaixaManualButton>}
         <Button variant="outline" onClick={load} size="sm">Atualizar</Button>
         </div>
       </div>
 
-      {resultadoBaixa && (
-        <div className={`rounded-xl p-3 mb-4 border ${resultadoBaixa.erro ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>
-          {resultadoBaixa.erro ? (
-            <div className="flex items-center gap-2 text-sm">
-              <AlertTriangle className="w-4 h-4" /> Erro: {resultadoBaixa.erro}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm">
-                <CheckCircle className="w-4 h-4" />
-                <span className="font-semibold">{resultadoBaixa.baixas_automaticas || 0} conta(s) baixada(s) automaticamente</span>
-                <span className="text-xs opacity-80">· {resultadoBaixa.sugestoes_criadas || 0} sugestão(ões) · {resultadoBaixa.total_debitos_analisados || 0} débitos analisados · {resultadoBaixa.total_contas_abertas || 0} contas em aberto</span>
-              </div>
-              <button onClick={() => setResultadoBaixa(null)} className="text-xs opacity-70 hover:opacity-100">×</button>
-            </div>
-          )}
-        </div>
-      )}
-
       <section aria-label="Contas do sistema e boletos bancários" className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <CalendarioSemanal itens={itens} conciliadosSet={conciliadosSet} mesReferencia={mesReferencia} modo={modo} isAnnual={isAnnual} />
+        <div className="min-w-0"><CalendarioSemanal itens={itens} conciliadosSet={conciliadosSet} mesReferencia={mesReferencia} modo={modo} isAnnual={isAnnual} onSaved={()=>load(false)} /></div>
         <PainelDDA lancamentos={lancamentos} contasPagar={abertosRecorte} mesReferencia={mesReferencia} isAnnual={isAnnual} />
       </section>
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4 items-stretch">

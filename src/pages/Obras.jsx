@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Hammer, Building2, Wrench } from 'lucide-react';
-import { GradientCard } from '../components/shared/GradientCard';
-import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
+import { Plus, Search } from 'lucide-react';
+import MonthNavigator from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
@@ -15,6 +14,8 @@ import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
 const LOCAIS = [
   { value: 'pavilhao', label: 'Pavilhão', color: 'blue' },
@@ -273,6 +274,7 @@ export default function Obras() {
         </Select>
       </div>
 
+      <BaixasSelecao registros={filtered.map(o=>({tipo:'ObraReforma',id:o.id,descricao:o.descricao}))} onSaved={loadData}>
       <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -328,7 +330,7 @@ export default function Obras() {
                     <td className="px-3 py-2.5 text-center">
                       <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${etapaColor(o.etapa_obra)}`}>{etapaLabel(o.etapa_obra)}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">{o.forma_pagamento}</td>
+                    <td className="px-3 py-2.5 text-xs"><p className="text-muted-foreground mb-2">{o.forma_pagamento}</p><BaixaAcaoRegistro entidade="ObraReforma" registroId={o.id} descricao={o.descricao} /></td>
                   </tr>
                 );
               })}
@@ -349,6 +351,7 @@ export default function Obras() {
           </table>
         </div>
       </div>
+      </BaixasSelecao>
 
       {/* Modal Nova Despesa */}
       <Dialog open={showForm} onOpenChange={setShowForm}>

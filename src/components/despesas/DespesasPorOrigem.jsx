@@ -15,8 +15,8 @@ export default function DespesasPorOrigem({ extrato, cartoes }) {
         <GradientCard title="Despesas nos Cartões" value={formatCurrency(totalCartoes)} sub={`${cartoes.length} lançamento(s)`} icon={CreditCard} gradient="orange" />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ProLaboreListaOrigem titulo="Despesas nos Cartões" icon={CreditCard} cor="orange" total={totalCartoes} itens={cartoes} />
-        <ProLaboreListaOrigem titulo="Despesas no Extrato" icon={Landmark} cor="blue" total={totalExtrato} itens={extrato} />
+        <ProLaboreListaOrigem titulo="Despesas nos Cartões" icon={CreditCard} cor="orange" total={totalCartoes} itens={cartoes} entidade="LancamentoCartao" />
+        <ProLaboreListaOrigem titulo="Despesas no Extrato" icon={Landmark} cor="blue" total={totalExtrato} itens={extrato} entidade="LancamentoBancario" />
       </div>
     </section>
   );

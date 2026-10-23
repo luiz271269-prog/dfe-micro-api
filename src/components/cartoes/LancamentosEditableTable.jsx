@@ -12,6 +12,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import useVinculosLancamentos from '@/components/cartoes/useVinculosLancamentos';
 import VinculoLancamentoInfo from '@/components/cartoes/VinculoLancamentoInfo';
 import OrigemCartaoSelector from '@/components/cartoes/OrigemCartaoSelector';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
 export default function LancamentosEditableTable({ lancamentos, onReload }) {
   const queryClient = useQueryClient();
@@ -122,6 +124,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
   const headerCls = 'py-2 font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors';
 
   return (
+    <BaixasSelecao registros={localRows.filter(l=>l.valor>0&&!l.observacao?.includes('Não faz parte')).map(l=>({tipo:'LancamentoCartao',id:l.id,descricao:l.estabelecimento}))} onSaved={onReload} abaInicial="conciliar">
     <div className="overflow-x-auto">
       <p className="text-xs text-muted-foreground mb-2">Salvamento automático a cada seleção, sem precisar sair da tela. Aguarde o término do salvamento antes de fechar.</p>
       {saveStatus && <p aria-live="polite" className="text-xs text-muted-foreground mb-2">{saveStatus}</p>}
@@ -197,7 +200,7 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
                 <td className="py-1.5 pl-3">
                   <ComprovantePicker entityName="LancamentoCartao" record={l} onChange={onReload} />
                 </td>
-                <td className="py-1.5 pl-3"><VinculoLancamentoInfo lancamento={l} consulta={vinculos} /></td>
+                <td className="py-1.5 pl-3"><VinculoLancamentoInfo lancamento={l} consulta={vinculos} />{l.valor>0&&!isExcluded&&<div className="mt-2"><BaixaAcaoRegistro entidade="LancamentoCartao" registroId={l.id} descricao={l.estabelecimento} abaInicial="conciliar">Analisar / conciliar</BaixaAcaoRegistro></div>}</td>
               </tr>
             );
           })}
@@ -242,5 +245,6 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
         )}
       </div>
     </div>
+    </BaixasSelecao>
   );
 }

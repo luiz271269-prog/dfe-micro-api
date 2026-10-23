@@ -11,7 +11,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import PageHeader from '../components/shared/PageHeader';
 import StatusBadge from '../components/shared/StatusBadge';
 import ConciliacaoCartoes from '../components/cartoes/ConciliacaoCartoes';
-import ConciliarFaturasButton from '../components/cartoes/ConciliarFaturasButton';
 import DeduplicarCartoesButton from '../components/cartoes/DeduplicarCartoesButton';
 import ReparoCartoesButton from '../components/cartoes/ReparoCartoesButton';
 import FaturaImageViewer from '../components/cartoes/FaturaImageViewer';
@@ -20,7 +19,6 @@ import LancamentosEditableTable from '../components/cartoes/LancamentosEditableT
 import ReanalisarFaturaButton from '../components/cartoes/ReanalisarFaturaButton';
 import { FileImage } from 'lucide-react';
 import { formatCurrency, formatDate } from '../lib/formatters';
-import { seedSicoobFatura } from '../lib/seedData';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { getCor } from '../lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
@@ -28,6 +26,8 @@ import RevisaoHistoricoCartoes from '@/components/cartoes/RevisaoHistoricoCartoe
 import ConciliacaoComprasCartao from '@/components/cartoes/ConciliacaoComprasCartao';
 
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
 const SEED_CARDS = [
 { nome: 'Acentra — Luiz Carlos', bandeira: 'Acentra', titular: 'Luiz Carlos', tipo: 'pessoal', dia_vencimento: 3, empresa_vinculada: 'pessoal', conta_bancaria_pagamento: 'conta pessoal LC', is_ativo: true },
@@ -259,7 +259,7 @@ export default function Cartoes() {
         
         <DeduplicarCartoesButton onDone={loadData} />
         <ReparoCartoesButton onComplete={loadData} />
-        <ConciliarFaturasButton onDone={loadData} />
+        <BaixaManualButton registros={filteredFaturas.map(f=>({tipo:'FaturaCartao',id:f.id,descricao:`Fatura ${f.mes_referencia} · ${formatCurrency(f.valor_total)}`}))} abaInicial="conciliar" onSaved={()=>loadData(true)}>Analisar faturas</BaixaManualButton>
         <Button onClick={() => setShowFaturaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Fatura</Button>
       </PageHeader>
 
@@ -328,6 +328,7 @@ export default function Cartoes() {
         if (!c) return null;
         const cardFaturas = getCardFaturas(c.ids);
         return (
+          <BaixasSelecao registros={cardFaturas.map(f=>({tipo:'FaturaCartao',id:f.id,descricao:`${c.nome} · ${f.mes_referencia}`}))} onSaved={()=>loadData(true)}>
           <div className="mt-4 bg-card rounded-xl border overflow-hidden">
             <div className="px-4 py-2.5 border-b bg-muted/20 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2 min-w-0">
@@ -395,7 +396,7 @@ export default function Cartoes() {
                       {isFatExpanded &&
                     <div className="px-3 pb-3 bg-background">
                           <div className="flex flex-wrap items-center gap-3 py-3">
-                            <BaixaManualButton entidade="FaturaCartao" registroId={fat.id} onSaved={() => loadData(true)} />
+                            <BaixaAcaoRegistro entidade="FaturaCartao" registroId={fat.id} descricao={`${c.nome} · ${fat.mes_referencia}`} onSaved={() => loadData(true)} />
                             <span className="text-xs text-muted-foreground">{fat.valor_pago > 0 && fat.status !== 'paga_total' ? 'Pagamento parcial · ' : ''}Saldo: {formatCurrency(Math.max(0, (fat.valor_total || 0) - (fat.valor_pago || 0)))}</span>
                           </div>
                           {fatLancs.length === 0 ?
@@ -420,7 +421,7 @@ export default function Cartoes() {
                               <CategoriaBreakdown lancamentos={validos} />
 
                               <div className="mt-4">
-                                <LancamentosEditableTable lancamentos={despesasParaTabela} onReload={loadData} />
+                                <LancamentosEditableTable lancamentos={despesasParaTabela} onReload={()=>loadData(true)} />
                               </div>
 
                               {pagamentos.length > 0 &&
@@ -454,7 +455,7 @@ export default function Cartoes() {
               })
               }
             </div>
-          </div>);
+          </div></BaixasSelecao>);
 
       })()}
 

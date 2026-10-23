@@ -1,6 +1,6 @@
 import { useState } from "react";
 import PlanoConciliacaoEtapas from '@/components/conciliacao/PlanoConciliacaoEtapas';
-import ConciliacaoComprasCartao from '@/components/cartoes/ConciliacaoComprasCartao';
+import { Link } from 'react-router-dom';
 import { PLANO_INTEGRAL } from '@/components/conciliacao/planoIntegral';
 
 const ENTITIES = {
@@ -386,7 +386,7 @@ export default function DiagnosticoConciliacao() {
         </div>
       )}
 
-      <ConciliacaoComprasCartao />
+      <p className="mt-5 rounded-lg border bg-card p-4 text-card-foreground text-sm">Diagnóstico somente leitura. Para analisar e confirmar vínculos, abra o lançamento no <Link to="/extrato" className="text-primary underline">Extrato</Link> ou em <Link to="/cartoes" className="text-primary underline">Cartões</Link>.</p>
       <PlanoConciliacaoEtapas />
     </div>
   );

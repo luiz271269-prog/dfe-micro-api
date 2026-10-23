@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import { Input } from '@/components/ui/input';
 import { Search, Zap, AlertTriangle, CheckCircle, FileText, Wallet, RefreshCw, Link2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import {
   consolidarContasPagar,
   acharContaPagarPorLancamento,
-  executarBaixaAutomatica,
+  analisarBaixasExtrato,
+  mapearTipoEntidade,
 } from '../../lib/contasPagarEngine';
 
 const ORIGEM_LABEL = {
@@ -57,10 +59,8 @@ export default function ConciliacaoDDAvsContas({ selectedMonth, isAnnual }) {
     setConciliando(true);
     setResultadoBaixa(null);
     try {
-      const res = await executarBaixaAutomatica(base44, dados);
+      const res = await analisarBaixasExtrato(base44, dados, isAnnual ? selectedMonth.slice(0,4) : selectedMonth);
       setResultadoBaixa(res);
-      await load();
-      window.dispatchEvent(new Event('neuralfinRefresh'));
     } catch (err) {
       setResultadoBaixa({ erro: err.message });
     }
@@ -121,14 +121,14 @@ export default function ConciliacaoDDAvsContas({ selectedMonth, isAnnual }) {
       {/* Header de ações */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="text-xs text-muted-foreground">
-          <span className="font-bold text-foreground">{matchMap.size}</span> de {ddaItems.length} DDA conciliados ·
+          <span className="font-bold text-foreground">{matchMap.size}</span> de {ddaItems.length} DDA com correspondência sugerida ·
           <span className="font-bold text-foreground"> {formatCurrency(totalConciliado)}</span> casados
         </div>
         <div className="flex gap-2">
           <Button onClick={executarBaixa} disabled={conciliando} size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
             {conciliando
-              ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Conciliando...</>
-              : <><Zap className="w-3.5 h-3.5" /> Baixa Automática</>}
+              ? <><div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Analisando...</>
+              : <><Zap className="w-3.5 h-3.5" /> Analisar saídas</>}
           </Button>
           <Button variant="outline" onClick={load} size="sm" className="gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> Atualizar</Button>
         </div>
@@ -142,7 +142,8 @@ export default function ConciliacaoDDAvsContas({ selectedMonth, isAnnual }) {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm">
                 <CheckCircle className="w-4 h-4" />
-                <span className="font-semibold">{resultadoBaixa.conciliados} conta(s) baixada(s) automaticamente</span>
+                <span className="font-semibold">{resultadoBaixa.baixas.length} correspondência(s) sugerida(s), sem efetuar baixas</span>
+                {resultadoBaixa.baixas.length>0&&<BaixaManualButton registros={resultadoBaixa.baixas.map(({lanc,conta})=>({tipo:mapearTipoEntidade(conta.origem_tipo),id:conta.origem_id,descricao:conta.descricao,movimento_id:lanc.id}))} abaInicial="conciliar" onSaved={load}>Revisar correspondências</BaixaManualButton>}
                 <span className="text-xs opacity-80">· {resultadoBaixa.totalLancamentos} débitos analisados · {resultadoBaixa.totalContas} contas em aberto</span>
               </div>
               <button onClick={() => setResultadoBaixa(null)} className="text-xs opacity-70 hover:opacity-100">×</button>
@@ -258,7 +259,7 @@ export default function ConciliacaoDDAvsContas({ selectedMonth, isAnnual }) {
 
       {/* Legenda */}
       <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-emerald-400" /> Conciliado (DDA × Conta)</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-emerald-400" /> Correspondência sugerida (sem baixa)</span>
         <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded bg-amber-300" /> Sem correspondência no DDA</span>
         <span className="flex items-center gap-1.5">Clique num DDA para destacar a conta correspondente</span>
       </div>

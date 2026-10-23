@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Link2, CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark, Repeat, AlertTriangle, Clock } from 'lucide-react';
+import { CheckCircle, AlertCircle, CreditCard, Receipt, Wallet, Landmark, Repeat, AlertTriangle, Clock } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
-import { vincularExtrato } from '@/functions/vincularExtrato';
+import BaixasDialog from '@/components/baixas/BaixasDialog';
+import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import { aplicarRegra } from '../../lib/recurringEngine';
 import { Link } from 'react-router-dom';
 import { ehSaidaContasPagar } from '@/lib/extratoNatureza';
@@ -80,7 +80,7 @@ const TIPO_CONFIG = {
 
 export default function TabPagamentos({ loading, dados, onRefresh }) {
   const [vincularLanc, setVincularLanc] = useState(null);
-  const [salvando, setSalvando] = useState(false);
+  const [revisao, setRevisao] = useState(null);
 
   // Consolida lista de contas a pagar pendentes (DDA, tributos, folha, faturas em aberto)
   const contasPagar = useMemo(() => consolidarContasPagar({
@@ -107,27 +107,9 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
     totalValor: pagamentos.reduce((a, p) => a + Math.abs(p.valor), 0),
   }), [pagamentos]);
 
-  // Dá baixa via serviço central de vínculo — cria VinculoExtrato,
-  // valida sobrealocação e deriva o status da obrigação automaticamente
-  async function darBaixaDDA(lanc, item) {
-    setSalvando(true);
-    try {
-      const tipoMap = { despesa: 'DespesaOperacional', tributo: 'Tributo', folha: 'FolhaPagamento', fatura: 'FaturaCartao' };
-      await vincularExtrato({
-        acao: 'criar',
-        lancamento_bancario_id: lanc.id,
-        entidade_tipo: tipoMap[item.origem_tipo],
-        entidade_id: item.origem_id,
-        valor_alocado: Math.abs(lanc.valor),
-        observacao: `Baixa manual · Conciliação 360 · ${item.descricao || ''}`,
-      });
-    } catch (err) {
-      alert(err?.response?.data?.error || err.message);
-    } finally {
-      setSalvando(false);
-      setVincularLanc(null);
-      onRefresh();
-    }
+  function darBaixaDDA(lanc, item) {
+    const tipoMap={despesa:'DespesaOperacional',tributo:'Tributo',folha:'FolhaPagamento',fatura:'FaturaCartao',compra:'ItemCompra',obra:'ObraReforma'};
+    setRevisao([{tipo:tipoMap[item.origem_tipo],id:item.origem_id,descricao:item.descricao,movimento_id:lanc.id}]);
   }
 
 
@@ -222,13 +204,11 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
                     </td>
                     <td className="px-3 py-2 text-center">
                       {p.classificacao.tipo === 'conta_pagar_pendente' ? (
-                        <Button size="sm" className="h-6 text-[10px] bg-teal-600 hover:bg-teal-700" onClick={() => darBaixaDDA(p, p.classificacao.vinculo)} disabled={salvando}>
-                          <CheckCircle className="w-3 h-3 mr-1" /> Dar baixa
+                        <Button size="sm" className="h-6 text-[10px] bg-teal-600 hover:bg-teal-700" onClick={() => darBaixaDDA(p, p.classificacao.vinculo)}>
+                          <CheckCircle className="w-3 h-3 mr-1" /> Revisar baixa
                         </Button>
                       ) : !p.classificacao.vinculo && (
-                        <Button variant="outline" size="sm" className="h-6 text-[10px]" onClick={() => setVincularLanc(p)}>
-                          <Link2 className="w-3 h-3 mr-1" /> Vincular
-                        </Button>
+                        <BaixaManualButton entidade="LancamentoBancario" registroId={p.id} descricao={p.descricao} abaInicial="conciliar" onSaved={onRefresh} className="h-7 text-[10px]">Analisar / conciliar</BaixaManualButton>
                       )}
                     </td>
                   </tr>
@@ -242,6 +222,7 @@ export default function TabPagamentos({ loading, dados, onRefresh }) {
         </div>
       </div>
 
+      {revisao&&<BaixasDialog registros={revisao} abaInicial="conciliar" onClose={()=>setRevisao(null)} onSaved={onRefresh}/>}
       {/* Modal de vínculo rápido */}
       <Dialog open={!!vincularLanc} onOpenChange={() => setVincularLanc(null)}>
         <DialogContent>

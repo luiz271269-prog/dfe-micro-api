@@ -1,4 +1,6 @@
 import { formatCurrency, formatDate } from '../../lib/formatters';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
 const CORES = {
   orange: { head: 'text-orange-600', total: 'text-orange-700' },
@@ -6,7 +8,7 @@ const CORES = {
   purple: { head: 'text-purple-600', total: 'text-purple-700' },
 };
 
-export default function ProLaboreListaOrigem({ titulo, icon: Icon, cor = 'blue', total, itens, emptyHint }) {
+export default function ProLaboreListaOrigem({ titulo, icon: Icon, cor = 'blue', total, itens, emptyHint, onSaved, entidade }) {
   const c = CORES[cor] || CORES.blue;
   return (
     <div className="bg-card rounded-xl border p-4">
@@ -18,7 +20,7 @@ export default function ProLaboreListaOrigem({ titulo, icon: Icon, cor = 'blue',
       {(!itens || itens.length === 0) ? (
         <p className="text-xs text-muted-foreground py-3 leading-relaxed">{emptyHint || 'Nenhum lançamento no período.'}</p>
       ) : (
-        <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+        <BaixasSelecao registros={itens.map(l=>({tipo:entidade||(l.origem==='cartao'?'LancamentoCartao':'LancamentoBancario'),id:l.id,descricao:l.descricao}))} onSaved={onSaved} abaInicial="conciliar"><div className="overflow-x-auto max-h-[420px] overflow-y-auto">
           <table className="w-full text-xs">
             <tbody>
               {itens.map(l => (
@@ -29,11 +31,12 @@ export default function ProLaboreListaOrigem({ titulo, icon: Icon, cor = 'blue',
                     {l.conta && <span className="block text-[10px] text-muted-foreground">{l.conta}</span>}
                   </td>
                   <td className="py-1.5 text-right font-semibold tabular-nums whitespace-nowrap">{formatCurrency(l.valor)}</td>
+                  <td className="py-1.5 pl-3"><BaixaAcaoRegistro entidade={entidade||(l.origem==='cartao'?'LancamentoCartao':'LancamentoBancario')} registroId={l.id} descricao={l.descricao} abaInicial="conciliar">Analisar</BaixaAcaoRegistro></td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </div></BaixasSelecao>
       )}
     </div>
   );

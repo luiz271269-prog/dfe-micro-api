@@ -59,6 +59,8 @@ export async function executarBaixaCentral(base44,user,b) {
     if(m.estado==='bloqueado')throw new Error('Movimento ignorado ou com possível duplicidade.');
     if(b.acao==='banco'){
       if(b.tipo!=='LancamentoBancario'||!(r.valor<0)||['transferencia','interno','aplicacoes','resgates'].includes(r.categoria))throw new Error('Movimento não elegível para baixa de saída.');
+      const alocacoes=await db.VinculoExtrato.aggregate({query:{lancamento_bancario_id:r.id},sum:'valor_alocado'});
+      m.saldo=Math.max(0,Math.round((m.total-Number(alocacoes.rows[0]?.sum_valor_alocado||0))*100)/100);
       const valor=Number(b.valor);if(!Number.isFinite(valor)||valor<=0||valor>m.saldo+0.001)throw new Error('Alocação excede o saldo disponível no débito.');
       if(doc.lancamento_cartao_id)throw new Error('A obrigação está no cartão; baixe a fatura.');
       const vincs=await lerCompleto(db,'VinculoExtrato',{entidade_tipo:b.destino,entidade_id:doc.id});

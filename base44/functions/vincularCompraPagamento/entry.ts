@@ -24,22 +24,16 @@ export default async function(req) {
     const compra = item.items[0];
     if (!compra) return Response.json({ error: 'ItemCompra não encontrado' }, { status: 404 });
     if (tipo === 'cartao') return Response.json(await vincularCompraCartao(db, compra, ref_id, user.id, payload));
-    const updateCompra = {
-      status_pagamento: 'pago',
-      valor_pago: compra.valor_total,
-    };
-
-    if (tipo === 'banco') {
-      updateCompra.forma_pagamento = 'banco_pix';
-      updateCompra.lancamento_bancario_id = ref_id;
-      await base44.asServiceRole.entities.LancamentoBancario.update(ref_id, { item_compra_id });
-    } else {
-      return Response.json({ error: 'tipo deve ser cartao ou banco' }, { status: 400 });
-    }
-
-    await base44.asServiceRole.entities.ItemCompra.update(item_compra_id, updateCompra);
-
-    return Response.json({ success: true });
+    const banco = await db.LancamentoBancario.get(ref_id);
+    const resultado = await base44.functions.invoke('centralBaixas', {
+      acao: 'banco', tipo: 'LancamentoBancario', id: banco.id, versao: banco.updated_date,
+      destino: 'ItemCompra', destino_id: compra.id, destino_versao: compra.updated_date,
+      valor: Math.round((Number(compra.valor_total || 0) - Number(compra.valor_pago || 0)) * 100) / 100,
+      motivo: payload.motivo || 'Vínculo de compra solicitado pelo módulo de origem',
+      pedidoId: payload.pedidoId || crypto.randomUUID(),
+    });
+    if (resultado.data?.error) throw new Error(resultado.data.error);
+    return Response.json({ ...resultado.data, success: true });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

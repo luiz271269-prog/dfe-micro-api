@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, ShoppingCart, TrendingDown, Building2, Receipt, AlertTriangle, CheckCircle, FileText, Wallet } from 'lucide-react';
+import { Plus, Search, ShoppingCart, TrendingDown, Building2, Receipt, AlertTriangle, CheckCircle, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
@@ -16,7 +16,7 @@ import SortableTh from '../components/shared/SortableTh';
 import useTableSort from '@/hooks/useTableSort';
 import ComprasTitulosTable from '@/components/compras/ComprasTitulosTable';
 import { consolidarDocumentosCompras } from '@/lib/documentosCompras';
-import { formatCurrency, formatDate, categoriaLabels } from '../lib/formatters';
+import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import ConciliacaoDDAvsContas from '../components/contas-pagar/ConciliacaoDDAvsContas';
 import CompraPagamentoFields, { EMPTY_COMPRA, FORMAS_COMPRA } from '@/components/compras/CompraPagamentoFields';
@@ -24,6 +24,8 @@ import ComprasPagamentoResumo from '@/components/compras/ComprasPagamentoResumo'
 import ComprasPortalCotacao from '@/components/cartoes/ComprasPortalCotacao';
 import VincularExtratoDespesaDialog from '@/components/despesas/VincularExtratoDespesaDialog';
 import { useQueryClient } from '@tanstack/react-query';
+import BaixasSelecao from '@/components/baixas/BaixasSelecao';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
 // ── Compras config ────────────────────────────────────────────────────────────
 const fornecedorOptions = ['COMPRAS A VISTA', 'MERCADO LIVRE', 'PAUTA DISTRIBUIÇÃO'];
@@ -296,7 +298,7 @@ export default function Compras() {
               <SelectContent><SelectItem value="all">Todas</SelectItem>{categoriaComprasOptions.map(c=><SelectItem key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <ComprasTitulosTable documentos={filteredC} loading={loadingC} />
+          <ComprasTitulosTable documentos={filteredC} loading={loadingC} onSaved={loadCompras} />
         </>
       )}
 
@@ -338,6 +340,7 @@ export default function Compras() {
               </SelectContent>
             </Select>
           </div>
+          <BaixasSelecao registros={filteredD.map(d=>({tipo:'DespesaOperacional',id:d.id,descricao:d.descricao}))} onSaved={loadDespesas}>
           <div className="min-w-0 bg-card rounded-xl border overflow-hidden">
             <div className="w-full overflow-x-auto">
               <table className="w-full min-w-[1180px] text-sm">
@@ -371,9 +374,7 @@ export default function Compras() {
                       <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(d.valor)}</td>
                       <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
                       <td className="px-4 py-3">
-                        <Button size="sm" variant="outline" onClick={() => setDespesaVinculo(d)} className={vinculosD.some(v => v.entidade_id === d.id) ? 'gap-2 border-success/30 text-success' : 'gap-2'}>
-                          <FileText className="h-4 w-4" />{vinculosD.some(v => v.entidade_id === d.id) ? 'Vinculado' : 'Vincular extrato'}
-                        </Button>
+                        <BaixaAcaoRegistro entidade="DespesaOperacional" registroId={d.id} descricao={d.descricao} onSaved={loadDespesas} />
                       </td>
                       </tr>
                   ))}
@@ -387,6 +388,7 @@ export default function Compras() {
               </table>
             </div>
           </div>
+          </BaixasSelecao>
         </>
       )}
 

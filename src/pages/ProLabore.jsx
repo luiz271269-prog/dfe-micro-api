@@ -15,8 +15,8 @@ export default function ProLabore() {
   const [loading, setLoading] = useState(true);
   const [dados, setDados] = useState(null);
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     const res = await consolidarProLabore(isAnnual ? {} : { mes_referencia: selectedMonth });
     setDados(res?.data || null);
     setLoading(false);
@@ -81,6 +81,7 @@ export default function ProLabore() {
               cor="orange"
               total={pl.gastos_cartao.total}
               itens={pl.gastos_cartao.itens}
+              onSaved={()=>load(true)}
             />
             <ProLaboreListaOrigem
               titulo="Retiradas no Extrato"
@@ -88,6 +89,7 @@ export default function ProLabore() {
               cor="blue"
               total={pl.retiradas_extrato.total}
               itens={pl.retiradas_extrato.itens}
+              onSaved={()=>load(true)}
               emptyHint="Nenhuma retirada classificada como Pró-labore no extrato. Classifique lançamentos como 'Pró-labore' no Extrato Bancário."
             />
           </div>

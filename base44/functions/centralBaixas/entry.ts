@@ -4,6 +4,7 @@ import { consultarListaBaixas,detalheBaixas } from '../../shared/baixasConsulta.
 import { candidatosBaixas } from '../../shared/baixasSemelhanca.ts';
 import { executarBaixaCentral } from '../../shared/baixasOperacoes.ts';
 import { revisarFixasCentral } from '../../shared/baixasFixas.ts';
+import { movimentosDaObrigacao } from '../../shared/baixasMovimentos.ts';
 export default async function(req) {
   try {
     const base44=createClientFromRequest(req),user=await base44.auth.me();
@@ -14,7 +15,8 @@ export default async function(req) {
     if(!MODULOS_BAIXA[b.tipo]||typeof b.id!=='string'||!b.id||b.id.length>200)return Response.json({error:'Registro inválido.'},{status:400});
     if(b.acao==='detalhe')return Response.json(await detalheBaixas(base44,user,b.tipo,b.id));
     if(b.acao==='candidatos')return Response.json(await candidatosBaixas(base44,user,b));
-    if(user.role!=='admin')return Response.json({error:'Alterações na central são restritas a administrador; as permissões dos módulos permanecem inalteradas.'},{status:403});
+    if(b.acao==='movimentos')return Response.json(await movimentosDaObrigacao(base44,user,b));
+    if(user.role!=='admin'&&!(b.acao==='manual'&&b.tipo==='FaturaCartao'))return Response.json({error:'Operação restrita a administrador. O pagamento declarado de faturas mantém a permissão do módulo de cartões.'},{status:403});
     if(typeof b.pedidoId!=='string'||!b.pedidoId||b.pedidoId.length>80||typeof b.motivo!=='string'||b.motivo.trim().length<10||b.motivo.length>500)return Response.json({error:'Identifique a operação e descreva a evidência/motivo (10 a 500 caracteres).'},{status:400});
     if(b.validate_only)return Response.json({ok:true,modo:'validacao'});
     return Response.json(await executarBaixaCentral(base44,user,b));

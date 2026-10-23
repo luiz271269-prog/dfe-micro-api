@@ -14,7 +14,6 @@ import { ehSaidaContasPagar } from './extratoNatureza';
 import { calcularProLabore } from './proLaboreContasPagar';
 import { consolidarTitulosCompras } from './titulosCompras';
 import { vencimentoFolha, dataNoMesPagamento } from '@/lib/folhaCalendario';
-import { vincularExtrato } from '@/functions/vincularExtrato';
 import { saldoGuia } from '@/components/tributos/tributoFluxo';
 
 // Registros antigos sem tipo permanecem pendentes até a classificação manual.
@@ -271,20 +270,18 @@ export function acharContaPagarPorLancamento(lanc, contasPagar, toleranciaDias =
 }
 
 /**
- * Baixa automática a partir do extrato bancário.
- * Para cada lançamento de débito (saída) ainda não conciliado, procura uma conta a pagar
- * compatível e atualiza a entidade-origem para status 'pago' + cria VinculoExtrato.
- *
- * Retorna: { conciliados, totalLancamentos, totalContas, baixas: [...] }
+ * Análise de débitos contra obrigações, sem qualquer escrita financeira.
+ * Os candidatos devem ser revisados e confirmados no painel contextual de baixas.
+ * Retorna: { somente_analise, conciliados: 0, totalLancamentos, totalContas, baixas: [...] }
  */
-export async function executarBaixaAutomatica(base44, dadosOrigem) {
+export async function analisarBaixasExtrato(base44, dadosOrigem, periodo = '') {
   const itens = consolidarContasPagar(dadosOrigem).filter(i => !i.is_planejado);
 
   // Buscar débitos do extrato não conciliados (valor negativo)
   // Limitar aos últimos 90 dias para performance
   const todosLancamentos = await base44.entities.LancamentoBancario.list('-data', 2000);
   const lancamentosDebito = todosLancamentos.filter(l =>
-    ehSaidaContasPagar(l) && l.status_conciliacao !== 'conciliado'
+    ehSaidaContasPagar(l) && !['conciliado','ignorar'].includes(l.status_conciliacao) && (!periodo || (l.data || '').startsWith(periodo))
   );
 
   // Buscar vínculos existentes para evitar dupla baixa
@@ -313,16 +310,10 @@ export async function executarBaixaAutomatica(base44, dadosOrigem) {
     baixas.push({ lanc, conta: match });
   }
 
-  // Aplicar baixas em paralelo (lotes de 5)
-  let aplicadas = 0;
-  for (let i = 0; i < baixas.length; i += 5) {
-    const chunk = baixas.slice(i, i + 5);
-    await Promise.all(chunk.map(({ lanc, conta }) => aplicarBaixa(base44, lanc, conta)));
-    aplicadas += chunk.length;
-  }
-
+  // Apenas candidatos. A aplicação exige revisão no painel contextual.
   return {
-    conciliados: aplicadas,
+    somente_analise: true,
+    conciliados: 0,
     totalLancamentos: lancamentosDebito.length,
     totalContas: itens.length,
     baixas,
@@ -338,74 +329,4 @@ export function mapearTipoEntidade(origem_tipo) {
     compra: 'ItemCompra',
     obra: 'ObraReforma',
   }[origem_tipo];
-}
-
-async function aplicarBaixa(base44, lanc, conta) {
-  const entidadeTipo = mapearTipoEntidade(conta.origem_tipo);
-  const valorAlocado = Math.abs(lanc.valor);
-
-  if (conta.origem_tipo === 'tributo') {
-    const { data } = await vincularExtrato({ acao:'criar', entidade_tipo:'Tributo', entidade_id:conta.origem_id, lancamento_bancario_id:lanc.id, valor_alocado:valorAlocado, conciliado_por:'auto', observacao:`Guia conciliada · ${conta.descricao}` });
-    if (data?.error) throw new Error(data.error);
-    return;
-  }
-  // 1. Atualiza a entidade-origem para status 'pago'
-  if (conta.origem_tipo === 'despesa') {
-    // Loop-R: `data` é competência (documento) e nunca muda; a data bancária vai para data_pagamento.
-    await base44.entities.DespesaOperacional.update(conta.origem_id, {
-      status: 'pago',
-      data_pagamento: lanc.data,
-      lancamento_bancario_id: lanc.id,
-    });
-  } else if (conta.origem_tipo === 'tributo') {
-    await base44.entities.Tributo.update(conta.origem_id, {
-      status: 'pago',
-      data_pagamento: lanc.data,
-      valor_pago: valorAlocado,
-    });
-  } else if (conta.origem_tipo === 'folha') {
-    await base44.entities.FolhaPagamento.update(conta.origem_id, {
-      status: 'pago',
-      data_pagamento: lanc.data,
-    });
-  } else if (conta.origem_tipo === 'fatura') {
-    await base44.entities.FaturaCartao.update(conta.origem_id, {
-      status: 'paga_total',
-      data_pagamento: lanc.data,
-      valor_pago: valorAlocado,
-    });
-  } else if (conta.origem_tipo === 'compra') {
-    await base44.entities.ItemCompra.update(conta.origem_id, {
-      status_pagamento: 'pago',
-      lancamento_bancario_id: lanc.id,
-      valor_pago: valorAlocado,
-    });
-  } else if (conta.origem_tipo === 'obra') {
-    await base44.entities.ObraReforma.update(conta.origem_id, {
-      lancamento_bancario_id: lanc.id,
-    });
-  }
-
-  // 2. Cria o VinculoExtrato (rastreabilidade — evita dupla baixa)
-  await base44.entities.VinculoExtrato.create({
-    lancamento_bancario_id: lanc.id,
-    entidade_tipo: entidadeTipo,
-    entidade_id: conta.origem_id,
-    valor_alocado: valorAlocado,
-    origem_compra: conta.origem_compra,
-    tipo_compra: conta.tipo_compra,
-    tipo_vinculo: 'pagamento_integral',
-    conciliado_por: 'auto',
-    confianca: 95,
-    observacao: `Baixa automática · ${conta.descricao}`,
-  });
-
-  // 3. Atualiza o lançamento para conciliado
-  await base44.entities.LancamentoBancario.update(lanc.id, {
-    status_conciliacao: 'conciliado',
-    origem_compra: lanc.origem_compra || conta.origem_compra,
-    tipo_compra: lanc.tipo_compra || conta.tipo_compra,
-    vinculos_count: (lanc.vinculos_count || 0) + 1,
-    valor_conciliado: (lanc.valor_conciliado || 0) + valorAlocado,
-  });
 }

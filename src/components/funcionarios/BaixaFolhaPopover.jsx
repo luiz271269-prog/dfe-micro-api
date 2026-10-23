@@ -1,4 +1,4 @@
-import BaixaManualButton from '@/components/shared/BaixaManualButton';
+import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
 export const FORMAS_PAGAMENTO = {
   pix: 'PIX',
@@ -10,8 +10,8 @@ export const FORMAS_PAGAMENTO = {
 };
 
 export default function BaixaFolhaPopover({ folha, statusLabel, statusColor, onSaved }) {
-  return <BaixaManualButton entidade="FolhaPagamento" registroId={folha.id} onSaved={onSaved} className={`h-auto px-2 py-0.5 rounded-full text-[11px] ${statusColor}`}>
+  return <BaixaAcaoRegistro entidade="FolhaPagamento" registroId={folha.id} descricao={`${folha.funcionario_nome} · ${folha.competencia}`} onSaved={onSaved} className={`h-auto px-2 py-0.5 rounded-full text-[11px] ${statusColor}`}>
     {statusLabel}{folha.status === 'adiantamento' ? ' · Parcial' : ''}
     {folha.forma_pagamento && <span className="ml-1 opacity-70">· {FORMAS_PAGAMENTO[folha.forma_pagamento]}</span>}
-  </BaixaManualButton>;
+  </BaixaAcaoRegistro>;
 }

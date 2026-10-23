@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { vincularExtrato } from '@/functions/vincularExtrato';
+import BaixasDialog from '@/components/baixas/BaixasDialog';
 import { Sparkles, Check, ChevronDown, ChevronUp, AlertTriangle, SearchCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -11,7 +11,7 @@ export default function SugestoesConciliacaoBanner() {
   const [sugestoes, setSugestoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
-  const [processandoId, setProcessandoId] = useState(null);
+  const [revisao, setRevisao] = useState(null);
   const [analisarOpen, setAnalisarOpen] = useState(false);
   const [analisarLancId, setAnalisarLancId] = useState(null);
   const [analisarSugestao, setAnalisarSugestao] = useState(null);
@@ -35,49 +35,12 @@ export default function SugestoesConciliacaoBanner() {
     return () => { window.removeEventListener('neuralfinRefresh', handler); unsub(); };
   }, []);
 
-  async function confirmar(s) {
-    setProcessandoId(s.id);
-    try {
-      if (s.entidade_tipo === 'Tributo') {
-        const { data } = await vincularExtrato({ acao:'criar', entidade_tipo:'Tributo', entidade_id:s.entidade_id, lancamento_bancario_id:s.lancamento_bancario_id, valor_alocado:Math.abs(s.valor_extrato), observacao:`Sugestão confirmada · ${s.descricao_conta}` });
-        if (data?.error) throw new Error(data.error);
-        await base44.entities.SugestaoConciliacao.update(s.id, { status:'confirmada', resolvida_em:new Date().toISOString() });
-        window.dispatchEvent(new Event('neuralfinRefresh'));
-        setProcessandoId(null);
-        return;
-      }
-      // Atualiza entidade origem
-      if (s.entidade_tipo === 'DespesaOperacional') {
-        await base44.entities.DespesaOperacional.update(s.entidade_id, { status: 'pago', data: s.data_extrato });
-      } else if (s.entidade_tipo === 'Tributo') {
-        await base44.entities.Tributo.update(s.entidade_id, { status: 'pago', data_pagamento: s.data_extrato, valor_pago: s.valor_extrato });
-      } else if (s.entidade_tipo === 'FaturaCartao') {
-        await base44.entities.FaturaCartao.update(s.entidade_id, { status: 'paga_total', data_pagamento: s.data_extrato, valor_pago: s.valor_extrato });
-      } else if (s.entidade_tipo === 'FolhaPagamento') {
-        await base44.entities.FolhaPagamento.update(s.entidade_id, { status: 'pago', data_pagamento: s.data_extrato });
-      } else if (s.entidade_tipo === 'ItemCompra') {
-        await base44.entities.ItemCompra.update(s.entidade_id, { status_pagamento: 'pago', valor_pago: s.valor_extrato, lancamento_bancario_id: s.lancamento_bancario_id });
-      }
-      // Cria vínculo
-      await base44.entities.VinculoExtrato.create({
-        lancamento_bancario_id: s.lancamento_bancario_id,
-        entidade_tipo: s.entidade_tipo,
-        entidade_id: s.entidade_id,
-        valor_alocado: s.valor_extrato,
-        tipo_vinculo: 'pagamento_integral',
-        conciliado_por: 'manual',
-        confianca: s.confianca,
-        observacao: `Sugestão confirmada · ${s.descricao_conta}`,
-      });
-      // Marca lançamento conciliado
-      await base44.entities.LancamentoBancario.update(s.lancamento_bancario_id, { status_conciliacao: 'conciliado' });
-      // Marca sugestão como confirmada
-      await base44.entities.SugestaoConciliacao.update(s.id, { status: 'confirmada', resolvida_em: new Date().toISOString() });
-      window.dispatchEvent(new Event('neuralfinRefresh'));
-    } catch (err) {
-      alert(`Erro ao confirmar: ${err.message}`);
+  function confirmar(s) { setRevisao(s); }
+  async function aoConfirmar(comando) {
+    if(comando.acao==='banco' && comando.id===revisao.lancamento_bancario_id && comando.destino===revisao.entidade_tipo && comando.destino_id===revisao.entidade_id) {
+      await base44.entities.SugestaoConciliacao.update(revisao.id, {status:'confirmada',resolvida_em:new Date().toISOString()});
     }
-    setProcessandoId(null);
+    await load();
   }
 
   function abrirAnalise(sugestao = null) {
@@ -139,16 +102,16 @@ export default function SugestoesConciliacaoBanner() {
               <Button
                 size="sm"
                 onClick={() => confirmar(s)}
-                disabled={processandoId === s.id}
+                disabled={s.bloqueada}
                 className="gap-1 bg-green-600 hover:bg-green-700 text-white h-8"
               >
-                <Check className="w-3.5 h-3.5" /> Confirmar
+                <Check className="w-3.5 h-3.5" /> Revisar baixa
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => abrirAnalise(s)}
-                disabled={processandoId === s.id}
+                disabled={s.bloqueada}
                 className="gap-1 h-8 border-yellow-400 text-yellow-900 hover:bg-yellow-100"
                 title="Analisar este débito contra as contas a pagar"
               >
@@ -159,6 +122,7 @@ export default function SugestoesConciliacaoBanner() {
         ))}
       </div>
 
+      {revisao&&<BaixasDialog registros={[{tipo:revisao.entidade_tipo,id:revisao.entidade_id,descricao:revisao.descricao_conta,movimento_id:revisao.lancamento_bancario_id}]} abaInicial="conciliar" onClose={()=>setRevisao(null)} onSaved={aoConfirmar}/>}
       <AnalisarPagtosExtratoDialog
         open={analisarOpen}
         lancamentoIdInicial={analisarLancId}
