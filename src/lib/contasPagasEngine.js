@@ -5,6 +5,7 @@
  */
 
 import { consolidarTitulosCompras } from './titulosCompras';
+import { normalizarFaturaCarteira } from '@/lib/faturaCarteira';
 
 // Não inferir tipos dos registros antigos: a classificação é manual.
 
@@ -56,20 +57,10 @@ export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  faturas.filter(f => f.status === 'paga_total').forEach(fat => {
-    const cartao = cartoes.find(c => c.id === fat.conta_cartao_id);
-    const [y, m] = (fat.mes_referencia || '').split('-');
-    itens.push({
-      id: `fat-${fat.id}`, origem_id: fat.id, origem_tipo: 'fatura',
-      descricao: `Fatura ${cartao?.nome || 'Cartão'} — ${fat.mes_referencia}`,
-      fornecedor: cartao?.nome || 'Cartão de Crédito', categoria: 'cartao',
-      valor: fat.valor_pago || fat.valor_total,
-      data_emissao: y && m ? `${y}-${m}-01` : fat.data_vencimento,
-      data_pagamento: fat.data_pagamento,
-      empresa: cartao?.empresa_vinculada || '—', forma_pagamento: 'debito_automatico',
-      ...eixos(fat, 'fatura'),
-    });
-  });
+  // Liquidação derivada dos valores, sem confiar isoladamente no status legado.
+  itens.push(...faturas.map(fat => normalizarFaturaCarteira(fat, cartoes))
+    .filter(fat => fat.valor_total > 0 && fat.liquidacao === 'Quitada')
+    .map(fat => ({ ...fat, valor: fat.valor_pago })));
 
   itens.push(...consolidarTitulosCompras(compras, true));
 

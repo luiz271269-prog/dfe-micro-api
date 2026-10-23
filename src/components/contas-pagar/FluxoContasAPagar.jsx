@@ -103,9 +103,9 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
 
           {evaporados && evaporados.total > 0 && (
             <div className="border border-purple-200 bg-purple-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2"
-              title={`${evaporados.despesas} despesa(s), ${evaporados.compras} compra(s) e ${evaporados.obras} obra(s) foram pagas no cartão — a obrigação vive na fatura, por isso saíram do Contas a Pagar (evita dupla contagem).`}>
+              title={`${evaporados.despesas} despesa(s), ${evaporados.compras} compra(s) e ${evaporados.obras} obra(s) vinculadas ao cartão neste recorte. São composição explicativa; o vínculo não comprova quitação. Apenas o saldo da fatura entra na carteira.`}>
               <p className="text-[10px] font-bold uppercase text-purple-700">
-                Evaporados p/ fatura do cartão · {evaporados.total} item(ns)
+                Documentos vinculados ao cartão · {evaporados.total} item(ns)
               </p>
               <p className="text-sm font-bold text-purple-800 whitespace-nowrap">{formatCurrency(evaporados.valor)}</p>
             </div>

@@ -15,14 +15,15 @@ import { calcularProLabore } from './proLaboreContasPagar';
 import { consolidarTitulosCompras } from './titulosCompras';
 import { vencimentoFolha, dataNoMesPagamento } from '@/lib/folhaCalendario';
 import { saldoGuia } from '@/components/tributos/tributoFluxo';
+import { normalizarFaturaCarteira } from '@/lib/faturaCarteira';
 
 // Registros antigos sem tipo permanecem pendentes até a classificação manual.
 
 /**
- * REGRA DO CANAL CARTÃO ("evapora"):
- * item pago no cartão não é conta a pagar individual — a obrigação vira a fatura do cartão.
- * Logo, qualquer registro com lancamento_cartao_id preenchido sai do Contas a Pagar,
- * independentemente do status, para não somar o mesmo gasto duas vezes.
+ * REGRA DO CANAL CARTÃO:
+ * Documento vinculado explica a composição, mas não possui saldo individual nesta carteira.
+ * A fatura é a única obrigação somada; sua composição permanece acessível no detalhamento.
+ * O vínculo não comprova pagamento e não modifica a competência do documento.
  */
 function evaporou(reg) {
   return !!reg?.lancamento_cartao_id;
@@ -108,23 +109,8 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
     });
   });
 
-  faturas.filter(fat => fat.status === 'aberta' || fat.status === 'vencida').forEach(fat => {
-    const cartao = cartoes.find(c => c.id === fat.conta_cartao_id);
-    itens.push({
-      id: `fat-${fat.id}`,
-      origem_id: fat.id,
-      origem_tipo: 'fatura',
-      descricao: `Fatura ${cartao?.nome || 'Cartão'} — ${fat.mes_referencia}`,
-      fornecedor: cartao?.nome || 'Cartão de Crédito',
-      categoria: 'cartao',
-      valor: Math.max(0, fat.valor_total - (fat.valor_pago || 0)),
-      valor_pago: fat.valor_pago || 0,
-      data_vencimento: fat.data_vencimento,
-      empresa: cartao?.empresa_vinculada || '—',
-      forma_pagamento: 'debito_automatico',
-      ...eixos(fat, 'fatura'),
-    });
-  });
+  // Uma obrigação por fatura; os componentes são consultados sem entrar no saldo.
+  itens.push(...faturas.map(fat => normalizarFaturaCarteira(fat, cartoes)).filter(fat => fat.saldo > 0));
 
   // Compras entram como títulos fiscais parcelados, nunca como linhas de produto.
   itens.push(...consolidarTitulosCompras(compras, false));

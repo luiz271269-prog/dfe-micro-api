@@ -18,7 +18,7 @@ export default function PipelineFluxo() {
   return (
     <div
       className="bg-white border rounded-lg px-4 py-3 overflow-x-auto"
-      title='Item comprado no cartão não fica "a pagar" individualmente — a obrigação evapora para a fatura do cartão, que é paga no extrato. Compras são produtos para estoque/revenda (não são despesas operacionais). Pró-labore (retirada de lucros) é identificado no extrato e nos cartões pessoais, com projeção pela média dos últimos 3 meses.'
+      title='Item comprado no cartão não fica "a pagar" individualmente — o documento explica a composição da fatura, única obrigação somada e paga pelo banco. Compras são produtos para estoque/revenda (não são despesas operacionais). Pró-labore (retirada de lucros) é identificado no extrato e nos cartões pessoais, com projeção pela média dos últimos 3 meses.'
     >
       <div className="flex items-center justify-center min-w-[640px]">
         {/* Origens */}
@@ -63,7 +63,7 @@ export default function PipelineFluxo() {
         {/* Destinos */}
         <div className="flex flex-col justify-center gap-10 shrink-0" style={{ height: H }}>
           <span className="h-8 flex items-center px-4 rounded-full text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap" style={{ backgroundColor: '#9333EA' }}>
-            No cartão → vira Fatura
+            No cartão → compõe Fatura
           </span>
           <span className="h-8 flex items-center px-4 rounded-full text-[11px] font-bold uppercase tracking-wide text-white whitespace-nowrap" style={{ backgroundColor: '#2563EB' }}>
             Direto → cruza com Extrato

@@ -8,6 +8,7 @@ import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
 import referenciasContaBaixa from '@/components/baixas/referenciasContaBaixa';
 import VerPedidoCentralButton from '@/components/contas-pagar/VerPedidoCentralButton';
+import FaturaCarteiraDetalhe from '@/components/contas-pagar/FaturaCarteiraDetalhe';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700', label: 'Despesa', href: '/despesas' },
@@ -98,10 +99,11 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
             {ok ? (
               <span className="inline-flex items-center gap-0.5 text-emerald-700 font-semibold"><Link2 className="w-2.5 h-2.5" /> {porEmissao ? 'Conciliado' : 'OK'}</span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> {previsto ? 'Previsão · sem documento' : pago ? 'Quitado · sem vínculo bancário' : i.valor_pago > 0 ? 'Parcial · saldo em aberto' : 'Pendente'}</span>
+              <span className="inline-flex items-center gap-0.5 text-amber-700 font-semibold"><AlertTriangle className="w-2.5 h-2.5" /> {previsto ? 'Previsão · sem documento' : i.origem_tipo === 'fatura' ? `${i.liquidacao} · ${i.temporal}` : pago ? 'Quitado · sem vínculo bancário' : i.valor_pago > 0 ? 'Parcial · saldo em aberto' : 'Pendente'}</span>
             )}
           </div>
           {entityName === 'ItemCompra' && <VerPedidoCentralButton compra={i} />}
+          {entityName === 'FaturaCartao' && <FaturaCarteiraDetalhe item={i}/>}
           {/* Classificação unificada — só para itens com entidade real (projeções não têm) */}
           {entityName && !i.is_planejado && !i.is_grouped && (
             <div className="flex items-center gap-1.5 mt-1">
