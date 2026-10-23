@@ -46,6 +46,6 @@ export async function fontesCarteira(db, mes, perimetro) {
     fonte('Tributo', 'tributos', 'valor_original', { $and: [empresa, { status: { $in: ['a_vencer', 'vencido', 'parcelado'] } }, vencimentoAte('data_vencimento', null, fim)] }, true),
     fonte('FolhaPagamento', 'folha', 'salario_liquido', { $and: [empresa, { status: { $in: ['pendente', 'adiantamento'] } }, { $or: [{ $and: [mensal, { competencia: { $lt: mes } }] }, { tipo: { $in: ['ferias', 'decimo_terceiro', 'rescisao'] }, competencia: { $lte: mes } }, vazioCarteira('competencia')] }] }),
     fonte('DespesaOperacional', 'despesas', 'valor', { $and: [empresa, { status: { $in: ['pendente', 'vencido'] } }, vazioCarteira('lancamento_cartao_id'), vencimentoAte('data_vencimento', 'data', fim)] }),
-    fonte('ObraReforma', 'obras', 'valor', { $and: [empresa, vazioCarteira('lancamento_cartao_id'), vazioCarteira('lancamento_bancario_id'), vencimentoAte('data_vencimento', 'data', fim)] }),
+    fonte('ObraReforma', 'obras', 'valor', { $and: [empresa, { status_pagamento: { $ne: 'pago' } }, vazioCarteira('lancamento_cartao_id'), vazioCarteira('lancamento_bancario_id'), vencimentoAte('data_vencimento', 'data', fim)] }),
   ] };
 }

@@ -73,14 +73,14 @@ export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [
 
   itens.push(...consolidarTitulosCompras(compras, true));
 
-  obras.filter(o => o.lancamento_bancario_id && !o.lancamento_cartao_id).forEach(o => {
+  obras.filter(o => (o.lancamento_bancario_id || o.status_pagamento === 'pago') && !o.lancamento_cartao_id).forEach(o => {
     itens.push({
       id: `obra-${o.id}`, origem_id: o.id, origem_tipo: 'obra',
       descricao: o.descricao, fornecedor: o.responsavel || 'Prestador',
       categoria: o.tipo_profissional || o.tipo || 'obra',
       valor: o.valor || 0,
       data_emissao: o.data,
-      data_pagamento: null,
+      data_pagamento: o.data_pagamento || null,
       empresa: o.empresa || '—', forma_pagamento: o.forma_pagamento,
       ...eixos(o, 'obra'),
     });

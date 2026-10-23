@@ -46,9 +46,9 @@ export function calcularAberto(dados, mes, perimetro, hojeReal) {
     ...dados.Tributo.filter((t) => ['a_vencer', 'vencido', 'parcelado'].includes(t.status) && saldoTributo(t) > 0 && dentroPerimetro(t.empresa, perimetro))
       .map((t) => ({ id: t.id, entidade: 'Tributo', data_vencimento: t.data_vencimento, valor: saldoTributo(t) })),
     ...dados.DespesaOperacional.filter((d) => ['pendente', 'vencido'].includes(d.status) && !d.lancamento_cartao_id && dentroPerimetro(d.empresa, perimetro))
-      .map((d) => ({ id: d.id, entidade: 'DespesaOperacional', data_vencimento: d.data_vencimento || d.data, valor: d.valor })),
-    ...dados.FolhaPagamento.filter((f) => f.status === 'pendente' && dentroPerimetro(f.empresa, perimetro))
-      .map((f) => ({ id: f.id, entidade: 'FolhaPagamento', data_vencimento: vencimentoFolha(f), valor: f.salario_liquido })),
+      .map((d) => ({ id: d.id, entidade: 'DespesaOperacional', data_vencimento: d.data_vencimento || d.data, valor: Math.max(0, (d.valor || 0) - (d.valor_pago || 0)) })),
+    ...dados.FolhaPagamento.filter((f) => ['pendente','adiantamento'].includes(f.status) && dentroPerimetro(f.empresa, perimetro))
+      .map((f) => ({ id: f.id, entidade: 'FolhaPagamento', data_vencimento: vencimentoFolha(f), valor: Math.max(0, (f.salario_liquido || 0) - (f.valor_pago || 0)) })),
     ...dados.ItemCompra.filter((c) => ['pendente', 'parcial', 'nao_identificado'].includes(c.status_pagamento) && !c.lancamento_cartao_id && dentroPerimetro(c.empresa, perimetro) && (c.valor_total || 0) - (c.valor_pago || 0) > 0.01)
       .map((c) => ({ id: c.id, entidade: 'ItemCompra', data_vencimento: c.data_vencimento || null, valor: (c.valor_total || 0) - (c.valor_pago || 0) })),
     ...dados.FaturaCartao.filter((f) => f.status !== 'paga_total')

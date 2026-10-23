@@ -4,7 +4,8 @@ import { normConciliacao,lerCompleto } from './conciliacaoLeitura.ts';
 import { evidenciasCartao } from './conciliacaoCartaoRegras.ts';
 export function pontuarBaixa(mov,candidato,evidencias=[]) {
   const m=normalizarBaixa(mov.tipo,mov.raw),c=candidato,razoes=[],bloqueios=[];let pontos=0;
-  const diff=Math.abs(m.total-c.saldo),dias=Math.abs(Date.parse(m.data)-Date.parse(c.data))/86400000;
+  const referencia=m.tipo==='LancamentoCartao'?(c.raw.data_emissao||c.raw.data):c.data;
+  const diff=Math.abs(m.saldo-c.saldo),dias=Math.abs(Date.parse(m.data)-Date.parse(referencia))/86400000;
   if(diff<0.01){pontos+=45;razoes.push('Valor e saldo coincidem em centavos');}else if(c.saldo>m.total){pontos+=15;razoes.push('Possível pagamento parcial');}else razoes.push('Valores diferentes: confira a alocação');
   if(dias<=3){pontos+=15;razoes.push('Datas próximas: até três dias');}else if(Number.isFinite(dias))razoes.push(`Intervalo de ${Math.round(dias)} dias`);
   const termos=normConciliacao(c.contraparte||c.descricao).split(' ').filter(x=>x.length>3),texto=normConciliacao(`${m.descricao} ${m.raw.detalhe||''}`);

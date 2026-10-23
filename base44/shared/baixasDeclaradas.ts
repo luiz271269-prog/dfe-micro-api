@@ -16,6 +16,7 @@ export async function gravarCondicionalBaixa(db,tipo,r,patch) {
 }
 export async function registrarDeclarado(base44,user,b) {
   if(!MODULOS_BAIXA[b.entidade]||ehMovimento(b.entidade)||typeof b.id!=='string'||!b.id)throw new Error('Obrigação inválida.');
+  if(user.role!=='admin'&&b.entidade!=='FaturaCartao')throw new Error('Pagamento deste módulo restrito a administrador.');
   const reserva=await reservarRegistroBaixa(base44.entities,b.entidade,b.id,b.versao);
   try{return await aplicarDeclarado(base44,user,b,reserva.registro);}finally{await liberarRegistroBaixa(base44.entities,b.entidade,b.id,reserva.token);}
 }
@@ -42,11 +43,17 @@ async function aplicarDeclarado(base44,user,b,reservado) {
   catch(error){await concluirBaixa(base44,audit,null,error);throw error;}
 }
 export async function reabrirDeclarado(base44,user,b) {
+  const reserva=await reservarRegistroBaixa(base44.entities,b.tipo,b.id,b.versao);
+  try{return await restaurarDeclarado(base44,user,b,reserva.registro);}finally{await liberarRegistroBaixa(base44.entities,b.tipo,b.id,reserva.token);}
+}
+async function restaurarDeclarado(base44,user,b,reservado) {
   if(user.role!=='admin')throw new Error('Reabertura restrita a administrador.');
   const audit=await base44.entities.AuditoriaConciliacao.get(b.auditoria_id);
   const meta=JSON.parse(audit.payload_original||'{}'),depois=JSON.parse(audit.detalhe||'{}').depois;
   if(meta.origem!=='central_baixas'||!['manual','editar'].includes(meta.operacao)||audit.acao!=='vinculo_confirmado'||!depois)throw new Error('A operação não tem uma reversão segura disponível.');
-  const tipo=audit.entidade_tipo,r=await base44.entities[tipo].get(audit.entidade_id);
+  const tipo=audit.entidade_tipo,r=reservado;
+  const jaRevertida=await base44.entities.AuditoriaConciliacao.count({entidade_tipo:tipo,entidade_id:r.id,acao:'vinculo_confirmado',payload_original:{$regex:`\"reversao_de\":\"${audit.id}\"`}});
+  if(jaRevertida)throw new Error('Esta operação já foi revertida; o histórico original foi preservado.');
   const [vb,vc]=await Promise.all([base44.entities.VinculoExtrato.count({entidade_tipo:tipo,entidade_id:r.id}),base44.entities.VinculoCartao.count({entidade_tipo:tipo,entidade_id:r.id,fase:{$ne:'cancelado'}})]);
   if(vb||vc)throw new Error('Desvincule as conciliações antes de restaurar o estado anterior.');
   if(!Object.entries(depois).every(([k,v])=>JSON.stringify(r[k]??null)===JSON.stringify(v??null)))throw new Error('Há alterações posteriores. Reverta primeiro a operação mais recente.');

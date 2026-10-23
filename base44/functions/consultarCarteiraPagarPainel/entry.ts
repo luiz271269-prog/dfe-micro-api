@@ -14,7 +14,7 @@ export default async function(req) {
     // Agrupamentos completos no servidor; nenhuma dependência dos limites das listas da tela.
     const resultados = await Promise.all(fontes.map(async fonte => {
       const groupBy = fonte.juros ? ['origem_compra', fonte.valor, 'valor_pago', 'juros_multa'] : fonte.entidade === 'ObraReforma' ? ['id', fonte.valor, 'origem_compra', 'tipo_compra'] : ['origem_compra', 'tipo_compra', fonte.valor, 'valor_pago'];
-      const sum = fonte.entidade === 'ObraReforma' ? [fonte.valor] : [fonte.valor, 'valor_pago', ...(fonte.juros ? ['juros_multa'] : [])];
+      const sum = [fonte.valor, 'valor_pago', ...(fonte.juros ? ['juros_multa'] : [])];
       return { fonte, rows: await agregarCarteira(db, fonte.entidade, { query: fonte.query, groupBy, sum }) };
     }));
     const obras = resultados.find(r => r.fonte.entidade === 'ObraReforma').rows;
@@ -26,7 +26,7 @@ export default async function(req) {
       for (const row of rows) {
         const original = centavosCarteira(row[`sum_${fonte.valor}`]);
         const juros = fonte.juros ? centavosCarteira(row.sum_juros_multa) : 0;
-        const pago = fonte.entidade === 'ObraReforma' ? Math.max(0, pagoObras.get(row.id) || 0) : centavosCarteira(row.sum_valor_pago);
+        const pago = fonte.entidade === 'ObraReforma' ? Math.max(0, pagoObras.get(row.id) || 0, centavosCarteira(row.sum_valor_pago)) : centavosCarteira(row.sum_valor_pago);
         const saldo = Math.max(0, original + juros - pago);
         grupos.get(grupoCarteira(row, fonte.grupo)).confirmadoCentavos += saldo;
       }

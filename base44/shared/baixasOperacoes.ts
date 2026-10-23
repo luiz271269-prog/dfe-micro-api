@@ -8,17 +8,22 @@ import { reservarRegistroBaixa,liberarRegistroBaixa } from './baixasReserva.ts';
 import { lerCompleto } from './conciliacaoLeitura.ts';
 import { empresaExtrato } from './tributoRegras.ts';
 export async function executarBaixaCentral(base44,user,b) {
-  const db=base44.entities,r=await db[b.tipo].get(b.id);
+  const db=base44.entities;let r=await db[b.tipo].get(b.id);
   if(b.versao!==r.updated_date)throw new Error('Registro alterado. Atualize antes de confirmar.');
   if(b.acao==='manual')return registrarDeclarado(base44,user,{...b,entidade:b.tipo});
   if(b.acao==='reabrir'){const a=await db.AuditoriaConciliacao.get(b.auditoria_id);if(a.entidade_tipo!==b.tipo||a.entidade_id!==b.id)throw new Error('Auditoria não pertence ao registro.');return reabrirDeclarado(base44,user,b);}
   if(!['banco','cartao','removerBanco','cancelarCartao','editar','reabrirManual'].includes(b.acao))throw new Error('Operação inválida.');
-  let audit;
+  let audit,reserva;
   try {
+    if(['editar','reabrirManual'].includes(b.acao)){reserva=await reservarRegistroBaixa(db,b.tipo,b.id,b.versao);r=reserva.registro;}
     if(b.acao==='editar'){
       const patch=b.patch;
       if(!patch||!Object.keys(patch).length||Object.keys(patch).some(k=>!camposEditaveisBaixa[b.tipo].includes(k)||typeof patch[k]!=='string'||patch[k].length>500))throw new Error('A edição aceita somente os campos indicados, sem alterar valores ou situação diretamente.');
-      for(const [k,v] of Object.entries(patch)){if(k==='data_vencimento'&&(!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v))))throw new Error('Vencimento inválido.');}
+      for(const [k,v] of Object.entries(patch)){
+        if(k==='data_vencimento'&&(!/^\d{4}-\d{2}-\d{2}$/.test(v)||!Number.isFinite(Date.parse(v))||new Date(v).toISOString().slice(0,10)!==v))throw new Error('Vencimento inválido.');
+        if(['descricao','descricao_produto','fornecedor','responsavel'].includes(k)&&!v.trim())throw new Error('A identificação do documento não pode ficar vazia.');
+        if(['tipo_compra','origem_compra','categoria'].includes(k)&&v){const cadastrada=await db.CadastroClassificacao.count({eixo:k==='tipo_compra'?'tipo':k==='origem_compra'?'origem':'categoria',chave:v,ativo:true});const padrao=k==='tipo_compra'?['estoque','fretes','despesas','folha','pro_labore','impostos','obras','financeiro','outro']:k==='origem_compra'?['empresa','pro_labore','pessoal','condominio','investimento']:[];if(!cadastrada&&!padrao.includes(v))throw new Error('Classificação não cadastrada ou inativa. Use uma chave válida do cadastro de classificação.');}
+      }
       const [vb,vc]=await Promise.all([db.VinculoExtrato.count(ehMovimento(b.tipo)?{lancamento_bancario_id:b.id}:{entidade_tipo:b.tipo,entidade_id:b.id}),db.VinculoCartao.count(b.tipo==='LancamentoCartao'?{lancamento_cartao_id:b.id,fase:{$ne:'cancelado'}}:{entidade_tipo:b.tipo,entidade_id:b.id,fase:{$ne:'cancelado'}})]);
       if(vb||vc||r.lancamento_bancario_id||r.lancamento_cartao_id||r.item_compra_id)throw new Error('Desvincule antes de alterar dados de um registro conciliado.');
       audit=await auditarBaixa(base44,user,b.tipo,b.id,'editar',b.pedidoId,b.motivo,Object.fromEntries(Object.keys(patch).map(k=>[k,r[k]??null])),{patch});
@@ -70,4 +75,5 @@ export async function executarBaixaCentral(base44,user,b) {
     const result=b.destino==='ItemCompra'?await vincularCompraCartao(db,doc,r.id,user.id,{automatico:false,motivo:b.motivo}):await aplicarVinculoCartao(db,{id:r.id,versao:r.updated_date,valor:r.valor,data:r.data_lancamento,empresa:r.empresa_beneficiada||'',tipo_compra:r.tipo_compra,origem_compra:r.origem_compra,fatura_id:r.fatura_id},{tipo:b.destino,id:doc.id,versao:doc.updated_date},user.id,true,b.motivo);
     await concluirBaixa(base44,audit,result);return {ok:true,...result};
   }catch(error){if(audit)await concluirBaixa(base44,audit,null,error);throw error;}
+  finally{if(reserva)await liberarRegistroBaixa(db,b.tipo,b.id,reserva.token);}
 }

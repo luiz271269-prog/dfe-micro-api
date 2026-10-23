@@ -132,9 +132,9 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
 
   // Obras / Reformas ainda não pagas pelo banco (e não absorvidas por cartão)
   obras
-    .filter(o => !o.lancamento_bancario_id && !evaporou(o))
+    .filter(o => !o.lancamento_bancario_id && !evaporou(o) && o.status_pagamento !== 'pago')
     .forEach(o => {
-      const valor = o.valor || 0;
+      const valor = Math.max(0, (o.valor || 0) - (o.valor_pago || 0));
       if (valor <= 0.01) return;
       itens.push({
         id: `obra-${o.id}`,

@@ -5,7 +5,8 @@ export const dinheiroBaixa = v => Math.round(Number(v || 0)*100)/100;
 export function totalBaixa(tipo,r) { return dinheiroBaixa(tipo==='Tributo'?devidoTributo(r):tipo==='FolhaPagamento'?r.salario_liquido:tipo==='ItemCompra'||tipo==='FaturaCartao'?r.valor_total:Math.abs(r.valor||0)); }
 export function normalizarBaixa(tipo,r) {
   const total=totalBaixa(tipo,r), status=r.status_pagamento||r.status||'';
-  const pago=dinheiroBaixa(r.valor_pago || (['pago','paga_total'].includes(status)?total:0));
+  const legadoObra=tipo==='ObraReforma'&&r.lancamento_bancario_id&&r.valor_pago==null;
+  const pago=dinheiroBaixa(r.valor_pago || (['pago','paga_total'].includes(status)||legadoObra?total:0));
   const movimento=ehMovimento(tipo), data=r.data_vencimento||r.data_lancamento||r.data_emissao||r.data||`${r.competencia||r.mes_referencia||''}-01`;
   return {tipo,id:r.id,versao:r.updated_date,descricao:r.descricao||r.descricao_produto||r.estabelecimento||r.funcionario_nome||(tipo==='FaturaCartao'?`Fatura ${r.mes_referencia}`:`${r.tipo||MODULOS_BAIXA[tipo]} ${r.competencia||''}`),contraparte:r.fornecedor||r.responsavel||r.funcionario_nome||r.estabelecimento||'',empresa:r.empresa||r.empresa_beneficiada||(tipo==='LancamentoBancario'?empresaExtrato(r):'')||'',data,total,pago,saldo:movimento?dinheiroBaixa(Math.max(0,total-Number(r.valor_conciliado||0))):dinheiroBaixa(Math.max(0,total-pago)),canal:r.forma_pagamento||(tipo==='LancamentoBancario'?'extrato':tipo==='LancamentoCartao'?'cartao':''),estado:r.alerta_duplicidade||r.duplicidade_ref||r.status_conciliacao==='ignorar'?'bloqueado':r.lancamento_cartao_id?'no_cartao':tipo==='LancamentoBancario'?(r.status_conciliacao||'nao_conciliado'):pago>=total&&total>0?'pago':pago>0?'parcial':'pendente',raw:r};
 }
