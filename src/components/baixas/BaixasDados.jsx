@@ -1,0 +1,4 @@
+import { rotuloCampo } from '@/components/baixas/baixasService';
+export default function BaixasDados({dados,titulo='Dados completos da origem'}) {
+  return <details className="border rounded-lg bg-background p-3"><summary className="cursor-pointer text-sm font-semibold">{titulo}</summary><dl className="mt-3 space-y-2 max-h-80 overflow-auto">{Object.entries(dados||{}).filter(([k])=>!k.includes('token')).map(([k,v])=><div key={k} className="border-b pb-2"><dt className="text-xs text-muted-foreground capitalize">{rotuloCampo(k)}</dt><dd className="text-sm break-all whitespace-pre-wrap">{v===null||v===''?'Não informado':typeof v==='object'?JSON.stringify(v,null,2):String(v)}</dd></div>)}</dl></details>;
+}

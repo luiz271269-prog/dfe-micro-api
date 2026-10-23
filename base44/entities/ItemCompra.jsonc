@@ -121,6 +121,13 @@
       "type": "string",
       "format": "date",
       "title": "Previs\u00e3o de pagamento / vencimento (usado no Contas a Pagar)"
+    },
+    "conciliacao_token": {
+      "type": "string"
+    },
+    "conciliacao_iniciada_em": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

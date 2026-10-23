@@ -30,6 +30,7 @@ export const navGroups = [
     label: 'Saídas · Pagamentos',
     items: [
       { path: '/contas-a-pagar', label: 'Contas a Pagar', icon: CircleDollarSign },
+      { path: '/baixas', label: 'Central de Baixas', icon: ShieldCheck },
       { path: '/tributos', label: 'Tributos', icon: DollarSign },
       { path: '/funcionarios', label: 'Folha de Pagamento', icon: Users },
       { path: '/prolabore', label: 'Pró-labore', icon: Wallet },

@@ -46,6 +46,7 @@ import IntegracoesFinanceiras from './pages/IntegracoesFinanceiras';
 import CadastroClassificacao from './pages/CadastroClassificacao';
 import PedidoCentralDetalhe from './pages/PedidoCentralDetalhe';
 import OAuthConsent from '@/pages/OAuthConsent';
+import Baixas from '@/pages/Baixas';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -99,6 +100,7 @@ const AuthenticatedApp = () => {
         <Route path="/conciliacao360" element={<Conciliacao360 />} />
         <Route path="/recorrentes" element={<Recorrentes />} />
         <Route path="/contas-a-pagar" element={<ContasAPagar />} />
+        <Route path="/baixas" element={<Baixas />} />
         <Route path="/controle-produtos" element={<ControleProdutos />} />
         <Route path="/analise-nfe" element={<AnaliseNFe />} />
         <Route path="/dre-tributario" element={<DRETributario />} />

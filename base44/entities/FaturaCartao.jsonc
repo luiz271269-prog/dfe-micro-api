@@ -84,6 +84,13 @@
           "forma"
         ]
       }
+    },
+    "conciliacao_token": {
+      "type": "string"
+    },
+    "conciliacao_iniciada_em": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

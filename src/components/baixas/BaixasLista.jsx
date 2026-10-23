@@ -1,0 +1,9 @@
+import { Button } from '@/components/ui/button';
+import { formatCurrency,formatDate } from '@/lib/formatters';
+const estados={pendente:'Pendente',parcial:'Parcial',pago:'Pago',no_cartao:'Reconhecido no cartão',conciliado:'Conciliado',nao_conciliado:'Não conciliado',bloqueado:'Bloqueado'};
+export default function BaixasLista({items,selecionado,onSelect,loading,mais,onMore}) {
+  return <section className="bg-card border rounded-xl overflow-hidden"><div className="p-4 border-b"><h2 className="font-semibold">Registros da fonte</h2><p className="text-xs text-muted-foreground">Uma página por consulta. Selecione um registro para conferir os dados.</p></div><div className="max-h-[720px] overflow-auto">
+    {!items.length&&<p className="p-6 text-sm text-muted-foreground">{loading?'Consultando registros...':'Nenhum registro neste recorte.'}</p>}
+    {items.map(r=><button key={`${r.tipo}-${r.id}`} onClick={()=>onSelect(r)} className={`w-full text-left p-4 border-b transition-colors ${selecionado?.id===r.id?'bg-primary/10':'hover:bg-muted'}`}><div className="flex gap-3 justify-between"><p className="font-semibold text-sm">{r.descricao}</p><span className="font-semibold text-sm whitespace-nowrap">{formatCurrency(r.total)}</span></div><p className="text-xs text-muted-foreground mt-1">{r.contraparte||'Contraparte não informada'} · {r.empresa||'Empresa não informada'} · {formatDate(r.data)}</p><div className="flex justify-between gap-2 mt-3 text-xs"><span className={`border rounded-full px-2 py-0.5 ${r.estado==='bloqueado'?'text-destructive border-destructive':'text-primary border-primary/30'}`}>{estados[r.estado]||r.estado}</span><span>Saldo: {formatCurrency(r.saldo)}</span></div></button>)}
+  </div>{mais&&<div className="p-3"><Button variant="outline" disabled={loading} onClick={onMore} className="w-full">Carregar próxima página</Button></div>}</section>;
+}

@@ -4,6 +4,7 @@ import { eixosDoVinculo, TIPO_POR_ENTIDADE } from '../../shared/classificacaoPad
 import { baixarTributo } from '../../shared/tributoBaixa.ts';
 import { baixarDespesa } from '../../shared/despesaBaixa.ts';
 import { erroDirecao, RECEBIVEIS, recalcularRecebivel } from '../../shared/direcaoFinanceira.ts';
+import { baixarBancoGeral } from '../../shared/baixasBancoGeral.ts';
 
 /**
  * SERVIÇO CENTRAL DE VÍNCULO (fonte única de verdade da conciliação).
@@ -66,10 +67,12 @@ export default async function(req) {
         if (!banco.data) return Response.json({ error: 'Crédito sem data de contabilização.' }, { status: 422 });
       }
     }
+    if (body.acao === 'criar' && ['ItemCompra','FolhaPagamento','FaturaCartao','ObraReforma'].includes(body.entidade_tipo)) return Response.json(await baixarBancoGeral(svc, body));
     if (body.acao === 'criar' && body.entidade_tipo === 'Tributo') return Response.json(await baixarTributo(svc, body));
     if (body.acao === 'criar' && body.entidade_tipo === 'DespesaOperacional') return Response.json(await baixarDespesa(svc, body));
     if (body.acao === 'remover' && body.vinculo_id) {
       const vinculo = await svc.VinculoExtrato.get(body.vinculo_id);
+      if (['ItemCompra','FolhaPagamento','FaturaCartao','ObraReforma'].includes(vinculo.entidade_tipo)) return Response.json(await baixarBancoGeral(svc, body));
       if (vinculo.entidade_tipo === 'Tributo') return Response.json(await baixarTributo(svc, body));
       if (vinculo.entidade_tipo === 'DespesaOperacional') return Response.json(await baixarDespesa(svc, body));
     }

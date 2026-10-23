@@ -1,0 +1,4 @@
+import { centralBaixas } from '@/functions/centralBaixas';
+export const fontesBaixas = {DespesaOperacional:'Despesas e pró-labore',ItemCompra:'Compras',Tributo:'Tributos',FolhaPagamento:'Folha',FaturaCartao:'Faturas',ObraReforma:'Obras',LancamentoBancario:'Extrato bancário',LancamentoCartao:'Compras no cartão'};
+export async function chamarBaixas(payload){const r=await centralBaixas(payload);if(r.data?.error)throw new Error(r.data.error);return r.data;}
+export const rotuloCampo = campo => ({descricao:'Descrição',descricao_produto:'Descrição do produto',data_vencimento:'Vencimento',origem_compra:'Quem comprou',tipo_compra:'Natureza econômica',numero_nota:'Número da nota',responsavel:'Responsável',categoria:'Conta / categoria',fornecedor:'Fornecedor',detalhe:'Detalhe',observacao:'Observação'}[campo]||campo.replaceAll('_',' '));
