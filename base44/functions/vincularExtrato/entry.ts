@@ -5,6 +5,8 @@ import { baixarTributo } from '../../shared/tributoBaixa.ts';
 import { baixarDespesa } from '../../shared/despesaBaixa.ts';
 import { erroDirecao, RECEBIVEIS, recalcularRecebivel } from '../../shared/direcaoFinanceira.ts';
 import { baixarBancoGeral } from '../../shared/baixasBancoGeral.ts';
+import { bloquearBaixaAutomaticaImportada } from '../../shared/importacaoProtecao.ts';
+import { reservarRegistroBaixa,liberarRegistroBaixa } from '../../shared/baixasReserva.ts';
 
 /**
  * SERVIÇO CENTRAL DE VÍNCULO (fonte única de verdade da conciliação).
@@ -33,6 +35,7 @@ const OBRIGACOES = {
 };
 
 export default async function(req) {
+  const reservas=[];let dbReservas;
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
@@ -49,9 +52,14 @@ export default async function(req) {
       }
     }
 
-    const svc = base44.asServiceRole.entities;
+    const svc = base44.asServiceRole.entities;dbReservas=svc;
     if (body?.validate_only) return Response.json({ success: true, mode: 'validation', regra: body.regra ? { erro: erroDirecao(body.regra.lancamento, body.regra.entidade_tipo, body.regra.tipo_vinculo) } : null });
     if (body.acao === 'criar') {
+      await bloquearBaixaAutomaticaImportada(svc,body);
+      if(RECEBIVEIS.includes(body.entidade_tipo)&&body.lancamento_bancario_id&&body.entidade_id){
+        const banco=await reservarRegistroBaixa(svc,'LancamentoBancario',body.lancamento_bancario_id,body.versao_banco);reservas.push({tipo:'LancamentoBancario',id:body.lancamento_bancario_id,token:banco.token});
+        const doc=await reservarRegistroBaixa(svc,body.entidade_tipo,body.entidade_id,body.versao_documento);reservas.push({tipo:body.entidade_tipo,id:body.entidade_id,token:doc.token});
+      }
       if (!body.lancamento_bancario_id || !body.entidade_id || !body.entidade_tipo || !Number.isFinite(body.valor_alocado) || body.valor_alocado <= 0) return Response.json({ error: 'Informe lançamento, destino e valor positivo.' }, { status: 400 });
       const banco = await svc.LancamentoBancario.get(body.lancamento_bancario_id);
       const erro = erroDirecao(banco, body.entidade_tipo, body.tipo_vinculo);
@@ -195,5 +203,5 @@ export default async function(req) {
     return Response.json({ error: 'acao inválida — use criar | remover | recalcular' }, { status: 400 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
-  }
+  } finally {for(const r of reservas.reverse())await liberarRegistroBaixa(dbReservas,r.tipo,r.id,r.token);}
 }

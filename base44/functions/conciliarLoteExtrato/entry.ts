@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { protegerClienteImportacao } from '../../shared/importacaoProtecao.ts';
 import { eixosDoVinculo } from '../../shared/classificacaoPadrao.ts';
 import { conciliarTributos } from '../../shared/tributoConciliacao.ts';
 import { ehPagamentoTributo } from '../../shared/tributoRegras.ts';
@@ -20,7 +21,7 @@ function diffDias(d1, d2) {
 
 export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req);
+    const base44 = protegerClienteImportacao(createClientFromRequest(req));
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });

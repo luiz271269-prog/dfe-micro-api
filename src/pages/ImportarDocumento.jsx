@@ -4,46 +4,37 @@ import { base44 } from '@/api/base44Client';
 import useArquivoIdentificacao from '@/components/importar/useArquivoIdentificacao';
 import IdentificacaoArquivo from '@/components/importar/IdentificacaoArquivo';
 import PapelArquivo from '@/components/importar/PapelArquivo';
+import ContratoImportacaoIntro from '@/components/importar/ContratoImportacaoIntro';
 import HistoricoImportacoes from '@/components/importar/HistoricoImportacoes';
 import EditorReleitura from '@/components/importar/EditorReleitura';
 import CorrecaoImportacao from '@/components/importar/CorrecaoImportacao';
 import { arquivoDoLote } from '@/lib/papelImportacao';
 import validarLeituraImportacao from '@/lib/validarLeituraImportacao';
 import { processDocument } from '@/functions/processDocument';
-import { importarFonteVendas } from '@/functions/importarFonteVendas';
+
 import { Upload, FileText, ShoppingCart, CreditCard, Hammer, Users, Landmark, Receipt, CheckCircle, AlertTriangle, XIcon, Calendar, Wallet, Trash2 } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 
-import { deduplicateRecords, saveDeduplicatedRecords } from '@/lib/deduplicationEngine';
+import { deduplicateRecords } from '@/lib/deduplicationEngine';
+import useContratoImportacao from '@/hooks/useContratoImportacao';
+import salvarImportacao from '@/components/importar/salvarImportacao';
+import ResumoImportacao from '@/components/importar/ResumoImportacao';
 import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
 import TabelaRevisaoVendasDetalhado from '../components/importar/TabelaRevisaoVendasDetalhado';
 import PainelMemoriaImportacao from '../components/importar/PainelMemoriaImportacao';
 import ExtratoValidationCard from '../components/importar/ExtratoValidationCard';
-import { registrarResultado, assinaturaDeRegistros } from '../lib/memoriaImportacaoEngine';
+
 import { aplicarRegrasHistorico } from '../lib/aplicarRegrasHistorico';
 import { validateExtratoRecords } from '../lib/extratoValidation';
-import { GRUPO_IMPORTACAO, TIPOS_EVIDENCIA } from '@/lib/fontesFinanceiras';
-import { gerenciarEvidenciasFinanceiras } from '@/functions/gerenciarEvidenciasFinanceiras';
+// A matriz funcional é obtida do contrato canônico do servidor.
+
 import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
 import EvidenciasFinanceirasPanel from '@/components/financeiro/EvidenciasFinanceirasPanel';
 
-const DOC_TYPES = [
-{ id: 'extrato_bancario', label: 'Extrato Bancário Sicredi', icon: Landmark, color: 'blue', entity: 'LancamentoBancario', dedup: ['data', 'valor'], group: 'Visão Geral' },
-{ id: 'dda_boletos', label: 'DDA / Boletos a Vencer', icon: Landmark, color: 'indigo', entity: 'LancamentoBancario', dedup: ['data', 'descricao', 'valor'], group: 'Visão Geral' },
-{ id: 'fatura_cartao', label: 'Fatura de Cartão', icon: CreditCard, color: 'purple', entity: 'FaturaCartao', dedup: ['conta_cartao_id', 'mes_referencia'], group: 'Visão Geral' },
-{ id: 'relatorio_nfs', label: 'NFes Emitidas no Mês (Fiscal)', icon: FileText, color: 'green', entity: 'NotaFiscal', dedup: ['tipo', 'numero'], group: 'Receita' },
-{ id: 'relatorio_vendas_detalhado', label: 'Relatório de Vendas Diário (NFs + Parcelas)', icon: FileText, color: 'cyan', entity: 'NotaFiscal', dedup: ['numero'], group: 'Receita' },
-{ id: 'relatorio_vendas', label: 'Resumo Mensal de Vendas (Fabris/Ellitte)', icon: FileText, color: 'teal', entity: 'RelatorioFaturamento', dedup: ['mes'], group: 'Receita' },
-{ id: 'boletos_liquidados', label: 'Boletos Liquidados', icon: Receipt, color: 'teal', entity: 'TituloCobranca', dedup: ['nosso_numero'], group: 'Receita' },
-{ id: 'folha_pagamento', label: 'Folha de Pagamento', icon: Users, color: 'slate', entity: 'FolhaPagamento', dedup: ['funcionario_nome', 'competencia'], group: 'Pagamentos' },
-{ id: 'obra_reforma', label: 'Obra e Reforma', icon: Hammer, color: 'brown', entity: 'ObraReforma', dedup: ['data', 'responsavel', 'valor'], group: 'Pagamentos' },
-{ id: 'despesas_operacionais', label: 'Despesas Operacionais', icon: Wallet, color: 'rose', entity: 'DespesaOperacional', dedup: ['data', 'descricao', 'valor'], group: 'Pagamentos' },
-{ id: 'compras_fornecedor', label: 'Compras por Fornecedor', icon: ShoppingCart, color: 'orange', entity: 'ItemCompra', dedup: ['fornecedor', 'numero_nota', 'descricao_produto'], group: 'Compras & Estoque' }];
-
-// Ordem oficial dos grupos (espelha o menu lateral de acessos)
-const DOC_GROUPS = ['Entradas · fontes oficiais', 'Entradas · conciliação', 'Entradas · conferência', 'Saídas · fontes oficiais', 'Saídas · conciliação', 'Saídas · cartão', 'Banco · evidência comum'];
+const ICONES_IMPORTACAO = { Landmark,CreditCard,FileText,Receipt,Users,Hammer,Wallet,ShoppingCart };
+const DOC_GROUPS = ['Fonte oficial','Evidência de conferência','Composição','Movimento financeiro'];
 
 
 const COLOR_MAP = {
@@ -83,6 +74,10 @@ function FieldValue({ value }) {
 }
 
 export default function ImportarDocumento() {
+  const contrato = useContratoImportacao();
+  const DOC_TYPES = (contrato.data || []).map(t => ({...t,icon:ICONES_IMPORTACAO[t.icon]}));
+  const TIPOS_EVIDENCIA = DOC_TYPES.filter(t=>t.evidencia).map(t=>t.id);
+  const [loteResultado,setLoteResultado] = useState(null);
   const urlParams = new URLSearchParams(window.location.search);
   const preselected = urlParams.get('tipo');
 
@@ -146,7 +141,7 @@ export default function ImportarDocumento() {
     };
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, []); // eslint-disable-line
+  }, [contrato.data]); // eslint-disable-line
 
   async function loadCartoes() {
     const cartoes = await base44.entities.ContaCartao.filter({ is_ativo: true });
@@ -463,217 +458,22 @@ export default function ImportarDocumento() {
   }
 
   async function confirmSave() {
-    const erroLeitura = validarLeituraImportacao(selectedType, records);
-    if (erroLeitura) return showToast(erroLeitura, 'error');
-    if (selectedType === 'extrato_bancario' && extratoValidacao && !extratoValidacao.ok) {
-      return showToast('A sequência de saldos não bate. Corrija a extração antes de salvar.', 'error');
-    }
-    // Respeita seleção explícita do usuário — se marcou um registro com status 'erro',
-    // ele será salvo mesmo assim (usuário viu que os dados estão corretos)
-    const toSave = records.filter((r) => r.selected);
-    if (toSave.length === 0) return showToast('Nenhum registro selecionado para salvar.', 'error');
+    const erroLeitura=validarLeituraImportacao(selectedType,records);
+    if(erroLeitura)return showToast(erroLeitura,'error');
+    if(selectedType==='extrato_bancario'&&extratoValidacao&&!extratoValidacao.ok)return showToast('Corrija a sequência de saldos antes de salvar.','error');
+    if(!records.some(r=>r.selected))return showToast('Selecione registros para salvar.','error');
     setSaving(true);
-    try {
-      const typeConfig = DOC_TYPES.find((d) => d.id === selectedType);
-      let saved = 0,errors = 0;
-
-      // Evidências nunca criam documentos de origem ou lançamentos bancários.
-      if (TIPOS_EVIDENCIA.includes(selectedType)) {
-        for (let i = 0; i < toSave.length; i += 200) {
-          const resposta = await gerenciarEvidenciasFinanceiras({ acao: 'importar', tipo: selectedType, registros: toSave.slice(i, i + 200).map(r => r.data), arquivo_nome: file?.name || '', arquivo_hash: fileHash || '' });
-          if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Evidências não registradas');
-          saved += resposta.data.saved;
-        }
-      } else if (selectedType === 'fatura_cartao') {
-        // Pegar fatura independente de estar selecionada — lançamentos dependem do ID dela
-        const faturaRec = records.find((r) => r.data.__type === 'FaturaCartao');
-        const lancRecs = records.filter((r) => r.data.__type === 'LancamentoCartao' && r.selected && r.status !== 'erro');
-
-        let faturaId = null;
-
-        if (faturaRec) {
-          const { __type, ...fatData } = faturaRec.data;
-
-          if (faturaRec.status === 'duplicata') {
-            // Fatura já existe — buscar no banco. Tentar por conta_cartao_id+mês, ou só pelo mês se sem cartão
-            let ex = [];
-            if (fatData.conta_cartao_id) {
-              ex = await base44.entities.FaturaCartao.filter({
-                conta_cartao_id: fatData.conta_cartao_id,
-                mes_referencia: fatData.mes_referencia
-              });
-            }
-            if (!ex?.length && fatData.mes_referencia) {
-              // Fallback: buscar todas do mês e cruzar por valor_total
-              const todas = await base44.entities.FaturaCartao.filter({ mes_referencia: fatData.mes_referencia });
-              ex = todas.filter((f) => Math.abs(f.valor_total - fatData.valor_total) < 1);
-            }
-            faturaId = ex?.[0]?.id || null;
-            if (faturaId) saved++;
-          } else if (faturaRec.selected) {
-            // Criar fatura nova
-            const createdFatura = await base44.entities.FaturaCartao.create({ ...fatData, status: fatData.status || 'aberta', valor_pago: fatData.valor_pago ?? 0 });
-            faturaId = createdFatura?.id || null;
-            if (faturaId) saved++;else
-            errors++;
-          }
-        }
-
-        if (faturaId) {
-          // Dedup contra o banco — usa a MESMA normalização do prompt/deduplicarCartoes
-          // (data + estabelecimento normalizado + valor em centavos) para impedir reimportação duplicar
-          const existentes = await base44.entities.LancamentoCartao.filter({ fatura_id: faturaId });
-          const norm = (s) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 30);
-          const chavesExistentes = new Set(
-            (existentes || []).map((e) => `${e.data_lancamento}|${norm(e.estabelecimento)}|${Math.round((e.valor || 0) * 100)}`)
-          );
-          let pulados = 0;
-          for (let i = 0; i < lancRecs.length; i++) {
-            setSaveProgress(`Salvando lançamento ${i + 1} de ${lancRecs.length}...`);
-            const { __type, ...lancData } = lancRecs[i].data;
-            const chave = `${lancData.data_lancamento}|${norm(lancData.estabelecimento)}|${Math.round((lancData.valor || 0) * 100)}`;
-            if (chavesExistentes.has(chave)) {pulados++;continue;}
-            chavesExistentes.add(chave);
-            await base44.entities.LancamentoCartao.create({ ...lancData, fatura_id: faturaId });
-            saved++;
-          }
-          if (pulados > 0) {
-            console.log(`[FaturaCartao] ${pulados} lançamento(s) já existentes na fatura — pulados.`);
-          }
-        } else if (lancRecs.length > 0) {
-          showToast('⚠️ Selecione um cartão no calendário — não foi possível identificar a fatura para vincular os lançamentos.', 'error');
-        }
-      } else if (selectedType === 'relatorio_vendas_detalhado') {
-        // Salvar NotaFiscal + TituloCobranca em paralelo (motor genérico, mas separado por __type)
-        const notasToSave = records.filter((r) => r.selected && r.status !== 'erro' && r.data.__type === 'NotaFiscal').
-        map((r) => ({ ...r, data: { ...r.data, __type: undefined } }));
-        const cobsToSave = records.filter((r) => r.selected && r.status !== 'erro' && r.data.__type === 'TituloCobranca').
-        map((r) => ({ ...r, data: { ...r.data, __type: undefined } }));
-
-        // Remover __type antes de salvar
-        notasToSave.forEach((r) => delete r.data.__type);
-        cobsToSave.forEach((r) => delete r.data.__type);
-
-        setSaveProgress(`Importando fonte de vendas: ${notasToSave.length} notas + ${cobsToSave.length} parcelas...`);
-        for (const [campo, registros] of [['notas', notasToSave], ['cobrancas', cobsToSave]]) {
-          for (const empresa of ['NeuralTec', 'Liesch']) {
-            const lote = registros.filter(r => (r.data.empresa || empresaFonte) === empresa);
-            for (let i = 0; i < lote.length; i += 200) {
-              const resposta = await importarFonteVendas({ [campo]: lote.slice(i, i + 200).map(r => r.data), empresa, arquivo_hash: fileHash || '' });
-              if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Fonte não importada');
-              saved += resposta.data.saved;
-            }
-          }
-        }
-      } else {
-        // Caso genérico: usar motor genérico
-        const stats = await saveDeduplicatedRecords(typeConfig.entity, toSave);
-        saved = stats.saved;
-        errors = stats.errors;
-      }
-
-      const dupes = records.filter((r) => r.status === 'duplicata').length;
-
-      // Salvar metadados extras no notes como JSON conforme tipo
-      let notesValue = JSON.stringify({ file_uri: fileUri || '' });
-      if (selectedType === 'folha_pagamento') {
-        const competencias = [...new Set(
-          records.filter((r) => r.data.competencia).map((r) => r.data.competencia)
-        )];
-        notesValue = JSON.stringify({
-          file_uri: fileUri || '',
-          competencias,
-          competencia: competencias[0] || null
-        });
-      } else if (selectedType === 'fatura_cartao') {
-        const faturaRec2 = records.find((r) => r.data.__type === 'FaturaCartao');
-        const cartaoInfo = contasCartao.find((c) => c.id === (faturaRec2?.data?.conta_cartao_id || selectedCartaoId));
-        notesValue = JSON.stringify({
-          file_uri: fileUri || '',
-          valor_total: faturaRec2?.data?.valor_total || null,
-          data_vencimento: faturaRec2?.data?.data_vencimento || null,
-          nome_cartao: cartaoInfo?.nome || null,
-          bandeira: cartaoInfo?.bandeira || null,
-          dia_vencimento: cartaoInfo?.dia_vencimento || null
-        });
-      }
-
-      // Salvar extração da IA como arquivo no storage (evita estourar limite do campo)
-      let aiExtractionUrl = '';
-      if (rawText) {
-        try {
-          const jsonBlob = new Blob([rawText], { type: 'application/json' });
-          const jsonFile = new File([jsonBlob], `extracao_${selectedType}_${Date.now()}.json`, { type: 'application/json' });
-          const { file_uri: jsonUri } = await base44.integrations.Core.UploadPrivateFile({ file: jsonFile });
-          aiExtractionUrl = jsonUri;
-        } catch (e) {
-          console.warn('Falha ao salvar extração no storage:', e);
-        }
-      }
-
-      await base44.entities.ImportBatch.create({
-        title: `${typeConfig?.label} — ${file?.name || 'arquivo'}`,
-        batch_type: selectedType,
-        file_name: file?.name || '',
-        file_hash: fileHash || '',
-        file_uri: fileUri || '',
-        identificacao,
-        ai_extraction: aiExtractionUrl,
-        total_records: records.length,
-        success_count: saved,
-        duplicate_count: dupes,
-        error_count: errors,
-        status: errors === records.length ? 'failed' : 'completed',
-        notes: notesValue
-      });
-
-      // Memória de aprendizado: registra se a importação saiu "redonda"
-      // (sem erros e com registros salvos). Ao atingir o limite, libera o aval.
-      try {
-        const typeLabel = DOC_TYPES.find((d) => d.id === selectedType)?.label || selectedType;
-        const redonda = errors === 0 && saved > 0;
-        const user = await base44.auth.me().catch(() => null);
-        await registrarResultado(selectedType, typeLabel, {
-          redonda,
-          assinatura: assinaturaDeRegistros(records),
-          user
-        });
-        setMemoriaRefresh((k) => k + 1);
-      } catch {/* memória é auxiliar — nunca bloqueia o salvamento */}
-
-      // Deduplicação automática pós-salvamento — varre TODAS as entidades do sistema
-      setSaveProgress('Verificando duplicatas em todo o sistema...');
-      let removidos = 0;
-      try {
-        // Importação não deve apagar ou migrar histórico automaticamente.
-        removidos = 0;
-      } catch {/* falha silenciosa — importação já foi salva */}
-
-      // Conciliação NF ↔ Títulos Sicredi — após importar relatório do Elite ou boletos liquidados
-      let nfsConciliadas = 0;
-      let titulosVinc = 0;
-      // Notas e parcelas já ficam vinculadas pela importação da fonte oficial.
-      // Pagamentos informados permanecem separados até conciliar o crédito.
-
-      setSaving(false);
-      setSaveProgress('');
-      setStep(4);
-      const dedupMsg = removidos > 0 ? ` · 🧹 ${removidos} duplicatas removidas do banco` : '';
-      const concMsg = nfsConciliadas > 0 || titulosVinc > 0 ? ` · 🔗 ${nfsConciliadas} NF(s) conciliadas com ${titulosVinc} título(s) Sicredi` : '';
-      showToast(`✓ ${saved} novos registros salvos · ${dupes} ignoradas na importação${dedupMsg}${concMsg}`);
-      loadHistory();
-      queryClient.invalidateQueries({ queryKey: ['historico-importacoes'] });
-      queryClient.invalidateQueries({ queryKey: ['lembrete-importacao'] });
-      window.dispatchEvent(new Event('neuralfinRefresh'));
-      localStorage.setItem('neuralfinPendingRefresh', Date.now().toString());
-    } catch (err) {
-      setSaving(false);
-      setSaveProgress('');
-      showToast(`Erro ao salvar: ${err.message}`, 'error');
-    }
+    try{
+      const result=await salvarImportacao({tipo:selectedType,records,file,fileUri,fileHash,identificacao,empresa:empresaFonte,rawText,onProgress:setSaveProgress});
+      setLoteResultado(result.batch);setStep(4);
+      showToast(result.buscaErro?`Arquivo salvo, mas a busca precisa ser refeita: ${result.buscaErro}`:'Arquivo persistido sem baixas. Revise a conferência e autorize cada proposta.',result.buscaErro?'error':'success');
+      loadHistory();queryClient.invalidateQueries();window.dispatchEvent(new Event('neuralfinRefresh'));
+    }catch(err){showToast(`Importação interrompida: ${err.message}. Consulte o histórico antes de repetir.`,'error');}
+    finally{setSaving(false);setSaveProgress('');}
   }
 
   function reset() {
+    setLoteResultado(null);
     setSelectedType(preselected || null);
     setFile(null);
     setFileUri(null);setReleitura(null);limparIdentificacao();
@@ -727,6 +527,9 @@ export default function ImportarDocumento() {
         </Button>
       </PageHeader>
 
+      <ContratoImportacaoIntro />
+      {contrato.isLoading&&<p className="mb-4 text-sm text-muted-foreground">Carregando contrato dos 11 tipos…</p>}
+      {contrato.isError&&<p role="alert" className="mb-4 text-destructive">Não foi possível carregar as regras: {contrato.error.message}</p>}
       <FontesFinanceirasPanel />
       {TIPOS_EVIDENCIA.includes(selectedType) && <EvidenciasFinanceirasPanel direcao={selectedType === 'dda_boletos' ? 'saida' : 'entrada'} />}
       {toast &&
@@ -776,12 +579,7 @@ export default function ImportarDocumento() {
       </div>
 
       {step === 4 ?
-      <div className="text-center py-16">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Importação Concluída!</h2>
-          <p className="text-muted-foreground mb-6">Os registros foram salvos com sucesso.</p>
-          <Button onClick={reset}>Nova Importação</Button>
-        </div> :
+      (loteResultado ? <ResumoImportacao batchId={loteResultado.id} tipo={loteResultado.batch_type} onNova={reset}/> : <div className="rounded-xl border bg-card p-5"><p>Revisão histórica registrada. Pagamentos e vínculos preservados.</p><Button className="mt-3" onClick={reset}>Nova importação</Button></div>) :
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 mb-8">
           {/* Tipo de documento */}
@@ -789,7 +587,7 @@ export default function ImportarDocumento() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">1. Tipo de Documento</h2>
             <div className="space-y-4">
               {DOC_GROUPS.map((groupLabel) => {
-              const groupTypes = DOC_TYPES.filter((dt) => GRUPO_IMPORTACAO[dt.id] === groupLabel);
+              const groupTypes = DOC_TYPES.filter((dt) => dt.grupo === groupLabel);
               if (groupTypes.length === 0) return null;
               return (
                 <div key={groupLabel}>
@@ -830,7 +628,7 @@ export default function ImportarDocumento() {
           <div>
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3">2. Arquivo</h2>
 
-            {selectedType === 'relatorio_vendas_detalhado' && <label className="block mb-4 text-sm">Empresa da fonte, quando não impressa no arquivo<select className="mt-1 w-full rounded-md border bg-background p-2" value={empresaFonte} onChange={e => setEmpresaFonte(e.target.value)}><option>NeuralTec</option><option>Liesch</option></select><span className="block mt-1 text-xs text-muted-foreground">Notas e parcelas têm identidade por empresa. Pagamentos informados aguardam conciliação bancária.</span></label>}
+            {selectedType && <label className="block mb-4 text-sm">Empresa da fonte, quando não impressa no arquivo<select className="mt-1 w-full rounded-md border bg-background p-2" value={empresaFonte} onChange={e => setEmpresaFonte(e.target.value)}><option>NeuralTec</option><option>Liesch</option></select><span className="block mt-1 text-xs text-muted-foreground">Notas e parcelas têm identidade por empresa. Pagamentos informados aguardam conciliação bancária.</span></label>}
             <PainelMemoriaImportacao
             tipoImport={selectedType}
             label={DOC_TYPES.find((d) => d.id === selectedType)?.label}
@@ -907,7 +705,7 @@ export default function ImportarDocumento() {
               </div>
           }
 
-            <HistoricoImportacoes tipos={DOC_TYPES} tipo={selectedType} onReler={relerArquivo} busy={identificando || processing || saving} refresh={memoriaRefresh} />
+            <HistoricoImportacoes tipos={DOC_TYPES} tipo={selectedType} onReler={relerArquivo} onResultado={b=>{setLoteResultado(b);setSelectedType(b.batch_type);setStep(4);}} busy={identificando || processing || saving} refresh={memoriaRefresh} />
 
           </div>
         </div>

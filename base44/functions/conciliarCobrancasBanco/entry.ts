@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { protegerClienteImportacao } from '../../shared/importacaoProtecao.ts';
 import { secrets } from 'base44:runtime';
 import { direcaoBanco } from '../../shared/direcaoFinanceira.ts';
 
@@ -26,7 +27,7 @@ function clienteNoExtrato(cliente, descricao) {
 
 export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req);
+    const base44 = protegerClienteImportacao(createClientFromRequest(req));
     const body = await req.json().catch(() => ({}));
     const internoOk = !!body?.internal_token && body.internal_token === secrets.get('NEXUS_HUB_TOKEN');
     if (!internoOk) {

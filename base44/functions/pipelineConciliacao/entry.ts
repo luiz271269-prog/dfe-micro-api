@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { protegerClienteImportacao } from '../../shared/importacaoProtecao.ts';
 import { secrets } from 'base44:runtime';
 
 
@@ -23,7 +24,7 @@ const CONFIANCA_AUTO = 90;
 
 export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req);
+    const base44 = protegerClienteImportacao(createClientFromRequest(req));
     const svc = base44.asServiceRole.entities;
 
     const appId = secrets.get('BASE44_APP_ID');

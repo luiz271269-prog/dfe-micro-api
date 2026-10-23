@@ -17,7 +17,7 @@ export default async function(req) {
       if(!String(n.numero || '').trim()||!['NF','CI'].includes(n.tipo)||!n.cliente||!dataValida(n.data_emissao)||!Number.isFinite(n.valor_total)||n.valor_total<0)throw new Error('Nota sem identidade, data ou valor válido.');
       return {numero:String(n.numero).trim(),tipo:n.tipo,cliente:String(n.cliente).trim(),empresa,data_emissao:n.data_emissao,vendedor:['Tiago','Thais','Fat.Direto'].includes(n.vendedor)?n.vendedor:'Fat.Direto',valor_total:n.valor_total,fonte_modulo:'vendas',fonte_chave:chave(n.tipo,n.numero),fonte_arquivo_hash:hash,valor_recebido_informado:Number(n.valor_recebido || 0)};
     });
-    let saved=0,created=0,updated=0;
+    let saved=0,created=0,updated=0;const resultados=[];
     if(normalizadas.length){
       const pagina=await db.NotaFiscal.filter({numero:{$in:normalizadas.map(n=>n.numero)},$or:[{empresa}, {empresa:{$exists:false}}, {empresa:null}]},{limit:500});
       if(pagina.has_more)throw new Error('Muitas notas históricas para este lote. Separe o arquivo antes de importar.');
@@ -32,8 +32,8 @@ export default async function(req) {
           alteracoes.push({id:existente.id,fonte_modulo:n.fonte_modulo,fonte_chave:n.fonte_chave,fonte_arquivo_hash:hash,valor_recebido_informado:n.valor_recebido_informado});
         } else novos.push({...n,status:n.valor_total===0?'anulada':'a_vencer',valor_recebido:0,valor_aberto:n.valor_total});
       }
-      if(novos.length)await db.NotaFiscal.bulkCreate(novos);
-      if(alteracoes.length)await db.NotaFiscal.bulkUpdate(alteracoes);
+      if(novos.length){const docs=await db.NotaFiscal.bulkCreate(novos);resultados.push(...docs.map(d=>({tipo:'NotaFiscal',id:d.id,resultado:'criado'})));}
+      if(alteracoes.length){await db.NotaFiscal.bulkUpdate(alteracoes);resultados.push(...alteracoes.map(d=>({tipo:'NotaFiscal',id:d.id,resultado:'atualizado'})));}
       created+=novos.length;updated+=alteracoes.length;saved+=novos.length+alteracoes.length;
     }
     if(cobrancas.length){
@@ -58,10 +58,10 @@ export default async function(req) {
           alteracoes.push({id:iguais[0].id,nota_fiscal_id:c.nota_fiscal_id,fonte_modulo:'vendas',fonte_chave:c.fonte_chave,fonte_arquivo_hash:hash,valor_pago_informado:c.valor_pago_informado,...(c.data_pagamento_informada?{data_pagamento_informada:c.data_pagamento_informada}:{})});
         } else novos.push({...c,valor_pago:0,status:c.data_vencimento<hoje?'vencido':'em_aberto'});
       }
-      if(novos.length)await db.TituloCobranca.bulkCreate(novos);
-      if(alteracoes.length)await db.TituloCobranca.bulkUpdate(alteracoes);
+      if(novos.length){const docs=await db.TituloCobranca.bulkCreate(novos);resultados.push(...docs.map(d=>({tipo:'TituloCobranca',id:d.id,resultado:'criado'})));}
+      if(alteracoes.length){await db.TituloCobranca.bulkUpdate(alteracoes);resultados.push(...alteracoes.map(d=>({tipo:'TituloCobranca',id:d.id,resultado:'atualizado'})));}
       created+=novos.length;updated+=alteracoes.length;saved+=novos.length+alteracoes.length;
     }
-    return Response.json({success:true,saved,created,updated});
+    return Response.json({success:true,saved,created,updated,registros_resultado:resultados});
   }catch(error){return Response.json({error:error.message},{status:422});}
 }

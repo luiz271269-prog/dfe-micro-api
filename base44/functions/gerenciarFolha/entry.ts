@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { validarNovaFolha, criarFolhaValidada, resolverFuncionario, queryFuncionario, impedimentoFolha, queryTipoFolha } from '../../shared/folhaRegras.ts';
 import { impedimentoAdmissao } from '../../shared/admissaoFuncionario.ts';
+import { sanitizarImportacao } from '../../shared/importacaoContrato.ts';
 
 export default async function(req) {
   try {
@@ -9,7 +10,8 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
     const entities = client.entities;
-    const { action, data, id, competencia, cursor } = await req.json();
+    const { action, data, id, competencia, cursor, validate_only } = await req.json();
+    if(validate_only)return Response.json({ok:true,sanitizado:sanitizarImportacao('FolhaPagamento',data||{})});
     if (action === 'validar_admissao') {
       if (!data?.funcionario_id) throw new Error('Selecione um funcionário cadastrado.');
       const func = await resolverFuncionario(entities, data);
@@ -77,7 +79,8 @@ export default async function(req) {
     const fields = ['funcionario_id','funcionario_nome','competencia','tipo','salario_bruto','desconto_inss','desconto_irrf','desconto_vt','desconto_vr','outros_descontos','horas_extras','comissao','eventos','salario_liquido','data_pagamento','valor_pago','forma_pagamento','status','fgts_valor','empresa','origem_compra','tipo_compra'];
     const payload = Object.fromEntries(fields.filter(k => data[k] !== undefined).map(k => [k, data[k]]));
     if (!Number.isFinite(payload.salario_bruto) || !Number.isFinite(payload.salario_liquido) || (payload.eventos && (!Array.isArray(payload.eventos) || payload.eventos.length > 200))) return Response.json({ error: 'Valores da folha inválidos.' }, { status: 400 });
-    const folha = await criarFolhaValidada(entities, payload);
+    // Criação de documento não é executor financeiro, nem mesmo fora da tela de importação.
+    const folha = await criarFolhaValidada(entities, sanitizarImportacao('FolhaPagamento',payload));
     return Response.json({ ok: true, folha });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 400 });

@@ -12,6 +12,5 @@ export const FONTES_FINANCEIRAS = {
     { modulo: 'Cartões', fonte: 'Fatura do cartão', conciliacao: 'Compra vinculada ao documento; fatura quitada pelo banco', path: '/cartoes' },
   ],
 };
-export const TIPOS_EVIDENCIA = ['boletos_liquidados', 'relatorio_nfs', 'dda_boletos'];
 export const DIRECAO_INTEGRADA = { recebimento_aluguel: 'entrada', recebimento_servico: 'entrada', despesa_condominio: 'saida' };
-export const GRUPO_IMPORTACAO = { extrato_bancario: 'Banco · evidência comum', relatorio_vendas_detalhado: 'Entradas · fontes oficiais', relatorio_vendas: 'Entradas · conferência', boletos_liquidados: 'Entradas · conciliação', relatorio_nfs: 'Entradas · conciliação', dda_boletos: 'Saídas · conciliação', fatura_cartao: 'Saídas · cartão', folha_pagamento: 'Saídas · fontes oficiais', obra_reforma: 'Saídas · fontes oficiais', despesas_operacionais: 'Saídas · fontes oficiais', compras_fornecedor: 'Saídas · fontes oficiais' };
+// Agrupamentos e capacidades de importação vêm de importacaoFinanceira/contrato.

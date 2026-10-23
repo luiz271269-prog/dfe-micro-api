@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { protegerClienteImportacao } from '../../shared/importacaoProtecao.ts';
 import { nomeFolhaCompativel } from '../../shared/folhaIdentidade.ts';
 import { periodoPagamentoFolha } from '../../shared/folhaCalendario.ts';
 
@@ -95,7 +96,7 @@ function classificarPix(pixValor, pixData, folha, totalAlocadoAntes) {
 
 export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req);
+    const base44 = protegerClienteImportacao(createClientFromRequest(req));
     const body = await req.json().catch(() => ({}));
     const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
     if (!internoOk) {

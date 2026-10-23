@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { protegerClienteImportacao } from '../../shared/importacaoProtecao.ts';
 import { conciliarTributos } from '../../shared/tributoConciliacao.ts';
 import { ehPagamentoTributo } from '../../shared/tributoRegras.ts';
 
@@ -105,9 +106,9 @@ function consolidarContasAbertas({ despesas, tributos, faturas, cartoes, compras
   return itens;
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req);
+    const base44 = protegerClienteImportacao(createClientFromRequest(req));
     const body = await req.json().catch(() => ({}));
     const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
     if (!internoOk) {
@@ -284,4 +285,4 @@ Deno.serve(async (req) => {
     console.error('Erro conciliação:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

@@ -1,0 +1,150 @@
+{
+  "name": "RegistroImportacao",
+  "type": "object",
+  "properties": {
+    "import_batch_id": {
+      "type": "string"
+    },
+    "tipo_importacao": {
+      "type": "string"
+    },
+    "chave": {
+      "type": "string"
+    },
+    "entidade_tipo": {
+      "type": "string"
+    },
+    "entidade_id": {
+      "type": "string"
+    },
+    "descricao": {
+      "type": "string"
+    },
+    "empresa": {
+      "type": "string"
+    },
+    "valor": {
+      "type": "number"
+    },
+    "data_referencia": {
+      "type": "string"
+    },
+    "origem_informacao": {
+      "type": "string",
+      "enum": [
+        "importacao"
+      ]
+    },
+    "pagamento_informado": {
+      "type": "boolean"
+    },
+    "valor_pago_informado": {
+      "type": "number"
+    },
+    "data_pagamento_informada": {
+      "type": "string"
+    },
+    "status_informado": {
+      "type": "string"
+    },
+    "forma_informada": {
+      "type": "string"
+    },
+    "conferencia": {
+      "type": "string",
+      "enum": [
+        "nao_aplicavel",
+        "encontrado",
+        "divergente",
+        "ambiguo",
+        "sem_par",
+        "pendente"
+      ]
+    },
+    "detalhe": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "sem_indicacao",
+        "aguardando_busca",
+        "pendente",
+        "proposta",
+        "ambiguo",
+        "revisao",
+        "executando",
+        "concluido",
+        "falhou",
+        "nao_aplicavel"
+      ]
+    },
+    "resultado_importacao": {
+      "type": "string",
+      "enum": [
+        "criado",
+        "atualizado",
+        "ignorado",
+        "erro"
+      ]
+    },
+    "candidatos": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "candidato_confirmado": {
+      "type": "object"
+    },
+    "pedido_id": {
+      "type": "string"
+    },
+    "confirmado_por": {
+      "type": "string"
+    },
+    "confirmado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "auditoria_id": {
+      "type": "string"
+    },
+    "resultado_execucao": {
+      "type": "object"
+    },
+    "erro": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "required": [
+    "import_batch_id",
+    "tipo_importacao",
+    "chave",
+    "estado"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

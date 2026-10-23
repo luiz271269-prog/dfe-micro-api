@@ -1,5 +1,5 @@
 import { base44 } from '@/api/base44Client';
-import { criarFolha } from '@/components/funcionarios/folha/folhaOperacoes';
+
 
 /**
  * Motor de deduplicação genérico e reutilizável
@@ -206,49 +206,5 @@ export async function deduplicateRecords(records, entityType) {
   return enriched;
 }
 
-/**
- * Salva registros após passar pela deduplicação
- * Retorna estatísticas de sucesso
- */
-export async function saveDeduplicatedRecords(entityType, recordsWithStatus) {
-  const config = DEDUP_CONFIG[entityType];
-  if (!config) {
-    throw new Error(`Configuração de deduplicação não encontrada para ${entityType}`);
-  }
-
-  const { entity } = config;
-  // Respeita seleção explícita do usuário — salva tudo que está marcado (inclusive 'erro' se usuário confirmou)
-  const toSave = recordsWithStatus.filter(r => r.selected);
-
-  // Folhas passam pela mesma validação dos formulários, em sequência para evitar duplicatas no lote.
-  if (entityType === 'FolhaPagamento') {
-    let saved = 0;
-    for (const record of toSave) { await criarFolha(record.data); saved++; }
-    return { saved, errors: 0, duplicates: recordsWithStatus.filter(r => r.status === 'duplicata').length, invalid: recordsWithStatus.filter(r => r.status === 'erro').length };
-  }
-  // Salvar em paralelo (lotes de 5) para maior velocidade
-  let saved = 0;
-  let errors = 0;
-  const BATCH = 5;
-
-  for (let i = 0; i < toSave.length; i += BATCH) {
-    const chunk = toSave.slice(i, i + BATCH);
-    const results = await Promise.allSettled(
-      chunk.map(record => base44.entities[entity].create(record.data))
-    );
-    results.forEach(r => { if (r.status === 'fulfilled') saved++; else errors++; });
-  }
-
-  return {
-    saved,
-    errors,
-    duplicates: recordsWithStatus.filter(r => r.status === 'duplicata').length,
-    invalid: recordsWithStatus.filter(r => r.status === 'erro').length,
-  };
-}
-
-export default {
-  DEDUP_CONFIG,
-  deduplicateRecords,
-  saveDeduplicatedRecords,
-};
+// A persistência é exclusiva do contrato de importação no backend.
+export default { DEDUP_CONFIG, deduplicateRecords };

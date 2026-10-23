@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
+import { protegerClienteImportacao } from '../../shared/importacaoProtecao.ts';
 import { conciliarComprasCartao } from '../../shared/conciliacaoCartaoMotor.ts';
 
 // Concilia Compras (ItemCompra) ↔ Cartões de Crédito e Extrato Bancário.
@@ -27,7 +28,7 @@ function diffDias(a, b) {
 
 export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req);
+    const base44 = protegerClienteImportacao(createClientFromRequest(req));
     const body = await req.json().catch(() => ({}));
     const internoOk = !!body?.internal_token && body.internal_token === Deno.env.get('NEXUS_HUB_TOKEN');
     let usuarioId = 'pipeline';
@@ -39,6 +40,7 @@ export default async function(req) {
     }
 
     const svc = base44.asServiceRole.entities;
+    if(body.validate_only)return Response.json({success:true,protecao_importacao:true});
     const cartaoSeguro = await conciliarComprasCartao(svc, body, usuarioId, ['ItemCompra']);
     if (body.dry_run === true || body.acao === 'analisar') return Response.json(cartaoSeguro);
     const [compras, lancCartao, lancBanc, vincs, sugestoes] = await Promise.all([

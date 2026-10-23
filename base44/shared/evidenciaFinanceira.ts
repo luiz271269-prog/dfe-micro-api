@@ -1,5 +1,6 @@
 import { PAGAVEIS } from './direcaoFinanceira.ts';
-export const TIPOS = ['boletos_liquidados', 'relatorio_nfs', 'dda_boletos'];
+import { MATRIZ_IMPORTACAO } from './importacaoContrato.ts';
+export const TIPOS = MATRIZ_IMPORTACAO.filter(m=>m.evidencia).map(m=>m.tipo);
 export const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 export function normalizarEvidencia(tipo, r, arquivo) {
   const valor = Math.abs(Number(tipo === 'boletos_liquidados' ? r.valor_pago : tipo === 'relatorio_nfs' ? r.valor_total : r.valor));

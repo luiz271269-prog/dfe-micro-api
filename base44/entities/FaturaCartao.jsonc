@@ -91,6 +91,10 @@
     "conciliacao_iniciada_em": {
       "type": "string",
       "format": "date-time"
+    },
+    "import_batch_id": {
+      "type": "string",
+      "title": "Lote de origem; concilia\u00e7\u00e3o posterior exige autoriza\u00e7\u00e3o"
     }
   },
   "required": [

@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
+import { protegerClienteImportacao } from '../../shared/importacaoProtecao.ts';
 import { secrets } from 'base44:runtime';
 import { lerCompleto } from '../../shared/conciliacaoLeitura.ts';
 
@@ -12,7 +13,7 @@ function nomeBate(descricao, cartao) {
 
 export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req);
+    const base44 = protegerClienteImportacao(createClientFromRequest(req));
     const payload = await req.json().catch(() => ({}));
     const tokenInterno = secrets.get('NEXUS_HUB_TOKEN');
     const chamadaInterna = Boolean(tokenInterno && payload.internal_token === tokenInterno);
@@ -21,6 +22,7 @@ export default async function(req) {
       if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
       if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
+    if(payload.validate_only)return Response.json({success:true,protecao_importacao:true});
     const dry_run = payload.dry_run === true;
     const db = chamadaInterna ? base44.asServiceRole.entities : base44.entities;
     const [cartoes, faturas, bancos, itensCartao, vinculos] = await Promise.all([
