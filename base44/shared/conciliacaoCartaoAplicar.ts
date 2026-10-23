@@ -18,15 +18,16 @@ export async function aplicarVinculoCartao(db, row, candidato, userId, manual, m
     const evidencia = evidenciasCartao(charge, documento, candidato.tipo, manual);
     if (!evidencia.elegivel || (!manual && !evidencia.auto)) throw new Error('Evidência insuficiente ou conflito. Nenhum vínculo criado.');
     const antes = snapshot(documento);
-    const patch = { lancamento_cartao_id: charge.id };
-    if (candidato.tipo === 'DespesaOperacional') patch.status = 'pago';
-    if (candidato.tipo === 'ItemCompra') Object.assign(patch, { forma_pagamento: 'cartao', status_pagamento: 'pago', valor_pago: documento.valor_total });
+    if (!(await db.FaturaCartao.get(charge.fatura_id))?.id) throw new Error('Fatura não encontrada. Nenhum vínculo criado.');
+    // Composição não é pagamento: valores e situações financeiras do documento permanecem intactos.
+    const patch = { lancamento_cartao_id: charge.id, forma_pagamento: 'cartao' };
+    const composicao = doc => ({ ...snapshot(doc), modelo_cartao: 'composicao' });
     // Intenção durável com antes/depois antes de qualquer modificação financeira.
     trilha = await db.VinculoCartao.create({
       lancamento_cartao_id: charge.id, fatura_id: charge.fatura_id, entidade_tipo: candidato.tipo, entidade_id: documento.id,
-      valor_alocado: evidencia.valor, origem: manual ? 'manual' : 'automatico', usuario_id: userId, execucao_id: token, fase: 'preparado',
+      valor_alocado: Number(charge.valor), origem: manual ? 'manual' : 'automatico', usuario_id: userId, execucao_id: token, fase: 'preparado',
       motivo: motivo || 'Correspondência única nos dois sentidos: valor em centavos, data até 3 dias, fornecedor, empresa e classificação comprovados.',
-      antes_json: JSON.stringify(antes), depois_json: JSON.stringify(snapshot({ ...documento, ...patch })),
+      antes_json: JSON.stringify(antes), depois_json: JSON.stringify(composicao({ ...documento, ...patch })),
     });
     if (!trilha?.id) throw new Error('Não foi possível preparar a trilha de auditoria.');
     // Condicional atômica: só modifica o documento ainda livre e inalterado.
@@ -34,8 +35,8 @@ export async function aplicarVinculoCartao(db, row, candidato, userId, manual, m
     const depois = await db[candidato.tipo].get(documento.id);
     if (depois.lancamento_cartao_id !== charge.id) throw new Error('Documento ocupado por outra execução. Atualize.');
     if (candidato.tipo === 'ItemCompra') await db.LancamentoCartao.update(charge.id, { item_compra_id: documento.id });
-    await db.VinculoCartao.update(trilha.id, { fase: 'confirmado', depois_json: JSON.stringify(snapshot(depois)), erro: '' });
-    return { id: charge.id, entidade_tipo: candidato.tipo, entidade_id: documento.id, valor_alocado: evidencia.valor };
+    await db.VinculoCartao.update(trilha.id, { fase: 'confirmado', depois_json: JSON.stringify(composicao(depois)), erro: '' });
+    return { id: charge.id, entidade_tipo: candidato.tipo, entidade_id: documento.id, valor_alocado: Number(charge.valor) };
   } catch(error) {
     if (trilha?.id) await db.VinculoCartao.update(trilha.id, { fase: 'falha', erro: String(error.message).slice(0,1000) });
     throw error;

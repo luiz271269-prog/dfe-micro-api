@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, TrendingDown, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Search, TrendingDown } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
 import LancarDespesaFotoButton from '../components/despesas/LancarDespesaFotoButton';
 import DespesasPorOrigem from '../components/despesas/DespesasPorOrigem';
+import DespesasLiquidacaoResumo from '@/components/despesas/DespesasLiquidacaoResumo';
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
@@ -107,7 +108,7 @@ export default function Despesas() {
   const filtered = useMemo(() => {
     return despesasMes.filter(d => {
       if (filterCategoria !== 'all' && d.categoria !== filterCategoria) return false;
-      if (filterStatus !== 'all' && d.status !== filterStatus) return false;
+      if (filterStatus !== 'all' && (d.lancamento_cartao_id ? 'incluido_fatura' : d.status) !== filterStatus) return false;
       if (searchTerm && !d.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) && !d.fornecedor?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     });
@@ -116,8 +117,7 @@ export default function Despesas() {
   const { sorted, sortField, sortDir, handleSort } = useTableSort(filtered, 'data', 'desc');
 
   const totalMes = despesasMes.reduce((s, d) => s + (d.valor || 0), 0);
-  const totalPago = despesasMes.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
-  const totalPendente = despesasMes.filter(d => d.status !== 'pago').reduce((s, d) => s + (d.valor || 0), 0);
+  // Quitação fora do cartão e composição são consultadas separadamente no resumo financeiro.
 
   // Totais por categoria no mês
   const porCategoria = useMemo(() => {
@@ -157,8 +157,7 @@ export default function Despesas() {
       {/* Cards resumo */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <GradientCard title="Total do Mês" value={formatCurrency(totalMes)} sub={`${despesasMes.length} despesas`} icon={TrendingDown} gradient="red" />
-        <GradientCard title="Pago" value={formatCurrency(totalPago)} sub={`${despesasMes.filter(d=>d.status==='pago').length} itens`} icon={CheckCircle} gradient="green" />
-        <GradientCard title="Pendente / Vencido" value={formatCurrency(totalPendente)} sub={`${despesasMes.filter(d=>d.status!=='pago').length} itens`} icon={AlertTriangle} gradient={totalPendente > 0 ? 'orange' : 'teal'} />
+        <DespesasLiquidacaoResumo periodo={isAnnual ? selectedMonth.slice(0, 4) : selectedMonth}/>
         <div className="bg-white dark:bg-card border rounded-2xl p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Top Categorias</p>
           <div className="space-y-1">
@@ -189,7 +188,8 @@ export default function Despesas() {
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pago">Pago</SelectItem>
+            <SelectItem value="incluido_fatura">Incluído na fatura</SelectItem>
+            <SelectItem value="pago">Pago fora do cartão</SelectItem>
             <SelectItem value="pendente">Pendente</SelectItem>
             <SelectItem value="vencido">Vencido</SelectItem>
           </SelectContent>
@@ -248,7 +248,7 @@ export default function Despesas() {
                   <td className="px-4 py-3 text-xs hidden md:table-cell">{d.empresa || '—'}</td>
                   <td className="px-4 py-3 text-xs hidden lg:table-cell">{d.forma_pagamento || '—'}</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(d.valor)}</td>
-                  <td className="px-4 py-3"><div className="space-y-2"><StatusBadge status={d.status} /><BaixaAcaoRegistro entidade="DespesaOperacional" registroId={d.id} descricao={d.descricao} /></div></td>
+                  <td className="px-4 py-3"><div className="space-y-2"><StatusBadge status={d.lancamento_cartao_id ? 'incluido_fatura' : d.status} /><BaixaAcaoRegistro entidade="DespesaOperacional" registroId={d.id} descricao={d.descricao} /></div></td>
                   <td className="px-4 py-3"><ComprovantePicker entityName="DespesaOperacional" record={d} onChange={loadData} /></td>
                 </tr>
               ))}

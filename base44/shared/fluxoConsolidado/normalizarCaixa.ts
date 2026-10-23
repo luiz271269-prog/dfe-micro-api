@@ -72,7 +72,8 @@ export function normalizarCaixa(dados, perimetro, hoje) {
       const vinc = vinculosPorLanc.get(l.id);
       if (neutralizados.has(l.id)) { [classe, sub] = ['transferencia_neutralizada', 'transferencia']; }
       else if (vinc?.length) {
-        const v = vinc[0]; // decisão 15: em caixa, o vínculo manda
+        // Cada débito bancário entra uma vez. A fatura prevalece sobre vínculos legados dos componentes.
+        const v = vinc.find(v => v.entidade_tipo === 'FaturaCartao') || vinc[0];
         if (v.entidade_tipo === 'ObraReforma') [classe, sub] = classeDaObra(obras.get(v.entidade_id));
         else if (v.entidade_tipo === 'Tributo') [classe, sub] = ['pagamento_operacional', tributos.get(v.entidade_id)?.tipo === 'DAS' ? 'das' : 'tributos'];
         else [classe, sub] = VINCULO_PARA_CLASSE[v.entidade_tipo] || ['nao_classificado', 'sem_regra'];

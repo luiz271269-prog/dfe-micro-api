@@ -4,12 +4,15 @@ import { carregarCandidatosCartao } from './conciliacaoCartaoDados.ts';
 import { aplicarVinculoCartao } from './conciliacaoCartaoAplicar.ts';
 import { recuperarTrilhaCartao } from './conciliacaoCartaoRecuperar.ts';
 export async function conciliarComprasCartao(db, payload, userId, escopo = ['ItemCompra','DespesaOperacional','ObraReforma']) {
-  const mes = payload.mes || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0,7);
+  if (payload.fatura_id != null && (typeof payload.fatura_id !== 'string' || !payload.fatura_id || payload.fatura_id.length > 200)) throw new Error('Fatura inválida.');
+  const faturaAlvo = payload.fatura_id ? await db.FaturaCartao.get(payload.fatura_id) : null;
+  if (payload.fatura_id && !faturaAlvo?.id) throw new Error('Fatura não encontrada.');
+  const mes = faturaAlvo?.mes_referencia || payload.mes || new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }).slice(0,7);
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) throw new Error('Mês inválido.');
   const acao = payload.dry_run === true ? 'analisar' : (payload.acao || 'aplicar');
   if (!['analisar','aplicar','confirmar','reparar'].includes(acao)) throw new Error('Ação inválida.');
   if (payload.cursor && (typeof payload.cursor !== 'string' || payload.cursor.length > 4096)) throw new Error('Página inválida.');
-  const faturas = await lerCompleto(db, 'FaturaCartao', { mes_referencia: mes }, ['conta_cartao_id']);
+  const faturas = await lerCompleto(db, 'FaturaCartao', { mes_referencia: mes, ...(faturaAlvo ? { id: faturaAlvo.id } : {}) }, ['conta_cartao_id']);
   const ids = faturas.map(f=>f.id);
   const page = ids.length ? await db.LancamentoCartao.filter({ fatura_id: { $in: ids }, valor: { $gt: 0 } }, { sort: 'id', limit: 20, cursor: payload.cursor || undefined }) : { items: [], has_more: false };
   const charges = page.items.filter(compraReal);

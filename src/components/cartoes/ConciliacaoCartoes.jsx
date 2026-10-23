@@ -86,7 +86,7 @@ export default function ConciliacaoCartoes({ lancamentos, selectedMonth, isAnnua
     <div className="bg-card rounded-xl border overflow-hidden mb-6">
       <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-5 flex items-center gap-2.5">
         <AlertCircle className="w-5 h-5 text-white" />
-        <h3 className="text-sm font-bold text-white uppercase tracking-widest">Conciliação de Cartões</h3>
+        <h3 className="text-sm font-bold text-white uppercase tracking-widest">Classificação da composição · sem baixas</h3>
         <span className="ml-auto text-[11px] font-semibold text-white/90 bg-white/15 px-2 py-0.5 rounded-full">
           {isAnnual ? selectedMonth.slice(0, 4) : formatMesLabel(selectedMonth)}
         </span>

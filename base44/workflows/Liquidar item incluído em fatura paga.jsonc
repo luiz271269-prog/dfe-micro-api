@@ -1,8 +1,8 @@
 {
   "name": "Liquidar item inclu\u00eddo em fatura paga",
-  "description": "Ao receber um lan\u00e7amento de cart\u00e3o, vincula a compra correspondente e reprocessa a fatura se ela j\u00e1 estiver paga.",
+  "description": "Ao receber um lan\u00e7amento com fatura, analisa e vincula somente sua composi\u00e7\u00e3o documental. N\u00e3o altera pagamentos, mesmo em faturas j\u00e1 quitadas.",
   "trigger": {
-    "condition": "${ .trigger.event_type == \"create\" or (.trigger.changed_fields | index(\"fatura_id\") != null) }",
+    "condition": "${ (.trigger.data.fatura_id // \"\") != \"\" and (.trigger.event_type == \"create\" or ((.trigger.changed_fields // []) | index(\"fatura_id\") != null)) }",
     "config": {
       "trigger_type": "entity",
       "events": [
@@ -24,29 +24,16 @@
         "conciliar_compra_cartao": {
           "call": "invoke_backend_function",
           "with": {
-            "function_name": "conciliarComprasPagamentos",
-            "args": {}
-          },
-          "then": "verificar_fatura",
-          "x-base44": {
-            "title": "Conciliar compra do cart\u00e3o",
-            "description": "Vincula compra e lan\u00e7amento"
-          }
-        }
-      },
-      {
-        "verificar_fatura": {
-          "call": "invoke_backend_function",
-          "with": {
-            "function_name": "liquidarItensFaturaPaga",
+            "function_name": "conciliarCartoesDespesas",
             "args": {
+              "acao": "aplicar",
               "fatura_id": "${ .trigger.data.fatura_id }"
             }
           },
           "then": "end",
           "x-base44": {
-            "title": "Verificar fatura do item",
-            "description": "Liquida se j\u00e1 estiver paga"
+            "title": "Identificar composi\u00e7\u00e3o da fatura",
+            "description": "V\u00ednculo documental sem baixa ou rateio"
           }
         }
       }

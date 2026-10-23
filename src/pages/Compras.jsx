@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, ShoppingCart, TrendingDown, Building2, Receipt, AlertTriangle, CheckCircle, Wallet } from 'lucide-react';
+import { Plus, Search, ShoppingCart, TrendingDown, Building2, Receipt, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
@@ -21,6 +21,7 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import ConciliacaoDDAvsContas from '../components/contas-pagar/ConciliacaoDDAvsContas';
 import CompraPagamentoFields, { EMPTY_COMPRA, FORMAS_COMPRA } from '@/components/compras/CompraPagamentoFields';
 import ComprasPagamentoResumo from '@/components/compras/ComprasPagamentoResumo';
+import DespesasLiquidacaoResumo from '@/components/despesas/DespesasLiquidacaoResumo';
 import ComprasPortalCotacao from '@/components/cartoes/ComprasPortalCotacao';
 import VincularExtratoDespesaDialog from '@/components/despesas/VincularExtratoDespesaDialog';
 import { useQueryClient } from '@tanstack/react-query';
@@ -172,7 +173,7 @@ export default function Compras() {
   const despesasMes = useMemo(() => isAnnual ? despesas : despesas.filter(d => d.data?.startsWith(selectedMonth)), [despesas, selectedMonth, isAnnual]);
   const filteredD = useMemo(() => despesasMes.filter(d => {
     if (filterCategoriaD !== 'all' && d.categoria !== filterCategoriaD) return false;
-    if (filterStatus !== 'all' && d.status !== filterStatus) return false;
+    if (filterStatus !== 'all' && (d.lancamento_cartao_id ? 'incluido_fatura' : d.status) !== filterStatus) return false;
     if (searchD && !d.descricao?.toLowerCase().includes(searchD.toLowerCase()) && !d.fornecedor?.toLowerCase().includes(searchD.toLowerCase())) return false;
     return true;
   }), [despesasMes, filterCategoriaD, filterStatus, searchD]);
@@ -180,8 +181,7 @@ export default function Compras() {
   const sortD = useTableSort(filteredD, 'data', 'desc');
 
   const totalMesD = despesasMes.reduce((s,d) => s+(d.valor||0), 0);
-  const totalPago = despesasMes.filter(d=>d.status==='pago').reduce((s,d) => s+(d.valor||0), 0);
-  const totalPendente = despesasMes.filter(d=>d.status!=='pago').reduce((s,d) => s+(d.valor||0), 0);
+  // Componentes de fatura não são pagamentos nem saldo financeiro próprio.
   const porCategoria = useMemo(() => { const t={}; despesasMes.forEach(d => {t[d.categoria]=(t[d.categoria]||0)+(d.valor||0);}); return Object.entries(t).sort((a,b)=>b[1]-a[1]).slice(0,5); }, [despesasMes]);
 
   // ── DDA memos ─────────────────────────────────────────────────────────────
@@ -307,8 +307,7 @@ export default function Compras() {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <GradientCard title="Total do Mês" value={formatCurrency(totalMesD)} sub={`${despesasMes.length} despesas`} icon={TrendingDown} gradient="red" />
-            <GradientCard title="Pago" value={formatCurrency(totalPago)} sub={`${despesasMes.filter(d=>d.status==='pago').length} itens`} icon={CheckCircle} gradient="green" />
-            <GradientCard title="Pendente / Vencido" value={formatCurrency(totalPendente)} sub={`${despesasMes.filter(d=>d.status!=='pago').length} itens`} icon={AlertTriangle} gradient={totalPendente>0?'orange':'teal'} />
+            <DespesasLiquidacaoResumo periodo={isAnnual ? '' : selectedMonth}/>
             <div className="bg-white dark:bg-card border rounded-2xl p-4">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Top Categorias</p>
               <div className="space-y-1">
@@ -334,7 +333,8 @@ export default function Compras() {
               <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pago">Pago</SelectItem>
+                <SelectItem value="incluido_fatura">Incluído na fatura</SelectItem>
+                <SelectItem value="pago">Pago fora do cartão</SelectItem>
                 <SelectItem value="pendente">Pendente</SelectItem>
                 <SelectItem value="vencido">Vencido</SelectItem>
               </SelectContent>
@@ -372,7 +372,7 @@ export default function Compras() {
                       <td className="px-4 py-3 text-xs hidden md:table-cell">{d.empresa||'—'}</td>
                       <td className="px-4 py-3 text-xs hidden lg:table-cell">{d.forma_pagamento||'—'}</td>
                       <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-600">{formatCurrency(d.valor)}</td>
-                      <td className="px-4 py-3"><StatusBadge status={d.status} /></td>
+                      <td className="px-4 py-3"><StatusBadge status={d.lancamento_cartao_id ? 'incluido_fatura' : d.status} /></td>
                       <td className="px-4 py-3">
                         <BaixaAcaoRegistro entidade="DespesaOperacional" registroId={d.id} descricao={d.descricao} onSaved={loadDespesas} />
                       </td>

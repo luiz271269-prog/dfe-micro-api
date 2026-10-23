@@ -24,6 +24,8 @@ import { getCor } from '../lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import RevisaoHistoricoCartoes from '@/components/cartoes/RevisaoHistoricoCartoes';
 import ConciliacaoComprasCartao from '@/components/cartoes/ConciliacaoComprasCartao';
+import FaturaSeparacao from '@/components/cartoes/FaturaSeparacao';
+import useResumoFaturas from '@/hooks/useResumoFaturas';
 
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
@@ -41,8 +43,7 @@ const SEED_CARDS = [
 
 // Pagamento da fatura do mês anterior (crédito no cartão) — não é despesa real, não deve entrar em totais
 function isPagamentoFatura(l) {
-  if ((l.valor || 0) < 0) return true;
-  const desc = `${l.estabelecimento || ''} ${l.observacao || ''}`.toLowerCase();
+  const desc = `${l.estabelecimento || ''} ${l.observacao || ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   return /pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento/.test(desc);
 }
 
@@ -101,6 +102,7 @@ export default function Cartoes() {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
+  const resumoFaturas = useResumoFaturas(selectedMonth, isAnnual);
   const [expandedCard, setExpandedCard] = useState(null);
   const [expandedFatura, setExpandedFatura] = useState(null);
   const [showFaturaForm, setShowFaturaForm] = useState(false);
@@ -126,6 +128,7 @@ export default function Cartoes() {
     setFaturas(fats);
     setLancamentos(lancs);
     setImportBatches(batches || []);
+    resumoFaturas.refetch();
     if (!silent) setLoading(false);
   }
 
@@ -238,14 +241,11 @@ export default function Cartoes() {
     </div>);
 
 
-  // Fonte única de verdade: o total vem SEMPRE da soma dos lançamentos no banco
-  // (com sinal, incluindo estornos), nunca do campo valor_total armazenado — que pode estar desatualizado.
-  const faturaIdsMes = new Set(filteredFaturas.map((f) => f.id));
-  const totalMes = lancamentos.
-  filter((l) => faturaIdsMes.has(l.fatura_id)).
-  reduce((s, l) => s + (l.valor || 0), 0);
-  const totalPagoMes = filteredFaturas.reduce((s, f) => s + (f.valor_pago || 0), 0);
-  const saldoFaturas = filteredFaturas.reduce((s, f) => s + Math.max(0, (f.valor_total || 0) - (f.valor_pago || 0)), 0);
+  // A obrigação é o total informado da fatura. Sua composição é conferida separadamente, sem substituir históricos.
+  const totalMes = resumoFaturas.data?.total ?? null;
+  const totalPagoMes = resumoFaturas.data?.pago ?? null;
+  const saldoFaturas = resumoFaturas.data?.saldo ?? null;
+  const resumoValor = valor => valor == null ? (resumoFaturas.isError ? 'Indisponível' : 'Consultando...') : formatCurrency(valor);
 
   return (
     <div className="lg:px-6 lg:py-6 max-w-[1600px] mx-auto px-4 py-1">
@@ -265,9 +265,9 @@ export default function Cartoes() {
 
       {/* Resumo do mês */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <GradientCard title="Total Faturas" value={formatCurrency(totalMes)} sub={`${filteredFaturas.length} faturas`} icon={CreditCard} gradient="purple" />
-        <GradientCard title="Total Pago" value={formatCurrency(totalPagoMes)} sub="Pagamentos integrais e parciais" icon={DollarSign} gradient="green" />
-        <GradientCard title="A Pagar" value={formatCurrency(saldoFaturas)} sub="Saldo das faturas cadastradas" icon={AlertCircle} gradient="orange" />
+        <GradientCard title="Total Faturas" value={resumoValor(totalMes)} sub={`${resumoFaturas.data?.quantidade ?? '…'} faturas`} icon={CreditCard} gradient="purple" />
+        <GradientCard title="Total Pago" value={resumoValor(totalPagoMes)} sub="Registrados; comprovação na revisão" icon={DollarSign} gradient="green" />
+        <GradientCard title="A Pagar" value={resumoValor(saldoFaturas)} sub="Somente a obrigação das faturas" icon={AlertCircle} gradient="orange" />
         <GradientCard title="Cartões Ativos" value={cartoes.filter((c) => c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
       </div>
 
@@ -356,8 +356,8 @@ export default function Cartoes() {
                 const totalEmp = validos.filter((l) => l.natureza === 'empresarial').reduce((s, l) => s + (l.valor || 0), 0);
                 const totalPes = validos.filter((l) => l.natureza === 'pessoal').reduce((s, l) => s + (l.valor || 0), 0);
                 const totalPagamentos = pagamentos.reduce((s, l) => s + (l.valor || 0), 0);
-                // Total da fatura = soma dos lançamentos no banco (fonte única de verdade)
-                const totalFaturaReal = fatLancs.reduce((s, l) => s + (l.valor || 0), 0);
+                // Total devido não é recalculado pela lista de composição.
+                const totalFaturaReal = Number(fat.valor_total || 0);
 
                 return (
                   <div key={fat.id} className="border-b last:border-b-0">
@@ -399,6 +399,7 @@ export default function Cartoes() {
                             <BaixaAcaoRegistro entidade="FaturaCartao" registroId={fat.id} descricao={`${c.nome} · ${fat.mes_referencia}`} onSaved={() => loadData(true)} />
                             <span className="text-xs text-muted-foreground">{fat.valor_pago > 0 && fat.status !== 'paga_total' ? 'Pagamento parcial · ' : ''}Saldo: {formatCurrency(Math.max(0, (fat.valor_total || 0) - (fat.valor_pago || 0)))}</span>
                           </div>
+                          <FaturaSeparacao faturaId={fat.id} versao={fat.updated_date}/>
                           {fatLancs.length === 0 ?
                       <p className="text-xs text-muted-foreground py-2">Nenhum lançamento cadastrado</p> :
 
@@ -427,7 +428,7 @@ export default function Cartoes() {
                               {pagamentos.length > 0 &&
                         <div className="mt-4 pt-3 border-t border-dashed">
                                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                    Pagamentos da fatura anterior · não contabilizados
+                                    Pagamentos informativos no cartão · não comprovam baixa bancária
                                   </p>
                                   <table className="w-full text-xs text-muted-foreground/70">
                                     <tbody>

@@ -234,7 +234,7 @@ export async function runSeedIfNeeded() {
         seedComprasIfNeeded(),
         seedLancamentosIfNeeded(),
         seedNotasFiscalMarco(),
-        patchFaturasSicrediNT(),
+        // Pagamentos históricos de faturas não podem ser alterados na inicialização.
       ]);
       localStorage.setItem('neuralfinSeedLastRun', today);
       return;

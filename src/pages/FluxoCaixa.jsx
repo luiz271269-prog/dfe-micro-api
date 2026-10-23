@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Landmark, DollarSign } from 'lucide-react';
+import { Plus, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Landmark } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
 import MonthNavigator, { ALL_MONTHS } from '../components/shared/MonthNavigator';
 import { Button } from '@/components/ui/button';
@@ -8,13 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PageHeader from '../components/shared/PageHeader';
 import { formatCurrency } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import { consolidarContasPagar } from '../lib/contasPagarEngine';
 import FluxoColumn from '../components/fluxo-caixa/FluxoColumn';
 import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
+import projecoesSemDuplicidade from '@/lib/projecoesSemDuplicidade';
 
 const CATEGORIAS = ['recebimento_vendas', 'recebimento_cobranca', 'pagamento_fornecedor', 'pagamento_tributo', 'folha_pagamento', 'aluguel', 'despesa_fixa', 'despesa_variavel', 'investimento', 'emprestimo', 'outro'];
 
@@ -32,6 +33,7 @@ export default function FluxoCaixa() {
   const [titulos, setTitulos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [contasPagar, setContasPagar] = useState([]);
+  const [componentesCartao, setComponentesCartao] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -59,6 +61,7 @@ export default function FluxoCaixa() {
     setFluxos(fx);
     setTitulos(tit);
     setLancamentos(lanc);
+    setComponentesCartao(new Set([...despesas, ...compras].filter(d => d.lancamento_cartao_id).map(d => d.id)));
     // Mesma visão consolidada da página "Contas a Pagar"
     setContasPagar(consolidarContasPagar({ despesas, tributos, folhas, faturas, cartoes, compras }));
     setLoading(false);
@@ -94,6 +97,7 @@ export default function FluxoCaixa() {
         valor_previsto: (t.valor_titulo || 0) - (t.valor_pago || 0),
         status: t.status === 'vencido' ? 'vencido' : 'previsto',
         origem_tipo: 'titulo_cobranca',
+        origem_id: t.id,
       });
     });
     // SAÍDAS — contas a pagar consolidadas (visão idêntica à página Contas a Pagar)
@@ -110,13 +114,14 @@ export default function FluxoCaixa() {
         valor_previsto: c.valor,
         status: c.data_vencimento && c.data_vencimento < hojeISO ? 'vencido' : 'previsto',
         origem_tipo: c.origem_tipo,
+        origem_id: c.origem_id,
       });
     });
     return itens;
   }, [titulos, contasPagar]);
 
   // Movimentações combinadas: manuais (FluxoCaixa) + projeção automática
-  const fluxosCombinados = useMemo(() => [...fluxos, ...projecaoAuto], [fluxos, projecaoAuto]);
+  const fluxosCombinados = useMemo(() => projecoesSemDuplicidade(fluxos, projecaoAuto, componentesCartao), [fluxos, projecaoAuto, componentesCartao]);
 
   async function handleSubmit(e) {
     e.preventDefault();

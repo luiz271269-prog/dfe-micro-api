@@ -40,10 +40,7 @@ async function aplicarDeclarado(base44,user,b,reservado) {
   if(['FolhaPagamento','FaturaCartao'].includes(tipo))patch.pagamentos_manuais=[...(r.pagamentos_manuais||[]),{id:b.pedidoId,data:b.data,valor,forma:b.forma,registrado_em:new Date().toISOString(),usuario_id:user.id}];
   const audit=await auditarBaixa(base44,user,tipo,id,'manual',b.pedidoId,b.motivo||'Pagamento declarado sem extrato',estadoBaixa(r),{data:b.data,forma:b.forma,canal:String(b.canal||'').slice(0,160),valor});
   try {const depois=await gravarCondicionalBaixa(db,tipo,r,patch);
-    if(tipo==='FaturaCartao'&&r.status!=='paga_total'&&depois.status==='paga_total'){
-      const efeito=await base44.asServiceRole.functions.invoke('liquidarItensFaturaPaga',{fatura_id:id});
-      if(efeito.data?.error||!efeito.data?.success)throw new Error('Pagamento já registrado; a atualização dos itens da fatura exige revisão: '+(efeito.data?.error||'serviço não confirmou a conclusão.'));
-    }
+    // O pagamento pertence somente à fatura. Componentes e seus históricos não são liquidados em cascata.
     await concluirBaixa(base44,audit,estadoBaixa(depois));return {ok:true,valor_pago:pago+valor,saldo:dinheiroBaixa(total-pago-valor),quitado:pago+valor>=total};}
   catch(error){await concluirBaixa(base44,audit,null,error);throw error;}
 }

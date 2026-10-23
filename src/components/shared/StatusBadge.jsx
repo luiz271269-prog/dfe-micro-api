@@ -1,4 +1,5 @@
 const statusConfig = {
+  incluido_fatura: { label: 'Incluído na fatura', className: 'bg-primary/10 text-primary border-primary/30' },
   pago: { label: 'Pago', className: 'bg-green-500/10 text-green-700 border-green-200' },
   parcial: { label: 'Parcial', className: 'bg-yellow-500/10 text-yellow-700 border-yellow-200' },
   a_vencer: { label: 'A Vencer', className: 'bg-blue-500/10 text-blue-700 border-blue-200' },

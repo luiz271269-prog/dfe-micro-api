@@ -26,7 +26,13 @@ export async function desfazerCompraCartao(db, compraId, userId, motivo = 'Desvi
     if (trilha && trilha.lancamento_cartao_id !== chargeId) throw new Error('Trilha e compra apontam para cartões diferentes.');
     const pendente = trilha?.fase === 'cancelamento_preparado';
     const antes = trilha ? JSON.parse(trilha.antes_json || '{}') : {};
-    const restaurar = pendente ? JSON.parse(trilha.cancelamento_depois_json) : {
+    const somenteComposicao = trilha && JSON.parse(trilha.depois_json || '{}').modelo_cartao === 'composicao';
+    const restaurar = pendente ? JSON.parse(trilha.cancelamento_depois_json) : somenteComposicao ? {
+      lancamento_cartao_id: antes.lancamento_cartao_id || null,
+      forma_pagamento: antes.forma_pagamento || 'nao_definida',
+      status_pagamento: doc.status_pagamento ?? null,
+      valor_pago: doc.valor_pago ?? null,
+    } : {
       lancamento_cartao_id: antes.lancamento_cartao_id || null,
       forma_pagamento: antes.forma_pagamento || 'nao_definida',
       status_pagamento: antes.status_pagamento || 'nao_identificado',
@@ -40,7 +46,8 @@ export async function desfazerCompraCartao(db, compraId, userId, motivo = 'Desvi
       if (trilha) await db.VinculoCartao.update(trilha.id, cancelamento);
       else trilha = await db.VinculoCartao.create({ lancamento_cartao_id: chargeId, fatura_id: charge.fatura_id, entidade_tipo: 'ItemCompra', entidade_id: compraId, valor_alocado: doc.valor_total, origem: 'manual', usuario_id: userId, execucao_id: token, motivo: 'Cancelamento solicitado de vínculo legado; o estado anterior à criação não está disponível.', antes_json: '{}', depois_json: JSON.stringify(estado(doc)), ...cancelamento });
     }
-    if (!igual(doc, restaurar)) await db.ItemCompra.updateMany({ id: compraId, updated_date: doc.updated_date, lancamento_cartao_id: chargeId }, { $set: restaurar });
+    const patchRestauro = somenteComposicao ? Object.fromEntries(['lancamento_cartao_id', 'forma_pagamento'].map(k => [k, restaurar[k]])) : restaurar;
+    if (!igual(doc, restaurar)) await db.ItemCompra.updateMany({ id: compraId, updated_date: doc.updated_date, lancamento_cartao_id: chargeId }, { $set: patchRestauro });
     const depois = await db.ItemCompra.get(compraId);
     if (!igual(depois, restaurar)) throw new Error('A compra mudou durante a desvinculação. A intenção ficou registrada para revisão.');
     await db.LancamentoCartao.updateMany({ id: chargeId, conciliacao_token: token, item_compra_id: compraId }, { $unset: { item_compra_id: '' } });
