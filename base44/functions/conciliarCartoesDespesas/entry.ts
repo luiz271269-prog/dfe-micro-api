@@ -9,6 +9,6 @@ export default async function(req) {
     const interno=Boolean(token && payload.internal_token===token);
     const user=interno ? null : await base44.auth.me();
     if (!interno && (!user || user.role!=='admin')) return Response.json({error:'Forbidden'},{status:403});
-    return Response.json(await conciliarComprasCartao(interno ? base44.asServiceRole.entities : base44.entities,payload,user?.id || 'pipeline'));
+    return Response.json(await conciliarComprasCartao(interno ? base44.asServiceRole.entities : base44.entities,payload,user?.id || 'pipeline',payload.somente_compras === true ? ['ItemCompra'] : undefined));
   } catch(error) { return Response.json({error:error.message},{status:400}); }
 }

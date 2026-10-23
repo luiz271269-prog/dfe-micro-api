@@ -27,6 +27,7 @@
             "function_name": "conciliarCartoesDespesas",
             "args": {
               "acao": "aplicar",
+              "somente_compras": true,
               "fatura_id": "${ .trigger.data.fatura_id }"
             }
           },
