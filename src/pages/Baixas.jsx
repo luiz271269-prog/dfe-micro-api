@@ -14,7 +14,7 @@ export default function Baixas() {
     <BaixasFiltros filtros={b.filtros} onChange={b.setFiltros} onApply={b.aplicar} loading={b.loading}/>
     {b.erro&&!b.confirmacao&&<p role="alert" className="border border-destructive text-destructive rounded-lg p-3 text-sm">{b.erro}</p>}
     {b.sucesso&&<p role="status" className="border border-success text-success rounded-lg p-3 text-sm">{b.sucesso}</p>}
-    <div className="grid xl:grid-cols-2 gap-5 items-start"><BaixasLista items={b.items} selecionado={b.detalhe?.registro} onSelect={b.selecionar} loading={b.loading} mais={b.pagina.has_more} onMore={()=>b.consultar(true)}/><BaixasDetalhe key={b.detalhe?`${b.detalhe.registro.tipo}-${b.detalhe.registro.id}`:'vazio'} detalhe={b.detalhe} onSubmit={b.solicitar}/></div>
+    <div className="grid xl:grid-cols-2 gap-5 items-start"><BaixasLista items={b.items} selecionado={b.detalhe?.registro} onSelect={b.selecionar} loading={b.loading} mais={b.pagina.has_more} onMore={()=>b.consultar(true)}/>{b.detalheLoading?<section aria-live="polite" className="bg-card border rounded-xl p-6 text-sm text-muted-foreground">Carregando detalhes, vínculos e evidências...</section>:<BaixasDetalhe key={b.detalhe?`${b.detalhe.registro.tipo}-${b.detalhe.registro.id}`:'vazio'} detalhe={b.detalhe} onSubmit={b.solicitar}/>}</div>
     {b.pagina.admin&&<BaixasFixas onSaved={()=>b.consultar(false)}/>}
     <BaixasConfirmacao operacao={b.confirmacao} onClose={()=>b.setConfirmacao(null)} onConfirm={b.executar} busy={b.busy} erro={b.erro}/>
   </div>;

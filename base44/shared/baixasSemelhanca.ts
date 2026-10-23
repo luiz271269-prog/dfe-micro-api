@@ -6,7 +6,7 @@ export function pontuarBaixa(mov,candidato,evidencias=[]) {
   const m=mov,c=candidato,razoes=[],bloqueios=[];let pontos=0;
   const referencia=m.tipo==='LancamentoCartao'?(c.raw.data_emissao||c.raw.data):c.data;
   const diff=Math.abs(m.saldo-c.saldo),dias=Math.abs(Date.parse(m.data)-Date.parse(referencia))/86400000;
-  if(diff<0.01){pontos+=45;razoes.push('Valor e saldo coincidem em centavos');}else if(c.saldo>m.total){pontos+=15;razoes.push('Possível pagamento parcial');}else razoes.push('Valores diferentes: confira a alocação');
+  if(diff<0.01){pontos+=45;razoes.push('Valor e saldo coincidem em centavos');}else if(c.saldo>m.saldo){pontos+=15;razoes.push('Possível pagamento parcial');}else razoes.push('Valores diferentes: confira a alocação');
   if(dias<=3){pontos+=15;razoes.push('Datas próximas: até três dias');}else if(Number.isFinite(dias))razoes.push(`Intervalo de ${Math.round(dias)} dias`);
   const termos=normConciliacao(c.contraparte||c.descricao).split(' ').filter(x=>x.length>3),texto=normConciliacao(`${m.descricao} ${m.raw.detalhe||''}`);
   if(termos.some(t=>texto.split(' ').includes(t))){pontos+=20;razoes.push('Termo de contraparte/descrição coincide');}

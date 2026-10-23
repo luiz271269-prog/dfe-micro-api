@@ -10,6 +10,7 @@ import { empresaExtrato } from './tributoRegras.ts';
 export async function executarBaixaCentral(base44,user,b) {
   const db=base44.entities;let r=await db[b.tipo].get(b.id);
   if(b.versao!==r.updated_date)throw new Error('Registro alterado. Atualize antes de confirmar.');
+  if(b.tipo==='LancamentoBancario'&&!(r.valor<0)||b.tipo==='LancamentoCartao'&&!(r.valor>0))throw new Error('A central aceita somente saídas e compras no cartão.');
   if(b.acao==='manual')return registrarDeclarado(base44,user,{...b,entidade:b.tipo});
   if(b.acao==='reabrir'){const a=await db.AuditoriaConciliacao.get(b.auditoria_id);if(a.entidade_tipo!==b.tipo||a.entidade_id!==b.id)throw new Error('Auditoria não pertence ao registro.');return reabrirDeclarado(base44,user,b);}
   if(!['banco','cartao','removerBanco','cancelarCartao','editar','reabrirManual'].includes(b.acao))throw new Error('Operação inválida.');
