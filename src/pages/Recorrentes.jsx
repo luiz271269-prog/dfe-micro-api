@@ -4,6 +4,7 @@ import PeriodoRecorrentes from '@/components/recorrentes/PeriodoRecorrentes';
 import FrequenciaRecorrente from '@/components/recorrentes/FrequenciaRecorrente';
 import CriarRegraExtratoDialog from '@/components/recorrentes/CriarRegraExtratoDialog';
 import RevisaoFixasDialog from '@/components/recorrentes/RevisaoFixasDialog';
+import BaixasFixasAcesso from '@/components/recorrentes/BaixasFixasAcesso';
 import FixasPlanoLista from '@/components/recorrentes/FixasPlanoLista';
 import useFixasPainel from '@/components/recorrentes/useFixasPainel';
 import useRecorrentesData from '@/components/recorrentes/useRecorrentesData';
@@ -40,6 +41,8 @@ export default function Recorrentes() {
   const { opcoes: categorias, itens: contasPlano } = useCadastroClassificacao('categoria');
   const [extratoOpen, setExtratoOpen] = useState(false);
   const [conciliarOpen, setConciliarOpen] = useState(false);
+  const [regraRevisao, setRegraRevisao] = useState(null);
+  function revisarRegra(regra = null) { setRegraRevisao(regra); setConciliarOpen(true); }
   const [formErro, setFormErro] = useState('');
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(vazio);
@@ -151,7 +154,8 @@ export default function Recorrentes() {
           <Sparkles className="w-4 h-4" /> Buscar recorrências ({sugestoes.length})
         </Button>
         <Button disabled={!admin} variant="outline" onClick={() => setExtratoOpen(true)}>Criar pelo extrato</Button>
-        <Button disabled={!admin} variant="outline" onClick={() => setConciliarOpen(true)}>Conciliar período</Button>
+        <BaixasFixasAcesso inicio={inicio} fim={fim} onSaved={load} onRevisar={admin ? revisarRegra : undefined} />
+        <Button disabled={!admin} variant="outline" onClick={() => revisarRegra()}>Conciliar período</Button>
         <Button disabled={!admin} variant="outline" onClick={abrirNovo} className="gap-2"><Plus className="w-4 h-4" /> Nova despesa fixa</Button>
       </PageHeader>
       <p className="text-xs text-muted-foreground mb-2">Valores mensais = previsões das despesas fixas ativas; não representam pagamentos realizados.</p>
@@ -162,11 +166,11 @@ export default function Recorrentes() {
         <p className="text-xs text-muted-foreground">Cadastre a despesa de funcionamento da empresa antes do pagamento. O cartão reconhece a despesa operacional na competência; o extrato confirma boleto, PIX ou débito. Quitar a fatura não cria outra despesa.</p>
       </div>
 
-      <FixasPlanoLista painel={painel} inicio={inicio} admin={admin} onEditar={abrirEditar} onToggle={toggleAtiva} onExcluir={excluir} />
+      <FixasPlanoLista painel={painel} inicio={inicio} fim={fim} admin={admin} onEditar={abrirEditar} onToggle={toggleAtiva} onExcluir={excluir} onSaved={load} onRevisar={admin ? revisarRegra : undefined} />
       {historicoAtivo&&loadingHistorico&&<p role="status" className="text-sm text-muted-foreground mt-3">Carregando histórico para revisão...</p>}
       {historicoAtivo&&errorHistorico&&<p role="alert" className="text-sm text-destructive mt-3">{errorHistorico.message}</p>}
       <CriarRegraExtratoDialog key={`${inicio}-${fim}`} open={extratoOpen} onOpenChange={setExtratoOpen} lancamentos={lancsPeriodo} onEscolher={criarPeloExtrato} />
-      <RevisaoFixasDialog key={`conciliar-${inicio}-${fim}`} open={conciliarOpen} onOpenChange={setConciliarOpen} inicio={inicio} fim={fim} sugestoes={revisoes} onRefresh={load} loading={loadingHistorico} />
+      <RevisaoFixasDialog key={`conciliar-${inicio}-${fim}-${regraRevisao?.id || 'todas'}`} open={conciliarOpen} onOpenChange={setConciliarOpen} inicio={inicio} fim={fim} regra={regraRevisao} sugestoes={revisoes} onRefresh={load} loading={loadingHistorico} />
       {/* Modal Form */}
       <Dialog open={!!editando} onOpenChange={() => { if (!saving) setEditando(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

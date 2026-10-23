@@ -21,6 +21,7 @@ import TributoMobileCard from '@/components/tributos/TributoMobileCard';
 import ObrigacoesMensais from '@/components/tributos/ObrigacoesMensais';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
 import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
+import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import { competenciaAnterior, empresaDaConta, saldoGuia } from '@/components/tributos/tributoFluxo';
 
 const TIPOS = ['DAS', 'ICMS', 'ISS', 'PIS', 'COFINS', 'IRPJ', 'CSLL', 'INSS', 'FGTS', 'GPS', 'DARF', 'IPTU', 'ALVARA', 'TAXA_BOMBEIRO', 'OUTRO'];
@@ -168,6 +169,7 @@ export default function Tributos() {
           onToggleAnnual={() => setIsAnnual(!isAnnual)}
           monthTotals={monthTotals}
         />
+        <BaixaManualButton registros={filtrados.map(t=>({tipo:t._lancamento?'LancamentoBancario':'Tributo',id:t._lancamento?.id||t.id,descricao:t.descricao||t.tipo}))} onSaved={loadData}>Baixar / conciliar</BaixaManualButton>
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Tributo</Button>
       </PageHeader>
 

@@ -8,6 +8,7 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import ProLaboreTimeline from '../components/prolabore/ProLaboreTimeline';
 import ProLaboreRankingCartoes from '../components/prolabore/ProLaboreRankingCartoes';
 import ProLaboreListaOrigem from '../components/prolabore/ProLaboreListaOrigem';
+import BaixaManualButton from '@/components/shared/BaixaManualButton';
 
 export default function ProLabore() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
@@ -33,12 +34,10 @@ export default function ProLabore() {
           <h1 className="text-lg font-bold text-foreground tracking-tight leading-tight">Pró-labore Unificado</h1>
           <p className="text-xs text-muted-foreground">Tudo que sai do seu bolso — retiradas + gastos pessoais nos cartões</p>
         </div>
-        <MonthNavigator
-          selectedMonth={selectedMonth}
-          onSelectMonth={setSelectedMonth}
-          isAnnual={isAnnual}
-          onToggleAnnual={() => setIsAnnual(!isAnnual)}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <BaixaManualButton registros={loading ? [] : [...(pl?.gastos_cartao.itens || []).map(l=>({tipo:'LancamentoCartao',id:l.id,descricao:l.descricao})), ...(pl?.retiradas_extrato.itens || []).map(l=>({tipo:'LancamentoBancario',id:l.id,descricao:l.descricao}))]} onSaved={()=>load(true)}>Baixar / conciliar</BaixaManualButton>
+          <MonthNavigator selectedMonth={selectedMonth} onSelectMonth={setSelectedMonth} isAnnual={isAnnual} onToggleAnnual={() => setIsAnnual(!isAnnual)} />
+        </div>
       </div>
 
       {/* Aviso conceitual — compacto */}
@@ -77,6 +76,7 @@ export default function ProLabore() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
             <ProLaboreListaOrigem
               titulo="Gastos Pessoais nos Cartões"
+              entidade="LancamentoCartao"
               icon={CreditCard}
               cor="orange"
               total={pl.gastos_cartao.total}
@@ -85,6 +85,7 @@ export default function ProLabore() {
             />
             <ProLaboreListaOrigem
               titulo="Retiradas no Extrato"
+              entidade="LancamentoBancario"
               icon={Landmark}
               cor="blue"
               total={pl.retiradas_extrato.total}

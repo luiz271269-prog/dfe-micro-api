@@ -422,6 +422,7 @@ export default function Funcionarios() {
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <PageHeader title="Pessoas (RH)" subtitle={`${funcionariosAtivos} funcionários ativos · ${funcionarios.length} cadastrados`}>
+        <BaixaManualButton registros={folhasMes.filter(f=>!f._semFolha).map(f=>({tipo:'FolhaPagamento',id:f.id,descricao:`${f.funcionario_nome} · ${f.competencia}`}))} onSaved={loadData}>Baixar / conciliar</BaixaManualButton>
         {activeTab === 'funcionarios' && (
           <Button onClick={() => setShowFuncForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Funcionário</Button>
         )}
@@ -434,7 +435,6 @@ export default function Funcionarios() {
                 <><CalendarPlus className="w-4 h-4" /> Gerar Folhas Pendentes</>
               )}
             </Button>
-            <BaixaManualButton registros={folhasMes.map(f=>({tipo:'FolhaPagamento',id:f.id,descricao:`${f.funcionario_nome} · ${f.competencia}`}))} abaInicial="conciliar" onSaved={loadData}>Analisar PIX do extrato</BaixaManualButton>
             <Button variant="outline" onClick={exportar} className="gap-2"><Download className="w-4 h-4" /> Exportar</Button>
             <Button onClick={() => { setErroFormularioFolha(''); setFolhaForm(f => ({ ...f, competencia })); setShowFolhaForm(true); }} className="gap-2"><Plus className="w-4 h-4" /> Lançar Folha</Button>
           </div>

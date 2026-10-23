@@ -259,7 +259,7 @@ export default function Cartoes() {
         
         <DeduplicarCartoesButton onDone={loadData} />
         <ReparoCartoesButton onComplete={loadData} />
-        <BaixaManualButton registros={filteredFaturas.map(f=>({tipo:'FaturaCartao',id:f.id,descricao:`Fatura ${f.mes_referencia} · ${formatCurrency(f.valor_total)}`}))} abaInicial="conciliar" onSaved={()=>loadData(true)}>Analisar faturas</BaixaManualButton>
+        <BaixaManualButton registros={filteredFaturas.map(f=>({tipo:'FaturaCartao',id:f.id,descricao:`Fatura ${f.mes_referencia} · ${formatCurrency(f.valor_total)}`}))} onSaved={()=>loadData(true)}>Baixar / conciliar</BaixaManualButton>
         <Button onClick={() => setShowFaturaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Fatura</Button>
       </PageHeader>
 

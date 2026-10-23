@@ -237,7 +237,7 @@ export default function ContasAPagarPanel() {
         <RevisaoTiposGasto />
         <LancarDespesaFotoButton onSaved={load} />
         <SincronizarComprasButton onDone={load} />
-        {['aberto', 'todos'].includes(modo) && <BaixaManualButton registros={itens.filter(i=>i._situacao==='aberto').flatMap(referenciasContaBaixa)} abaInicial="conciliar" onSaved={()=>load(false)}>Analisar saídas da tela</BaixaManualButton>}
+        <BaixaManualButton registros={itens.flatMap(referenciasContaBaixa)} onSaved={()=>load(false)}>Baixar / conciliar</BaixaManualButton>
         <Button variant="outline" onClick={load} size="sm">Atualizar</Button>
         </div>
       </div>
