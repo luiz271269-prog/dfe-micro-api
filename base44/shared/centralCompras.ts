@@ -13,9 +13,10 @@ const CATEGORIAS = ['notebook','tablet','smartphone','componente','memoria','arm
 
 export function normalizarFormaPagamento(valor = '') {
   const v = String(valor).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  if (/cartao|visa|master|elo|amex|mercadopago|sem juros|\b\d+x\b/.test(v)) return 'cartao';
+  if (/cartao|visa|master|elo|amex|mercadopago/.test(v)) return 'cartao';
   if (/pix/.test(v)) return 'banco_pix';
   if (/boleto|duplicata|prazo|soft\s*\d+\s*dias|\bdd\w*\b|^\d{2}\/\d{2}\/\d{4}$|^b\d+c/.test(v)) return 'banco_boleto';
+  if (/sem juros|\b\d+x\b/.test(v)) return 'cartao';
   if (/deposito|\bdep\b|transferencia|conta corrente|dpcc|ted/.test(v)) return 'banco_transferencia';
   if (/dinheiro|especie|al contado/.test(v)) return 'dinheiro';
   return 'nao_definida';

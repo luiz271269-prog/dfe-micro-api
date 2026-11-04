@@ -76,6 +76,8 @@ export default function PedidoCentralDetalhe() {
               <Campo label="Parcelas" valor={String(pedido.parcelas ?? '—')} />
               <Campo label="Pagamento antecipado" valor={pedido.pagamento_antecipado ? 'Sim' : 'Não'} />
               <Campo label="Forma de pagamento" valor={pedido.condicao_pagamento || pedido.forma_pagamento || '—'} />
+              <Campo label="Final do cartão" valor={itens[0]?.cartao_final || 'Não informado na OC'} />
+              <Campo label="Status de pagamento na origem" valor={pedido.status_pagamento || 'Não informado'} />
               <Campo label="Valor pago informado (R$)" valor={formatCurrency((pedido.valor_pago || 0) * cambio)} />
               <Campo label="Data da ordem" valor={formatDate(pedido.data_pedido)} />
               <Campo label="Vencimento / prazo" valor={itens[0]?.data_vencimento ? formatDate(itens[0].data_vencimento) : 'Não informado'} />

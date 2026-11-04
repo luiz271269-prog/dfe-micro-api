@@ -73,6 +73,7 @@ export default function Compras() {
 
   // ── Compras state ─────────────────────────────────────────────────────────
   const [pedidosPortal, setPedidosPortal] = useState([]);
+  const [resumoPortal, setResumoPortal] = useState(null);
   const { compras, loading: loadingC, load: loadCompras, monthTotals: monthTotalsC, error: comprasError, hasMore, loadMore, loadingMore } = useComprasPeriodo(selectedMonth, isAnnual, pedidosPortal);
   const [showFormC, setShowFormC] = useState(false);
   const [filterFornecedor, setFilterFornecedor] = useState('all');
@@ -260,8 +261,8 @@ export default function Compras() {
       {/* ── ABA COMPRAS ──────────────────────────────────────────────────── */}
       {activeTab === 'compras' && (
         <>
-          <ComprasPagamentoResumo compras={documentosC} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
-          <ComprasPortalCotacao onPedidos={setPedidosPortal} selectedMonth={selectedMonth} isAnnual={isAnnual} />
+          <ComprasPagamentoResumo compras={documentosC} resumoOnline={resumoPortal} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
+          <ComprasPortalCotacao onPedidos={setPedidosPortal} onResumo={setResumoPortal} filtroPagamento={filterPagamentoC} selectedMonth={selectedMonth} isAnnual={isAnnual} />
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
