@@ -1,12 +1,13 @@
 // Documento explica a composição; somente a fatura representa a obrigação.
 export function situacaoFatura(fatura, hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })) {
   const centavos = valor => Math.round(Number(valor || 0) * 100);
-  const total = centavos(fatura.valor_total), pago = centavos(fatura.valor_pago);
+  const consulta = fatura.liquidacao_consulta;
+  const total = centavos(fatura.valor_total), pago = centavos(consulta?.pago_considerado ?? fatura.valor_pago);
   const saldo = Math.max(0, total - pago);
-  const liquidacao = saldo === 0 ? 'Quitada' : pago > 0 ? 'Parcial' : 'Aberta';
+  const liquidacao = total <= 0 ? 'Em revisão' : saldo === 0 ? 'Quitada' : pago > 0 ? 'Parcial' : 'Aberta';
   const vencimento = fatura.data_vencimento;
-  const temporal = saldo === 0 ? 'Encerrada' : !vencimento ? 'Sem vencimento' : vencimento < hoje ? 'Vencida' : vencimento === hoje ? 'Vence hoje' : 'A vencer';
-  return { valor_total: total / 100, valor_pago: pago / 100, saldo: saldo / 100, liquidacao, temporal, inconsistencia_historica: (fatura.status === 'paga_total') !== (saldo === 0 && total > 0) };
+  const temporal = total <= 0 ? 'Em revisão' : saldo === 0 ? 'Encerrada' : !vencimento ? 'Sem vencimento' : vencimento < hoje ? 'Vencida' : vencimento === hoje ? 'Vence hoje' : 'A vencer';
+  return { valor_total: total / 100, valor_pago: pago / 100, saldo: saldo / 100, liquidacao, temporal, inconsistencia_historica: total <= 0 || !!consulta?.revisao || (fatura.status === 'paga_total') !== (saldo === 0 && total > 0) };
 }
 export function normalizarFaturaCarteira(fatura, cartoes = []) {
   const cartao = cartoes.find(c => c.id === fatura.conta_cartao_id);

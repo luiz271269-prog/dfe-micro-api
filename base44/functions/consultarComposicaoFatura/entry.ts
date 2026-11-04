@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { documentosFatura } from '../../shared/faturaDocumentos.ts';
+import { liquidacoesDocumentos } from '../../shared/liquidacaoObrasFaturas.ts';
 
 export default async function(req) {
   try {
@@ -15,16 +16,17 @@ export default async function(req) {
       db.LancamentoCartao.filter({ fatura_id }, { sort: 'data_lancamento', limit: 30, cursor: cursor || undefined }),
       db.LancamentoCartao.aggregate({ query: { fatura_id }, sum: ['valor'] }),
       db.LancamentoCartao.aggregate({ query: ignorados, sum: ['valor'] }),
-      user.role === 'admin' ? db.VinculoExtrato.aggregate({ query: { entidade_tipo: 'FaturaCartao', entidade_id: fatura_id }, sum: ['valor_alocado'] }) : Promise.resolve(null),
+      liquidacoesDocumentos(db, 'FaturaCartao', [fatura_id]),
       db.LancamentoCartao.aggregate({ query: { fatura_id }, groupBy: 'tipo_compra', sum: ['valor'] }),
       db.LancamentoCartao.aggregate({ query: ignorados, groupBy: 'tipo_compra', sum: ['valor'] }),
     ]);
     const arred = v => Math.round(Number(v || 0) * 100) / 100;
     const total = arred(fat.valor_total), pago = arred(fat.valor_pago), composicao = arred(Number(todos.rows[0]?.sum_valor || 0) - Number(fora.rows[0]?.sum_valor || 0));
-    const saldo = arred(Math.max(0, total - pago));
+    const liquidacao = banco[0];
+    const saldo = liquidacao.saldo;
     const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
-    const temporal = saldo === 0 ? 'Encerrada' : !fat.data_vencimento ? 'Sem vencimento' : fat.data_vencimento < hoje ? 'Vencida' : fat.data_vencimento === hoje ? 'Vence hoje' : 'A vencer';
-    const relacao = saldo === 0 ? 'Fatura quitada' : pago > 0 ? 'Fatura parcialmente paga' : 'Incluída em fatura aberta';
+    const temporal = total <= 0 ? 'Em revisão' : saldo === 0 ? 'Encerrada' : !fat.data_vencimento ? 'Sem vencimento' : fat.data_vencimento < hoje ? 'Vencida' : fat.data_vencimento === hoje ? 'Vence hoje' : 'A vencer';
+    const relacao = total <= 0 ? 'Fatura em revisão' : saldo === 0 ? 'Fatura quitada' : liquidacao.pago_considerado > 0 ? 'Fatura parcialmente paga' : 'Incluída em fatura aberta';
     const documentos = await documentosFatura(db, page.items, user.role === 'admin');
     const grupos = naturezas.rows.map(n => {
       const excluido = naturezasFora.rows.find(e => (e.tipo_compra ?? null) === (n.tipo_compra ?? null));
@@ -37,7 +39,7 @@ export default async function(req) {
     }, []);
     return Response.json({
       success: true, somente_leitura: true, fatura_id, temporal, relacao, grupos_natureza: grupos, documentos_parciais: documentos.parcial,
-      resumo: { total, pago_registrado: pago, saldo: arred(Math.max(0, total - pago)), situacao: saldo === 0 ? 'Quitada' : pago > 0 ? 'Parcial' : 'Aberta', situacao_historica: fat.status, inconsistencia_historica: (fat.status === 'paga_total') !== (pago >= total && total > 0), vencimento: fat.data_vencimento, temporal, composicao, diferenca_composicao: arred(total - composicao), linhas: Number(todos.rows[0]?.count || 0), comprovado_banco: banco ? arred(banco.rows[0]?.sum_valor_alocado) : null, informativos_excluidos: arred(fora.rows[0]?.sum_valor || 0) },
+      resumo: { total, pago_registrado: pago, pago_considerado: liquidacao.pago_considerado, saldo, situacao: liquidacao.liquidacao, situacao_historica: fat.status, inconsistencia_historica: liquidacao.revisao, vencimento: fat.data_vencimento, temporal, composicao, diferenca_composicao: arred(total - composicao), linhas: Number(todos.rows[0]?.count || 0), comprovado_banco: liquidacao.alocado_banco, informativos_excluidos: arred(fora.rows[0]?.sum_valor || 0) },
       items: page.items.map(l => ({ documentos: documentos.porLancamento[l.id] || [], situacao_relacionada: `${relacao} · ${temporal}`, id: l.id, data: l.data_lancamento, descricao: l.estabelecimento, valor: l.valor, natureza: l.tipo_compra || 'Não classificada', situacao: /pagamento.*fatura|pgto.*fatura|pagto.*fatura|cr[eé]dito.*pagamento/i.test(`${l.estabelecimento || ''} ${l.observacao || ''}`) ? 'Pagamento informativo, não é baixa bancária' : /n[aã]o faz parte/i.test(l.observacao || '') ? 'Fora da composição' : Number(l.valor) < 0 ? 'Crédito / ajuste da composição' : 'Componente da fatura' })),
       has_more: page.has_more, next_cursor: page.next_cursor,
     });

@@ -20,6 +20,8 @@ import ResumoPorInstrumento from './ResumoPorInstrumento';
 import ResumoSituacaoCarteira from '@/components/contas-pagar/ResumoSituacaoCarteira';
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import referenciasContaBaixa from '@/components/baixas/referenciasContaBaixa';
+import consultarLiquidacoes from '@/lib/consultarLiquidacoes';
+import RevisaoObrasFaturas from '@/components/contas-pagar/RevisaoObrasFaturas';
 
 
 
@@ -81,7 +83,8 @@ export default function ContasAPagarPanel() {
       base44.entities.VinculoExtrato.list('-created_date', 5000),
       base44.entities.LancamentoBancario.list('-data', 1000),
     ]);
-    setDados({ despesas, tributos, folhas, faturas, cartoes, compras, obras, lancamentos: lancs, lancamentosCartao: lancsCartao });
+    const liquidacoes = await consultarLiquidacoes(obras, faturas);
+    setDados({ despesas, tributos, folhas, faturas: liquidacoes.faturas, cartoes, compras, obras: liquidacoes.obras, lancamentos: lancs, lancamentosCartao: lancsCartao });
     setVinculos(vincs);
     setLancamentos(lancs);
     setVersaoResumo(v => v + 1);
@@ -195,6 +198,7 @@ export default function ContasAPagarPanel() {
         />
       </div>
 
+      <RevisaoObrasFaturas obras={dados.obras.filter(o => pertenceAoFiltroEmpresa(o, filtroEmpresa) && pertenceAoPeriodo({ data_vencimento: o.data_vencimento || o.data, _situacao: 'aberto' }))} faturas={dados.faturas.filter(f => pertenceAoFiltroEmpresa({ ...f, empresa: dados.cartoes.find(c => c.id === f.conta_cartao_id)?.empresa_vinculada }, filtroEmpresa) && pertenceAoPeriodo({ data_vencimento: f.data_vencimento, _situacao: 'aberto' }))} onSaved={() => load(false)} />
       <ResumoSituacaoCarteira abertos={abertosRecorte} pagos={pagosRecorte} versao={versaoResumo} />
       {(isAnnual ? mesReferencia.slice(0, 4) === mesAtualISO().slice(0, 4) : mesReferencia === mesAtualISO()) && <p className="text-xs text-muted-foreground mb-3">A consulta atual também inclui contas em aberto de períodos anteriores e sem vencimento; documentos quitados continuam restritos ao período selecionado.</p>}
       <ResumoPorInstrumento itens={itens} tituloTotal={tituloConsulta} />

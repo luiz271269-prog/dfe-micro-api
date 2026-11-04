@@ -16,6 +16,7 @@ import { consolidarTitulosCompras } from './titulosCompras';
 import { vencimentoFolha, dataNoMesPagamento } from '@/lib/folhaCalendario';
 import { saldoGuia } from '@/components/tributos/tributoFluxo';
 import { normalizarFaturaCarteira } from '@/lib/faturaCarteira';
+import liquidacaoObra from '@/lib/liquidacaoObra';
 
 // Registros antigos sem tipo permanecem pendentes até a classificação manual.
 
@@ -117,9 +118,10 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
 
   // Obras / Reformas ainda não pagas pelo banco (e não absorvidas por cartão)
   obras
-    .filter(o => !o.lancamento_bancario_id && !evaporou(o) && o.status_pagamento !== 'pago')
+    .filter(o => !evaporou(o) && liquidacaoObra(o).saldo > 0)
     .forEach(o => {
-      const valor = Math.max(0, (o.valor || 0) - (o.valor_pago || 0));
+      const liquidacao = liquidacaoObra(o);
+      const valor = liquidacao.saldo;
       if (valor <= 0.01) return;
       itens.push({
         id: `obra-${o.id}`,
@@ -129,6 +131,7 @@ export function consolidarContasPagar({ despesas = [], tributos = [], folhas = [
         fornecedor: o.responsavel || 'Prestador',
         categoria: o.tipo_profissional || o.tipo || 'obra',
         valor,
+        valor_pago: liquidacao.pago_considerado,
         data_vencimento: o.data_vencimento || o.data,
         empresa: o.empresa || '—',
         forma_pagamento: o.forma_pagamento,

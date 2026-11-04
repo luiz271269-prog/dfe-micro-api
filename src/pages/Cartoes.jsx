@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import PageHeader from '../components/shared/PageHeader';
-import StatusBadge from '../components/shared/StatusBadge';
 import ConciliacaoCartoes from '../components/cartoes/ConciliacaoCartoes';
 import DeduplicarCartoesButton from '../components/cartoes/DeduplicarCartoesButton';
 import ReparoCartoesButton from '../components/cartoes/ReparoCartoesButton';
@@ -26,6 +25,9 @@ import RevisaoHistoricoCartoes from '@/components/cartoes/RevisaoHistoricoCartoe
 import ConciliacaoComprasCartao from '@/components/cartoes/ConciliacaoComprasCartao';
 import FaturaSeparacao from '@/components/cartoes/FaturaSeparacao';
 import useResumoFaturas from '@/hooks/useResumoFaturas';
+import consultarLiquidacoes from '@/lib/consultarLiquidacoes';
+import { situacaoFatura } from '@/lib/faturaCarteira';
+import RevisaoObrasFaturas from '@/components/contas-pagar/RevisaoObrasFaturas';
 
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
@@ -125,7 +127,8 @@ export default function Cartoes() {
     base44.entities.ImportBatch.filter({ batch_type: 'fatura_cartao', status: 'completed' }, '-created_date', 200).catch(() => [])]
     );
     setCartoes(cards.sort((a, b) => (a.dia_vencimento || 0) - (b.dia_vencimento || 0)));
-    setFaturas(fats);
+    const liquidacoes = await consultarLiquidacoes([], fats);
+    setFaturas(liquidacoes.faturas);
     setLancamentos(lancs);
     setImportBatches(batches || []);
     resumoFaturas.refetch();
@@ -263,10 +266,11 @@ export default function Cartoes() {
         <Button onClick={() => setShowFaturaForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Nova Fatura</Button>
       </PageHeader>
 
+      <RevisaoObrasFaturas faturas={filteredFaturas} onSaved={() => loadData(true)} />
       {/* Resumo do mês */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <GradientCard title="Total Faturas" value={resumoValor(totalMes)} sub={`${resumoFaturas.data?.quantidade ?? '…'} faturas`} icon={CreditCard} gradient="purple" />
-        <GradientCard title="Total Pago" value={resumoValor(totalPagoMes)} sub="Registrados; comprovação na revisão" icon={DollarSign} gradient="green" />
+        <GradientCard title="Total Pago" value={resumoValor(totalPagoMes)} sub="Sem duplicar registro e vínculos" icon={DollarSign} gradient="green" />
         <GradientCard title="A Pagar" value={resumoValor(saldoFaturas)} sub="Somente a obrigação das faturas" icon={AlertCircle} gradient="orange" />
         <GradientCard title="Cartões Ativos" value={cartoes.filter((c) => c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
       </div>
@@ -358,6 +362,7 @@ export default function Cartoes() {
                 const totalPagamentos = pagamentos.reduce((s, l) => s + (l.valor || 0), 0);
                 // Total devido não é recalculado pela lista de composição.
                 const totalFaturaReal = Number(fat.valor_total || 0);
+                const liquidacao = situacaoFatura(fat);
 
                 return (
                   <div key={fat.id} className="border-b last:border-b-0">
@@ -367,7 +372,7 @@ export default function Cartoes() {
                       
                         <div className="flex-1 flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-semibold">{fat.mes_referencia}</span>
-                          <StatusBadge status={fat.status} />
+                          <span className="text-[10px] font-semibold text-muted-foreground">{liquidacao.liquidacao} · {liquidacao.temporal}{liquidacao.inconsistencia_historica ? ' · Revisar histórico' : ''}</span>
                           <span className="text-[10px] text-muted-foreground">Venc. {formatDate(fat.data_vencimento)}</span>
                           {fatLancs.length > 0 && <span className="text-[10px] text-muted-foreground">{fatLancs.length} lanç.</span>}
                           {(() => {
@@ -397,7 +402,7 @@ export default function Cartoes() {
                     <div className="px-3 pb-3 bg-background">
                           <div className="flex flex-wrap items-center gap-3 py-3">
                             <BaixaAcaoRegistro entidade="FaturaCartao" registroId={fat.id} descricao={`${c.nome} · ${fat.mes_referencia}`} onSaved={() => loadData(true)} />
-                            <span className="text-xs text-muted-foreground">{fat.valor_pago > 0 && fat.status !== 'paga_total' ? 'Pagamento parcial · ' : ''}Saldo: {formatCurrency(Math.max(0, (fat.valor_total || 0) - (fat.valor_pago || 0)))}</span>
+                            <span className="text-xs text-muted-foreground">{liquidacao.liquidacao} · Saldo: {formatCurrency(liquidacao.saldo)} · Pago considerado: {formatCurrency(liquidacao.valor_pago)}</span>
                           </div>
                           <FaturaSeparacao faturaId={fat.id} versao={fat.updated_date}/>
                           {fatLancs.length === 0 ?

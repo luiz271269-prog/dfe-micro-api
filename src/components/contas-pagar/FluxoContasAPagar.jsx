@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp, AlertTriangle, ArrowDownLeft, ArrowUpRight, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PipelineFluxo from './PipelineFluxo';
+import { situacaoFatura } from '@/lib/faturaCarteira';
 import { formatCurrency } from '../../lib/formatters';
 import { classificarNaturezaExtrato, ehSaidaContasPagar } from '../../lib/extratoNatureza';
 
@@ -23,7 +24,7 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
     });
 
     const abertas = faturas.filter(f =>
-      (f.status === 'aberta' || f.status === 'vencida') &&
+      situacaoFatura(f).saldo > 0 &&
       (!periodo || (f.data_vencimento || f.mes_referencia || '').startsWith(periodo))
     );
     const semCartao = [];
@@ -31,7 +32,7 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
     const monitoradas = [];
 
     abertas.forEach(f => {
-      const aberto = (f.valor_total || 0) - (f.valor_pago || 0);
+      const aberto = situacaoFatura(f).saldo;
       const cartao = cartoes.find(c => c.id === f.conta_cartao_id);
       if (!cartao) { semCartao.push({ f, aberto }); return; }
       const contaPagto = (cartao.conta_bancaria_pagamento || '').match(/\d{4,6}-\d/)?.[0];
@@ -112,12 +113,12 @@ export default function FluxoContasAPagar({ faturas = [], cartoes = [], lancamen
           )}
           {/* Sinais */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div className="border border-emerald-200 bg-emerald-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2" title={`${diag.monitoradas.length} fatura(s) de contas monitoradas — a baixa automática resolve`}>
+            <div className="border border-emerald-200 bg-emerald-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2" title={`${diag.monitoradas.length} fatura(s) de contas monitoradas — conferir e confirmar na revisão`}>
               <p className="text-[10px] font-bold uppercase text-emerald-700">Faturas cruzáveis com extrato</p>
               <p className="text-sm font-bold text-emerald-800 whitespace-nowrap">{formatCurrency(diag.totalMonitorado)}</p>
             </div>
             <div className={`border rounded-lg px-3 py-2 flex items-center justify-between gap-2 ${diag.contaNaoMonitorada.length ? 'border-amber-200 bg-amber-50' : 'border-border bg-muted/20'}`}
-              title={`${diag.contaNaoMonitorada.length} fatura(s) pagas por contas sem extrato importado (${[...new Set(diag.contaNaoMonitorada.map(x => x.cartao.conta_bancaria_pagamento))].join(', ') || '—'}) — nunca serão baixadas automaticamente`}>
+              title={`${diag.contaNaoMonitorada.length} fatura(s) pagas por contas sem extrato importado (${[...new Set(diag.contaNaoMonitorada.map(x => x.cartao.conta_bancaria_pagamento))].join(', ') || '—'}) — exige extrato da conta ou declaração revisada`}>
               <p className="text-[10px] font-bold uppercase text-amber-700 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Sem extrato da conta pagadora</p>
               <p className="text-sm font-bold text-amber-800 whitespace-nowrap">{formatCurrency(diag.totalNaoMonitorado)}</p>
             </div>

@@ -16,6 +16,8 @@ import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
 import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
+import consultarLiquidacoes from '@/lib/consultarLiquidacoes';
+import liquidacaoObra from '@/lib/liquidacaoObra';
 
 const LOCAIS = [
   { value: 'pavilhao', label: 'Pavilhão', color: 'blue' },
@@ -126,7 +128,8 @@ export default function Obras() {
   async function loadData() {
     setLoading(true);
     const data = await base44.entities.ObraReforma.list('-data', 500);
-    setObras(data.filter(o => !o.tipo_compra || o.tipo_compra === 'obras'));
+    const liquidacoes = await consultarLiquidacoes(data.filter(o => !o.tipo_compra || o.tipo_compra === 'obras'));
+    setObras(liquidacoes.obras);
     setLoading(false);
   }
 
@@ -330,7 +333,7 @@ export default function Obras() {
                     <td className="px-3 py-2.5 text-center">
                       <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${etapaColor(o.etapa_obra)}`}>{etapaLabel(o.etapa_obra)}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-xs"><p className="text-muted-foreground mb-2">{o.forma_pagamento}</p><BaixaAcaoRegistro entidade="ObraReforma" registroId={o.id} descricao={o.descricao} /></td>
+                    <td className="px-3 py-2.5 text-xs"><p className="text-muted-foreground mb-2">{o.forma_pagamento} · {o.lancamento_cartao_id ? 'Na fatura do cartão' : `${liquidacaoObra(o).liquidacao} · Saldo ${formatCurrency(liquidacaoObra(o).saldo)}`}</p><BaixaAcaoRegistro entidade="ObraReforma" registroId={o.id} descricao={o.descricao} /></td>
                   </tr>
                 );
               })}

@@ -1,4 +1,5 @@
 import { FileImage } from 'lucide-react';
+import { situacaoFatura } from '@/lib/faturaCarteira';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 
 // Gradiente + logomarca real por bandeira/banco
@@ -19,7 +20,8 @@ const STATUS_PILL = {
 export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, faturasCount, isExpanded, onToggle, onViewFile }) {
   const c = cartao;
   const b = BANDEIRAS[c.bandeira] || BANDEIRAS.default;
-  const pill = latestFat ? STATUS_PILL[latestFat.status] : null;
+  const situacao = latestFat ? situacaoFatura(latestFat) : null;
+  const pill = situacao ? { label: situacao.inconsistencia_historica ? `${situacao.liquidacao} · Revisar` : situacao.liquidacao, cls: situacao.inconsistencia_historica ? 'bg-warning text-warning-foreground' : situacao.liquidacao === 'Quitada' ? STATUS_PILL.paga_total.cls : STATUS_PILL.aberta.cls } : null;
   const isImg = fileUrl && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(fileUrl);
 
   return (
