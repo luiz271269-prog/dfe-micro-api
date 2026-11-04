@@ -4,10 +4,10 @@ const ENDPOINT = 'https://nexus-cotacoes360.base44.app/functions/nexus360Api';
 
 // Consulta restrita a pedidos; nunca persiste dados nem aceita destinos do cliente.
 export async function consultarPedidosHub() {
-  const token = secrets.get('CENTRAL_COMPRAS_API_KEY');
+  const token = secrets.get('centra_compras_api_key');
   const diagnostico = { endpoint: ENDPOINT, header: 'x-hub-token', entity: 'PedidoCompra', status: null };
   const falha = (motivo) => ({ ok: false, status: diagnostico.status, motivo, diagnostico, data: [] });
-  if (!token) return falha('Configure CENTRAL_COMPRAS_API_KEY para autorizar a consulta à Central de Compras.');
+  if (!token) return falha('Configure centra_compras_api_key para autorizar a consulta à Central de Compras.');
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
   try {
@@ -18,7 +18,7 @@ export async function consultarPedidosHub() {
     });
     diagnostico.status = response.status;
     if (!response.ok) {
-      if (response.status === 401) return falha('A nexus360Api recusou a autenticação com CENTRAL_COMPRAS_API_KEY (HTTP 401). É necessário conferir na Central de Compras se esse endpoint aceita esta chave pelo cabeçalho x-hub-token.');
+      if (response.status === 401) return falha('A nexus360Api recusou a autenticação com centra_compras_api_key (HTTP 401). É necessário conferir na Central de Compras se esse endpoint aceita esta chave pelo cabeçalho x-hub-token.');
       if (response.status === 403) return falha('A Central de Compras não autorizou a leitura dos pedidos (HTTP 403).');
       return falha(`A Central de Compras respondeu HTTP ${response.status}.`);
     }
