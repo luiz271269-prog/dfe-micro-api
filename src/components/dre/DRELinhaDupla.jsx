@@ -1,5 +1,6 @@
 import { formatCurrency } from '@/lib/formatters';
 import { ChevronRight } from 'lucide-react';
+import DREPercentuais from '@/components/dre/DREPercentuais';
 
 export default function DRELinhaDupla({
   label,
@@ -11,6 +12,8 @@ export default function DRELinhaDupla({
   destaque,
   indent = 0,
   onClick,
+  bases,
+  tipoPercentual,
 }) {
   const fmt = (v) => {
     if (negative && v > 0) return `(${formatCurrency(v)})`;
@@ -48,12 +51,14 @@ export default function DRELinhaDupla({
           <span className={`text-sm tabular-nums text-blue-700 ${isTotal || destaque ? 'font-bold' : ''} ${corValor(comp)}`}>
             {fmt(comp)}
           </span>
+          <DREPercentuais valor={comp} base={bases?.competencia} tipo={negative ? 'custo' : tipoPercentual} />
         </div>
         <div className="rounded-md bg-emerald-50 px-2 py-1 sm:bg-transparent sm:p-0 sm:w-40 text-right">
           <span className="block sm:hidden text-[9px] font-bold uppercase text-emerald-700/70">Caixa</span>
           <span className={`text-sm tabular-nums text-emerald-700 ${isTotal || destaque ? 'font-bold' : ''} ${corValor(caixa)}`}>
             {fmt(caixa)}
           </span>
+          <DREPercentuais valor={caixa} base={bases?.caixa} tipo={negative ? 'custo' : tipoPercentual} />
         </div>
       </div>
     </div>

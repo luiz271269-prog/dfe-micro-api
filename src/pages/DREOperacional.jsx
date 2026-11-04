@@ -9,6 +9,7 @@ import PeriodoDREControls from '@/components/dre/PeriodoDREControls';
 import CoberturaDRE from '@/components/dre/CoberturaDRE';
 import { formatCurrency } from '@/lib/formatters';
 import { getCurrentMonth } from '@/lib/currentMonth';
+import { percentuaisDRE, tipoPercentualDRE } from '@/components/dre/percentuaisDRE';
 
 const ROTULOS = {
   receita_bruta: 'Receita Bruta de Vendas',
@@ -49,14 +50,24 @@ export default function DREOperacional() {
     if (!dados) return;
     const c = dados.competencia;
     const k = dados.caixa;
-    const linha = (label, campo) => [label, c[campo].toFixed(2), k[campo].toFixed(2)];
+    const linha = (label, campo) => {
+      const percentuais = base => {
+        const valores = percentuaisDRE(base[campo], base, tipoPercentualDRE(campo));
+        return ['bruta', 'liquida', 'lucro'].map(chave => {
+          const item = valores.find(p => p.chave === chave);
+          return item ? (item.valor === null ? 'N/D' : item.valor.toFixed(2)) : '';
+        });
+      };
+      return [label, c[campo].toFixed(2), k[campo].toFixed(2), ...percentuais(c), ...percentuais(k)];
+    };
     const rows = [
       ['DRE OPERACIONAL CONSOLIDADO — NeuralTec + Liesch'],
       ['Período', periodoLabel],
       ['Regime', 'Simples Nacional'],
       ['Premissa DAS', 'Competência: previsão de 12% da receita bruta. Caixa: pagamentos efetivos.'],
+      ['Bases percentuais', 'Receita líquida gerencial = receita bruta - DAS - CMV (linha Lucro Bruto). Base de lucro = lucro operacional. N/D = base zero. Sinais negativos preservados.'],
       [],
-      ['LINHA', 'COMPETÊNCIA (R$)', 'CAIXA (R$)'],
+      ['LINHA', 'COMPETÊNCIA (R$)', 'CAIXA (R$)', 'COMP. / RECEITA BRUTA (%)', 'COMP. / RECEITA LÍQUIDA (%)', 'COMP. / LUCRO OPERACIONAL (%)', 'CAIXA / RECEITA BRUTA (%)', 'CAIXA / RECEITA LÍQUIDA (%)', 'CAIXA / LUCRO OPERACIONAL (%)'],
       linha('Receita Bruta de Vendas', 'receita_bruta'),
       linha('(–) CMV', 'cmv'),
       linha(ROTULOS.das, 'das'),
@@ -210,13 +221,16 @@ export default function DREOperacional() {
 
             <div>
               <DRELinhaDupla
+                bases={{ competencia: c, caixa: k }}
                 label={ROTULOS.receita_bruta}
+                tipoPercentual="receita"
                 comp={c.receita_bruta}
                 caixa={k.receita_bruta}
                 isSub
                 onClick={() => abrir('receita_bruta')}
               />
               <DRELinhaDupla
+                bases={{ competencia: c, caixa: k }}
                 label={ROTULOS.cmv}
                 comp={c.cmv}
                 caixa={k.cmv}
@@ -225,6 +239,7 @@ export default function DREOperacional() {
                 onClick={() => abrir('cmv')}
               />
               <DRELinhaDupla
+                bases={{ competencia: c, caixa: k }}
                 label={ROTULOS.das}
                 comp={c.das}
                 caixa={k.das}
@@ -233,13 +248,16 @@ export default function DREOperacional() {
                 onClick={() => abrir('das')}
               />
               <DRELinhaDupla
+                bases={{ competencia: c, caixa: k }}
                 label="= Lucro Bruto"
+                tipoPercentual="liquida"
                 comp={c.lucro_bruto}
                 caixa={k.lucro_bruto}
                 destaque
               />
 
               <DRELinhaDupla
+                bases={{ competencia: c, caixa: k }}
                 label="(–) Despesas Operacionais"
                 comp={c.total_despesas_operacionais}
                 caixa={k.total_despesas_operacionais}
@@ -248,6 +266,7 @@ export default function DREOperacional() {
               />
               {['folha', 'prolabore', 'despesas', 'obras', 'outros_tributos'].map((campo) => (
                 <DRELinhaDupla
+                bases={{ competencia: c, caixa: k }}
                   key={campo}
                   label={ROTULOS[campo]}
                   comp={c[campo]}
@@ -259,6 +278,7 @@ export default function DREOperacional() {
               ))}
 
               <DRELinhaDupla
+                bases={{ competencia: c, caixa: k }}
                 label="= Lucro Operacional"
                 comp={c.lucro_operacional}
                 caixa={k.lucro_operacional}
@@ -295,7 +315,11 @@ export default function DREOperacional() {
           </div>
 
           <p className="text-[11px] text-muted-foreground px-1">
-            O DAS por competência é uma estimativa de 12% da receita bruta do período, já descontada
+            Percentuais: custos ÷ receita bruta e custos ÷ lucro operacional; receita bruta ÷ receita líquida;
+            receita líquida ÷ lucro operacional. Receita líquida gerencial = receita bruta − DAS − CMV,
+            correspondente à linha Lucro Bruto. Cada coluna usa suas próprias bases; base zero aparece como
+            “—” e bases negativas preservam o sinal do percentual. O lucro operacional não é lucro líquido contábil.
+            {' '}O DAS por competência é uma estimativa de 12% da receita bruta do período, já descontada
             dos resultados e margens; não altera tributos registrados. No detalhe do DAS, a competência
             mostra a memória da previsão e o caixa mostra pagamentos efetivos.
             Clique em qualquer linha para ver sua composição. A coluna Caixa usa os
