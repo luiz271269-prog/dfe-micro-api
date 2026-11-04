@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, FileDown, Scale } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import DRELinhaDupla from '@/components/dre/DRELinhaDupla';
+import DRECabecalho from '@/components/dre/DRECabecalho';
 import DrilldownDREDialog from '@/components/dre/DrilldownDREDialog';
 import PeriodoDREControls from '@/components/dre/PeriodoDREControls';
 import CoberturaDRE from '@/components/dre/CoberturaDRE';
@@ -213,11 +214,7 @@ export default function DREOperacional() {
               </div>
             </div>
 
-            <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-3 px-3 py-2 bg-muted/50 border-b text-[10px] font-bold uppercase">
-              <span>Linha</span>
-              <span className="w-40 text-right text-blue-700">Competência</span>
-              <span className="w-40 text-right text-emerald-700">Caixa</span>
-            </div>
+            <DRECabecalho />
 
             <div>
               <DRELinhaDupla
