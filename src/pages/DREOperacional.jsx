@@ -58,9 +58,9 @@ export default function DREOperacional() {
       [],
       ['LINHA', 'COMPETÊNCIA (R$)', 'CAIXA (R$)'],
       linha('Receita Bruta de Vendas', 'receita_bruta'),
+      linha('(–) CMV', 'cmv'),
       linha(ROTULOS.das, 'das'),
       linha('= Receita Líquida', 'receita_liquida'),
-      linha('(–) CMV', 'cmv'),
       linha('= Lucro Bruto', 'lucro_bruto'),
       linha('(–) Folha de pagamento', 'folha'),
       linha('(–) Pró-labore', 'prolabore'),
@@ -218,6 +218,14 @@ export default function DREOperacional() {
                 onClick={() => abrir('receita_bruta')}
               />
               <DRELinhaDupla
+                label={ROTULOS.cmv}
+                comp={c.cmv}
+                caixa={k.cmv}
+                negative
+                isSub
+                onClick={() => abrir('cmv')}
+              />
+              <DRELinhaDupla
                 label={ROTULOS.das}
                 comp={c.das}
                 caixa={k.das}
@@ -232,14 +240,6 @@ export default function DREOperacional() {
                 isTotal
               />
 
-              <DRELinhaDupla
-                label={ROTULOS.cmv}
-                comp={c.cmv}
-                caixa={k.cmv}
-                negative
-                isSub
-                onClick={() => abrir('cmv')}
-              />
               <DRELinhaDupla
                 label="= Lucro Bruto"
                 comp={c.lucro_bruto}
