@@ -45,7 +45,7 @@ export default async function(req) {
     // 1. Buscar pedidos na Central de Compras
     const resultado = await fetchCentralCompras('PedidoCompra', 'limit=500');
     if (!resultado.ok) {
-      return Response.json({ ok: false, motivo: `Central de Compras respondeu HTTP ${resultado.status}; nenhuma compra foi importada.` }, { status: 502 });
+      return Response.json({ ok: false, motivo: `${resultado.motivo} Nenhuma compra foi importada.`, status: resultado.status, diagnostico: resultado.diagnostico }, { status: 502 });
     }
     const pedidos = resultado.data;
 

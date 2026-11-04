@@ -1,43 +1,12 @@
-// Integração com a Central de Compras (app Base44 irmão — cotações e ordens de compra).
-// A chave vem exclusivamente do secret CENTRAL_COMPRAS_API_KEY.
-import { secrets } from 'base44:runtime';
+import { consultarPedidosHub } from './nexusHub.ts';
 
-export const CENTRAL_COMPRAS_APP_ID = '69c530ac2befe8eafb45b38d';
-export const CENTRAL_COMPRAS_API_BASE = `https://app.base44.com/api/apps/${CENTRAL_COMPRAS_APP_ID}/entities`;
-
-export function getCentralComprasKey() {
-  const key = secrets.get('centra_compras_api_key') || secrets.get('CENTRAL_COMPRAS_API_KEY');
-  if (!key) throw new Error('Secret centra_compras_api_key não configurado');
-  return key;
-}
-
-/**
- * Busca uma entidade na Central de Compras testando os formatos de header
- * aceitos pela API do Base44 (api_key, x-api-key, Authorization Bearer).
- * Retorna { ok, status, data, header } — header indica qual formato funcionou.
- */
-export async function fetchCentralCompras(entityName, query = 'limit=500') {
-  const key = getCentralComprasKey().trim();
-  const url = `${CENTRAL_COMPRAS_API_BASE}/${entityName}?${query}`;
-  const tentativas = [
-    { nome: 'api_key', headers: { api_key: key } },
-    { nome: 'x-api-key', headers: { 'x-api-key': key } },
-    { nome: 'bearer', headers: { Authorization: `Bearer ${key}` } },
-  ];
-
-  const diagnostico = [];
-  for (const t of tentativas) {
-    const res = await fetch(url, { headers: { ...t.headers, Accept: 'application/json' } });
-    const texto = await res.text();
-    if (res.ok) {
-      const json = texto ? JSON.parse(texto) : [];
-      const data = Array.isArray(json) ? json : (json.results || json.data || []);
-      return { ok: true, status: res.status, data, header: t.nome };
-    }
-    diagnostico.push({ header: t.nome, status: res.status, detalhe: texto.slice(0, 300) });
+// Transporte único para pedidos: nexus360Api, com a credencial definida em nexusHub.
+// Mantém o contrato dos consumidores sem recorrer à API direta de entidades.
+export async function fetchCentralCompras(entityName) {
+  if (entityName !== 'PedidoCompra') {
+    throw new Error('A integração da Central de Compras permite apenas PedidoCompra.');
   }
-  const ultima = diagnostico[diagnostico.length - 1];
-  return { ok: false, status: ultima?.status || 0, data: [], header: null, diagnostico };
+  return consultarPedidosHub();
 }
 
 const CATEGORIAS = ['notebook','tablet','smartphone','componente','memoria','armazenamento','periferico','software','rede','outro'];
