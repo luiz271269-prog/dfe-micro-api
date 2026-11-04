@@ -8,16 +8,19 @@ export default function ComprasPortalCotacao({ onPedidos, onResumo, selectedMont
   const [estado, setEstado] = useState({ loading: true, data: null, erro: '' });
   async function carregar(ativo = () => true) {
     setEstado({ loading: true, data: null, erro: '' });
-    onResumo?.(null);
+    onResumo?.({ loading: true });
     try {
       const { data } = await buscarComprasCentral({ ...(selectedMonth ? { mes: selectedMonth, anual: isAnnual } : {}), forma_pagamento: filtroPagamento });
       if (!ativo()) return;
-      setEstado(data?.ok ? { loading: false, data, erro: '' } : { loading: false, data: null, erro: data?.motivo || 'Não foi possível ler o portal.' });
+      const erro = data?.ok ? '' : data?.motivo || 'Não foi possível ler o portal.';
+      setEstado({ loading: false, data: data?.ok ? data : null, erro });
       onPedidos?.(data?.ok ? data.pedidos_referencias || [] : []);
-      onResumo?.(data?.ok ? data.resumo : null);
+      onResumo?.(data?.ok ? data.resumo : { erro });
     } catch (error) {
       if (!ativo()) return;
-      setEstado({ loading: false, data: null, erro: error.response?.data?.motivo || (error.response?.status === 403 ? 'A consulta de pedidos é restrita a administradores (HTTP 403).' : 'Não foi possível consultar o portal. Tente atualizar novamente.') });
+      const erro = error.response?.data?.motivo || (error.response?.status === 403 ? 'A consulta de pedidos é restrita a administradores (HTTP 403).' : 'Não foi possível consultar o portal. Tente atualizar novamente.');
+      setEstado({ loading: false, data: null, erro });
+      onResumo?.({ erro });
       onPedidos?.([]);
     }
   }
