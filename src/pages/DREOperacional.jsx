@@ -74,12 +74,12 @@ export default function DREOperacional() {
       linha(ROTULOS.das, 'das'),
       linha('= Lucro Bruto', 'lucro_bruto'),
       linha('(–) Folha de pagamento', 'folha'),
-      linha('(–) Pró-labore', 'prolabore'),
       linha('(–) Despesas administrativas', 'despesas'),
-      linha('(–) Obras e reformas', 'obras'),
       linha('(–) Outros tributos', 'outros_tributos'),
       linha('= Total Despesas Operacionais', 'total_despesas_operacionais'),
       linha('= LUCRO OPERACIONAL', 'lucro_operacional'),
+      linha('(–) Pró-labore', 'prolabore'),
+      linha('(–) Obras e reformas', 'obras'),
       [],
       ['Margem bruta (%)', c.margem_bruta.toFixed(2), k.margem_bruta.toFixed(2)],
       ['Margem operacional (%)', c.margem_operacional.toFixed(2), k.margem_operacional.toFixed(2)],
@@ -261,7 +261,7 @@ export default function DREOperacional() {
                 isSub
                 negative
               />
-              {['folha', 'prolabore', 'despesas', 'obras', 'outros_tributos'].map((campo) => (
+              {['folha', 'despesas', 'outros_tributos'].map((campo) => (
                 <DRELinhaDupla
                 bases={{ competencia: c, caixa: k }}
                   key={campo}
@@ -281,6 +281,18 @@ export default function DREOperacional() {
                 caixa={k.lucro_operacional}
                 destaque
               />
+              {['prolabore', 'obras'].map((campo) => (
+                <DRELinhaDupla
+                  key={campo}
+                  bases={{ competencia: c, caixa: k }}
+                  label={ROTULOS[campo]}
+                  comp={c[campo]}
+                  caixa={k[campo]}
+                  negative
+                  indent={1}
+                  onClick={() => abrir(campo)}
+                />
+              ))}
             </div>
 
             <div className="px-4 py-3 bg-muted/30 border-t flex flex-wrap gap-8 text-xs">
