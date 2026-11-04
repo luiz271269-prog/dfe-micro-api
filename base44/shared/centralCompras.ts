@@ -1,12 +1,12 @@
-import { consultarPedidosHub } from './nexusHub.ts';
+import { consultarPedidosCentral } from './centralComprasConsulta.ts';
 
-// Transporte único para pedidos: nexus360Api, com a credencial definida em nexusHub.
-// Mantém o contrato dos consumidores sem recorrer à API direta de entidades.
+// Transporte único: API direta de entidades, com o token centra_compras_api_key.
+// Mantém o contrato de leitura dos consumidores.
 export async function fetchCentralCompras(entityName) {
   if (entityName !== 'PedidoCompra') {
     throw new Error('A integração da Central de Compras permite apenas PedidoCompra.');
   }
-  return consultarPedidosHub();
+  return consultarPedidosCentral();
 }
 
 const CATEGORIAS = ['notebook','tablet','smartphone','componente','memoria','armazenamento','periferico','software','rede','outro'];

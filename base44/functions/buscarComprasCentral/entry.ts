@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { consultarPedidosHub } from '../../shared/nexusHub.ts';
+import { consultarPedidosCentral } from '../../shared/centralComprasConsulta.ts';
 import { normalizarPedidosHub } from '../../shared/normalizarPedidosHub.ts';
 
 /**
@@ -19,7 +19,7 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
 
-    const resultado = await consultarPedidosHub();
+    const resultado = await consultarPedidosCentral();
     if (!resultado.ok) {
       return Response.json({
         ok: false,
