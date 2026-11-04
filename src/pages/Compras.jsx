@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import useComprasPeriodo from '@/hooks/useComprasPeriodo';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, ShoppingCart, TrendingDown, Building2, Receipt, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -71,9 +72,8 @@ export default function Compras() {
   const [isAnnual, setIsAnnual] = useState(false);
 
   // ── Compras state ─────────────────────────────────────────────────────────
-  const [compras, setCompras] = useState([]);
   const [pedidosPortal, setPedidosPortal] = useState([]);
-  const [loadingC, setLoadingC] = useState(true);
+  const { compras, loading: loadingC, load: loadCompras, monthTotals: monthTotalsC, error: comprasError, hasMore, loadMore, loadingMore } = useComprasPeriodo(selectedMonth, isAnnual, pedidosPortal);
   const [showFormC, setShowFormC] = useState(false);
   const [filterFornecedor, setFilterFornecedor] = useState('all');
   const [filterCategoriaC, setFilterCategoriaC] = useState('all');
@@ -100,17 +100,9 @@ export default function Compras() {
   const [searchDDA, setSearchDDA] = useState('');
 
   // ── Data loading ─────────────────────────────────────────────────────────
-  const loadCompras = useCallback(async () => {
-    setLoadingC(true);
-    const [data, forns] = await Promise.all([
-      base44.entities.ItemCompra.filter(pedidosPortal.length ? {
-        pedido_central_id: { $nin: pedidosPortal },
-        pedido_central_internal_id: { $nin: pedidosPortal },
-      } : {}, '-data_emissao', 500),
-      base44.entities.Fornecedor.list('nome', 200),
-    ]);
-    setCompras(data.filter(c => !c.tipo_compra || c.tipo_compra === 'estoque')); setFornecedores(forns); setLoadingC(false);
-  }, [pedidosPortal]);
+  useEffect(() => {
+    base44.entities.Fornecedor.list('nome', 200).then(setFornecedores);
+  }, []);
   async function loadDespesas() {
     setLoadingD(true);
     const [data, vinculos] = await Promise.all([
@@ -128,10 +120,6 @@ export default function Compras() {
   }
 
   useEffect(() => {
-    loadCompras();
-    return base44.entities.ItemCompra.subscribe(() => loadCompras());
-  }, [loadCompras]);
-  useEffect(() => {
     loadDespesas(); loadLancamentos();
     const unsub2 = base44.entities.DespesaOperacional.subscribe(() => loadDespesas());
     const unsub3 = base44.entities.LancamentoBancario.subscribe(() => loadLancamentos());
@@ -139,12 +127,6 @@ export default function Compras() {
   }, []);
 
   // ── Compras memos ─────────────────────────────────────────────────────────
-  const monthTotalsC = useMemo(() => {
-    const t = {};
-    const documentos = consolidarDocumentosCompras(compras);
-    ALL_MONTHS.forEach(m => { t[m] = documentos.filter(c => (c.data_vencimento || c.data_emissao || '').startsWith(m)).reduce((s,c) => s + c.valor, 0); });
-    return t;
-  }, [compras]);
 
   const comprasMes = useMemo(() => compras.filter(c => (c.data_vencimento || c.data_emissao || '').startsWith(isAnnual ? selectedMonth.slice(0, 4) : selectedMonth)), [compras, selectedMonth, isAnnual]);
   const documentosC = useMemo(() => consolidarDocumentosCompras(comprasMes), [comprasMes]);
@@ -279,7 +261,7 @@ export default function Compras() {
       {activeTab === 'compras' && (
         <>
           <ComprasPagamentoResumo compras={documentosC} filtro={filterPagamentoC} onFilter={setFilterPagamentoC} />
-          <ComprasPortalCotacao onPedidos={setPedidosPortal} />
+          <ComprasPortalCotacao onPedidos={setPedidosPortal} selectedMonth={selectedMonth} isAnnual={isAnnual} />
           <div className="flex flex-wrap gap-3 mb-6">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -298,7 +280,9 @@ export default function Compras() {
               <SelectContent><SelectItem value="all">Todas</SelectItem>{categoriaComprasOptions.map(c=><SelectItem key={c} value={c}>{c.charAt(0).toUpperCase()+c.slice(1)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
+          {comprasError && <p role="alert" className="mb-3 text-sm text-destructive">Não foi possível consultar as compras do período. <Button variant="link" onClick={loadCompras}>Tentar novamente</Button></p>}
           <ComprasTitulosTable documentos={filteredC} loading={loadingC} onSaved={loadCompras} />
+          {hasMore && <Button variant="outline" className="mt-3" onClick={() => loadMore()} disabled={loadingMore}>{loadingMore ? 'Carregando...' : 'Carregar mais compras do período'}</Button>}
         </>
       )}
 

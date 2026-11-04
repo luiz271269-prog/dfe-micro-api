@@ -19,6 +19,11 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden: admin required' }, { status: 403 });
 
+    const payload = await req.json().catch(() => ({}));
+    if (payload.mes !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(payload.mes)) {
+      return Response.json({ ok: false, motivo: 'Mês inválido. Use YYYY-MM.' }, { status: 400 });
+    }
+    const periodo = payload.mes ? (payload.anual === true ? payload.mes.slice(0, 4) : payload.mes) : '';
     const resultado = await consultarPedidosCentral();
     if (!resultado.ok) {
       return Response.json({
@@ -32,7 +37,9 @@ export default async function(req) {
     }
 
     const pedidos = resultado.data;
-    const { itens, fornecedores } = normalizarPedidosHub(pedidos);
+    const normalizado = normalizarPedidosHub(pedidos);
+    const itens = periodo ? normalizado.itens.filter((item) => (item.data_vencimento || item.data_emissao || '').startsWith(periodo)) : normalizado.itens;
+    const fornecedores = normalizado.fornecedores;
 
     return Response.json({
       ok: true,
