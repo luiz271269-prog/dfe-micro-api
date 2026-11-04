@@ -9,7 +9,6 @@ import { secrets } from 'base44:runtime';
 // Roda via automação agendada (sem usuário) ou manualmente por admin.
 
 const ENGINES = [
-  'sincronizarComprasCentral',
   'sanearClassificacaoExtrato',
   'conciliarContasAPagarExtrato',
   'conciliarCobrancasBanco',

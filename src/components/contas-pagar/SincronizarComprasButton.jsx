@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { sincronizarComprasCentral } from '@/functions/sincronizarComprasCentral';
+import { buscarComprasCentral } from '@/functions/buscarComprasCentral';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
-/** Puxa os pedidos do app Central de Compras para o Contas a Pagar (ItemCompra). */
+/** Atualiza a consulta online da Central, sem criar ou alterar registros. */
 export default function SincronizarComprasButton({ onDone }) {
   const queryClient = useQueryClient();
   const [rodando, setRodando] = useState(false);
@@ -15,9 +15,9 @@ export default function SincronizarComprasButton({ onDone }) {
     setRodando(true);
     setResultado(null);
     try {
-      const { data } = await sincronizarComprasCentral({});
+      const { data } = await buscarComprasCentral({});
       if (data?.error || data?.motivo && !data?.ok) throw new Error(data.error || data.motivo);
-      setResultado(`${data.criados} nova(s) · ${data.atualizados} atualizada(s)`);
+      setResultado(`${data.pedidos_count} pedido(s) consultado(s) online · sem importação`);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['fluxoConsolidado'] }),
         queryClient.invalidateQueries({ queryKey: ['carteiraPagarPainel'] }),
@@ -34,7 +34,7 @@ export default function SincronizarComprasButton({ onDone }) {
       {resultado && <span className="text-xs text-muted-foreground">{resultado}</span>}
       <Button onClick={sincronizar} disabled={rodando} size="sm" variant="outline" className="gap-1.5">
         <RefreshCw className={`w-3.5 h-3.5 ${rodando ? 'animate-spin' : ''}`} />
-        {rodando ? 'Sincronizando...' : 'Central de Compras'}
+        {rodando ? 'Consultando...' : 'Consultar Central online'}
       </Button>
     </div>
   );
