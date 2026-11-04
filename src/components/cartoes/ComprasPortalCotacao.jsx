@@ -32,7 +32,7 @@ export default function ComprasPortalCotacao({ onPedidos, onResumo, selectedMont
       {estado.data && <span className="text-xs text-muted-foreground">{documentos.length} títulos em aberto</span>}
       <Button variant="ghost" size="sm" className="ml-auto" onClick={() => carregar()} disabled={estado.loading}><RefreshCw className={`w-3.5 h-3.5 ${estado.loading ? 'animate-spin' : ''}`} /> Atualizar</Button>
     </header>
-    <p className="px-4 py-2 text-xs text-muted-foreground">Contas a pagar previstas a partir das condições da OC, somente leitura. Parcelas rateadas e datas futuras são previsões, não faturas conciliadas. Pagamento informado na origem não confirma baixa no financeiro.</p>
+    <p className="px-4 py-2 text-xs text-muted-foreground">Período e totais pela data de criação da ordem no sistema de origem, incluindo suas parcelas em aberto mesmo com vencimento em outros meses. Consulta somente leitura; rateios e datas futuras são previsões. Pagamento informado na origem não confirma baixa no financeiro.</p>
     {estado.erro && <p role="alert" className="m-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">{estado.erro}</p>}
     {!estado.erro && <ComprasTitulosTable documentos={documentos} loading={estado.loading} embedded somenteLeitura resumo={estado.data?.resumo_filtrado} />}
   </section>;

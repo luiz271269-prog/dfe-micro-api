@@ -25,6 +25,7 @@ export function normalizarPedidosHub(pedidos) {
       saldoPago -= valorPago;
       itens.push({ ...item,
         pedido_central_internal_id: pedido.id || '',
+        data_criacao_ordem: dataCentral(pedido.created_date),
         data_emissao: dataCentral(pedido.data_pedido) || dataCentral(pedido.data_emissao),
         data_vencimento: dataCentral(linha?.data_vencimento) || dataCentral(pedido.data_vencimento) || dataCentral(pedido.prazo_pagamento),
         data_pagamento_informada: dataCentral(pedido.data_pagamento),

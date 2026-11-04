@@ -53,8 +53,8 @@ export default function PedidoCentralDetalhe() {
               <p className="text-xs text-muted-foreground mt-1">{pedido.fornecedor_cnpj || ''}</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <div className="flex items-center gap-2 mb-2"><CalendarDays className="w-4 h-4 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Data do Pedido</p></div>
-              <p className="font-bold text-foreground">{formatDate(pedido.data_pedido || (pedido.created_date || '').slice(0, 10))}</p>
+              <div className="flex items-center gap-2 mb-2"><CalendarDays className="w-4 h-4 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Criação da ordem</p></div>
+              <p className="font-bold text-foreground">{itens[0]?.data_criacao_ordem ? formatDate(itens[0].data_criacao_ordem) : 'Não informada'}</p>
               <p className="text-xs text-muted-foreground mt-1">Empresa: {pedido.empresa || '—'}</p>
             </div>
             <div className="bg-card rounded-xl border p-4">

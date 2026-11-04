@@ -41,9 +41,9 @@ export default async function(req) {
 
     const pedidos = resultado.data;
     const normalizado = normalizarPedidosHub(pedidos);
-    const itens = periodo ? normalizado.itens.filter((item) => (item.data_vencimento || item.data_emissao || '').startsWith(periodo)) : normalizado.itens;
+    const itens = periodo ? normalizado.itens.filter((item) => (item.data_criacao_ordem || '').startsWith(periodo)) : normalizado.itens;
     const fornecedores = normalizado.fornecedores;
-    const documentosPeriodo = titulosComprasCentral(pedidos, normalizado.itens).filter(doc => !periodo || (doc.data_vencimento || doc.data_emissao || '').startsWith(periodo));
+    const documentosPeriodo = titulosComprasCentral(pedidos, normalizado.itens).filter(doc => !periodo || (doc.data_criacao_ordem || '').startsWith(periodo));
     const documentos = documentosPeriodo.filter(doc => !payload.forma_pagamento || payload.forma_pagamento === 'all' || doc.forma_pagamento === payload.forma_pagamento);
 
     return Response.json({

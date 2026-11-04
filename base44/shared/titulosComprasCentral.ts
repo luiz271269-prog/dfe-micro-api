@@ -17,7 +17,7 @@ export function titulosComprasCentral(pedidos, itens) {
     return parcelasCentral({ ...pedido, data_vencimento: base.data_vencimento }, total, pago, original).map(parcela => ({
       id: `${pedido.id}-parcela-${parcela.numero}`, numero: pedido.numero_pedido, tipo: 'Pedido',
       parcela: `${parcela.numero}/${parcela.quantidade}`, fornecedor: base.fornecedor,
-      data_emissao: base.data_emissao, data_vencimento: parcela.data_vencimento,
+      data_emissao: base.data_emissao, data_criacao_ordem: base.data_criacao_ordem, data_vencimento: parcela.data_vencimento,
       data_pagamento_informada: base.data_pagamento_informada,
       forma_pagamento: base.forma_pagamento, condicao_pagamento: base.condicao_pagamento,
       cartao_final: base.cartao_final, pagamento_antecipado: pedido.pagamento_antecipado === true,

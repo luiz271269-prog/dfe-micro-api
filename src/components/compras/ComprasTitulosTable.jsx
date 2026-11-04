@@ -12,14 +12,14 @@ export default function ComprasTitulosTable({ documentos, loading = false, embed
   const referencias = doc => (doc.itens || []).map(i => ({ tipo: 'ItemCompra', id: i.id, descricao: `${doc.numero} · ${i.descricao_produto || doc.fornecedor}` }));
   const tabela = <div className="overflow-x-auto"><table className="w-full text-sm">
     <thead><tr className="border-b bg-muted/30">
-      <th className="p-3 text-left">Data da ordem / emissão</th><th className="p-3 text-left">Vencimento / prazo</th><th className="p-3 text-left">Nota / parcela</th>
+      <th className="p-3 text-left">{somenteLeitura ? 'Data de criação da ordem' : 'Data da ordem / emissão'}</th><th className="p-3 text-left">Vencimento / prazo</th><th className="p-3 text-left">Nota / parcela</th>
       <th className="p-3 text-left">Fornecedor</th><th className="p-3 text-left">Pagamento</th><th className="p-3 text-left">Data de pagamento informada</th>
       <th className="p-3 text-left">{somenteLeitura ? 'Status na origem' : 'Status'}</th><th className="p-3 text-right">Valor da compra / parcela (R$)</th><th className="p-3 text-right">Em aberto (R$)</th><th className="p-3 text-right">Ação</th>
     </tr></thead>
     <tbody>{loading ? <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">Carregando...</td></tr>
       : documentos.length === 0 ? <tr><td colSpan={10} className="p-10 text-center text-muted-foreground">Nenhuma nota ou parcela em aberto</td></tr>
       : documentos.map((doc) => <tr key={doc.id} className="border-b last:border-0 hover:bg-muted/20">
-        <td className="p-3 whitespace-nowrap">{doc.data_emissao ? formatDate(doc.data_emissao) : 'Não informada'}</td>
+        <td className="p-3 whitespace-nowrap">{(somenteLeitura ? doc.data_criacao_ordem : doc.data_emissao) ? formatDate(somenteLeitura ? doc.data_criacao_ordem : doc.data_emissao) : 'Não informada'}</td>
         <td className="p-3 whitespace-nowrap">{doc.data_vencimento ? formatDate(doc.data_vencimento) : 'Não informado'}{doc.vencimento_previsto && <p className="text-xs text-muted-foreground">Previsão pela condição da OC</p>}</td>
         <td className="p-3"><p className="font-semibold">{doc.tipo} {doc.numero}</p><p className="text-xs text-muted-foreground">Parcela {doc.parcela}{doc.valor_previsto ? ' · rateio previsto' : ''}</p></td>
         <td className="p-3">{doc.fornecedor}</td><td className="p-3"><CompraPagamentoDados documento={doc} /></td>
