@@ -5,6 +5,7 @@ import { buscarPedidoCentral } from '@/functions/buscarPedidoCentral';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import PageHeader from '@/components/shared/PageHeader';
+import CompraValor from '@/components/compras/CompraValor';
 
 export default function PedidoCentralDetalhe() {
   const { oc_numero } = useParams();
@@ -26,6 +27,7 @@ export default function PedidoCentralDetalhe() {
 
   const pedido = estado.data?.pedido;
   const itens = estado.data?.itens || pedido?.itens || [];
+  const cambio = itens[0]?.taxa_cambio || 1;
 
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1200px] mx-auto">
@@ -57,7 +59,7 @@ export default function PedidoCentralDetalhe() {
             </div>
             <div className="bg-card rounded-xl border p-4">
               <div className="flex items-center gap-2 mb-2"><Receipt className="w-4 h-4 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Valor Total</p></div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(pedido.valor_total || 0)}</p>
+              <div className="text-xl font-bold text-foreground"><CompraValor valor={(pedido.valor_total || 0) * cambio} moeda={pedido.moeda || 'BRL'} valorOriginal={pedido.valor_total} taxaCambio={cambio} /></div>
               <p className="text-xs mt-1">
                 <span className={`px-2 py-0.5 rounded-full font-semibold ${pedido.oc_finalizada ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                   {pedido.oc_finalizada ? 'Finalizada' : 'Em andamento'}
@@ -74,7 +76,10 @@ export default function PedidoCentralDetalhe() {
               <Campo label="Parcelas" valor={String(pedido.parcelas ?? '—')} />
               <Campo label="Pagamento antecipado" valor={pedido.pagamento_antecipado ? 'Sim' : 'Não'} />
               <Campo label="Forma de pagamento" valor={pedido.condicao_pagamento || pedido.forma_pagamento || '—'} />
-              <Campo label="Valor pago" valor={formatCurrency(pedido.valor_pago || 0)} />
+              <Campo label="Valor pago informado (R$)" valor={formatCurrency((pedido.valor_pago || 0) * cambio)} />
+              <Campo label="Data da ordem" valor={formatDate(pedido.data_pedido)} />
+              <Campo label="Vencimento / prazo" valor={itens[0]?.data_vencimento ? formatDate(itens[0].data_vencimento) : 'Não informado'} />
+              <Campo label="Data de pagamento informada" valor={pedido.data_pagamento ? formatDate(pedido.data_pagamento) : 'Não informada'} />
               <Campo label="Valor ICMS-ST" valor={formatCurrency(pedido.valor_icms_st || 0)} />
               <Campo label="Tipo de frete" valor={pedido.tipo_frete || '—'} />
               <Campo label="Rastreamento" valor={pedido.rastreamento_codigo || '—'} />

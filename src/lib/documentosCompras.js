@@ -24,6 +24,10 @@ export function consolidarDocumentosCompras(compras = []) {
         id: `${base.fornecedor || 'sem-fornecedor'}-${numero}-${data || 'sem-data'}`, numero, tipo: base.numero_nota ? 'NF' : 'Pedido',
         parcela: `${indice + 1}/${datas.length}`, fornecedor: base.fornecedor || '—', data_vencimento: data,
         data_emissao: base.data_emissao, forma_pagamento: base.forma_pagamento,
+        data_pagamento_informada: base.data_pagamento_informada || base.data_pagamento || '',
+        condicao_pagamento: base.condicao_pagamento || '',
+        valor_compra: valorTotal, moeda_original: base.moeda_original || 'BRL', taxa_cambio: base.taxa_cambio,
+        valor_original: itens.reduce((s, item) => s + (item.valor_original ?? item.valor_total ?? 0), 0),
         status_pagamento: valorPago > 0 ? 'parcial' : base.status_pagamento,
         valor: Math.max(0, valorTotal - valorPago), itens,
       };
