@@ -197,7 +197,7 @@ export default function DREOperacional() {
                 </p>
                 <p className="text-[10px] opacity-90">
                   Grupo consolidado · Simples Nacional · CMV a partir de{' '}
-                  {dados.origem_cmv === 'nfe_analise' ? 'XMLs de NF-e (com ICMS-ST e IPI)' : 'compras e entradas de estoque registradas — valor provisório'}
+                  {dados.origem_cmv === 'compras_produtos_consolidadas' ? 'compras de produtos locais + portal, sem duplicidade — valor provisório' : dados.origem_cmv === 'nfe_analise' ? 'XMLs de NF-e (com ICMS-ST e IPI)' : 'compras e entradas de estoque registradas — valor provisório'}
                 </p>
               </div>
             </div>

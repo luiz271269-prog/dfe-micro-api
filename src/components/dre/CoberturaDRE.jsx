@@ -19,7 +19,7 @@ export default function CoberturaDRE({ cobertura, cmvProvisorio }) {
       </div>
       {cmvProvisorio && (
         <p className="rounded-lg bg-warning/10 px-3 py-2 text-xs text-foreground">
-          CMV provisório: representa compras e entradas de estoque do período, não o custo das mercadorias efetivamente vendidas.
+          CMV provisório por competência: valor integral das compras de produtos do período, pagas ou em aberto. Ordens do portal usam a data de criação; compras locais usam a emissão. Não representa o custo das mercadorias efetivamente vendidas nem o saldo a pagar.
         </p>
       )}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">

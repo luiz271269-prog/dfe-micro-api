@@ -17,7 +17,7 @@ function detalhe(registro, origem, valor) {
   return { data: registro.data || registro.data_emissao || registro.data_referencia || registro.competencia, descricao: registro.descricao || registro.descricao_produto || registro.cliente || registro.funcionario_nome || registro.tipo || origem, empresa: registro.empresa || registro.empresa_beneficiada || '—', origem, valor: Math.abs(Number(valor) || 0) };
 }
 
-export function adaptarDRE({ dados, sourceStatus, mesInicio, mesFim, hoje }) {
+export function adaptarDRE({ dados, sourceStatus, mesInicio, mesFim, hoje, comprasProdutos }) {
   const competencia = Object.fromEntries(CAMPOS.map((c) => [c, 0]));
   const caixa = Object.fromEntries(CAMPOS.map((c) => [c, 0]));
   const itens = Object.fromEntries(CAMPOS.map((c) => [c, { competencia: [], caixa: [] }]));
@@ -29,7 +29,9 @@ export function adaptarDRE({ dados, sourceStatus, mesInicio, mesFim, hoje }) {
     const r = calcularConsolidado({ dados, sourceStatus, mes, perimetro: 'grupo', hoje });
     ultimo = r;
     const op = r.operacao, cx = r.caixa;
-    const c = { receita_bruta: op.faturamento.valor, das: op.tributos.componentes.das.valor, cmv: op.cmvEstimado.valor, folha: op.folha.valor, prolabore: 0, despesas: op.despesas.componentes.despesasOp.valor, obras: op.despesas.componentes.obrasManutencao.valor, outros_tributos: op.tributos.componentes.outros.valor };
+    const comprasMes = comprasProdutos?.filter(compra => (compra.data_emissao || '').startsWith(mes));
+    const cmv = comprasMes ? arred(comprasMes.reduce((total, compra) => total + (Number(compra.valor_total) || 0), 0)) : op.cmvEstimado.valor;
+    const c = { receita_bruta: op.faturamento.valor, das: op.tributos.componentes.das.valor, cmv, folha: op.folha.valor, prolabore: 0, despesas: op.despesas.componentes.despesasOp.valor, obras: op.despesas.componentes.obrasManutencao.valor, outros_tributos: op.tributos.componentes.outros.valor };
     const k = { receita_bruta: cx.recebimentos.valor, das: Math.abs(cx.pagamentos.das.valor), cmv: Math.abs(cx.pagamentos.compras.valor + cx.pagamentos.cartao.valor), folha: Math.abs(cx.pagamentos.folha.valor), prolabore: Math.abs(cx.retiradas.proLabore.valor), despesas: Math.abs(cx.pagamentos.despesas.valor), obras: Math.abs(cx.investimentos.valor), outros_tributos: Math.abs(cx.pagamentos.outrosTributos.valor) };
     for (const campo of CAMPOS) { competencia[campo] = arred(competencia[campo] + c[campo]); caixa[campo] = arred(caixa[campo] + k[campo]); }
 
@@ -37,7 +39,9 @@ export function adaptarDRE({ dados, sourceStatus, mesInicio, mesFim, hoje }) {
     anexar('receita_bruta', 'competencia', op.faturamento.componentes.externos, 'IntegracaoFinanceira', (x) => x.valor);
     anexar('das', 'competencia', op.tributos.componentes.das, 'Tributo', (x) => x.valor_original);
     anexar('outros_tributos', 'competencia', op.tributos.componentes.outros, 'Tributo', (x) => x.valor_original);
-    anexar('cmv', 'competencia', op.cmvEstimado, 'ItemCompra', (x) => x.valor_total);
+    if (comprasMes) {
+      for (const compra of comprasMes) itens.cmv.competencia.push(detalhe(compra, compra.origem_cmv || 'ItemCompra', compra.valor_total));
+    } else anexar('cmv', 'competencia', op.cmvEstimado, 'ItemCompra', (x) => x.valor_total);
     anexar('folha', 'competencia', op.folha, 'FolhaPagamento', (x) => x.salario_liquido);
     anexar('despesas', 'competencia', op.despesas.componentes.despesasOp, 'DespesaOperacional', (x) => x.valor);
     anexar('obras', 'competencia', op.despesas.componentes.obrasManutencao, 'ObraReforma', (x) => x.valor);
