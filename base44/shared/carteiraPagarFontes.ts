@@ -1,3 +1,5 @@
+import { compraDireta, compraIdentificada } from './comprasElegibilidade.ts';
+
 export const GRUPOS_CARTEIRA = [
   { chave: 'compras', rotulo: 'Compras (fornecedores)', href: '/compras' },
   { chave: 'cartoes', rotulo: 'Faturas de cartão', href: '/cartoes' },
@@ -41,7 +43,7 @@ export async function fontesCarteira(db, mes, perimetro) {
   const fonte = (entidade, grupo, valor, query, juros = false) => ({ entidade, grupo, valor, query, juros });
   const mensal = { $or: [{ tipo: 'mensal' }, vazioCarteira('tipo')] };
   return { fim, empresa, fontes: [
-    fonte('ItemCompra', 'compras', 'valor_total', { $and: [empresa, { status_pagamento: { $in: ['pendente', 'parcial', 'nao_identificado'] } }, vazioCarteira('lancamento_cartao_id'), vencimentoAte('data_vencimento', 'data_emissao', fim)] }),
+    fonte('ItemCompra', 'compras', 'valor_total', { $and: [empresa, compraDireta, compraIdentificada, { status_pagamento: { $in: ['pendente', 'parcial', 'nao_identificado'] } }, vencimentoAte('data_vencimento', null, fim)] }),
     fonte('FaturaCartao', 'cartoes', 'valor_total', { $and: [cartoes, vencimentoAte('data_vencimento', null, fim)] }),
     fonte('Tributo', 'tributos', 'valor_original', { $and: [empresa, { status: { $in: ['a_vencer', 'vencido', 'parcelado'] } }, vencimentoAte('data_vencimento', null, fim)] }, true),
     fonte('FolhaPagamento', 'folha', 'salario_liquido', { $and: [empresa, { status: { $in: ['pendente', 'adiantamento'] } }, { $or: [{ $and: [mensal, { competencia: { $lt: mes } }] }, { tipo: { $in: ['ferias', 'decimo_terceiro', 'rescisao'] }, competencia: { $lte: mes } }, vazioCarteira('competencia')] }] }),

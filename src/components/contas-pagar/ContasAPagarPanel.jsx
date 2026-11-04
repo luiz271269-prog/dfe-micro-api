@@ -22,6 +22,7 @@ import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import referenciasContaBaixa from '@/components/baixas/referenciasContaBaixa';
 import consultarLiquidacoes from '@/lib/consultarLiquidacoes';
 import RevisaoObrasFaturas from '@/components/contas-pagar/RevisaoObrasFaturas';
+import ComprasElegibilidade from '@/components/contas-pagar/ComprasElegibilidade';
 
 
 
@@ -199,6 +200,7 @@ export default function ContasAPagarPanel() {
       </div>
 
       <RevisaoObrasFaturas obras={dados.obras.filter(o => pertenceAoFiltroEmpresa(o, filtroEmpresa) && pertenceAoPeriodo({ data_vencimento: o.data_vencimento || o.data, _situacao: 'aberto' }))} faturas={dados.faturas.filter(f => pertenceAoFiltroEmpresa({ ...f, empresa: dados.cartoes.find(c => c.id === f.conta_cartao_id)?.empresa_vinculada }, filtroEmpresa) && pertenceAoPeriodo({ data_vencimento: f.data_vencimento, _situacao: 'aberto' }))} onSaved={() => load(false)} />
+      <ComprasElegibilidade mes={mesReferencia} anual={isAnnual} empresa={filtroEmpresa} natureza={filtroOrigem} versao={versaoResumo} onSaved={() => load(false)} />
       <ResumoSituacaoCarteira abertos={abertosRecorte} pagos={pagosRecorte} versao={versaoResumo} />
       {(isAnnual ? mesReferencia.slice(0, 4) === mesAtualISO().slice(0, 4) : mesReferencia === mesAtualISO()) && <p className="text-xs text-muted-foreground mb-3">A consulta atual também inclui contas em aberto de períodos anteriores e sem vencimento; documentos quitados continuam restritos ao período selecionado.</p>}
       <ResumoPorInstrumento itens={itens} tituloTotal={tituloConsulta} />

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { GRUPOS_CARTEIRA, agregarCarteira, fontesCarteira, grupoCarteira, centavosCarteira } from '../../shared/carteiraPagarFontes.ts';
+import { GRUPOS_CARTEIRA, agregarCarteira, fontesCarteira, grupoCarteira, centavosCarteira, vencimentoAte } from '../../shared/carteiraPagarFontes.ts';
+import { categoriasCompra } from '../../shared/comprasElegibilidade.ts';
 import { preverFixasCarteira } from '../../shared/carteiraPagarFixas.ts';
 import { liquidacoesDocumentos } from '../../shared/liquidacaoObrasFaturas.ts';
 
@@ -34,12 +35,17 @@ export default async function(req) {
         grupos.get(grupoCarteira(row, fonte.grupo)).confirmadoCentavos += saldo;
       }
     }
-    const previsoes = await preverFixasCarteira(db, body.mes, empresa);
+    const [previsoes, incompleto, cartaoSemVinculo] = await Promise.all([
+      preverFixasCarteira(db, body.mes, empresa),
+      db.ItemCompra.count({ $and: [empresa, categoriasCompra.incompleto, vencimentoAte('data_vencimento', 'data_emissao', fim)] }),
+      db.ItemCompra.count({ $and: [empresa, categoriasCompra.cartao_sem_vinculo, vencimentoAte('data_vencimento', 'data_emissao', fim)] }),
+    ]);
+    const comprasRevisao = { incompleto, cartao_sem_vinculo: cartaoSemVinculo };
     for (const [chave, valor] of Object.entries(previsoes.grupos)) grupos.get(chave).previstoCentavos += valor;
     const lista = [...grupos.values()];
     const totalConfirmado = lista.reduce((s, g) => s + g.confirmadoCentavos, 0) / 100;
     const totalPrevisto = lista.reduce((s, g) => s + g.previstoCentavos, 0) / 100;
-    return Response.json({ mes: body.mes, perimetro: body.perimetro, fim, podeSincronizar: user.role === 'admin', semCalendario: previsoes.semCalendario, totalConfirmado, totalPrevisto, grupos: lista.map(({ confirmadoCentavos, previstoCentavos, ...g }) => ({ ...g, confirmado: confirmadoCentavos / 100, previsto: previstoCentavos / 100 })) });
+    return Response.json({ mes: body.mes, perimetro: body.perimetro, fim, podeSincronizar: user.role === 'admin', semCalendario: previsoes.semCalendario, totalConfirmado, totalPrevisto, comprasRevisao, grupos: lista.map(({ confirmadoCentavos, previstoCentavos, ...g }) => ({ ...g, confirmado: confirmadoCentavos / 100, previsto: previstoCentavos / 100 })) });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

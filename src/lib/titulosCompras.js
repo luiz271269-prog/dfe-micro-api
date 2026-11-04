@@ -1,7 +1,7 @@
 const valorAberto = (c) => Math.max(0, (c.valor_total || 0) - (c.valor_pago || 0));
 
 export function consolidarTitulosCompras(compras = [], pago = false) {
-  const elegiveis = compras.filter((c) => c.numero_nota && c.data_vencimento && !c.lancamento_cartao_id)
+  const elegiveis = compras.filter((c) => String(c.numero_nota || '').trim() && String(c.data_vencimento || '').trim() && !String(c.lancamento_cartao_id || '').trim() && c.forma_pagamento !== 'cartao')
     .filter((c) => pago ? c.status_pagamento === 'pago' : ['pendente', 'parcial', 'nao_identificado'].includes(c.status_pagamento));
   const notas = new Map();
   elegiveis.forEach((c) => {
