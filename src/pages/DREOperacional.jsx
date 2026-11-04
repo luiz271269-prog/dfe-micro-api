@@ -12,7 +12,7 @@ import { getCurrentMonth } from '@/lib/currentMonth';
 
 const ROTULOS = {
   receita_bruta: 'Receita Bruta de Vendas',
-  das: '(–) DAS — Simples Nacional',
+  das: '(–) Impostos — DAS (previsto 12%)',
   cmv: '(–) Custo das Mercadorias Vendidas (CMV)',
   folha: 'Folha de pagamento (bruto + FGTS)',
   prolabore: 'Pró-labore',
@@ -54,10 +54,11 @@ export default function DREOperacional() {
       ['DRE OPERACIONAL CONSOLIDADO — NeuralTec + Liesch'],
       ['Período', periodoLabel],
       ['Regime', 'Simples Nacional'],
+      ['Premissa DAS', 'Competência: previsão de 12% da receita bruta. Caixa: pagamentos efetivos.'],
       [],
       ['LINHA', 'COMPETÊNCIA (R$)', 'CAIXA (R$)'],
       linha('Receita Bruta de Vendas', 'receita_bruta'),
-      linha('(–) DAS', 'das'),
+      linha(ROTULOS.das, 'das'),
       linha('= Receita Líquida', 'receita_liquida'),
       linha('(–) CMV', 'cmv'),
       linha('= Lucro Bruto', 'lucro_bruto'),
@@ -302,7 +303,10 @@ export default function DREOperacional() {
           </div>
 
           <p className="text-[11px] text-muted-foreground px-1">
-            Clique em qualquer linha para ver os lançamentos que a compõem. A coluna Caixa usa os
+            O DAS por competência é uma estimativa de 12% da receita bruta do período, já descontada
+            dos resultados e margens; não altera tributos registrados. No detalhe do DAS, a competência
+            mostra a memória da previsão e o caixa mostra pagamentos efetivos.
+            Clique em qualquer linha para ver sua composição. A coluna Caixa usa os
             vínculos do extrato bancário como fonte da verdade, com as datas de pagamento próprias
             como complemento. Faturas de cartão são tratadas como meio de pagamento, não como
             despesa, para evitar dupla contagem; no pagamento bancário da fatura, os valores são realizados no caixa conforme a classificação de cada lançamento do cartão.

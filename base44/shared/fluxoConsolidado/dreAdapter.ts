@@ -31,13 +31,12 @@ export function adaptarDRE({ dados, sourceStatus, mesInicio, mesFim, hoje, compr
     const op = r.operacao, cx = r.caixa;
     const comprasMes = comprasProdutos?.filter(compra => (compra.data_emissao || '').startsWith(mes));
     const cmv = comprasMes ? arred(comprasMes.reduce((total, compra) => total + (Number(compra.valor_total) || 0), 0)) : op.cmvEstimado.valor;
-    const c = { receita_bruta: op.faturamento.valor, das: op.tributos.componentes.das.valor, cmv, folha: op.folha.valor, prolabore: 0, despesas: op.despesas.componentes.despesasOp.valor, obras: op.despesas.componentes.obrasManutencao.valor, outros_tributos: op.tributos.componentes.outros.valor };
+    const c = { receita_bruta: op.faturamento.valor, das: 0, cmv, folha: op.folha.valor, prolabore: 0, despesas: op.despesas.componentes.despesasOp.valor, obras: op.despesas.componentes.obrasManutencao.valor, outros_tributos: op.tributos.componentes.outros.valor };
     const k = { receita_bruta: cx.recebimentos.valor, das: Math.abs(cx.pagamentos.das.valor), cmv: Math.abs(cx.pagamentos.compras.valor + cx.pagamentos.cartao.valor), folha: Math.abs(cx.pagamentos.folha.valor), prolabore: Math.abs(cx.retiradas.proLabore.valor), despesas: Math.abs(cx.pagamentos.despesas.valor), obras: Math.abs(cx.investimentos.valor), outros_tributos: Math.abs(cx.pagamentos.outrosTributos.valor) };
     for (const campo of CAMPOS) { competencia[campo] = arred(competencia[campo] + c[campo]); caixa[campo] = arred(caixa[campo] + k[campo]); }
 
     anexar('receita_bruta', 'competencia', op.faturamento.componentes.vendasNF, 'NotaFiscal', (x) => x.valor_total);
     anexar('receita_bruta', 'competencia', op.faturamento.componentes.externos, 'IntegracaoFinanceira', (x) => x.valor);
-    anexar('das', 'competencia', op.tributos.componentes.das, 'Tributo', (x) => x.valor_original);
     anexar('outros_tributos', 'competencia', op.tributos.componentes.outros, 'Tributo', (x) => x.valor_original);
     if (comprasMes) {
       for (const compra of comprasMes) itens.cmv.competencia.push(detalhe(compra, compra.origem_cmv || 'ItemCompra', compra.valor_total));
@@ -56,5 +55,14 @@ export function adaptarDRE({ dados, sourceStatus, mesInicio, mesFim, hoje, compr
     anexar('obras', 'caixa', cx.investimentos, 'LancamentoBancario', (x) => x.valor);
   }
 
+  // Premissa gerencial do período completo; não altera tributos nem pagamentos.
+  competencia.das = arred(competencia.receita_bruta * 0.12);
+  if (competencia.receita_bruta !== 0) itens.das.competencia.push({
+    data: mesFim,
+    descricao: `DAS previsto: 12% da receita bruta de R$ ${competencia.receita_bruta.toFixed(2)} (${mesInicio} a ${mesFim})`,
+    empresa: 'NeuralTec + Liesch',
+    origem: 'Estimativa gerencial, não é tributo registrado',
+    valor: competencia.das,
+  });
   return { competencia: montar(competencia), caixa: montar(caixa), itens, motor: 'fluxoConsolidadoEngine', loopR: ultimo?.loopR, conciliacaoCache: ultimo?.conciliacaoCache };
 }
