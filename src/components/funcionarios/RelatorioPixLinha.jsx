@@ -18,7 +18,7 @@ export default function RelatorioPixLinha({ comp }) {
         <div className="flex-1 grid grid-cols-2 sm:grid-cols-7 gap-2 text-xs tabular-nums">
           <span>Devido: <b>{formatCurrency(comp.liquido)}</b></span>
           <span className="text-muted-foreground">Vence: <b className="text-foreground">{comp.vencimento ? formatDate(comp.vencimento) : '—'}</b></span>
-          <span className="text-green-700">Salário: <b>{v(comp.pix_salario + comp.pix_complemento)}</b></span>
+          <span className="text-green-700">Salário: <b>{v(comp.pix_salario + comp.pix_complemento + (comp.baixa_manual || 0))}</b></span>
           <span className="text-blue-700">Comissão: <b>{v(comp.pix_comissao)}</b></span>
           <span className="text-yellow-700">Vales: <b>{v(comp.pix_adiantamentos)}</b></span>
           <span className="text-sky-700">A conferir: <b>{v(naoConta)}</b></span>

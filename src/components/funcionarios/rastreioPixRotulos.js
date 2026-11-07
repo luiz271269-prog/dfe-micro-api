@@ -15,5 +15,6 @@ export const TIPO_PIX = {
   adiantamento: { label: 'Vale', color: 'bg-yellow-100 text-yellow-800' },
   a_confirmar: { label: 'A confirmar', color: 'bg-sky-100 text-sky-700' },
   suspeito: { label: 'Valor incompatível', color: 'bg-red-100 text-red-700' },
+  baixa_manual: { label: 'Baixa manual', color: 'bg-indigo-100 text-indigo-700' },
   outro_beneficiario: { label: 'Outro beneficiário', color: 'bg-red-100 text-red-700' },
 };

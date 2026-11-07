@@ -30,13 +30,31 @@ export default async function(req) {
     const vinculosPorFolha = new Map();
     for (const v of vinculos) { if (!vinculosPorFolha.has(v.entidade_id)) vinculosPorFolha.set(v.entidade_id, []); vinculosPorFolha.get(v.entidade_id).push(v); }
 
+    const chaveFunc = f => f.funcionario_id || normConciliacao(f.funcionario_nome || '');
+    const pixExtratoPorFunc = new Map(); // PIX de extrato já vinculados, para detectar baixa manual duplicada
+    for (const f of folhas) for (const v of vinculosPorFolha.get(f.id) || []) {
+      const l = lancs.get(v.lancamento_bancario_id); if (!l) continue;
+      const k = chaveFunc(f); if (!pixExtratoPorFunc.has(k)) pixExtratoPorFunc.set(k, []);
+      pixExtratoPorFunc.get(k).push({ data: l.data, valor: Math.abs(Number(l.valor)), competencia: f.competencia });
+    }
     const usadoPorLanc = new Map(); // valor já atribuído a outras competências neste rastreio
     const porFuncionario = new Map();
     for (const folha of [...folhas].sort((a, b) => (a.competencia || '').localeCompare(b.competencia || ''))) {
       const nomeCadastro = funcById.get(folha.funcionario_id)?.nome || folha.funcionario_nome;
       const { vencimento, janela } = vencimentoRastreio(folha);
-      const soma = { salario: 0, comissao: 0, complemento: 0, adiantamento: 0, a_confirmar: 0, suspeito: 0, outro_beneficiario: 0 };
+      const soma = { salario: 0, comissao: 0, complemento: 0, adiantamento: 0, a_confirmar: 0, suspeito: 0, outro_beneficiario: 0, baixa_manual: 0 };
       const pix = [];
+      // Baixas manuais registradas na própria folha: valem como pagamento declarado, com alertas de conferência.
+      for (const pm of folha.pagamentos_manuais || []) {
+        const valor = r2(Number(pm.valor || 0)); if (valor <= 0) continue;
+        const alertas = [];
+        const inicioMes = janela ? `${janela.mes_pagamento}-01` : null;
+        if (janela && (pm.data < inicioMes || pm.data > vencimento)) alertas.push(`Data da baixa (${pm.data}) fora do mês de pagamento desta competência (${inicioMes} a ${vencimento}) — confira se é o pagamento de outro mês`);
+        const dup = (pixExtratoPorFunc.get(chaveFunc(folha)) || []).find(p => p.data === pm.data && Math.abs(p.valor - valor) <= 5);
+        if (dup) alertas.push(`Mesmo pagamento já vinculado pelo extrato na competência ${dup.competencia} — possível duplicidade`);
+        soma.baixa_manual += valor;
+        pix.push({ data: pm.data, valor, tipo: 'baixa_manual', motivo: `Baixa manual registrada na folha (${pm.forma || 'sem forma'}), sem PIX do extrato vinculado`, descricao: 'Baixa manual', alertas });
+      }
       for (const v of vinculosPorFolha.get(folha.id) || []) {
         const lanc = lancs.get(v.lancamento_bancario_id);
         const debito = Math.abs(Number(lanc?.valor || 0)), usado = usadoPorLanc.get(v.lancamento_bancario_id) || 0;
@@ -54,14 +72,14 @@ export default async function(req) {
         pix.push({ data: lanc?.data || null, valor, tipo, motivo, descricao: lanc?.descricao || '(lançamento não encontrado)', alertas });
       }
       const liquido = Number(folha.salario_liquido || 0);
-      const pago = soma.salario + soma.comissao + soma.complemento;
+      const pago = soma.salario + soma.comissao + soma.complemento + soma.baixa_manual;
       const situacao = situacaoRastreio({ liquido, pago, aConfirmar: soma.a_confirmar, vencimento, hoje });
       const dataSalario = pix.filter(p => p.tipo === 'salario' && p.data).map(p => p.data).sort()[0] || null;
       if (!porFuncionario.has(nomeCadastro)) porFuncionario.set(nomeCadastro, []);
       porFuncionario.get(nomeCadastro).push({
         competencia: folha.competencia, tipo: folha.tipo || 'mensal', status: folha.status, liquido,
         vencimento, janela_inicio: janela?.inicio || null, data_salario: dataSalario, situacao,
-        pix_salario: r2(soma.salario), pix_comissao: r2(soma.comissao), pix_complemento: r2(soma.complemento),
+        pix_salario: r2(soma.salario), pix_comissao: r2(soma.comissao), pix_complemento: r2(soma.complemento), baixa_manual: r2(soma.baixa_manual),
         pix_adiantamentos: r2(soma.adiantamento), pix_a_confirmar: r2(soma.a_confirmar), pix_suspeito: r2(soma.suspeito + soma.outro_beneficiario),
         total_pago: r2(pago), diferenca: r2(liquido - pago),
         pix: pix.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
