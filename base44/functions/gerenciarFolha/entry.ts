@@ -50,6 +50,20 @@ export default async function(req) {
       }
       return Response.json({ items, has_more: page.has_more, next_cursor: page.next_cursor });
     }
+    if (action === 'alterar_competencia') {
+      // Altera somente a competência; vínculos, pagamentos, status e valores permanecem intactos.
+      if (typeof id !== 'string' || !id) throw new Error('Selecione a folha.');
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(competencia || '')) throw new Error('Competência inválida.');
+      const folha = await entities.FolhaPagamento.get(id);
+      if (folha.competencia === competencia) throw new Error('A folha já está nesta competência.');
+      const func = await resolverFuncionario(entities, folha);
+      const motivo = impedimentoAdmissao(func, competencia);
+      if (motivo) throw new Error(motivo);
+      const existe = await entities.FolhaPagamento.count({ $and: [queryFuncionario(func), { competencia }, queryTipoFolha(folha.tipo)] });
+      if (existe) throw new Error('Já existe folha deste funcionário e tipo nesta competência.');
+      await entities.FolhaPagamento.update(id, { competencia });
+      return Response.json({ ok: true, de: folha.competencia, para: competencia });
+    }
     if (['excluir', 'excluir_pos_rescisao'].includes(action)) {
       if (typeof id !== 'string' || !id) return Response.json({ error: 'Selecione a folha.' }, { status: 400 });
       const folha = await entities.FolhaPagamento.get(id);

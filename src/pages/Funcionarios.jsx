@@ -40,6 +40,7 @@ import { criarFolha, erroFolha } from '@/components/funcionarios/folha/folhaOper
 import { gerenciarFolha } from '@/functions/gerenciarFolha';
 import FuncionarioSemFolha from '@/components/funcionarios/folha/FuncionarioSemFolha';
 import DuplicatasFolhaButton from '@/components/funcionarios/folha/DuplicatasFolhaButton';
+import AlterarCompetenciaFolha from '@/components/funcionarios/folha/AlterarCompetenciaFolha';
 import FolhaPosRescisaoAviso from '@/components/funcionarios/folha/FolhaPosRescisaoAviso';
 import ConferenciaFolha from '@/components/funcionarios/conferencia/ConferenciaFolha';
 
@@ -619,6 +620,7 @@ export default function Funcionarios() {
                                     {f.tipo === 'decimo_terceiro' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">13º</span>}
                                     {f.tipo === 'rescisao' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">Rescisão</span>}
                                     <FolhaPosRescisaoAviso folha={f} onSaved={async () => { setFolhaEventos(null); await loadData(); }} />
+                                    {!f._idsGrupo || f._idsGrupo.length <= 1 ? <AlterarCompetenciaFolha folha={f} onSaved={async () => { setFolhaEventos(null); await loadData(); }} /> : null}
                                   </td>
                                   <td className="px-3 py-2.5 text-right tabular-nums">{formatCurrency(f.salario_bruto)}</td>
                                   <td className="px-3 py-2.5 text-right tabular-nums text-blue-600">{extras > 0 ? formatCurrency(extras) : '—'}</td>
