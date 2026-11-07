@@ -670,7 +670,7 @@ export default function Funcionarios() {
         </BaixasSelecao>
       )}
 
-      {activeTab === 'conferencia' && <ConferenciaFolha resumos={resumos12} competencia={competencia} onChangeCompetencia={setCompetencia} />}
+      {activeTab === 'conferencia' && <ConferenciaFolha competencia={competencia} onChangeCompetencia={setCompetencia} />}
 
       {/* ABA 5 — Rescisões */}
       {activeTab === 'rescisoes' && <RescisoesTab funcionarios={funcionarios} onChanged={loadData} />}

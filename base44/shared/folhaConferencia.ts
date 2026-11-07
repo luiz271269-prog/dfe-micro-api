@@ -73,13 +73,32 @@ export function avaliarVinculo(v, folha, lanc, alocadoNoLancamento, duplicado) {
     }
   }
   if (duplicado) alertas.push('vinculo_duplicado');
+  const foraJanela = naturezaForaJanela(v, folha, lanc, categoria);
   return {
+    fora_janela: foraJanela,
     id: v.id, categoria, tipo_vinculo: v.tipo_vinculo || 'pagamento_integral', observacao: v.observacao || '',
     conciliado_por: v.conciliado_por || '', valor: centavos(v.valor_alocado),
     lancamento_bancario_id: v.lancamento_bancario_id, data: lanc?.data || null, descricao_banco: lanc?.descricao || '',
     valor_banco: lanc ? centavos(lanc.valor) : null, alocado_no_lancamento: alocadoNoLancamento,
     competencia_sugerida: competenciaSugerida, alertas, info,
   };
+}
+
+// PIX fora da janela (5º–7º dia útil do mês seguinte): natureza INFERIDA, nunca persistida nem confirmada.
+// Adiantamento só com identificação explícita (vínculo, observação ou descrição bancária);
+// comissão informada só pela observação; a partir do dia 10 é apenas "possível comissão" pelo padrão histórico.
+export function naturezaForaJanela(v, folha, lanc, categoria) {
+  if (!folha || !lanc || (folha.tipo || 'mensal') !== 'mensal' || categoria === 'estorno') return null;
+  const data = String(lanc.data || '').slice(0, 10);
+  const janela = periodoPagamentoFolha(folha.competencia);
+  if (!data || !janela || (data >= janela.inicio && data <= janela.fim)) return null;
+  const dia = Number(data.slice(8, 10));
+  const textoBanco = normConciliacao(`${lanc.descricao || ''} ${lanc.detalhe || ''}`);
+  let natureza = 'nao_classificado';
+  if (categoria === 'adiantamento' || textoBanco.includes('adiant')) natureza = 'adiantamento';
+  else if (categoria === 'comissao' || textoBanco.includes('comiss')) natureza = 'comissao_informada';
+  else if (dia >= 10) natureza = 'possivel_comissao';
+  return { natureza, dia, mes: data.slice(0, 7), janela_inicio: janela.inicio, janela_fim: janela.fim };
 }
 
 export function resumoEvidencias(folha, vinculos) {
