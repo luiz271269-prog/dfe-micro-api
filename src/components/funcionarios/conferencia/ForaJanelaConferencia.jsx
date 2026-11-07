@@ -1,4 +1,5 @@
 import NaturezaChip from './NaturezaChip';
+import OrigemNatureza from './OrigemNatureza';
 import { reais, dataBR, competenciaBR } from './rotulosConferencia';
 
 export default function ForaJanelaConferencia({ itens, janela, competencia }) {
@@ -8,7 +9,7 @@ export default function ForaJanelaConferencia({ itens, janela, competencia }) {
     <div className="border-b px-4 py-3">
       <h4 className="text-sm font-semibold">PIX fora da janela de pagamento · {competenciaBR(competencia)}</h4>
       <p className="text-xs text-muted-foreground">
-        Janela da folha: {janela ? `${dataBR(janela.inicio)} a ${dataBR(janela.fim)}` : '—'}. A partir do dia 10 o PIX é marcado como <b>possível comissão</b> pelo padrão histórico — é uma indicação, não confirmação. Nada é alterado.
+        Janela da folha: {janela ? `${dataBR(janela.inicio)} a ${dataBR(janela.fim)}` : '—'}. O texto do PIX é sempre lido primeiro (adiantamento, vale, comissão, prêmio, bônus, meta, venda); sem termo, a partir do dia 10 vira <b>possível comissão</b> pelo padrão histórico. São indicações, não confirmações. Nada é alterado.
       </p>
     </div>
     <div className="overflow-x-auto">
@@ -22,7 +23,7 @@ export default function ForaJanelaConferencia({ itens, janela, competencia }) {
           <td className="px-4 py-2">{v.funcionario_nome}</td>
           <td className="px-4 py-2 max-w-[320px] truncate" title={v.descricao_banco}>{v.descricao_banco || '—'}</td>
           <td className="px-4 py-2 text-right tabular-nums">{reais(v.valor)}</td>
-          <td className="px-4 py-2"><NaturezaChip natureza={v.fora_janela.natureza} /></td>
+          <td className="px-4 py-2"><div className="flex flex-wrap items-center gap-1"><NaturezaChip natureza={v.fora_janela.natureza} /><OrigemNatureza n={v.fora_janela} /></div></td>
         </tr>)}</tbody>
       </table>
     </div>

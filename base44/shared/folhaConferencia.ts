@@ -75,7 +75,7 @@ export function avaliarVinculo(v, folha, lanc, alocadoNoLancamento, duplicado) {
   if (duplicado) alertas.push('vinculo_duplicado');
   const foraJanela = naturezaForaJanela(v, folha, lanc, categoria);
   return {
-    fora_janela: foraJanela,
+    fora_janela: foraJanela, natureza_texto: lanc && categoria !== 'estorno' ? analisarTextoPix(v, lanc) : null,
     id: v.id, categoria, tipo_vinculo: v.tipo_vinculo || 'pagamento_integral', observacao: v.observacao || '',
     conciliado_por: v.conciliado_por || '', valor: centavos(v.valor_alocado),
     lancamento_bancario_id: v.lancamento_bancario_id, data: lanc?.data || null, descricao_banco: lanc?.descricao || '',
@@ -87,18 +87,30 @@ export function avaliarVinculo(v, folha, lanc, alocadoNoLancamento, duplicado) {
 // PIX fora da janela (5º–7º dia útil do mês seguinte): natureza INFERIDA, nunca persistida nem confirmada.
 // Adiantamento só com identificação explícita (vínculo, observação ou descrição bancária);
 // comissão informada só pela observação; a partir do dia 10 é apenas "possível comissão" pelo padrão histórico.
+const TERMOS_PIX = [
+  ['adiantamento', /\b(adiant\w*|adto|adt|antecip\w*|vale)\b/],
+  ['comissao_informada', /\b(comis\w*|comiss\w*)\b/],
+  ['possivel_comissao', /\b(premi\w*|bonus|bonif\w*|metas?|vendas?|incentivo)\b/],
+];
+
+// Lê sempre o texto do PIX (descrição, detalhe bancário e observação do vínculo). Indicação, nunca confirmação.
+export function analisarTextoPix(v, lanc) {
+  if (v.tipo_vinculo === 'adiantamento') return { natureza: 'adiantamento', termo: 'vínculo marcado como adiantamento' };
+  const texto = normConciliacao(`${lanc?.descricao || ''} ${lanc?.detalhe || ''} ${v.observacao || ''}`);
+  for (const [natureza, re] of TERMOS_PIX) { const m = texto.match(re); if (m) return { natureza, termo: m[0] }; }
+  return null;
+}
+
 export function naturezaForaJanela(v, folha, lanc, categoria) {
   if (!folha || !lanc || (folha.tipo || 'mensal') !== 'mensal' || categoria === 'estorno') return null;
   const data = String(lanc.data || '').slice(0, 10);
   const janela = periodoPagamentoFolha(folha.competencia);
   if (!data || !janela || (data >= janela.inicio && data <= janela.fim)) return null;
   const dia = Number(data.slice(8, 10));
-  const textoBanco = normConciliacao(`${lanc.descricao || ''} ${lanc.detalhe || ''}`);
-  let natureza = 'nao_classificado';
-  if (categoria === 'adiantamento' || textoBanco.includes('adiant')) natureza = 'adiantamento';
-  else if (categoria === 'comissao' || textoBanco.includes('comiss')) natureza = 'comissao_informada';
-  else if (dia >= 10) natureza = 'possivel_comissao';
-  return { natureza, dia, mes: data.slice(0, 7), janela_inicio: janela.inicio, janela_fim: janela.fim };
+  const texto = analisarTextoPix(v, lanc);
+  const natureza = texto?.natureza || (dia >= 10 ? 'possivel_comissao' : 'nao_classificado');
+  const origem = texto ? 'texto' : dia >= 10 ? 'data' : null;
+  return { natureza, origem, termo: texto?.termo || null, dia, mes: data.slice(0, 7), janela_inicio: janela.inicio, janela_fim: janela.fim };
 }
 
 export function resumoEvidencias(folha, vinculos) {
