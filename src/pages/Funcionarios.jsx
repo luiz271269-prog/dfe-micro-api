@@ -41,6 +41,7 @@ import { gerenciarFolha } from '@/functions/gerenciarFolha';
 import FuncionarioSemFolha from '@/components/funcionarios/folha/FuncionarioSemFolha';
 import DuplicatasFolhaButton from '@/components/funcionarios/folha/DuplicatasFolhaButton';
 import FolhaPosRescisaoAviso from '@/components/funcionarios/folha/FolhaPosRescisaoAviso';
+import ConferenciaFolha from '@/components/funcionarios/conferencia/ConferenciaFolha';
 
 const SETORES = ['vendas', 'assistencia', 'financeiro', 'compras', 'administrativo', 'telemarketing'];
 const EMPRESAS = ['NeuralTec', 'Liesch'];
@@ -479,6 +480,7 @@ export default function Funcionarios() {
         tabs={[
           ['funcionarios', 'Funcionários', Users],
           ['folha', 'Folha de Pagamento', Wallet],
+          ['conferencia', 'Conferência da Folha', CheckCircle2],
           ['rescisoes', 'Rescisões', UserMinus],
           ['rastreio', 'Rastreio PIX', ScanSearch],
         ]}
@@ -667,6 +669,8 @@ export default function Funcionarios() {
           )}
         </BaixasSelecao>
       )}
+
+      {activeTab === 'conferencia' && <ConferenciaFolha resumos={resumos12} competencia={competencia} onChangeCompetencia={setCompetencia} />}
 
       {/* ABA 5 — Rescisões */}
       {activeTab === 'rescisoes' && <RescisoesTab funcionarios={funcionarios} onChanged={loadData} />}

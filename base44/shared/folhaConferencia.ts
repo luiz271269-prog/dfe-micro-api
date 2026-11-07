@@ -1,0 +1,93 @@
+import { periodoPagamentoFolha } from './folhaCalendario.ts';
+import { centavos, normConciliacao } from './conciliacaoLeitura.ts';
+
+const DESCONTOS = ['desconto_inss', 'desconto_irrf', 'desconto_vt', 'desconto_vr', 'outros_descontos'];
+const IGNORAR = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+
+export function mesSeguinte(comp: string) {
+  const [a, m] = comp.split('-').map(Number);
+  const d = new Date(Date.UTC(a, m, 1));
+  return d.toISOString().slice(0, 7);
+}
+function mesAnterior(mes: string) {
+  const [a, m] = mes.split('-').map(Number);
+  return new Date(Date.UTC(a, m - 2, 1)).toISOString().slice(0, 7);
+}
+
+// Composição: proventos e descontos calculados a partir dos campos, sem reescrever o líquido armazenado.
+export function composicaoFolha(f) {
+  const eventos = f.eventos || [];
+  const proventosEventos = eventos.filter(e => e.tipo === 'provento').reduce((s, e) => s + centavos(e.valor), 0);
+  const descontosEventos = eventos.filter(e => e.tipo === 'desconto').reduce((s, e) => s + centavos(e.valor), 0);
+  const proventos = centavos(f.salario_bruto) + centavos(f.comissao) + centavos(f.horas_extras) + proventosEventos;
+  const descontos = DESCONTOS.reduce((s, k) => s + centavos(f[k]), 0) + descontosEventos;
+  const calculado = proventos - descontos, armazenado = centavos(f.salario_liquido);
+  const alertas = [];
+  if (Math.abs(calculado - armazenado) > 1) {
+    const razao = armazenado ? calculado / armazenado : 0;
+    alertas.push(razao > 900 && razao < 1100 ? 'escala_suspeita' : 'liquido_divergente');
+  }
+  return { proventos, descontos, calculado, armazenado, diferenca: armazenado - calculado, alertas };
+}
+
+// Categoria só a partir de evidência explícita (tipo do vínculo ou observação); sem inferir.
+export function categoriaVinculo(v) {
+  if (v.tipo_vinculo === 'adiantamento') return 'adiantamento';
+  if (v.tipo_vinculo === 'estorno') return 'estorno';
+  const obs = normConciliacao(v.observacao);
+  if (obs.includes('comiss')) return 'comissao';
+  if (obs.includes('complement')) return 'complemento';
+  if (obs.includes('salari')) return 'salario';
+  return 'sem_discriminacao';
+}
+
+function tokensNome(nome: string) {
+  return normConciliacao(nome).split(' ').filter(t => t.length >= 3 && !IGNORAR.has(t));
+}
+
+// Janela: adiantamento no mês da competência; salário/complemento/comissão no mês seguinte a partir do 5º dia útil.
+export function avaliarVinculo(v, folha, lanc, alocadoNoLancamento, duplicado) {
+  const categoria = categoriaVinculo(v);
+  const alertas = [], info = [];
+  let competenciaSugerida = null;
+  if (!lanc) alertas.push('sem_lancamento');
+  else {
+    const data = String(lanc.data || '').slice(0, 10), mes = data.slice(0, 7);
+    if (centavos(lanc.valor) >= 0 && categoria !== 'estorno') alertas.push('nao_debito');
+    if (alocadoNoLancamento > Math.abs(centavos(lanc.valor)) + 1) alertas.push('alocacao_excede_debito');
+    if (folha && (folha.tipo || 'mensal') === 'mensal' && data) {
+      const janela = periodoPagamentoFolha(folha.competencia);
+      if (categoria === 'adiantamento') {
+        if (mes !== folha.competencia) { alertas.push('adiantamento_fora_competencia'); competenciaSugerida = mes; }
+      } else if (categoria !== 'estorno' && janela) {
+        if (mes !== janela.mes_pagamento) { alertas.push('mes_divergente'); competenciaSugerida = mesAnterior(mes); }
+        else if (data < janela.inicio) alertas.push('antes_janela');
+        else if (data > janela.fim) info.push('apos_prazo');
+      }
+    }
+    if (folha) {
+      const tokens = tokensNome(folha.funcionario_nome);
+      const texto = normConciliacao(`${lanc.descricao || ''} ${lanc.detalhe || ''}`);
+      if (tokens.length === 1) alertas.push('identidade_ambigua');
+      else if (tokens.length && !tokens.some(t => texto.split(' ').includes(t))) alertas.push('beneficiario_nao_confirmado');
+    }
+  }
+  if (duplicado) alertas.push('vinculo_duplicado');
+  return {
+    id: v.id, categoria, tipo_vinculo: v.tipo_vinculo || 'pagamento_integral', observacao: v.observacao || '',
+    conciliado_por: v.conciliado_por || '', valor: centavos(v.valor_alocado),
+    lancamento_bancario_id: v.lancamento_bancario_id, data: lanc?.data || null, descricao_banco: lanc?.descricao || '',
+    valor_banco: lanc ? centavos(lanc.valor) : null, alocado_no_lancamento: alocadoNoLancamento,
+    competencia_sugerida: competenciaSugerida, alertas, info,
+  };
+}
+
+export function resumoEvidencias(folha, vinculos) {
+  const por = { salario: 0, complemento: 0, comissao: 0, sem_discriminacao: 0, adiantamento: 0, estorno: 0 };
+  for (const v of vinculos) por[v.categoria] += v.valor;
+  const pagamentoBanco = por.salario + por.complemento + por.comissao + por.sem_discriminacao - por.estorno;
+  const manuais = (folha.pagamentos_manuais || []).reduce((s, p) => s + centavos(p.valor), 0);
+  return { por_categoria: por, pagamento_banco: pagamentoBanco, informado: centavos(folha.valor_pago), manuais };
+}
+
+export { mesAnterior };
