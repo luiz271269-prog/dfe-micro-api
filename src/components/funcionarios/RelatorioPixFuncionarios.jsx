@@ -24,9 +24,9 @@ export default function RelatorioPixFuncionarios() {
   useEffect(() => { load(); }, []);
 
   function exportar() {
-    const lines = ['Funcionário,Competência,Tipo,Devido,PIX Salário,PIX Comissão,Adiantamentos,Total Pago,Saldo,5º dia útil,Data real'];
+    const lines = ['Funcionário,Competência,Tipo,Devido,Vencimento,PIX Salário,PIX Complemento,PIX Comissão,Vales,A confirmar,Incompatível,Total Pago,Saldo,Situação,Data salário'];
     dados.funcionarios.forEach(f => f.competencias.forEach(c => {
-      lines.push([f.funcionario, c.competencia, c.tipo, c.liquido, c.pix_salario, c.pix_comissao, c.pix_adiantamentos, c.total_pago, c.diferenca, c.pontualidade?.data_esperada || '', c.pontualidade?.data_real || ''].join(','));
+      lines.push([f.funcionario, c.competencia, c.tipo, c.liquido, c.vencimento || '', c.pix_salario, c.pix_complemento, c.pix_comissao, c.pix_adiantamentos, c.pix_a_confirmar, c.pix_suspeito, c.total_pago, c.diferenca, c.situacao, c.data_salario || ''].join(','));
     }));
     const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
@@ -43,20 +43,18 @@ export default function RelatorioPixFuncionarios() {
   if (erro) return <p className="text-sm text-red-600 py-8 text-center">Erro ao gerar relatório: {erro}</p>;
   if (!dados) return null;
 
-  const totalDevido = dados.funcionarios.reduce((s, f) => s + f.total_liquido, 0);
-  const totalPago = dados.funcionarios.reduce((s, f) => s + f.total_pago, 0);
-  const totalVales = dados.funcionarios.reduce((s, f) => s + f.total_adiantamentos, 0);
+  const t = dados.totais;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex gap-4 text-sm flex-wrap">
-          <span>Devido: <b>{formatCurrency(totalDevido)}</b></span>
-          <span className="text-green-700">Rastreado: <b>{formatCurrency(totalPago)}</b></span>
-          <span className="text-yellow-700">Vales/Adiant.: <b>{formatCurrency(totalVales)}</b></span>
-          <span className={totalDevido - totalPago > 50 ? 'text-orange-700' : 'text-green-700'}>
-            Saldo: <b>{formatCurrency(totalDevido - totalPago)}</b>
-          </span>
+          <span>Devido: <b>{formatCurrency(t.devido)}</b></span>
+          <span className="text-green-700">Pago confirmado: <b>{formatCurrency(t.pago)}</b></span>
+          <span className="text-yellow-700">Vales: <b>{formatCurrency(t.vales)}</b></span>
+          <span className="text-sky-700">A confirmar: <b>{formatCurrency(t.a_confirmar)}</b></span>
+          <span className="text-red-700">Vencido: <b>{formatCurrency(t.vencido)}</b></span>
+          <span className="text-muted-foreground">A vencer: <b>{formatCurrency(t.a_vencer)}</b></span>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={load} className="gap-1.5"><RefreshCw className="w-3.5 h-3.5" /> Atualizar</Button>

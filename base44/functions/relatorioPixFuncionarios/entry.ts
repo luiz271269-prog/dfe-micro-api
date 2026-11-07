@@ -1,178 +1,98 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
+import { lerCompleto, normConciliacao } from '../../shared/conciliacaoLeitura.ts';
+import { beneficiarioConfere, vencimentoRastreio, classificarPix, situacaoRastreio } from '../../shared/folhaRastreioPix.ts';
 
-// Relatório de rastreio de PIX por funcionário × competência.
-// Regras de negócio:
-//  - Competência M é paga no 5º dia útil do mês M+1 (salário)
-//  - Comissão é paga do dia 10 em diante do mês M+1
-//  - PIX extras = adiantamentos/vales
-// Fontes: FolhaPagamento + VinculoExtrato (classificação feita pelo conciliarFolhaExtrato) + LancamentoBancario.
-// Também detecta PIX nominais SEM vínculo (não rastreados) por funcionário.
+// Rastreio de PIX por funcionário × competência — SOMENTE LEITURA.
+// Conclui cada competência pelo valor, data e descrição do PIX contra o vencimento (5º–7º dia útil do mês seguinte).
+// Nenhuma folha, vínculo ou lançamento é alterado.
+const r2 = v => Math.round(v * 100) / 100;
+const lotes = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n));
 
-function normalizar(s) {
-  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-function chavesNome(nome) {
-  const partes = normalizar(nome).split(' ').filter(p => p.length >= 3);
-  if (partes.length === 0) return [];
-  const primeiro = partes[0];
-  const ultimo = partes[partes.length - 1];
-  const chaves = new Set();
-  if (partes.length >= 2) chaves.add(`${primeiro} ${ultimo}`);
-  if (ultimo.length >= 5) chaves.add(ultimo);
-  if (primeiro.length >= 5) chaves.add(primeiro);
-  if (chaves.size === 0) chaves.add(primeiro);
-  return [...chaves];
-}
-
-// 5º dia útil do mês seguinte à competência (YYYY-MM)
-function quintoDiaUtil(competencia) {
-  const [ano, mes] = competencia.split('-').map(Number);
-  let d = new Date(Date.UTC(ano, mes, 1)); // dia 1 do mês M+1
-  let uteis = 0;
-  while (true) {
-    const dow = d.getUTCDay();
-    if (dow !== 0 && dow !== 6) {
-      uteis++;
-      if (uteis === 5) return d.toISOString().split('T')[0];
-    }
-    d = new Date(d.getTime() + 86400000);
-  }
-}
-
-function classificarVinculo(v) {
-  if (v.tipo_vinculo === 'adiantamento') return 'adiantamento';
-  const obs = normalizar(v.observacao);
-  if (obs.startsWith('comissao')) return 'comissao';
-  if (obs.startsWith('salario integral')) return 'salario';
-  if (obs.startsWith('salario base')) return 'salario';
-  if (obs.startsWith('complemento')) return 'complemento';
-  return 'salario';
-}
-
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me().catch(() => null);
+    const user = await base44.auth.me().catch(e => (e.status === 401 ? null : Promise.reject(e)));
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const db = base44.entities;
+    const hoje = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
 
-    const svc = base44.asServiceRole.entities;
-    const [folhas, funcionarios, vinculos, lancamentos] = await Promise.all([
-      svc.FolhaPagamento.list('-competencia', 1000),
-      svc.Funcionario.list('nome', 500),
-      svc.VinculoExtrato.filter({ entidade_tipo: 'FolhaPagamento' }, '-created_date', 5000),
-      svc.LancamentoBancario.list('-data', 5000),
+    const [folhas, funcionarios, vinculos, saidas] = await Promise.all([
+      lerCompleto(db, 'FolhaPagamento', {}),
+      lerCompleto(db, 'Funcionario', {}, ['id', 'nome', 'status']),
+      lerCompleto(db, 'VinculoExtrato', { entidade_tipo: 'FolhaPagamento' }),
+      lerCompleto(db, 'LancamentoBancario', { valor: { $lt: 0 } }, ['id', 'data', 'descricao', 'detalhe', 'valor']),
     ]);
-
-    const lancById = new Map(lancamentos.map(l => [l.id, l]));
+    const lancs = new Map(saidas.map(l => [l.id, l]));
+    const faltantes = [...new Set(vinculos.map(v => v.lancamento_bancario_id))].filter(id => id && !lancs.has(id));
+    for (const lote of lotes(faltantes, 200)) (await lerCompleto(db, 'LancamentoBancario', { id: { $in: lote } }, ['id', 'data', 'descricao', 'detalhe', 'valor'])).forEach(l => lancs.set(l.id, l));
+    const funcById = new Map(funcionarios.map(f => [f.id, f]));
     const vinculosPorFolha = new Map();
-    const lancIdsVinculados = new Set();
-    for (const v of vinculos) {
-      if (!vinculosPorFolha.has(v.entidade_id)) vinculosPorFolha.set(v.entidade_id, []);
-      vinculosPorFolha.get(v.entidade_id).push(v);
-      lancIdsVinculados.add(v.lancamento_bancario_id);
-    }
+    for (const v of vinculos) { if (!vinculosPorFolha.has(v.entidade_id)) vinculosPorFolha.set(v.entidade_id, []); vinculosPorFolha.get(v.entidade_id).push(v); }
 
-    // Monta o relatório: funcionário → competências
+    const usadoPorLanc = new Map(); // valor já atribuído a outras competências neste rastreio
     const porFuncionario = new Map();
-    for (const folha of folhas) {
-      const nome = folha.funcionario_nome;
-      if (!porFuncionario.has(nome)) porFuncionario.set(nome, { competencias: [] });
-      const vincs = vinculosPorFolha.get(folha.id) || [];
-
-      const dataEsperada = quintoDiaUtil(folha.competencia);
-      let pixSalario = 0, pixComissao = 0, pixAdiantamento = 0;
-      let dataSalario = null;
-      const pixDetalhe = [];
-
-      for (const v of vincs) {
-        const lanc = lancById.get(v.lancamento_bancario_id);
-        const tipo = classificarVinculo(v);
-        const valor = v.valor_alocado || 0;
-        if (tipo === 'adiantamento') pixAdiantamento += valor;
-        else if (tipo === 'comissao') pixComissao += valor;
-        else {
-          pixSalario += valor;
-          if (!dataSalario || (lanc?.data && lanc.data < dataSalario)) dataSalario = lanc?.data || null;
-        }
-        pixDetalhe.push({
-          data: lanc?.data || null,
-          valor,
-          tipo,
-          descricao: lanc?.descricao || '(lançamento não encontrado)',
-        });
+    for (const folha of [...folhas].sort((a, b) => (a.competencia || '').localeCompare(b.competencia || ''))) {
+      const nomeCadastro = funcById.get(folha.funcionario_id)?.nome || folha.funcionario_nome;
+      const { vencimento, janela } = vencimentoRastreio(folha);
+      const soma = { salario: 0, comissao: 0, complemento: 0, adiantamento: 0, a_confirmar: 0, suspeito: 0, outro_beneficiario: 0 };
+      const pix = [];
+      for (const v of vinculosPorFolha.get(folha.id) || []) {
+        const lanc = lancs.get(v.lancamento_bancario_id);
+        const debito = Math.abs(Number(lanc?.valor || 0)), usado = usadoPorLanc.get(v.lancamento_bancario_id) || 0;
+        const valor = r2(Math.max(0, Math.min(Number(v.valor_alocado || 0), debito - usado)));
+        const alertas = [];
+        if (!lanc) alertas.push('Lançamento bancário não encontrado');
+        if (valor < Number(v.valor_alocado || 0) - 0.01) alertas.push(`PIX já usado em outra competência: considerado ${valor.toFixed(2)}`);
+        usadoPorLanc.set(v.lancamento_bancario_id, usado + valor);
+        let { tipo, motivo } = lanc ? classificarPix(folha, lanc, v, janela, valor) : { tipo: 'suspeito', motivo: 'Sem extrato' };
+        const confere = lanc ? beneficiarioConfere(nomeCadastro, `${lanc.descricao} ${lanc.detalhe || ''}`) : false;
+        const outro = !confere && lanc ? funcionarios.find(f => f.nome && f.id !== folha.funcionario_id && !beneficiarioConfere(nomeCadastro, f.nome) && beneficiarioConfere(f.nome, `${lanc.descricao} ${lanc.detalhe || ''}`)) : null;
+        if (outro) { tipo = 'outro_beneficiario'; motivo = `PIX pago a ${outro.nome}, não a este funcionário`; alertas.push('Vínculo com beneficiário de outra pessoa'); }
+        else if (!confere && tipo !== 'suspeito') { alertas.push('Nome do beneficiário não aparece na descrição do PIX'); if (tipo !== 'adiantamento') tipo = 'a_confirmar'; }
+        soma[tipo] += valor;
+        pix.push({ data: lanc?.data || null, valor, tipo, motivo, descricao: lanc?.descricao || '(lançamento não encontrado)', alertas });
       }
-
-      const liquido = folha.salario_liquido || 0;
-      const totalPago = pixSalario + pixComissao;
-      const diferenca = Math.round((liquido - totalPago) * 100) / 100;
-
-      // Verifica pontualidade do salário vs 5º dia útil (tolerância 2 dias úteis ≈ 4 corridos)
-      let pontualidade = null;
-      if (dataSalario && folha.tipo !== 'ferias') {
-        const diffDias = Math.round((new Date(dataSalario).getTime() - new Date(dataEsperada).getTime()) / 86400000);
-        pontualidade = { data_esperada: dataEsperada, data_real: dataSalario, dias_diferenca: diffDias, no_prazo: Math.abs(diffDias) <= 4 };
-      }
-
-      porFuncionario.get(nome).competencias.push({
-        competencia: folha.competencia,
-        tipo: folha.tipo || 'mensal',
-        status: folha.status,
-        liquido,
-        pix_salario: Math.round(pixSalario * 100) / 100,
-        pix_comissao: Math.round(pixComissao * 100) / 100,
-        pix_adiantamentos: Math.round(pixAdiantamento * 100) / 100,
-        total_pago: Math.round(totalPago * 100) / 100,
-        diferenca,
-        pontualidade,
-        pix: pixDetalhe.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
+      const liquido = Number(folha.salario_liquido || 0);
+      const pago = soma.salario + soma.comissao + soma.complemento;
+      const situacao = situacaoRastreio({ liquido, pago, aConfirmar: soma.a_confirmar, vencimento, hoje });
+      const dataSalario = pix.filter(p => p.tipo === 'salario' && p.data).map(p => p.data).sort()[0] || null;
+      if (!porFuncionario.has(nomeCadastro)) porFuncionario.set(nomeCadastro, []);
+      porFuncionario.get(nomeCadastro).push({
+        competencia: folha.competencia, tipo: folha.tipo || 'mensal', status: folha.status, liquido,
+        vencimento, janela_inicio: janela?.inicio || null, data_salario: dataSalario, situacao,
+        pix_salario: r2(soma.salario), pix_comissao: r2(soma.comissao), pix_complemento: r2(soma.complemento),
+        pix_adiantamentos: r2(soma.adiantamento), pix_a_confirmar: r2(soma.a_confirmar), pix_suspeito: r2(soma.suspeito + soma.outro_beneficiario),
+        total_pago: r2(pago), diferenca: r2(liquido - pago),
+        pix: pix.sort((a, b) => (a.data || '').localeCompare(b.data || '')),
       });
     }
 
-    // PIX nominais NÃO rastreados (saída com nome do funcionário mas sem vínculo)
-    const saidasLivres = lancamentos.filter(l => l.valor < 0 && !lancIdsVinculados.has(l.id));
+    const vinculados = new Set(vinculos.map(v => v.lancamento_bancario_id));
     const naoRastreados = [];
-    for (const func of funcionarios.filter(f => f.status !== 'desligado')) {
-      const chaves = chavesNome(func.nome);
-      if (chaves.length === 0) continue;
-      const achados = saidasLivres.filter(l => {
-        const desc = normalizar(l.descricao);
-        return chaves.some(k => desc.includes(k));
-      });
-      for (const l of achados) {
-        naoRastreados.push({
-          funcionario: func.nome,
-          data: l.data,
-          valor: Math.abs(l.valor),
-          descricao: l.descricao,
-          lancamento_id: l.id,
-        });
-      }
+    for (const func of funcionarios.filter(f => f.status !== 'desligado' && f.nome)) {
+      for (const l of saidas) if (!vinculados.has(l.id) && beneficiarioConfere(func.nome, normConciliacao(l.descricao))) naoRastreados.push({ funcionario: func.nome, data: l.data, valor: Math.abs(l.valor), descricao: l.descricao, lancamento_id: l.id });
     }
 
-    // Serializa ordenado
-    const relatorio = [...porFuncionario.entries()]
-      .map(([nome, dados]) => {
-        const comps = dados.competencias.sort((a, b) => b.competencia.localeCompare(a.competencia));
-        return {
-          funcionario: nome,
-          total_liquido: Math.round(comps.reduce((s, c) => s + c.liquido, 0) * 100) / 100,
-          total_pago: Math.round(comps.reduce((s, c) => s + c.total_pago, 0) * 100) / 100,
-          total_adiantamentos: Math.round(comps.reduce((s, c) => s + c.pix_adiantamentos, 0) * 100) / 100,
-          competencias: comps,
-        };
-      })
-      .sort((a, b) => a.funcionario.localeCompare(b.funcionario));
-
+    const relatorio = [...porFuncionario.entries()].map(([nome, comps]) => {
+      comps.sort((a, b) => b.competencia.localeCompare(a.competencia));
+      const s = k => r2(comps.reduce((t, c) => t + c[k], 0));
+      return { funcionario: nome, total_liquido: s('liquido'), total_pago: s('total_pago'), total_adiantamentos: s('pix_adiantamentos'), total_a_confirmar: s('pix_a_confirmar'), competencias: comps };
+    }).sort((a, b) => a.funcionario.localeCompare(b.funcionario));
+    const todas = relatorio.flatMap(f => f.competencias);
+    const saldoDe = lista => r2(lista.reduce((t, c) => t + Math.max(0, c.diferenca), 0));
     return Response.json({
-      success: true,
-      gerado_em: new Date().toISOString(),
+      success: true, somente_leitura: true, gerado_em: new Date().toISOString(), hoje,
+      totais: {
+        devido: r2(todas.reduce((t, c) => t + c.liquido, 0)), pago: r2(todas.reduce((t, c) => t + c.total_pago, 0)),
+        vales: r2(todas.reduce((t, c) => t + c.pix_adiantamentos, 0)), a_confirmar: r2(todas.reduce((t, c) => t + c.pix_a_confirmar, 0)),
+        vencido: saldoDe(todas.filter(c => ['vencida', 'parcial'].includes(c.situacao))),
+        a_vencer: saldoDe(todas.filter(c => ['a_vencer', 'parcial_a_vencer'].includes(c.situacao))),
+      },
       funcionarios: relatorio,
       pix_nao_rastreados: naoRastreados.sort((a, b) => (b.data || '').localeCompare(a.data || '')),
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}
