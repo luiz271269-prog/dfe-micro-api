@@ -28,7 +28,7 @@ export default async function (req) {
       if (Array.isArray(o)) return o.map(semIds);
       if (!o || typeof o !== 'object') return o;
       const c = {};
-      for (const k of Object.keys(o)) if (k !== 'ids') c[k] = semIds(o[k]);
+      for (const k of Object.keys(o)) if (k !== 'ids' && k !== 'rows') c[k] = semIds(o[k]);
       return c;
     };
     let saida = body.resumo ? semIds(resultado) : resultado;

@@ -17,10 +17,17 @@ export const COLUNAS = {
 };
 
 // Carrega os registros exatos (ids) que compõem uma linha do motor e monta o drill-down.
+const isObjectId = (id) => typeof id === 'string' && /^[a-f0-9]{24}$/i.test(id);
+
 export async function carregarDrill(linha, mesLabel) {
   const cfg = COLUNAS[linha.entidade];
   if (!cfg) return null;
-  const rows = linha.ids?.length ? await base44.entities[linha.entidade].filter({ id: { $in: linha.ids } }, '-created_date', 500) : [];
+  const validIds = (linha.ids || []).filter(isObjectId);
+  const rows = Array.isArray(linha.rows)
+    ? linha.rows
+    : validIds.length
+      ? await base44.entities[linha.entidade].filter({ id: { $in: validIds } }, '-created_date', 500)
+      : [];
   return {
     title: linha.rotulo || linha.entidade,
     subtitle: `${mesLabel} · regime de ${linha.regime || 'caixa'}${linha.confianca ? ` · ${linha.confianca}` : ''}${linha.registros > linha.ids?.length ? ` · exibindo ${linha.ids.length} de ${linha.registros}` : ''}`,
