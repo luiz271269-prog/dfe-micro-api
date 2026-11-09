@@ -194,7 +194,7 @@ function FuncModal({ func, folhas, onClose, onSaved, onDeleted }) {
 }
 
 export default function Funcionarios() {
-  const [activeTab, setActiveTab] = useState('funcionarios');
+  const [activeTab, setActiveTab] = useState('rastreio');
   const [funcionarios, setFuncionarios] = useState([]);
   const [folhas, setFolhas] = useState([]);
   const [vinculosFolha, setVinculosFolha] = useState({}); // { folhaId: somaAlocada }
