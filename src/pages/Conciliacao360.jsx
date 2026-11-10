@@ -126,11 +126,11 @@ export default function Conciliacao360() {
             </p>
           </div>
         </div>
-        <Link to="/importar?tipo=extrato_bancario">
-          <Button variant="secondary" className="gap-2 bg-white text-indigo-700 hover:bg-white/90">
+        <Button asChild variant="secondary" className="gap-2 bg-white text-indigo-700 hover:bg-white/90">
+          <Link to="/importar?tipo=extrato_bancario">
             <Upload className="w-4 h-4" /> Importar Extrato
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">

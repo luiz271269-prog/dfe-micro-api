@@ -11,6 +11,8 @@ import PlanoCorrecaoPixPanel from './rastreio/PlanoCorrecaoPixPanel';
 export default function RelatorioPixFuncionarios() {
   const [dados, setDados] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [aplicando, setAplicando] = useState(false);
+  const [ultimoResultado, setUltimoResultado] = useState(null);
   const [erro, setErro] = useState(null);
   const [janelaMeses, setJanelaMeses] = useState(12);
   const [competenciaFiltro, setCompetenciaFiltro] = useState(null);
@@ -26,6 +28,21 @@ export default function RelatorioPixFuncionarios() {
       setErro(err.message);
     }
     setLoading(false);
+  }
+
+  async function aplicarCorrecoes() {
+    setAplicando(true);
+    setErro(null);
+    try {
+      const res = await relatorioPixFuncionarios({ meses: janelaMeses, acao: 'aplicar_correcoes' });
+      if (res?.data) {
+        setDados(res.data);
+        setUltimoResultado(res.data.execucao_correcao || null);
+      }
+    } catch (err) {
+      setErro(err.message);
+    }
+    setAplicando(false);
   }
   useEffect(() => { load(janelaMeses); }, [janelaMeses]);
 
@@ -124,6 +141,10 @@ export default function RelatorioPixFuncionarios() {
               Histórico completo
             </button>
           </div>
+          <Button variant="default" size="sm" onClick={aplicarCorrecoes} disabled={aplicando} className="gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            {aplicando ? 'Aplicando correções...' : 'Sincronizar / Corrigir Vínculos PIX'}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => load(janelaMeses)} className="gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> Atualizar
           </Button>
@@ -132,6 +153,21 @@ export default function RelatorioPixFuncionarios() {
           </Button>
         </div>
       </div>
+
+      {ultimoResultado && (
+        <div className="rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-xs text-green-900 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <b>Correção auditada concluída ({ultimoResultado.execucao_id}):</b>{' '}
+            {ultimoResultado.vinculos_criados} vínculo(s) PIX criado(s) no 5º–7º dia útil ·{' '}
+            {ultimoResultado.vinculos_reclassificados} reclassificado(s) de vale para salário ·{' '}
+            {ultimoResultado.vinculos_removidos} vínculo(s) incorreto(s)/órfão(s) removido(s) ·{' '}
+            {ultimoResultado.folhas_atualizadas} folha(s) sincronizada(s). Baixas manuais preservadas integralmente.
+          </div>
+          <button onClick={() => setUltimoResultado(null)} className="font-semibold underline">
+            Fechar
+          </button>
+        </div>
+      )}
 
       {/* Stat Cards com componente de biblioteca adaptado aos dados reais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -187,6 +223,8 @@ export default function RelatorioPixFuncionarios() {
       <PlanoCorrecaoPixPanel
         plano={plano}
         competenciaFiltro={competenciaFiltro}
+        onAplicarCorrecoes={aplicarCorrecoes}
+        aplicando={aplicando}
       />
 
       {/* Filtro de categorias da lista por funcionário */}

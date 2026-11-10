@@ -32,7 +32,7 @@ export default function PedidoCentralDetalhe() {
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1200px] mx-auto">
       <PageHeader title={`Pedido ${oc_numero}`} subtitle="Visão completa do pedido na Central de Compras">
-        <Link to="/compras"><Button variant="outline" className="gap-2"><ArrowLeft className="w-4 h-4" /> Voltar</Button></Link>
+        <Button asChild variant="outline" className="gap-2"><Link to="/compras"><ArrowLeft className="w-4 h-4" /> Voltar</Link></Button>
       </PageHeader>
 
       {estado.loading && <p className="text-center py-16 text-muted-foreground">Carregando pedido…</p>}

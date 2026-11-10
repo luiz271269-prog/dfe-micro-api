@@ -4,7 +4,7 @@ import { ACAO_PLANO_CORRECAO } from '../rastreioPixRotulos';
 import { Button } from '@/components/ui/button';
 import { ClipboardCheck, Download, ShieldAlert, Filter } from 'lucide-react';
 
-export default function PlanoCorrecaoPixPanel({ plano = [], competenciaFiltro }) {
+export default function PlanoCorrecaoPixPanel({ plano = [], competenciaFiltro, onAplicarCorrecoes, aplicando }) {
   const [filtroAcao, setFiltroAcao] = useState('todos');
 
   const itensFiltrados = plano.filter(item => {
@@ -67,9 +67,17 @@ export default function PlanoCorrecaoPixPanel({ plano = [], competenciaFiltro })
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={exportarPlanoCSV} disabled={!itensFiltrados.length} className="gap-1.5">
-          <Download className="w-3.5 h-3.5" /> Exportar Plano CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          {onAplicarCorrecoes && (
+            <Button variant="default" size="sm" onClick={onAplicarCorrecoes} disabled={aplicando} className="gap-1.5">
+              <ClipboardCheck className="w-3.5 h-3.5" />
+              {aplicando ? 'Aplicando...' : 'Revalidar e Aplicar Correções'}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={exportarPlanoCSV} disabled={!itensFiltrados.length} className="gap-1.5">
+            <Download className="w-3.5 h-3.5" /> Exportar Plano CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filtros rápidos por tipo de ação */}

@@ -29,11 +29,11 @@ export default function FaturaImageViewer({ open, onOpenChange, fileUrl, titulo 
                 </Button>
               </>
             )}
-            <a href={fileUrl} target="_blank" rel="noreferrer">
-              <Button variant="outline" size="sm" className="gap-1.5 h-7 px-2">
+            <Button asChild variant="outline" size="sm" className="gap-1.5 h-7 px-2">
+              <a href={fileUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="w-3.5 h-3.5" /> Abrir
-              </Button>
-            </a>
+              </a>
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="h-7 w-7 p-0">
               <XIcon className="w-4 h-4" />
             </Button>
@@ -53,9 +53,9 @@ export default function FaturaImageViewer({ open, onOpenChange, fileUrl, titulo 
             <div className="text-center py-12">
               <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground mb-3">Pré-visualização não disponível para este formato.</p>
-              <a href={fileUrl} target="_blank" rel="noreferrer">
-                <Button className="gap-2"><ExternalLink className="w-4 h-4" /> Abrir arquivo</Button>
-              </a>
+              <Button asChild className="gap-2">
+                <a href={fileUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4" /> Abrir arquivo</a>
+              </Button>
             </div>
           )}
         </div>

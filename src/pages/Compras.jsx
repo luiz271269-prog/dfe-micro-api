@@ -214,9 +214,9 @@ export default function Compras() {
       <PageHeader title="Compras & Despesas" subtitle="Gestão de aquisições, despesas operacionais e boletos a vencer">
         {activeTab === 'compras' && (
           <>
-            <Link to="/produtos?tab=fornecedores">
-              <Button variant="outline" className="gap-2"><Building2 className="w-4 h-4" /> Fornecedores</Button>
-            </Link>
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/produtos?tab=fornecedores"><Building2 className="w-4 h-4" /> Fornecedores</Link>
+            </Button>
             <Button onClick={() => { setErrorC(''); setShowFormC(true); }} className="gap-2"><Plus className="w-4 h-4" /> Nova Compra</Button>
           </>
         )}

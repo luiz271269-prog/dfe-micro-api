@@ -117,41 +117,50 @@ export default function PainelNotificacoes() {
                 </div>
               ) : (
                 notifs.map(n => (
-                  <Link
+                  <div
                     key={n.id}
-                    to="/analise-nfe"
-                    onClick={() => { marcarLida(n); setOpen(false); }}
-                    className={`block p-3 border-b border-l-4 ${SEV_COR[n.severidade] || SEV_COR.media} ${!n.lida ? 'font-semibold' : 'opacity-80'} hover:bg-muted/20 transition-colors`}
+                    className={`p-3 border-b border-l-4 ${SEV_COR[n.severidade] || SEV_COR.media} ${!n.lida ? 'font-semibold' : 'opacity-80'} hover:bg-muted/20 transition-colors`}
                   >
                     <div className="flex items-start gap-2">
                       <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${n.severidade === 'alta' ? 'text-rose-600' : n.severidade === 'media' ? 'text-amber-600' : 'text-blue-600'}`} />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-card border font-mono uppercase">{TIPO_LABELS[n.tipo] || n.tipo}</span>
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${n.severidade === 'alta' ? 'bg-rose-600 text-white' : n.severidade === 'media' ? 'bg-amber-600 text-white' : 'bg-blue-600 text-white'}`}>
-                            {n.severidade}
-                          </span>
-                          {n.score_conformidade !== undefined && (
-                            <span className="text-[9px] text-muted-foreground">score {n.score_conformidade}/100</span>
-                          )}
-                          <span className="text-[9px] text-muted-foreground ml-auto">{fmtData(n.created_date)}</span>
-                        </div>
-                        <p className="text-xs mt-1 truncate">{n.titulo}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.mensagem}</p>
-                        {n.detalhes && n.detalhes.length > 0 && (
-                          <div className="mt-1.5 space-y-0.5">
-                            {n.detalhes.slice(0, 3).map((d, i) => (
-                              <p key={i} className="text-[10px] text-muted-foreground truncate">• {d.descricao}</p>
-                            ))}
-                            {n.detalhes.length > 3 && <p className="text-[10px] text-muted-foreground">+{n.detalhes.length - 3} mais…</p>}
+                        <Link
+                          to="/analise-nfe"
+                          onClick={() => { marcarLida(n); setOpen(false); }}
+                          className="block"
+                        >
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-card border font-mono uppercase">{TIPO_LABELS[n.tipo] || n.tipo}</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${n.severidade === 'alta' ? 'bg-rose-600 text-white' : n.severidade === 'media' ? 'bg-amber-600 text-white' : 'bg-blue-600 text-white'}`}>
+                              {n.severidade}
+                            </span>
+                            {n.score_conformidade !== undefined && (
+                              <span className="text-[9px] text-muted-foreground">score {n.score_conformidade}/100</span>
+                            )}
+                            <span className="text-[9px] text-muted-foreground ml-auto">{fmtData(n.created_date)}</span>
                           </div>
-                        )}
+                          <p className="text-xs mt-1 truncate">{n.titulo}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.mensagem}</p>
+                          {n.detalhes && n.detalhes.length > 0 && (
+                            <div className="mt-1.5 space-y-0.5">
+                              {n.detalhes.slice(0, 3).map((d, i) => (
+                                <p key={i} className="text-[10px] text-muted-foreground truncate">• {d.descricao}</p>
+                              ))}
+                              {n.detalhes.length > 3 && <p className="text-[10px] text-muted-foreground">+{n.detalhes.length - 3} mais…</p>}
+                            </div>
+                          )}
+                        </Link>
                         <div className="flex items-center gap-2 mt-2">
-                          <span className="text-[10px] text-indigo-600 flex items-center gap-0.5">
+                          <Link
+                            to="/analise-nfe"
+                            onClick={() => { marcarLida(n); setOpen(false); }}
+                            className="text-[10px] text-indigo-600 flex items-center gap-0.5 hover:underline"
+                          >
                             <FileCode className="w-3 h-3" /> NF {n.nfe_numero} · {n.emitente_nome}
                             <ExternalLink className="w-2.5 h-2.5 ml-0.5" />
-                          </span>
+                          </Link>
                           <button
+                            type="button"
                             onClick={(e) => resolver(e, n)}
                             className="ml-auto text-[10px] text-emerald-600 hover:underline flex items-center gap-0.5"
                           >
@@ -160,7 +169,7 @@ export default function PainelNotificacoes() {
                         </div>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 ))
               )}
             </div>

@@ -51,6 +51,7 @@ export default async function(req) {
       const folhasAlvo = folhasRaw.filter(f => !setCompetenciasAtivas || setCompetenciasAtivas.has(f.competencia));
       execucaoCorrecao = await executarCorrecaoPixFolha({
         db: base44.asServiceRole.entities,
+        todasFolhas: folhasRaw,
         folhasFiltradas: folhasAlvo,
         funcionarios,
         vinculos,

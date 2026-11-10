@@ -79,11 +79,11 @@ export default function DANFEModal({ nf, onClose }) {
                     <li>Volte aqui e clique <strong>Imprimir</strong> novamente</li>
                   </ol>
                 </div>
-                <Link to="/analise-nfe">
-                  <Button size="sm" className="gap-2 bg-amber-600 hover:bg-amber-700">
+                <Button asChild size="sm" className="gap-2 bg-amber-600 hover:bg-amber-700">
+                  <Link to="/analise-nfe">
                     <Zap className="w-3.5 h-3.5" /> Ir para Análise NF-e agora
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
                 <p className="text-[10px] text-amber-600 mt-2 font-mono">Detalhe técnico: {error}</p>
               </div>
             </div>

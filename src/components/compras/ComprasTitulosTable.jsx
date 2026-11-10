@@ -29,9 +29,11 @@ export default function ComprasTitulosTable({ documentos, loading = false, embed
         <td className="p-3 text-right font-bold tabular-nums text-destructive">{formatCurrency(doc.valor)}</td>
         <td className="p-3 text-right">
           {!somenteLeitura && <BaixaAcaoRegistro registros={referencias(doc)} descricao={doc.numero} onSaved={onSaved} />}{' '}
-          <Link to={`/pedido-central/${encodeURIComponent(doc.itens?.[0]?.pedido_central_id || doc.numero)}`}>
-            <Button size="sm" variant="outline">Mais <ChevronRight className="h-4 w-4" /></Button>
-          </Link>
+          <Button asChild size="sm" variant="outline">
+            <Link to={`/pedido-central/${encodeURIComponent(doc.itens?.[0]?.pedido_central_id || doc.numero)}`}>
+              Mais <ChevronRight className="h-4 w-4" />
+            </Link>
+          </Button>
         </td>
       </tr>)}</tbody>
     {documentos.length > 0 && <tfoot><tr className="border-t-2 bg-muted/30"><td colSpan={7} className="p-3 font-semibold">Total ({documentos.length} títulos)</td><td className="p-3 text-right font-bold">{formatCurrency(resumo?.valor_compra ?? documentos.reduce((s, d) => s + d.valor_compra, 0))}</td><td className="p-3 text-right font-bold text-destructive">{formatCurrency(resumo?.total ?? documentos.reduce((s, d) => s + d.valor, 0))}</td><td /></tr></tfoot>}

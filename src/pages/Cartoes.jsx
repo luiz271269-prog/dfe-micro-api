@@ -366,10 +366,12 @@ export default function Cartoes() {
 
                 return (
                   <div key={fat.id} className="border-b last:border-b-0">
-                      <button
-                      onClick={() => setExpandedFatura(isFatExpanded ? null : fat.id)}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 text-left transition-colors">
-                      
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setExpandedFatura(isFatExpanded ? null : fat.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedFatura(isFatExpanded ? null : fat.id); } }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-muted/40 text-left transition-colors cursor-pointer">
                         <div className="flex-1 flex items-center gap-1.5 flex-wrap">
                           <span className="text-xs font-semibold">{fat.mes_referencia}</span>
                           <span className="text-[10px] font-semibold text-muted-foreground">{liquidacao.liquidacao} · {liquidacao.temporal}{liquidacao.inconsistencia_historica ? ' · Revisar histórico' : ''}</span>
@@ -384,7 +386,6 @@ export default function Cartoes() {
                               onClick={(e) => {e.stopPropagation();setViewerFile({ url: url2, titulo: `${c.nome} — ${fat.mes_referencia}` });}}
                               className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
                               title="Ver fatura original importada">
-                              
                                 <FileImage className="w-3 h-3" /> Ver original
                               </button>);
 
@@ -396,7 +397,7 @@ export default function Cartoes() {
                           {fat.valor_pago > 0 && <p className="text-[10px] text-green-600 leading-tight">Pago: {formatCurrency(fat.valor_pago)}</p>}
                         </div>
                         {isFatExpanded ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
-                      </button>
+                      </div>
 
                       {isFatExpanded &&
                     <div className="px-3 pb-3 bg-background">

@@ -10,12 +10,14 @@ const r2 = v => Math.round(Number(v || 0) * 100) / 100;
 
 export async function executarCorrecaoPixFolha({
   db,
+  todasFolhas = [],
   folhasFiltradas,
   funcionarios,
   vinculos,
   saidas,
   lancs,
 }) {
+  const todasFolhasIds = new Set((todasFolhas.length ? todasFolhas : folhasFiltradas).map(f => f.id));
   const execucaoId = `correcao_pix_12m_${Date.now()}`;
   const resumo = {
     execucao_id: execucaoId,
@@ -91,13 +93,28 @@ export async function executarCorrecaoPixFolha({
     }
   }
 
-  // 2. Auditar vínculos existentes nas folhas filtradas: remover inválidos e reclassificar vales no 5º–7º DU
+  // 2. Auditar vínculos existentes nas folhas filtradas (e vínculos órfãos de folhas já excluídas): remover inválidos e reclassificar vales no 5º–7º DU
   const idsFolhasFiltro = new Set(folhasFiltradas.map(f => f.id));
   const folhaById = new Map(folhasFiltradas.map(f => [f.id, f]));
   const vinculosAtivos = [];
 
   for (const v of vinculos) {
     if (!idsFolhasFiltro.has(v.entidade_id)) {
+      if (!todasFolhasIds.has(v.entidade_id)) {
+        const lancOrfao = lancs.get(v.lancamento_bancario_id);
+        await db.AuditoriaConciliacao.create({
+          execucao_id: execucaoId,
+          acao: 'vinculo_removido',
+          motivo: `Vínculo órfão apontando para FolhaPagamento inexistente (${v.entidade_id})`,
+          entidade_tipo: 'VinculoExtrato',
+          entidade_id: v.id,
+          payload_original: JSON.stringify(v),
+          detalhe: `Liberado PIX ${lancOrfao?.data || ''} (${lancOrfao?.descricao || v.lancamento_bancario_id})`,
+        });
+        await db.VinculoExtrato.delete(v.id);
+        resumo.vinculos_removidos++;
+        continue;
+      }
       vinculosAtivos.push(v);
       continue;
     }

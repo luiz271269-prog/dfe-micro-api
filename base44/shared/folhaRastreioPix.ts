@@ -12,8 +12,13 @@ const TERMOS_DESCRICAO_BANCARIA = [
 
 const NAO_PIX_RE = /\b(saque\s+din|tarifa\s+com|iof\s+|debito\s+convenios|liquidacao\s+boleto)\b/;
 
-// Homônimos de terceiros/fornecedores que não são funcionários da folha
-const TERCEIROS_HOMONIMOS_RE = /\b(05385362921|matheus\s+aguiar|14088242998|mateus\s+de\s+santana\s+marq|05923576945|paulo\s+alves\s+de\s+araujo|88882160904|aida\s+teresinha)\b/;
+// Homônimos de terceiros/fornecedores que não são funcionários da folha ou lançamentos sintéticos de seed substituídos pelo extrato real
+const TERCEIROS_HOMONIMOS_RE = /\b(05385362921|matheus\s+aguiar|14088242998|mateus\s+de\s+santana\s+marq|05923576945|paulo\s+alves\s+de\s+araujo|88882160904|aida\s+teresinha|maicon\s+sa\s+fernandes)\b/;
+const LANCAMENTO_SEED_FOLHA_RE = /—\s*(sal[aá]rio|adiantamento)/i;
+
+export function ehLancamentoSeedFolha(lanc) {
+  return LANCAMENTO_SEED_FOLHA_RE.test(lanc?.descricao || '');
+}
 
 const PERFIS_COLABORADORES = [
   { chave: 'gustavo', matchNome: /\bgustavo\b/, matchBanco: /\b(11522298932|gustavo\s+nunes)\b/ },
@@ -35,6 +40,7 @@ const tokens = nome =>
     .map(t => t.replace(/h/g, '').replace(/y/g, 'i').replace(/(.)\1+/g, '$1'));
 
 export function ehLancamentoNaoPixNominal(lanc) {
+  if (ehLancamentoSeedFolha(lanc)) return true;
   const txt = normConciliacao(`${lanc?.descricao || ''} ${lanc?.detalhe || ''}`);
   return NAO_PIX_RE.test(txt);
 }
