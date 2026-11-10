@@ -10,6 +10,7 @@ import {
   situacaoRastreio,
   TOLERANCIA,
 } from '../../shared/folhaRastreioPix.ts';
+import { executarCorrecaoPixFolha } from '../../shared/folhaExecutarCorrecaoPix.ts';
 
 // Auditoria e Rastreio de PIX por funcionário × competência (últimos 12 meses ou histórico) — SOMENTE LEITURA.
 // Verifica se cada folha mensal teve seu PIX vinculado conforme a regra do 5º ao 7º dia útil do mês subsequente.
@@ -32,7 +33,7 @@ export default async function(req) {
     const competencias12m = ultimasCompetencias(hoje, 12);
     const setCompetenciasAtivas = mesesFiltro > 0 ? new Set(ultimasCompetencias(hoje, mesesFiltro)) : null;
 
-    const [folhasRaw, funcionarios, vinculos, saidas] = await Promise.all([
+    let [folhasRaw, funcionarios, vinculos, saidas] = await Promise.all([
       lerCompleto(db, 'FolhaPagamento', {}),
       lerCompleto(db, 'Funcionario', {}, ['id', 'nome', 'cpf', 'status']),
       lerCompleto(db, 'VinculoExtrato', { entidade_tipo: 'FolhaPagamento' }),
@@ -43,6 +44,24 @@ export default async function(req) {
     const faltantes = [...new Set(vinculos.map(v => v.lancamento_bancario_id))].filter(id => id && !lancs.has(id));
     for (const lote of lotes(faltantes, 200)) {
       (await lerCompleto(db, 'LancamentoBancario', { id: { $in: lote } }, ['id', 'data', 'descricao', 'detalhe', 'valor'])).forEach(l => lancs.set(l.id, l));
+    }
+
+    let execucaoCorrecao = null;
+    if (body?.acao === 'aplicar_correcoes') {
+      const folhasAlvo = folhasRaw.filter(f => !setCompetenciasAtivas || setCompetenciasAtivas.has(f.competencia));
+      execucaoCorrecao = await executarCorrecaoPixFolha({
+        db: base44.asServiceRole.entities,
+        folhasFiltradas: folhasAlvo,
+        funcionarios,
+        vinculos,
+        saidas,
+        lancs,
+      });
+      // Recarregar folhas e vínculos após aplicar as correções auditadas
+      [folhasRaw, vinculos] = await Promise.all([
+        lerCompleto(db, 'FolhaPagamento', {}),
+        lerCompleto(db, 'VinculoExtrato', { entidade_tipo: 'FolhaPagamento' }),
+      ]);
     }
 
     // Cobertura de extrato por mês YYYY-MM
@@ -437,7 +456,12 @@ export default async function(req) {
       }
 
       // 4. Determinar classificação da auditoria da competência
-      const pagoReconhecido = r2(pagoPixConfirmado + soma.baixa_manual);
+      // Se o PIX do extrato já quita a folha (dentro da tolerância), a baixa manual preservada não soma em dobro sobre o PIX
+      const quitadaViaPixExtrato = liquido > 0 && pagoPixConfirmado >= liquido - TOLERANCIA;
+      const pagoReconhecido = quitadaViaPixExtrato
+        ? pagoPixConfirmado
+        : r2(pagoPixConfirmado + soma.baixa_manual);
+
       const situacao = situacaoRastreio({
         liquido,
         pago: pagoReconhecido,
@@ -453,12 +477,12 @@ export default async function(req) {
       if (candidatosFolha.length > 0) {
         classificacaoAuditoria = 'candidato_sem_vinculo';
         motivoAuditoria = `${candidatosFolha.length} PIX nominal(is) localizado(s) no extrato de ${janela?.mes_pagamento} aguardando vínculo`;
-      } else if (temDuplicidadeManual) {
-        classificacaoAuditoria = 'possivel_duplicidade';
-        motivoAuditoria = 'Baixa manual com data de outra competência ou já vinculada via extrato no mês anterior';
       } else if (temRevisaoVinculo) {
         classificacaoAuditoria = 'revisar';
         motivoAuditoria = 'Vínculo requer revisão (salvo como vale no 5º dia útil, beneficiário divergente ou lançamento não-PIX)';
+      } else if (temDuplicidadeManual && !quitadaViaPixExtrato) {
+        classificacaoAuditoria = 'possivel_duplicidade';
+        motivoAuditoria = 'Baixa manual com data de outra competência ou já vinculada via extrato no mês anterior';
       } else if (cobertura.status === 'ausente' && pagoPixConfirmado === 0) {
         classificacaoAuditoria = 'cobertura_insuficiente';
         motivoAuditoria = `Extrato bancário de ${janela?.mes_pagamento || 'pagamento'} ainda não importado — cobertura insuficiente`;
@@ -594,7 +618,8 @@ export default async function(req) {
 
     return Response.json({
       success: true,
-      somente_leitura: true,
+      somente_leitura: !execucaoCorrecao,
+      execucao_correcao: execucaoCorrecao,
       gerado_em: new Date().toISOString(),
       hoje,
       janela_auditoria: {
