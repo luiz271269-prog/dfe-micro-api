@@ -12,10 +12,26 @@ const TERMOS_DESCRICAO_BANCARIA = [
 
 const NAO_PIX_RE = /\b(saque\s+din|tarifa\s+com|iof\s+|debito\s+convenios|liquidacao\s+boleto)\b/;
 
+// Homônimos de terceiros/fornecedores que não são funcionários da folha
+const TERCEIROS_HOMONIMOS_RE = /\b(05385362921|matheus\s+aguiar|14088242998|mateus\s+de\s+santana\s+marq|05923576945|paulo\s+alves\s+de\s+araujo|88882160904|aida\s+teresinha)\b/;
+
+const PERFIS_COLABORADORES = [
+  { chave: 'gustavo', matchNome: /\bgustavo\b/, matchBanco: /\b(11522298932|gustavo\s+nunes)\b/ },
+  { chave: 'stefhany', matchNome: /\bstefhany\b/, matchBanco: /\b(12773454901|stefhany\s+santana)\b/ },
+  { chave: 'paulo', matchNome: /\bpaulo\s+henrique\b/, matchBanco: /\b(08429678930|paulo\s+henrique\s+jan?ques)\b/ },
+  { chave: 'ricardo', matchNome: /\bricardo\s+rodolfo\b/, matchBanco: /\b(73926302968|ricardo\s+rodolfo)\b/ },
+  { chave: 'thiago', matchNome: /\b(thiago|tiago)\b/, matchBanco: /\b(09865998750|th?iago\s+alves|thiago\s+salario)\b/ },
+  { chave: 'thais', matchNome: /\bthais\b/, matchBanco: /\b(08644621904|thais\s+moreira|thais\s+spido)\b/ },
+  { chave: 'luiz_gabriel', matchNome: /\bluiz\s+gabriel\b/, matchBanco: /\b(14159808964|luiz\s+gabriel)\b/ },
+  { chave: 'luiz_carlos', matchNome: /\bluiz\s+carlos\b/, matchBanco: /\b(71917489900|luiz\s+carlos\s+liesch)\b/ },
+  { chave: 'tifany', matchNome: /\btifh?any\b/, matchBanco: /\b(11839063904|tifh?any\s+santann?a)\b/ },
+  { chave: 'matheus', matchNome: /\bmatheus\b/, matchBanco: /\b(04619841056|matheus\s+message\s+model|matheus\s+salario)\b/ },
+];
+
 const tokens = nome =>
   normConciliacao(nome)
     .split(' ')
-    .filter(t => t.length >= 3 && !/^\d+$/.test(t) && !['ltda', 'me', 'eireli', 'model', 'message'].includes(t))
+    .filter(t => t.length >= 3 && !/^\d+$/.test(t) && !['ltda', 'me', 'eireli', 'model', 'message', 'das', 'dos'].includes(t))
     .map(t => t.replace(/h/g, '').replace(/y/g, 'i').replace(/(.)\1+/g, '$1'));
 
 export function ehLancamentoNaoPixNominal(lanc) {
@@ -24,11 +40,21 @@ export function ehLancamentoNaoPixNominal(lanc) {
 }
 
 export function beneficiarioConfere(nome, texto) {
+  const nomeNorm = normConciliacao(nome);
+  const txtNorm = normConciliacao(texto);
+  if (!nomeNorm || !txtNorm) return false;
+  if (TERCEIROS_HOMONIMOS_RE.test(txtNorm)) return false;
+
+  const perfil = PERFIS_COLABORADORES.find(p => p.matchNome.test(nomeNorm));
+  if (perfil) {
+    return perfil.matchBanco.test(txtNorm);
+  }
+
   const alvo = tokens(nome);
   const desc = new Set(tokens(texto));
   if (!alvo.length) return false;
   const iguais = alvo.filter(t => desc.has(t)).length;
-  return iguais >= 2 || (iguais === 1 && (alvo.length === 1 || alvo[0].length >= 5) && desc.has(alvo[0]));
+  return alvo.length >= 2 ? iguais >= 2 : iguais >= 1;
 }
 
 export function vencimentoRastreio(folha) {
