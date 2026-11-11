@@ -25,6 +25,9 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
 import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizacao';
+import { CATEGORIAS_MOVIMENTO_FINANCEIRO } from '@/lib/naturezaCreditoExtrato';
+import CorrigirNaturezaButton from '@/components/extrato/CorrigirNaturezaButton';
+import NaturezaMovimentoBadge from '@/components/extrato/NaturezaMovimentoBadge';
 
 const TIPOS_TOTALIZADORES = [
   ['estoque', 'Compras (estoque/revenda)'],
@@ -120,7 +123,11 @@ export default function ExtratoBancario() {
 
   const totaisTipo = useMemo(() => {
     const totais = Object.fromEntries(tiposTotalizadores.map(([tipo]) => [tipo, 0]));
+    totais.__aplicacoes = 0; totais.__resgates = 0;
     periodoLancamentos.forEach(l => {
+      if (l.categoria === 'aplicacoes') { totais.__aplicacoes += l.valor || 0; return; }
+      if (l.categoria === 'resgates') { totais.__resgates += l.valor || 0; return; }
+      if (CATEGORIAS_MOVIMENTO_FINANCEIRO.includes(l.categoria)) return;
       if (Object.prototype.hasOwnProperty.call(totais, l.tipo_compra)) totais[l.tipo_compra] += l.valor || 0;
     });
     return totais;
@@ -231,6 +238,11 @@ export default function ExtratoBancario() {
           <Button variant="outline" onClick={handleReclassificarPessoal} disabled={reclassificando} className="gap-2 flex-1 md:flex-none" size="sm" title="Reclassificar Pró-labore e Folha como Pessoal">
             <UserCheck className="w-4 h-4" /> {reclassificando ? '...' : 'Reclassif. Pessoal'}
           </Button>
+          <CorrigirNaturezaButton lancamentos={lancamentos} rotuloCategoria={opcoesCategoria} onDone={(r) => {
+            setReclassResult({ natureza: true, ...r });
+            if (r.total) loadData();
+            setTimeout(() => setReclassResult(null), 6000);
+          }} />
           <Button variant="outline" onClick={handleDedup} disabled={deduping} className="gap-2 flex-1 md:flex-none" size="sm">
             <Trash2 className="w-4 h-4" /> {deduping ? '...' : 'Deduplicar'}
           </Button>
@@ -256,7 +268,9 @@ export default function ExtratoBancario() {
 
       {reclassResult !== null && (
         <div className={`mb-4 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold ${reclassResult.total > 0 ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
-          {reclassResult.auto
+          {reclassResult.natureza
+            ? (reclassResult.total > 0 ? `✓ ${reclassResult.total} lançamento(s) corrigido(s): ${reclassResult.receita} recebimento(s), ${reclassResult.aplicacao} aplicação(ões), ${reclassResult.resgate} resgate(s)` : '✓ Nenhuma correção pendente com evidência clara')
+            : reclassResult.auto
             ? `✓ Regra aprendida: ${reclassResult.total} outro(s) lançamento(s) semelhante(s) foram reclassificado(s) automaticamente`
             : reclassResult.total > 0
               ? `✓ ${reclassResult.total} lançamento(s) reclassificado(s) como Pessoal (Pró-labore / Folha)`
@@ -265,8 +279,14 @@ export default function ExtratoBancario() {
       )}
 
       {/* Totalizadores padronizados pelos seis tipos de gasto */}
-      <MobileKPICarousel desktopGridClass="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        {tiposTotalizadores.map(([tipo, titulo]) => {
+      <MobileKPICarousel desktopGridClass="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        {[...tiposTotalizadores, ['__aplicacoes', '8.02 Aplicações (fora da receita)'], ['__resgates', '8.03 Resgates (fora da receita)']].map(([tipo, titulo]) => {
+          if (tipo === '__aplicacoes' || tipo === '__resgates') {
+            const cat = tipo === '__aplicacoes' ? 'aplicacoes' : 'resgates';
+            const ativo = filterCategoria === cat;
+            return <GradientCard key={tipo} title={titulo} value={formatCurrency(totaisTipo[tipo] || 0)} gradient="purple" active={ativo}
+              onClick={() => { setFilterTipo('all'); setFilterCategoria(ativo ? 'all' : cat); }} />;
+          }
           const valor = totaisTipo[tipo] || 0;
           const isActive = filterTipo === tipo;
           return <GradientCard
@@ -327,7 +347,7 @@ export default function ExtratoBancario() {
             topRight={formatCurrency(l.valor)}
             topRightClass={(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}
             title={l.descricao}
-            subtitle={l.detalhe}
+            subtitle={<>{l.detalhe}<NaturezaMovimentoBadge lancamento={l} rotuloCategoria={opcoesCategoria} /></>}
             meta={l.saldo_apos != null ? `Saldo: ${formatCurrency(l.saldo_apos)}` : null}
             footer={<div className="flex flex-wrap items-center gap-2"><ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} />{l.valor<0&&<BaixaAcaoRegistro entidade="LancamentoBancario" registroId={l.id} descricao={l.descricao} abaInicial="conciliar">Analisar / conciliar</BaixaAcaoRegistro>}</div>}
             badge={
@@ -380,6 +400,7 @@ export default function ExtratoBancario() {
                     <td className="px-4 py-3">
                       <p className="font-medium">{l.descricao}</p>
                       {l.detalhe && <p className="text-xs text-muted-foreground">{l.detalhe}</p>}
+                      <NaturezaMovimentoBadge lancamento={l} rotuloCategoria={opcoesCategoria} />
                     </td>
                     <td className="px-4 py-3">
                       <SeletorClassificacao eixo="categoria" entityName="LancamentoBancario" record={l} field="categoria" onChange={(id, f, v) => handleCategoriaChange(id, v)} />

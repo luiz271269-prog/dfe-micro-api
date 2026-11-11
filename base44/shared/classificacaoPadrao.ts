@@ -26,6 +26,8 @@ export const CLASSIFICACAO_POR_CATEGORIA = {
   obras_reforma: { origem_compra: 'empresa', tipo_compra: 'obras' },
   transferencia: { origem_compra: 'empresa', tipo_compra: 'financeiro' },
   interno: { origem_compra: 'empresa', tipo_compra: 'financeiro' },
+  aplicacoes: { origem_compra: 'empresa', tipo_compra: 'financeiro' },
+  resgates: { origem_compra: 'empresa', tipo_compra: 'financeiro' },
 };
 
 // Eixos de um lançamento bancário, completando o que faltar pela categoria.
