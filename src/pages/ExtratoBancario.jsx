@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Search, Filter, Trash2, UserCheck } from 'lucide-react';
+import { Plus, Search, Filter, Trash2, UserCheck, ListChecks } from 'lucide-react';
 import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 import { reclassificarPessoal } from '@/functions/reclassificarPessoal';
 import { GradientCard } from '../components/shared/GradientCard';
@@ -29,6 +29,8 @@ import { CATEGORIAS_MOVIMENTO_FINANCEIRO } from '@/lib/naturezaCreditoExtrato';
 import CorrigirNaturezaButton from '@/components/extrato/CorrigirNaturezaButton';
 import NaturezaMovimentoBadge from '@/components/extrato/NaturezaMovimentoBadge';
 import NaturezaResumo from '@/components/extrato/NaturezaResumo';
+import SaneamentoDialog from '@/components/extrato/SaneamentoDialog';
+import { ePendenteClassificacao } from '@/lib/saneamentoExtrato';
 
 const TIPOS_TOTALIZADORES = [
   ['estoque', 'Compras (estoque/revenda)'],
@@ -54,6 +56,7 @@ export default function ExtratoBancario() {
   const [dedupResult, setDedupResult] = useState(null);
   const [reclassificando, setReclassificando] = useState(false);
   const [reclassResult, setReclassResult] = useState(null);
+  const [showSaneamento, setShowSaneamento] = useState(false);
   const [form, setForm] = useState({
     data: '', descricao: '', valor: '', categoria: 'recebimento',
     origem_compra: 'empresa', tipo_compra: 'despesas',
@@ -228,6 +231,7 @@ export default function ExtratoBancario() {
   }, [lancamentos]);
 
   const activeFilterCount = (filterCategoria !== 'all' ? 1 : 0) + (filterTipo !== 'all' ? 1 : 0) + (searchTerm ? 1 : 0);
+  const pendentesQtd = useMemo(() => periodoLancamentos.filter(ePendenteClassificacao).length, [periodoLancamentos]);
 
   return (
     <div className="p-3 sm:p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
@@ -244,6 +248,9 @@ export default function ExtratoBancario() {
             if (r.total) loadData();
             setTimeout(() => setReclassResult(null), 6000);
           }} />
+          <Button variant="outline" onClick={() => setShowSaneamento(true)} className="gap-2 flex-1 md:flex-none" size="sm" title="Classificar pendentes em lote pelo histórico de cada descrição">
+            <ListChecks className="w-4 h-4" /> Saneamento{pendentesQtd ? ` (${pendentesQtd})` : ''}
+          </Button>
           <Button variant="outline" onClick={handleDedup} disabled={deduping} className="gap-2 flex-1 md:flex-none" size="sm">
             <Trash2 className="w-4 h-4" /> {deduping ? '...' : 'Deduplicar'}
           </Button>
@@ -464,6 +471,13 @@ export default function ExtratoBancario() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <SaneamentoDialog
+        open={showSaneamento}
+        onOpenChange={setShowSaneamento}
+        lancamentos={periodoLancamentos}
+        onDone={loadData}
+      />
     </div>
   );
 }

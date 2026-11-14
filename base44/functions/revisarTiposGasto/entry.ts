@@ -107,6 +107,29 @@ export default async function(req) {
       return Response.json({ success: true, dry_run: dryRun, execucao_id: execucaoId, resumo, total_alterado: Object.values(resumo).reduce((s, x) => s + x.alterados, 0), amostra: amostra.slice(0, 30) });
     }
 
+    if (action === 'aplicar_categoria_lote') {
+      if (user.role !== 'admin') return Response.json({ error: 'Apenas administradores podem classificar em lote.' }, { status: 403 });
+      if (payload.entidade !== 'LancamentoBancario') return Response.json({ error: 'Entidade não permitida nesta ação.' }, { status: 400 });
+      const novaCategoria = String(payload.categoria || '');
+      if (!novaCategoria) return Response.json({ error: 'Escolha a categoria do lote.' }, { status: 400 });
+      if (permitidos.categorias.length && !permitidos.categorias.includes(novaCategoria)) return Response.json({ error: 'Conta analítica inativa ou não permitida.' }, { status: 400 });
+      const ids = Array.isArray(payload.ids) ? payload.ids.filter(x => typeof x === 'string').slice(0, 200) : [];
+      if (!ids.length) return Response.json({ error: 'Selecione ao menos um lançamento.' }, { status: 400 });
+      const execucaoId = `saneamento-${Date.now()}`;
+      const registros = (await Promise.all(ids.map(id => db.LancamentoBancario.get(id).catch(() => null)))).filter(Boolean);
+      const atualizacoes = [];
+      const auditoria = [];
+      for (const registro of registros) {
+        const depois = validarCombinacao('LancamentoBancario', { ...registro, categoria: novaCategoria }, cadastro, user.role).normalizado;
+        atualizacoes.push({ id: registro.id, ...persistivel('LancamentoBancario', depois) });
+        auditoria.push({ execucao_id: execucaoId, entidade_tipo: 'LancamentoBancario', entidade_id: registro.id, origem_alteracao: 'manual', confianca: 100, motivos: ['saneamento em lote com categoria escolhida'], antes_json: JSON.stringify({ origem_compra: registro.origem_compra || '', tipo_compra: registro.tipo_compra || '', categoria: registro.categoria || '' }), depois_json: JSON.stringify(depois) });
+      }
+      if (!atualizacoes.length) return Response.json({ error: 'Nenhum lançamento válido para classificar.' }, { status: 400 });
+      await db.LancamentoBancario.bulkUpdate(atualizacoes);
+      await auditar(db, auditoria);
+      return Response.json({ success: true, execucao_id: execucaoId, aplicados: atualizacoes.length });
+    }
+
     if (!entidades.includes(entidade)) return Response.json({ error: 'Módulo inválido' }, { status: 400 });
     if (action === 'listar') {
       const offset = Number(payload.offset || 0);
