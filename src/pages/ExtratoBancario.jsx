@@ -28,6 +28,7 @@ import { aprenderEAplicarRegra, extrairTermoChave } from '../lib/autoCategorizac
 import { CATEGORIAS_MOVIMENTO_FINANCEIRO } from '@/lib/naturezaCreditoExtrato';
 import CorrigirNaturezaButton from '@/components/extrato/CorrigirNaturezaButton';
 import NaturezaMovimentoBadge from '@/components/extrato/NaturezaMovimentoBadge';
+import NaturezaResumo from '@/components/extrato/NaturezaResumo';
 
 const TIPOS_TOTALIZADORES = [
   ['estoque', 'Compras (estoque/revenda)'],
@@ -269,7 +270,7 @@ export default function ExtratoBancario() {
       {reclassResult !== null && (
         <div className={`mb-4 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold ${reclassResult.total > 0 ? 'bg-violet-50 text-violet-800 border border-violet-200' : 'bg-blue-50 text-blue-800 border border-blue-200'}`}>
           {reclassResult.natureza
-            ? (reclassResult.total > 0 ? `✓ ${reclassResult.total} lançamento(s) corrigido(s): ${reclassResult.receita} recebimento(s), ${reclassResult.aplicacao} aplicação(ões), ${reclassResult.resgate} resgate(s)` : '✓ Nenhuma correção pendente com evidência clara')
+            ? (reclassResult.total > 0 ? `✓ ${reclassResult.total} lançamento(s) corrigido(s): ${reclassResult.receita} recebimento(s), ${reclassResult.aplicacao} aplicação(ões), ${reclassResult.resgate} resgate(s), ${reclassResult.transferencia} transferência(s)` : '✓ Nenhuma correção pendente com evidência clara')
             : reclassResult.auto
             ? `✓ Regra aprendida: ${reclassResult.total} outro(s) lançamento(s) semelhante(s) foram reclassificado(s) automaticamente`
             : reclassResult.total > 0
@@ -299,6 +300,8 @@ export default function ExtratoBancario() {
           />;
         })}
       </MobileKPICarousel>
+
+      <NaturezaResumo lancamentos={periodoLancamentos} />
 
       {/* Filtros — busca sempre visível, categoria no drawer no mobile */}
       <div className="flex gap-2 mb-4">

@@ -1,19 +1,17 @@
-function normalizar(texto) {
-  return (texto || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
+import { classificarNaturezaBancaria } from './naturezaCreditoExtrato';
 
+// Natureza contábil do lançamento: aplicações, resgates e transferências
+// ficam em conferência e nunca entram como saída de contas a pagar.
 export function classificarNaturezaExtrato(lancamento) {
-  const texto = normalizar(`${lancamento?.descricao || ''} ${lancamento?.detalhe || ''}`);
-  if (['transferencia', 'transferencia_interna', 'interno', 'aporte', 'emprestimo'].includes(lancamento?.categoria)) return 'conferencia';
-  const aplicacao = /\b(aplicacao|investimento|cdb|rdb|lci|lca|tesouro|poupanca|fundo|resgate)\b/.test(texto);
-  if (aplicacao) return 'aplicacao';
-  if ((lancamento?.valor || 0) > 0) return 'entrada';
-  if ((lancamento?.valor || 0) < 0) return 'saida';
+  if (['transferencia', 'interno', 'aporte', 'emprestimo'].includes(lancamento?.categoria)) return 'conferencia';
+  const { natureza } = classificarNaturezaBancaria(lancamento);
+  if (natureza === 'transferencia') return 'conferencia';
+  if (natureza === 'aplicacao' || natureza === 'resgate') return 'aplicacao';
+  if (natureza === 'despesa') return 'saida';
+  if (natureza === 'receita' || natureza === 'credito_revisar') return 'entrada';
   return 'outro';
 }
 
 export function ehSaidaContasPagar(lancamento) {
-  return classificarNaturezaExtrato(lancamento) === 'saida' &&
-    lancamento?.categoria !== 'transferencia' &&
-    lancamento?.categoria !== 'interno';
+  return classificarNaturezaExtrato(lancamento) === 'saida';
 }

@@ -85,10 +85,10 @@ export function construirMemoria(registrosPorEntidade, cadastro = [], role = 'ad
 function eventoDoRegistro(entidade, registro) {
   if (entidade === 'FaturaCartao') return 'agrupador';
   if (entidade === 'LancamentoBancario') {
-    if (Number(registro.valor) > 0) return registro.categoria === 'transferencia' ? 'transferencia' : 'receita';
     if (eventosSemNatureza.has(registro.categoria)) return registro.categoria;
     const texto = normalizarTexto(`${registro.descricao || ''} ${registro.detalhe || ''}`);
-    if (/aplicacao|investimento|cdb|rdb|lci|lca|tesouro|poupanca|fundo|resgate/.test(texto)) return 'financeiro';
+    if (/aplicacao|investimento|cdb|rdb|lci|lca|tesouro|poupanca|fundo|resgate|aplic|resg/.test(texto)) return 'financeiro';
+    if (Number(registro.valor) > 0) return 'receita';
   }
   return 'gasto';
 }

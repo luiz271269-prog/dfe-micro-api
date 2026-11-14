@@ -1,6 +1,7 @@
 import { contratoImportacao, sanitizarImportacao, informacaoPagamento } from './importacaoContrato.ts';
 import { normalizarEvidencia, norm } from './evidenciaFinanceira.ts';
 import { criarFolhaValidada } from './folhaRegras.ts';
+import { ajustarNaturezaImportacao } from './naturezaExtrato.ts';
 const chaves={FolhaPagamento:['funcionario_nome','competencia','tipo','empresa'],DespesaOperacional:['data','descricao','valor','empresa'],ObraReforma:['data','responsavel','descricao','valor'],ItemCompra:['fornecedor','numero_nota','descricao_produto','empresa'],FaturaCartao:['conta_cartao_id','mes_referencia'],LancamentoCartao:['fatura_id','data_lancamento','estabelecimento','valor'],LancamentoBancario:['data','valor','descricao','conta_bancaria','detalhe'],RelatorioFaturamento:['mes','fonte']};
 export async function registrarOrigem(db,batch,r,tipo,documento,resultado,extra={}) {
   const m=contratoImportacao(batch.batch_type),info=informacaoPagamento(r,m);
@@ -35,6 +36,7 @@ export async function persistirRegistro(base44,batch,r,b) {
   if(tipo==='FaturaCartao'&&!p.conta_cartao_id)throw new Error('Selecione explicitamente o cartão da fatura.');
   if(tipo==='LancamentoBancario'){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(p.data||'')||p.data>new Date().toISOString().slice(0,10)||!Number.isFinite(p.valor)||!p.valor||!p.conta_bancaria||/agendad|proje[cç][aã]o|saldo anterior|a vencer/i.test(p.descricao||''))throw new Error('Somente movimentos contabilizados, identificados e não futuros são permitidos.');
+    Object.assign(p,ajustarNaturezaImportacao(p).patch);
   }
   const query=Object.fromEntries(chaves[tipo].filter(k=>p[k]!==undefined&&p[k]!=='').map(k=>[k,p[k]]));
   if(!Object.keys(query).length)throw new Error('Documento sem identidade para deduplicação.');

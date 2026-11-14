@@ -9,10 +9,10 @@ export default function CorrigirNaturezaButton({ lancamentos, rotuloCategoria, o
 
   async function corrigir() {
     const alvos = lancamentos.map(l => ({ l, s: sugestaoCorrecao(l, rotuloCategoria) })).filter(x => x.s);
-    const cont = { receita: 0, aplicacao: 0, resgate: 0 };
+    const cont = { receita: 0, aplicacao: 0, resgate: 0, transferencia: 0 };
     alvos.forEach(x => { cont[x.s.natureza] += 1; });
     if (!alvos.length) { onDone?.({ total: 0 }); return; }
-    if (!confirm(`Correções encontradas:\n• ${cont.receita} recebimento(s) → 1.01 Recebimentos\n• ${cont.aplicacao} aplicação(ões) → 8.02 Aplicações\n• ${cont.resgate} resgate(s) → 8.03 Resgates\n\nCréditos sem evidência clara não serão alterados. Aplicar?`)) return;
+    if (!confirm(`Correções encontradas:\n• ${cont.receita} recebimento(s) → 1.01 Recebimentos\n• ${cont.aplicacao} aplicação(ões) → 8.02 Aplicações\n• ${cont.resgate} resgate(s) → 8.03 Resgates\n• ${cont.transferencia} transferência(s) → 8.01 Transferências internas\n\nLançamentos sem evidência clara não serão alterados. Aplicar?`)) return;
     setRodando(true);
     const execucao_id = `natureza-extrato-${Date.now()}`;
     for (let i = 0; i < alvos.length; i += 100) {
