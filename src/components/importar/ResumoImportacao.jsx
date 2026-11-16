@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { chamarImportacao } from '@/components/importar/salvarImportacao';
 import useContratoImportacao from '@/hooks/useContratoImportacao';
 import PropostasImportacao from '@/components/importar/PropostasImportacao';
+import DebitosExtratoContasPagar from '@/components/importar/DebitosExtratoContasPagar';
 export default function ResumoImportacao({batchId,tipo,onNova}){
   const cache=useQueryClient(),[busy,setBusy]=useState(false),[erro,setErro]=useState('');
   const {data:matriz=[]}=useContratoImportacao(),m=matriz.find(m=>m.tipo===tipo);
@@ -20,6 +21,7 @@ export default function ResumoImportacao({batchId,tipo,onNova}){
       <div className="rounded-xl border bg-card p-4"><h3 className="font-semibold">Liquidação / composição</h3><p className="mt-2 text-sm">{m?.pode_propor_liquidacao?`${s.pagamentos_informados} informados · ${s.propostas} para revisão · ${s.executados} execuções confirmadas · ${s.falhas} falhas`:'Não aplicável. Conferência não dá baixa.'}</p><p className="mt-1 text-xs text-muted-foreground">A importação não executa baixas.</p></div>
       <div className="rounded-xl border bg-card p-4"><h3 className="font-semibold">Próxima ação</h3><Button className="mt-2 whitespace-normal h-auto text-left" variant="outline" disabled={busy} onClick={buscar}>{busy?'Buscando, sem executar baixas…':m?.proxima_acao||'Conferir importação'}</Button>{m?.path&&<Link to={m.path} className="block mt-2 text-xs text-primary underline">Abrir módulo de origem</Link>}</div>
     </div>{erro&&<p role="alert" className="text-sm text-destructive">{erro}</p>}
+    {tipo==='extrato_bancario'&&<DebitosExtratoContasPagar batchId={batchId}/>}
     <PropostasImportacao batchId={batchId}/><Button variant="outline" onClick={onNova}>Nova importação</Button>
   </section>;
 }
