@@ -6,6 +6,7 @@ import CriarRegraExtratoDialog from '@/components/recorrentes/CriarRegraExtratoD
 import RevisaoFixasDialog from '@/components/recorrentes/RevisaoFixasDialog';
 import BaixasFixasAcesso from '@/components/recorrentes/BaixasFixasAcesso';
 import FixasPlanoLista from '@/components/recorrentes/FixasPlanoLista';
+import AnaliseFixas from '@/components/recorrentes/analise/AnaliseFixas';
 import useFixasPainel from '@/components/recorrentes/useFixasPainel';
 import useRecorrentesData from '@/components/recorrentes/useRecorrentesData';
 import { base44 } from '@/api/base44Client';
@@ -166,6 +167,7 @@ export default function Recorrentes() {
         <p className="text-xs text-muted-foreground">Cadastre a despesa de funcionamento da empresa antes do pagamento. O cartão reconhece a despesa operacional na competência; o extrato confirma boleto, PIX ou débito. Quitar a fatura não cria outra despesa.</p>
       </div>
 
+      <AnaliseFixas mes={mes} />
       <FixasPlanoLista painel={painel} inicio={inicio} fim={fim} admin={admin} onEditar={abrirEditar} onToggle={toggleAtiva} onExcluir={excluir} onSaved={load} onRevisar={admin ? revisarRegra : undefined} />
       {historicoAtivo&&loadingHistorico&&<p role="status" className="text-sm text-muted-foreground mt-3">Carregando histórico para revisão...</p>}
       {historicoAtivo&&errorHistorico&&<p role="alert" className="text-sm text-destructive mt-3">{errorHistorico.message}</p>}

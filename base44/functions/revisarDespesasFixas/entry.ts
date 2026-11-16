@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { painelDespesasFixas } from '../../shared/despesasFixasPainel.ts';
+import { analiseDespesasFixas } from '../../shared/despesasFixasAnalise.ts';
 import { confirmarDespesaFixa } from '../../shared/despesaFixaConfirmar.ts';
 import { carregarFixas, avaliarFixa, validarClassificacaoFixa } from '../../shared/despesasFixas.ts';
 
@@ -9,6 +10,7 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Não autenticado' }, { status: 401 });
     const body = await req.json(), db = base44.entities;
     if (body.acao === 'painel') return Response.json(await painelDespesasFixas(db,body));
+    if (body.acao === 'analise') return Response.json(await analiseDespesasFixas(db,body));
     if (user.role !== 'admin') return Response.json({ error: 'Apenas administradores podem revisar despesas fixas' }, { status: 403 });
     if (body.validate_only) return Response.json({success:true,mode:'validation'});
     if (body.acao === 'analisar') {
