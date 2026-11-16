@@ -6,17 +6,23 @@ import { Input } from '@/components/ui/input';
 import { getCurrentMonth } from '@/lib/currentMonth';
 import useConciliacaoComprasCartao from '@/components/cartoes/useConciliacaoComprasCartao';
 import ConciliacaoCompraLinha from '@/components/cartoes/ConciliacaoCompraLinha';
+import GrupoContaBadge from '@/components/shared/GrupoContaBadge';
+import useRegrasEventuais from '@/hooks/useRegrasEventuais';
+import { GRUPOS_CARTAO } from '@/lib/gruposContasPagar';
 export default function ConciliacaoComprasCartao({mes,anual=false}) {
   const [local,setLocal]=useState(getCurrentMonth());
   const periodo=mes||local;
   const {resultado:r,busy,erro,feedback,executar}=useConciliacaoComprasCartao(periodo);
+  const eventuais=useRegrasEventuais();
   return <section className="bg-card text-card-foreground border rounded-xl p-4 mb-5 space-y-3">
     <div className="flex gap-3 items-center flex-wrap"><h2 className="font-semibold flex-1 flex items-center gap-2"><Link2 className="w-4 h-4 text-primary"/>Composição do cartão ↔ Documento de origem</h2>{!mes&&<Input className="w-auto" aria-label="Mês da conciliação" type="month" value={local} onChange={e=>setLocal(e.target.value)} disabled={busy}/>}</div>
     <p className="text-xs text-muted-foreground">Compras, Despesas e Obras são comparadas juntas para impedir reutilização. Automático somente com correspondência única nos dois sentidos, valor exato, fornecedor, empresa e classificação compatíveis, em até 3 dias. Casos ambíguos ficam para revisão.</p>
     <p className="text-xs">O vínculo identifica a composição da fatura, sem alterar valor pago ou situação de pagamento dos documentos. A fatura é a obrigação financeira; seus pagamentos são conciliados separadamente com o banco.</p>
     <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy||anual} onClick={()=>executar('analisar',{},null)}>{busy&&<Loader2 className="w-4 h-4 animate-spin"/>}Analisar mês sem alterar dados</Button><Button size="sm" disabled={busy||anual||!r?.resumo.automaticos} onClick={()=>executar('aplicar')}>Vincular alta confiança desta página</Button><Link className="text-xs text-primary underline self-center" to="/contas-a-pagar">Conferir obrigações e faturas</Link></div>
+    <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"><span>Grupos da composição:</span>{GRUPOS_CARTAO.map(g=><GrupoContaBadge key={g} grupo={g}/>)}</div>
+    <p className="text-xs text-muted-foreground">A cor segue o documento vinculado; sem documento, a classificação da compra. Uma despesa só aparece como fixa ou eventual depois de vinculada ao seu documento.</p>
     {anual&&<p className="text-xs text-muted-foreground">Selecione a visão mensal para executar a conciliação.</p>}
     {erro&&<p role="alert" className="text-sm text-destructive">{erro}</p>}{feedback&&<p role="status" className="text-sm text-primary">{feedback}</p>}
-    {r&&<><p className="text-xs text-muted-foreground">Nesta página: {r.resumo.avaliados} compras · {r.resumo.automaticos} alta confiança · {r.resumo.revisao} para revisão · {r.resumo.conflitos} conflitos · {r.resumo.vinculados} vinculadas</p><div className="space-y-2">{r.detalhes.map(row=><ConciliacaoCompraLinha key={`${row.id}-${row.status}`} row={row} busy={busy} onConfirm={extra=>executar('confirmar',extra)} onRepair={id=>executar('reparar',{lancamento_cartao_id:id})}/>)}</div>{!r.detalhes.length&&<p className="text-sm text-muted-foreground">Nenhuma compra elegível nesta página.</p>}{r.has_more&&<Button variant="outline" size="sm" disabled={busy} onClick={()=>executar('analisar',{},r.next_cursor)}>Próxima página de compras</Button>}</>}
+    {r&&<><p className="text-xs text-muted-foreground">Nesta página: {r.resumo.avaliados} compras · {r.resumo.automaticos} alta confiança · {r.resumo.revisao} para revisão · {r.resumo.conflitos} conflitos · {r.resumo.vinculados} vinculadas</p><div className="space-y-2">{r.detalhes.map(row=><ConciliacaoCompraLinha key={`${row.id}-${row.status}`} row={row} busy={busy} eventuais={eventuais} onConfirm={extra=>executar('confirmar',extra)} onRepair={id=>executar('reparar',{lancamento_cartao_id:id})}/>)}</div>{!r.detalhes.length&&<p className="text-sm text-muted-foreground">Nenhuma compra elegível nesta página.</p>}{r.has_more&&<Button variant="outline" size="sm" disabled={busy} onClick={()=>executar('analisar',{},r.next_cursor)}>Próxima página de compras</Button>}</>}
   </section>;
 }

@@ -26,10 +26,10 @@ export async function conciliarComprasCartao(db, payload, userId, escopo = ['Ite
     const destinos = new Set([...refs.map(d=>`${d.tipo}|${d.reg.id}`), ...trilhas.map(t=>`${t.entidade_tipo}|${t.entidade_id}`), ...(l.item_compra_id ? [`ItemCompra|${l.item_compra_id}`] : [])]);
     const candidatos = ocupado(l) ? [] : candidatosPara(l).map(d=>{
       const outros = dados.concorrentes.filter(x=>compraReal(x) && !ocupado(x) && evidenciasCartao(x,d.reg,d.tipo).elegivel);
-      return { id:d.reg.id,tipo:d.tipo,versao:d.reg.updated_date,...d.evidencia,auto:d.evidencia.auto && outros.length===1, motivos:[...d.evidencia.motivos,...(outros.length!==1 ? ['Documento disputado por mais de uma compra'] : [])] };
+      return { id:d.reg.id,tipo:d.tipo,versao:d.reg.updated_date,...d.evidencia,recorrente:d.reg.recorrente===true,regra_recorrente_id:d.reg.regra_recorrente_id||'',auto:d.evidencia.auto && outros.length===1, motivos:[...d.evidencia.motivos,...(outros.length!==1 ? ['Documento disputado por mais de uma compra'] : [])] };
     });
     const automatico = candidatos.length===1 && candidatos[0].auto;
-    return { id:l.id,versao:l.updated_date,descricao:l.estabelecimento, data:l.data_lancamento,valor:l.valor,empresa:l.empresa_beneficiada||'',tipo_compra:l.tipo_compra||'',origem_compra:l.origem_compra||'',fatura_id:l.fatura_id,candidatos,
+    return { id:l.id,versao:l.updated_date,descricao:l.estabelecimento, data:l.data_lancamento,valor:l.valor,empresa:l.empresa_beneficiada||'',tipo_compra:l.tipo_compra||'',origem_compra:l.origem_compra||'',fatura_id:l.fatura_id,candidatos,documentos:refs.map(d=>({tipo:d.tipo,tipo_compra:d.reg.tipo_compra||'',origem_compra:d.reg.origem_compra||'',recorrente:d.reg.recorrente===true,regra_recorrente_id:d.reg.regra_recorrente_id||''})),
       status: destinos.size>1 ? 'conflito' : trilhas.some(t=>t.fase!=='confirmado') ? 'trilha_pendente' : ocupado(l) ? 'vinculado' : automatico ? 'automatico' : candidatos.length ? 'revisao' : 'sem_correspondencia',
       vinculos:[...destinos], auditado:trilhas.length>0 && trilhas.every(t=>t.fase==='confirmado'),
       historico:historico.map(t=>({id:t.id,origem:t.origem,fase:t.fase,motivo:t.motivo,erro:t.erro,antes:JSON.parse(t.antes_json||'{}'),depois:JSON.parse(t.depois_json||'{}'),cancelado_em:t.cancelado_em,cancelado_por:t.cancelado_por,cancelamento_motivo:t.cancelamento_motivo,cancelamento_depois:JSON.parse(t.cancelamento_depois_json||'{}')})), 

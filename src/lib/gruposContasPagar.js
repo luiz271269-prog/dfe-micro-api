@@ -11,6 +11,7 @@ export const GRUPOS = {
   pro_labore:      { rotulo: 'Pró-labore e retiradas',   dot: 'bg-fuchsia-500', chip: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200', barra: 'border-l-fuchsia-500' },
   obras:           { rotulo: 'Obras e reformas',         dot: 'bg-stone-600',   chip: 'bg-stone-200 text-stone-800 border-stone-300',       barra: 'border-l-stone-600' },
   cartao:          { rotulo: 'Fatura de cartão (mista)', dot: 'bg-purple-500',  chip: 'bg-purple-100 text-purple-800 border-purple-200',    barra: 'border-l-purple-500' },
+  despesa_a_definir: { rotulo: 'Despesa · fixa/eventual a definir', dot: 'bg-slate-400', chip: 'bg-slate-100 text-slate-700 border-slate-300 border-dashed', barra: 'border-l-slate-400' },
   revisar:         { rotulo: 'Sem grupo · revisar',      dot: 'bg-slate-400',   chip: 'bg-slate-100 text-slate-700 border-slate-300 border-dashed', barra: 'border-l-slate-400' },
 };
 
@@ -44,4 +45,23 @@ export function grupoDeItem(i, eventuais = new Set()) {
     return i.recorrente ? 'fixas' : 'eventuais';
   }
   return 'revisar';
+}
+
+// Composição do cartão: grupos que uma compra no cartão pode assumir.
+export const GRUPOS_CARTAO = ['compras', 'fixas', 'eventuais', 'pro_labore', 'obras'];
+const ORIGEM_DOCUMENTO = { ItemCompra: 'compra', DespesaOperacional: 'despesa', ObraReforma: 'obra' };
+
+// Documento de origem (Compra, Despesa ou Obra) comparado com a compra do cartão.
+export function grupoDeDocumento(doc, eventuais) {
+  return grupoDeItem({ ...doc, origem_tipo: ORIGEM_DOCUMENTO[doc.tipo] }, eventuais);
+}
+
+// Compra no cartão: com um único documento vinculado, vale o grupo do documento.
+// Sem documento, vale a classificação da compra; uma despesa só é fixa ou eventual pelo documento.
+export function grupoDeCompraCartao(compra, eventuais) {
+  const doc = compra.documentos?.length === 1 ? compra.documentos[0] : null;
+  if (doc) return grupoDeDocumento({ ...doc, tipo_compra: doc.tipo_compra || compra.tipo_compra, origem_compra: doc.origem_compra || compra.origem_compra }, eventuais);
+  if (!compra.tipo_compra && !['pro_labore', 'pessoal'].includes(compra.origem_compra)) return 'revisar';
+  const grupo = grupoDeItem({ origem_tipo: 'despesa', tipo_compra: compra.tipo_compra, origem_compra: compra.origem_compra }, eventuais);
+  return grupo === 'eventuais' ? 'despesa_a_definir' : grupo;
 }
