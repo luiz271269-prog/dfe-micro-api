@@ -1,4 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import GrupoContaBadge from '@/components/shared/GrupoContaBadge';
+import useRegrasEventuais from '@/hooks/useRegrasEventuais';
+import { grupoDeItem } from '@/lib/gruposContasPagar';
 import { base44 } from '@/api/base44Client';
 import { Plus, Search, TrendingDown } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
@@ -46,6 +49,7 @@ const EMPTY_FORM = {
 };
 
 export default function Despesas() {
+  const eventuais = useRegrasEventuais();
   const [despesas, setDespesas] = useState([]);
   const [lancamentosExtrato, setLancamentosExtrato] = useState([]);
   const [lancamentosCartao, setLancamentosCartao] = useState([]);
@@ -231,6 +235,7 @@ export default function Despesas() {
                   <td className="px-4 py-3 whitespace-nowrap text-sm">{formatDate(d.data)}</td>
                   <td className="px-4 py-3">
                     <p className="font-medium">{d.descricao}</p>
+                    <GrupoContaBadge grupo={grupoDeItem({ ...d, origem_tipo: 'despesa' }, eventuais)} className="mt-1" />
                     {d.recorrente && <p className="text-xs text-muted-foreground">🔄 Recorrente</p>}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell">{d.fornecedor || '—'}</td>

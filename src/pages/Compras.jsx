@@ -211,7 +211,7 @@ export default function Compras() {
 
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
-      <PageHeader title="Compras & Despesas" subtitle="Gestão de aquisições, despesas operacionais e boletos a vencer">
+      <PageHeader grupo="compras" title="Compras & Despesas" subtitle="Gestão de aquisições, despesas operacionais e boletos a vencer">
         {activeTab === 'compras' && (
           <>
             <Button asChild variant="outline" className="gap-2">

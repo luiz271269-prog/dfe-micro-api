@@ -202,7 +202,7 @@ export default function Obras() {
 
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
-      <PageHeader title="Obras e Reformas" subtitle="Controle de despesas por local e profissional">
+      <PageHeader grupo="obras" title="Obras e Reformas" subtitle="Controle de despesas por local e profissional">
         <MonthNavigator
           selectedMonth={selectedMonth}
           onSelectMonth={setSelectedMonth}

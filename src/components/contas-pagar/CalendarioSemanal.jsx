@@ -9,6 +9,8 @@ import BaixasSelecao from '@/components/baixas/BaixasSelecao';
 import referenciasContaBaixa from '@/components/baixas/referenciasContaBaixa';
 import VerPedidoCentralButton from '@/components/contas-pagar/VerPedidoCentralButton';
 import FaturaCarteiraDetalhe from '@/components/contas-pagar/FaturaCarteiraDetalhe';
+import GrupoContaBadge from '@/components/shared/GrupoContaBadge';
+import { GRUPOS, grupoDeItem } from '@/lib/gruposContasPagar';
 
 const ORIGEM_CONFIG = {
   despesa: { icon: Wallet,     color: 'bg-emerald-100 text-emerald-700', label: 'Despesa', href: '/despesas' },
@@ -47,7 +49,7 @@ function gerarSemanasDoMes(mesRef) {
   return semanas;
 }
 
-export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia, modo = 'aberto', isAnnual = false, onSaved }) {
+export default function CalendarioSemanal({ itens, eventuais, conciliadosSet, mesReferencia, modo = 'aberto', isAnnual = false, onSaved }) {
   const porEmissao = modo === 'pagos';
   const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
 
@@ -81,19 +83,21 @@ export default function CalendarioSemanal({ itens, conciliadosSet, mesReferencia
 
   function renderItem(i) {
     const cfg = ORIGEM_CONFIG[i.origem_tipo] || ORIGEM_FALLBACK;
+    const grupo = grupoDeItem(i, eventuais);
     const OIcon = cfg.icon;
     const entityName = mapearTipoEntidade(i.origem_tipo);
     const pago = i._situacao === 'pago' || modo === 'pagos';
     const previsto = i.is_planejado || i._situacao === 'previsto';
     const ok = pago && conciliadosSet.has(i);
     return (
-      <div key={i.id} className="flex items-start gap-2 px-3 py-2 border-b last:border-b-0 hover:bg-muted/30">
-        <span className={`flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded ${cfg.color}`}>
+      <div key={i.id} className={`flex items-start gap-2 px-3 py-2 border-b border-l-4 last:border-b-0 hover:bg-muted/30 ${GRUPOS[grupo].barra}`}>
+        <span className={`flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded border ${GRUPOS[grupo].chip}`}>
           <OIcon className="w-3 h-3" />
         </span>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium truncate">{i.descricao}</p>
-          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5 text-[10px] text-muted-foreground">
+            <GrupoContaBadge grupo={grupo} />
             <span>{i.data_vencimento ? formatDate(i.data_vencimento) : 'Sem data'}</span>
             {i.fornecedor && <span className="truncate">· {i.fornecedor}</span>}
             {ok ? (

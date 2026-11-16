@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 
 const OPCOES = [
-  { valor: 'fixa', rotulo: 'Fixa', ativo: 'bg-primary text-primary-foreground' },
-  { valor: 'eventual', rotulo: 'Eventual', ativo: 'bg-warning text-warning-foreground' },
+  { valor: 'fixa', rotulo: 'Fixa', ativo: 'bg-emerald-500 text-white' },
+  { valor: 'eventual', rotulo: 'Eventual', ativo: 'bg-yellow-500 text-white' },
 ];
 
 export default function FixaTipoFlag({ regra, admin, onSaved }) {

@@ -150,7 +150,7 @@ export default function Recorrentes() {
 
   return (
     <div className="p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
-      <PageHeader title="Despesas Fixas" subtitle="Despesas operacionais recorrentes, organizadas pelo plano de contas. Previsão, realização e pagamento separados.">
+      <PageHeader grupo="fixas" title="Despesas Fixas" subtitle="Despesas operacionais recorrentes, organizadas pelo plano de contas. Previsão, realização e pagamento separados.">
         <Button disabled={!admin} onClick={() => setSugestoesOpen(true)} className="gap-2">
           <Sparkles className="w-4 h-4" /> Buscar recorrências ({sugestoes.length})
         </Button>

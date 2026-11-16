@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import GrupoContaBadge from '@/components/shared/GrupoContaBadge';
+import { grupoTributo } from '@/lib/gruposContasPagar';
 import { base44 } from '@/api/base44Client';
 import { Plus, AlertTriangle, AlertCircle, CheckCircle } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
@@ -273,7 +275,7 @@ export default function Tributos() {
               ) : (
                 sorted.map(t => (
                 <tr key={t.id} className={`border-b ${t.status === 'vencido' ? 'bg-red-50' : ''}`}>
-                  <td className="px-4 py-3 font-semibold">{t.tipo}</td>
+                  <td className="px-4 py-3 font-semibold"><div className="flex flex-col items-start gap-1">{t.tipo}<GrupoContaBadge grupo={grupoTributo(t.tipo)} /></div></td>
                   <td className="hidden sm:table-cell px-4 py-3">
                     <p>{t.descricao || '—'}</p>
                     {t._lancamento && <p className="text-[10px] text-muted-foreground">Pagamento sem guia cadastrada · competência a conferir · {t._lancamento.conta_bancaria || 'Conta corrente'}</p>}

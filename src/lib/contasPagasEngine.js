@@ -28,6 +28,7 @@ export function consolidarContasPagas({ despesas = [], tributos = [], folhas = [
       data_emissao: d.data,
       data_pagamento: d.data_pagamento || null,
       empresa: d.empresa, forma_pagamento: d.forma_pagamento,
+      recorrente: d.recorrente, regra_recorrente_id: d.regra_recorrente_id,
       ...eixos(d, 'despesa'),
     });
   });

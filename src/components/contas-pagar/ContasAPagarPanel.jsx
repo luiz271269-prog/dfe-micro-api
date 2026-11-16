@@ -23,6 +23,9 @@ import referenciasContaBaixa from '@/components/baixas/referenciasContaBaixa';
 import consultarLiquidacoes from '@/lib/consultarLiquidacoes';
 import RevisaoObrasFaturas from '@/components/contas-pagar/RevisaoObrasFaturas';
 import ComprasElegibilidade from '@/components/contas-pagar/ComprasElegibilidade';
+import ResumoPorGrupo from '@/components/contas-pagar/ResumoPorGrupo';
+import useRegrasEventuais from '@/hooks/useRegrasEventuais';
+import { grupoDeItem } from '@/lib/gruposContasPagar';
 
 
 
@@ -65,6 +68,8 @@ export default function ContasAPagarPanel() {
   const [filtroEmpresa, setFiltroEmpresa] = useState('todos');
   const [mesReferencia, setMesReferencia] = useState(mesAtualISO());
   const [isAnnual, setIsAnnual] = useState(false);
+  const [filtroGrupo, setFiltroGrupo] = useState('todos');
+  const eventuais = useRegrasEventuais();
   const [dados, setDados] = useState({ despesas: [], tributos: [], folhas: [], faturas: [], cartoes: [], compras: [], obras: [], lancamentos: [], lancamentosCartao: [] });
   const [vinculos, setVinculos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
@@ -123,7 +128,8 @@ export default function ContasAPagarPanel() {
     const inicioPeriodo = isAnnual ? `${referencia}-01-01` : `${referencia}-01`;
     return consultaAtual && item._situacao === 'aberto' && (!data || data < inicioPeriodo);
   };
-  const recorte = lista => lista.filter(i => {
+  const recorte = (lista, comGrupo = true) => lista.filter(i => {
+    if (comGrupo && filtroGrupo !== 'todos' && grupoDeItem(i, eventuais) !== filtroGrupo) return false;
     const tipo = i.origem_tipo === 'fatura' ? 'fatura' : tipoGastoValido(i.tipo_compra) ? i.tipo_compra : 'pendente';
     return pertenceAoPeriodo(i) && pertenceAoFiltroEmpresa(i, filtroEmpresa) && (filtroOrigem === 'todos' || tipo === filtroOrigem);
   });
@@ -234,6 +240,8 @@ export default function ContasAPagarPanel() {
         </>)}
       </div>
 
+      <ResumoPorGrupo itens={recorte(itensRaw, false)} eventuais={eventuais} value={filtroGrupo} onChange={setFiltroGrupo} />
+
       <FiltroTiposGasto itens={itensPeriodo.filter(i => pertenceAoFiltroEmpresa(i, filtroEmpresa))} value={filtroOrigem} onChange={setFiltroOrigem} />
 
       {/* Header da aba — ações */}
@@ -249,7 +257,7 @@ export default function ContasAPagarPanel() {
       </div>
 
       <section aria-label="Contas do sistema e boletos bancários" className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <div className="min-w-0"><CalendarioSemanal itens={itens} conciliadosSet={conciliadosSet} mesReferencia={mesReferencia} modo={modo} isAnnual={isAnnual} onSaved={()=>load(false)} /></div>
+        <div className="min-w-0"><CalendarioSemanal itens={itens} eventuais={eventuais} conciliadosSet={conciliadosSet} mesReferencia={mesReferencia} modo={modo} isAnnual={isAnnual} onSaved={()=>load(false)} /></div>
         <PainelDDA lancamentos={lancamentos} contasPagar={abertosRecorte} mesReferencia={mesReferencia} isAnnual={isAnnual} />
       </section>
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4 items-stretch">

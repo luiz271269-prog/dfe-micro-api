@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import GrupoContaBadge from '@/components/shared/GrupoContaBadge';
 import { consolidarProLabore } from '@/functions/consolidarProLabore';
 import { Wallet, CreditCard, Landmark } from 'lucide-react';
 import { GradientCard } from '../components/shared/GradientCard';
@@ -31,7 +32,7 @@ export default function ProLabore() {
     <div className="p-3 sm:p-4 lg:px-6 lg:py-6 max-w-[1600px] mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-lg font-bold text-foreground tracking-tight leading-tight">Pró-labore Unificado</h1>
+          <h1 className="text-lg font-bold text-foreground tracking-tight leading-tight">Pró-labore Unificado <GrupoContaBadge grupo="pro_labore" className="ml-1 align-middle" /></h1>
           <p className="text-xs text-muted-foreground">Tudo que sai do seu bolso — retiradas + gastos pessoais nos cartões</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

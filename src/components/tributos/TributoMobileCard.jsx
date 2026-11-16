@@ -1,4 +1,6 @@
 import StatusBadge from '@/components/shared/StatusBadge';
+import GrupoContaBadge from '@/components/shared/GrupoContaBadge';
+import { grupoTributo } from '@/lib/gruposContasPagar';
 import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 import SeletorClassificacao from '@/components/shared/SeletorClassificacao';
 import { formatCurrency, formatDate } from '@/lib/formatters';
@@ -12,7 +14,7 @@ export default function TributoMobileCard({ tributo, onRefresh }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <strong className="text-sm">{tributo.tipo}</strong>
+            <strong className="text-sm">{tributo.tipo}</strong> <GrupoContaBadge grupo={grupoTributo(tributo.tipo)} />
             {tributo._lancamento && <span className="text-[10px] text-muted-foreground">Extrato</span>}
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{tributo.descricao || 'Sem descrição'}</p>
