@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import BaixasFixasAcesso from '@/components/recorrentes/BaixasFixasAcesso';
+import FixaTipoFlag from '@/components/recorrentes/FixaTipoFlag';
 import { Edit, Power, Trash2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/formatters';
 import { proximaPrevisao } from '@/components/recorrentes/fixasEngine';
@@ -10,6 +11,6 @@ export default function FixaPlanoLinha({regra:r,inicio,fim,admin,onEditar,onTogg
     <div className="min-w-0"><h3 className="font-semibold break-words">{r.nome}</h3><p className="text-xs text-muted-foreground">{r.empresa||'Empresa não definida'} · {r.fornecedor||'Fornecedor não informado'}</p><p className="mt-1 text-xs text-muted-foreground">{{semanal:'Semanal',mensal:'Mensal',trimestral:'Trimestral',anual:'Anual'}[r.frequencia||'mensal']} · {{cartao:'Cartão',boleto:'Boleto',pix:'PIX',debito_automatico:'Débito automático',transferencia:'Transferência'}[r.forma_pagamento]||'Meio de pagamento não definido'}</p></div>
     <div className="text-sm"><p className="text-xs text-muted-foreground">Previsto por ocorrência</p><p className="font-semibold tabular-nums">{formatCurrency(r.valor_esperado)}</p><p className="text-xs text-muted-foreground mt-1">Próximo vencimento: {proxima?formatDate(proxima):'Não definido'}</p></div>
     <div className="text-sm"><p className="text-xs text-muted-foreground">Realizado no período</p><p className="font-semibold tabular-nums">{formatCurrency(d.valor||0)}</p><p className={r.revisao_cadastro?'text-xs text-warning mt-1':'text-xs text-muted-foreground mt-1'}>{situacao}</p></div>
-    <div className="flex flex-wrap gap-1"><BaixasFixasAcesso inicio={inicio} fim={fim} regra={r} onSaved={onSaved} onRevisar={onRevisar}/>{admin&&<><Button size="sm" variant="outline" onClick={()=>onEditar(r)}><Edit/>Editar</Button><Button size="icon" variant="ghost" onClick={()=>onToggle(r)} aria-label={r.is_ativa?'Desativar':'Ativar'}><Power/></Button><Button size="icon" variant="ghost" onClick={()=>onExcluir(r)} aria-label={`Excluir ${r.nome}`}><Trash2 className="text-destructive"/></Button></>}</div>
+    <div className="flex flex-wrap items-center gap-1"><FixaTipoFlag regra={r} admin={admin} onSaved={onSaved}/><BaixasFixasAcesso inicio={inicio} fim={fim} regra={r} onSaved={onSaved} onRevisar={onRevisar}/>{admin&&<><Button size="sm" variant="outline" onClick={()=>onEditar(r)}><Edit/>Editar</Button><Button size="icon" variant="ghost" onClick={()=>onToggle(r)} aria-label={r.is_ativa?'Desativar':'Ativar'}><Power/></Button><Button size="icon" variant="ghost" onClick={()=>onExcluir(r)} aria-label={`Excluir ${r.nome}`}><Trash2 className="text-destructive"/></Button></>}</div>
   </article>;
 }

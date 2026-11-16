@@ -77,6 +77,19 @@
       "type": "boolean",
       "default": true
     },
+    "tipo_recorrencia": {
+      "type": "string",
+      "enum": [
+        "fixa",
+        "eventual"
+      ],
+      "enumColors": [
+        "blue",
+        "yellow"
+      ],
+      "default": "fixa",
+      "title": "Despesa fixa ou eventual"
+    },
     "historico_valores": {
       "type": "array",
       "items": {
