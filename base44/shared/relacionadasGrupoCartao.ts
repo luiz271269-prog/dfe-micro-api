@@ -10,11 +10,21 @@ const mesesEntre = (mes, base) => (Number(String(mes).slice(0, 4)) - Number(Stri
 // A mesma compra pode vir abreviada ou com código extra em outra importação (ex.: "ANUIDADE MASTERCARD" e "ANUIDADE MASTERCARD (1992)").
 const nomeCompativel = (a, b) => { const x = a.split(' '), y = b.split(' '); return !!a && !!b && x.slice(0, y.length).every((p, i) => p.startsWith(y[i]) || y[i].startsWith(p)); };
 
+// Variação do nome do mesmo estabelecimento entre importações (ex.: "BASE44V", "BASE44", "BASE44E NEW YORK", "BASE44V WWW.BASE44.CO"):
+// um dos dois nomes é uma palavra só e a primeira palavra do outro é igual ou difere apenas na última letra. Palavras de ramo ficam de fora.
+const RAMO = /^(restaurante|supermercado|farmacia|drogaria|padaria|mercado|lanchonete|pizzaria|churrascaria|hotel|pousada|estacionamento|pedagio|livraria|academia|clinica|hospital|laboratorio|transporte|comercio|comercial|distribuidora|atacado|magazine|pagamento|anuidade|seguro|tarifa)\w?$/;
+const variacaoDoNome = (a, b) => {
+  const x = a.split(' '), y = b.split(' ');
+  if (a === b || (x.length > 1 && y.length > 1) || RAMO.test(x[0]) || RAMO.test(y[0])) return false;
+  let n = 0; while (n < x[0].length && n < y[0].length && x[0][n] === y[0][n]) n++;
+  return n >= 6 && x[0].length - n <= 1 && y[0].length - n <= 1;
+};
+
 // Outras compras ligadas ao grupo: parcelas da mesma compra e demais compras do mesmo estabelecimento, no mês e fora dele.
 export async function carregarRelacionadas(db, grupo, registros) {
   const chave = estabelecimentoChave(grupo.estabelecimento);
   const parcelasGrupo = registros.map(r => ({ parcela: parcelaDe({ estabelecimento: grupo.estabelecimento, observacao: r.observacao }), valor: Number(r.valor || 0) })).filter(x => x.parcela);
-  const resultado = { generico: estabelecimentoGenerico(chave), parcela: parcelasGrupo[0]?.parcela || null, escopos: { parcelas: [], mesmo_mes: [], outros_meses: [] } };
+  const resultado = { generico: estabelecimentoGenerico(chave), parcela: parcelasGrupo[0]?.parcela || null, variacoes: [], escopos: { parcelas: [], mesmo_mes: [], outros_meses: [] } };
   const palavras = chave.split(' ').filter(Boolean);
   if (!palavras.length) return resultado;
   const compras = { valor: { $gt: 0 }, observacao: { $not: { $regex: 'Não faz parte', $options: 'i' } } };
@@ -49,10 +59,26 @@ export async function carregarRelacionadas(db, grupo, registros) {
 
   // Demais compras do mesmo estabelecimento, separadas entre o mês em revisão e os outros meses.
   const idsParcelas = new Set(resultado.escopos.parcelas.map(l => l.id));
-  for (const l of pagina.items) {
+  const incluidos = new Set();
+  const incluir = (l) => {
     const fat = fatMap.get(l.fatura_id);
-    if (!fat || proprios.has(l.id) || idsParcelas.has(l.id) || estabelecimentoChave(l.estabelecimento) !== chave) continue;
+    if (!fat || proprios.has(l.id) || idsParcelas.has(l.id) || incluidos.has(l.id)) return false;
+    incluidos.add(l.id);
     resultado.escopos[fat.mes_referencia === fatGrupo.mes_referencia ? 'mesmo_mes' : 'outros_meses'].push(anotar(l));
+    return true;
+  };
+  for (const l of pagina.items) if (estabelecimentoChave(l.estabelecimento) === chave) incluir(l);
+
+  // Mesmo estabelecimento escrito de outra forma em outra fatura: entra junto, e os nomes são informados na tela.
+  const raiz = palavras[0].slice(0, 6);
+  if (!resultado.generico && raiz.length === 6 && !RAMO.test(palavras[0])) {
+    const parecidos = await db.LancamentoCartao.filter({ ...compras, estabelecimento: { $regex: `^[^a-z0-9]*${raiz.replace(/[aeioucn]/g, '.')}`, $options: 'i' } }, opcoes);
+    const nomes = new Set();
+    if (!parecidos.has_more) for (const l of parecidos.items) {
+      const outra = estabelecimentoChave(l.estabelecimento);
+      if (variacaoDoNome(chave, outra) && !estabelecimentoGenerico(outra) && incluir(l)) nomes.add(l.estabelecimento);
+    }
+    resultado.variacoes = [...nomes].sort();
   }
   return resultado;
 }
@@ -66,5 +92,5 @@ export async function analisarRelacionadas(db, grupo) {
     const itens = analise.escopos[escopo];
     return [escopo, { quantidade: itens.length, valor: itens.reduce((s, l) => s + Number(l.valor || 0), 0), meses: [...new Set(itens.map(l => l.mes))].sort(), cartoes: [...new Set(itens.map(l => nomes.get(l.conta_cartao_id) || l.conta_cartao_id || 'Cartão não identificado'))].sort(), classificacoes: new Set(itens.map(assinaturaClassificacao)).size }];
   }));
-  return { success: true, generico: analise.generico, parcela: analise.parcela ? `${String(analise.parcela.numero).padStart(2, '0')}/${String(analise.parcela.total).padStart(2, '0')}` : null, limite: LIMITE_RELACIONADAS, escopos };
+  return { success: true, generico: analise.generico, variacoes: analise.variacoes, parcela: analise.parcela ? `${String(analise.parcela.numero).padStart(2, '0')}/${String(analise.parcela.total).padStart(2, '0')}` : null, limite: LIMITE_RELACIONADAS, escopos };
 }

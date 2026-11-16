@@ -21,6 +21,7 @@ export default function RevisaoRelacionadas({ grupo }) {
     <p className="font-medium text-sm">{total ? `Ao salvar, vale também para mais ${total} lançamento(s) deste estabelecimento` : 'Nenhuma outra parcela ou compra deste estabelecimento foi encontrada'}</p>
     {analise.parcela && <p className="text-muted-foreground">Compra parcelada: parcela {analise.parcela} nesta fatura.</p>}
     {aplicados.map(([k, rotulo]) => { const e = analise.escopos[k]; return <p key={k}><span className="font-medium">{rotulo}:</span> <span className="text-muted-foreground">{e.quantidade} lançamento(s) · {formatCurrency(e.valor)} · {periodo(e.meses)} · {e.cartoes.join(', ')}{e.classificacoes > 1 ? ` · hoje com ${e.classificacoes} classificações diferentes` : ''}</span></p>; })}
+    {analise.variacoes?.length > 0 && <p className="text-muted-foreground">Inclui o mesmo estabelecimento escrito de outra forma: {analise.variacoes.join(', ')}.</p>}
     {analise.generico && <p className="text-warning">Marketplace genérico: o mesmo nome reúne compras diferentes, por isso só as parcelas desta compra recebem a classificação.</p>}
     {total > analise.limite && <p className="text-warning">São alteradas até {analise.limite} outras compras por vez. Salve de novo para concluir as restantes.</p>}
   </div>;
