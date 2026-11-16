@@ -1,4 +1,5 @@
 import { resolverCadastro, validarCombinacao } from './classificacaoFinanceira.ts';
+import { estaConferido, chaveGrupoCartao } from './grupoCartaoRevisao.ts';
 export function mesAnteriorCartao(mes) {
   const [ano, numero] = mes.split('-').map(Number);
   return numero === 1 ? `${ano - 1}-12` : `${ano}-${String(numero - 1).padStart(2, '0')}`;
@@ -25,6 +26,17 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
     db.ContaCartao.list({ limit: 100, fields: ['nome'] }),
   ]);
   if (eixos.truncated || contas.truncated || cards.has_more) throw new Error('A revisão excedeu o limite de grupos. Selecione um mês por vez; nenhum resultado parcial será tratado como completo.');
+  // Conferências válidas por grupo: só contam compras cuja classificação continua igual à conferida.
+  const idsRevisados = faturas.filter(f => meses.includes(f.mes_referencia)).map(f => f.id);
+  const conferidosGrupo = new Map();
+  let cursor = null;
+  for (let pagina = 0; idsRevisados.length; pagina++) {
+    if (pagina === 10) throw new Error('A revisão excedeu o limite de conferências. Selecione um mês por vez; nenhum resultado parcial será tratado como completo.');
+    const lote = await db.LancamentoCartao.filter({ ...query, fatura_id: { $in: idsRevisados }, classificacao_conferida: { $regex: '.' } }, { limit: 500, fields: ['fatura_id','estabelecimento','origem_compra','tipo_compra','categoria','classificacao_conferida'], ...(cursor ? { cursor } : {}) });
+    for (const l of lote.items) if (estaConferido(l)) conferidosGrupo.set(chaveGrupoCartao(l), (conferidosGrupo.get(chaveGrupoCartao(l)) || 0) + 1);
+    if (!lote.has_more) break;
+    cursor = lote.next_cursor;
+  }
   const fatMap = new Map(faturas.map(f => [f.id,f]));
   const cardMap = new Map(cards.items.map(c => [c.id,c.nome]));
   const categorias = new Map(), memoria = new Map();
@@ -45,7 +57,7 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
   }
   const revisoes = meses.map(mes => {
     const anterior = mesAnteriorCartao(mes), itens = [];
-    const resumo = { lancamentos: 0, valor: 0, pendentes_eixos: 0, valor_pendente_eixos: 0, pendentes_categorias: 0, valor_pendente_categorias: 0, iguais: 0, divergentes: 0, sem_historico: 0, historico_inconsistente: 0 };
+    const resumo = { lancamentos: 0, valor: 0, pendentes_eixos: 0, valor_pendente_eixos: 0, pendentes_categorias: 0, valor_pendente_categorias: 0, iguais: 0, divergentes: 0, sem_historico: 0, historico_inconsistente: 0, conferidos: 0 };
     for (const row of contas.rows) {
       if (fatMap.get(row.fatura_id)?.mes_referencia !== mes) continue;
       if (!row.categoria || row.categoria === 'outro' || (permitidos.categorias.length && !permitidos.categorias.includes(row.categoria))) {
@@ -72,10 +84,12 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
           status = row.origem_compra === unico.origem_compra && row.tipo_compra === unico.tipo_compra && cats.length === 1 && cats[0] === unico.categoria ? 'iguais' : 'divergentes';
         } else status = 'historico_inconsistente';
       }
-      resumo[status] += 1;
-      itens.push({ fatura_id: fat.id, cartao: cardMap.get(fat.conta_cartao_id) || fat.conta_cartao_id, estabelecimento: row.estabelecimento, quantidade: row.count, valor: row.sum_valor, atual: { origem_compra: row.origem_compra || '', tipo_compra: row.tipo_compra || '', categorias: cats }, pendente, status, sugestao });
+      const conferido = (conferidosGrupo.get(chaveGrupoCartao(row)) || 0) >= row.count;
+      resumo[conferido && status !== 'iguais' ? 'conferidos' : status] += 1;
+      itens.push({ fatura_id: fat.id, cartao: cardMap.get(fat.conta_cartao_id) || fat.conta_cartao_id, estabelecimento: row.estabelecimento, quantidade: row.count, valor: row.sum_valor, atual: { origem_compra: row.origem_compra || '', tipo_compra: row.tipo_compra || '', categorias: cats }, pendente, status, sugestao, conferido });
     }
-    itens.sort((a,b) => Number(b.pendente) - Number(a.pendente) || Number(b.status === 'divergentes') - Number(a.status === 'divergentes') || b.valor - a.valor);
+    const resolvido = item => item.conferido || item.status === 'iguais';
+    itens.sort((a,b) => Number(b.pendente) - Number(a.pendente) || Number(resolvido(a)) - Number(resolvido(b)) || Number(b.status === 'divergentes') - Number(a.status === 'divergentes') || b.valor - a.valor);
     return { mes, mes_anterior: anterior, faturas: faturas.filter(f => f.mes_referencia === mes).length, resumo, itens: itens.slice(offset, offset + limit), has_more: itens.length > offset + limit, next_offset: offset + limit };
   });
   return { rotulos, revisoes };

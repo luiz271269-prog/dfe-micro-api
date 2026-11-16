@@ -71,6 +71,11 @@
     "import_batch_id": {
       "type": "string",
       "title": "Lote de origem; concilia\u00e7\u00e3o posterior exige autoriza\u00e7\u00e3o"
+    },
+    "classificacao_conferida": {
+      "type": "string",
+      "title": "Classifica\u00e7\u00e3o conferida na revis\u00e3o do cart\u00e3o",
+      "description": "Assinatura quem comprou|tipo|categoria conferida pelo usu\u00e1rio. S\u00f3 vale enquanto for igual \u00e0 classifica\u00e7\u00e3o salva; qualquer altera\u00e7\u00e3o posterior reabre a confer\u00eancia."
     }
   },
   "required": [

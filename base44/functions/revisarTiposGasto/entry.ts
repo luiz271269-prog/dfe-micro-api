@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { construirMemoria, classificarRegistro, validarCombinacao, resolverCadastro } from '../../shared/classificacaoFinanceira.ts';
 import { classificarGrupoCartao } from '../../shared/classificarGrupoCartao.ts';
+import { conferirGrupoCartao } from '../../shared/conferirGrupoCartao.ts';
 
 const entidades = ['LancamentoBancario', 'LancamentoCartao', 'FaturaCartao', 'DespesaOperacional', 'Tributo', 'FolhaPagamento', 'ItemCompra', 'ObraReforma', 'RegraRecorrente'];
 const campos = ['origem_compra', 'tipo_compra', 'categoria'];
@@ -55,6 +56,8 @@ export default async function(req) {
     const permitidos = resolverCadastro(cadastro, user.role);
 
     if (action === 'salvar_grupo_revisao') return Response.json(await classificarGrupoCartao(base44, user, payload, cadastro, { atualizarVinculos, propagarCartao }));
+
+    if (action === 'conferir_grupo_revisao') return Response.json(await conferirGrupoCartao(base44, user, payload, cadastro));
 
     if (action === 'migrar_cadastro') {
       if (user.role !== 'admin') return Response.json({ error: 'Apenas administradores podem migrar o cadastro.' }, { status: 403 });
