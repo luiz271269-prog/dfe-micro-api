@@ -6,7 +6,7 @@ import RevisaoHistoricoLinhas from '@/components/cartoes/RevisaoHistoricoLinhas'
 
 function mensagemSalvo(data, modo) {
   const texto = mensagemAcao(data, modo);
-  return data.success && data.relacionadas ? `${texto} Inclui ${data.relacionadas} parcela(s) ou compra(s) do mesmo estabelecimento em outras faturas.` : texto;
+  return data.success && data.relacionadas ? `${texto} A operação cobriu também ${data.relacionadas} parcela(s) ou outra(s) compra(s) do mesmo estabelecimento.` : texto;
 }
 
 function mensagemAcao(data, modo) {

@@ -17,7 +17,7 @@ export default function RevisaoRelacionadas({ grupo, disabled, onChange }) {
     let active = true;
     revisarTiposGasto({ action: 'analisar_relacionadas_revisao', grupo }).then(({ data }) => {
       if (!active) return;
-      const inicial = Object.fromEntries(ESCOPOS.map(([k]) => [k, data.escopos[k].quantidade > 0 && (k === 'parcelas' || !data.generico)]));
+      const inicial = Object.fromEntries(ESCOPOS.map(([k]) => [k, data.escopos[k].quantidade > 0 && (k === 'parcelas' || (!data.generico && (k === 'mesmo_mes' || data.escopos[k].classificacoes <= 1)))]));
       setAnalise(data); setMarcados(inicial); emitir(data, inicial);
     }).catch(e => { if (active) { setError(e.response?.data?.error || e.message); onChange({ relacionadas: {}, excedeu: false }); } });
     return () => { active = false; };
@@ -33,9 +33,10 @@ export default function RevisaoRelacionadas({ grupo, disabled, onChange }) {
     {!encontrados.length && <p className="text-muted-foreground">Nenhuma outra parcela ou compra deste estabelecimento foi encontrada em outras faturas.</p>}
     {encontrados.map(([k, rotulo]) => { const e = analise.escopos[k]; return <label key={k} className="flex items-start gap-2">
       <Checkbox className="mt-0.5" checked={!!marcados[k]} disabled={disabled} onCheckedChange={v => alternar(k, v)} />
-      <span><span className="font-medium">{rotulo}</span><span className="block text-muted-foreground">{e.quantidade} lançamento(s) · {formatCurrency(e.valor)} · {periodo(e.meses)} · {e.cartoes.join(', ')}</span></span>
+      <span><span className="font-medium">{rotulo}</span><span className="block text-muted-foreground">{e.quantidade} lançamento(s) · {formatCurrency(e.valor)} · {periodo(e.meses)} · {e.cartoes.join(', ')}{e.classificacoes > 1 ? ` · hoje com ${e.classificacoes} classificações diferentes` : ''}</span></span>
     </label>; })}
     {analise.generico && encontrados.length > 0 && <p className="text-warning">Marketplace genérico: o mesmo nome reúne compras diferentes, por isso só as parcelas vêm marcadas.</p>}
+    {!analise.generico && analise.escopos.outros_meses.classificacoes > 1 && <p className="text-muted-foreground">Os outros meses vêm desmarcados porque essas compras têm hoje classificações diferentes entre si.</p>}
     {selecionadas > analise.limite && <p role="alert" className="text-destructive">Mais de {analise.limite} compras selecionadas. Desmarque os outros meses para salvar.</p>}
   </div>;
 }
