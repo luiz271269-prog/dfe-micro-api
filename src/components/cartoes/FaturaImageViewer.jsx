@@ -3,14 +3,16 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ZoomIn, ZoomOut, ExternalLink, FileText, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function FaturaImageViewer({ open, onOpenChange, fileUrl, titulo }) {
+export default function FaturaImageViewer({ open, onOpenChange, fileUrl, nome, titulo }) {
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => { if (open) setZoom(1); }, [open]);
 
   if (!fileUrl) return null;
-  const isImage = /\.(png|jpe?g|gif|webp)(\?|$)/i.test(fileUrl);
-  const isPdf = /\.pdf(\?|$)/i.test(fileUrl);
+  // Links assinados nem sempre terminam na extensão: o nome do arquivo importado decide o tipo.
+  const tipo = nome || fileUrl;
+  const isImage = /\.(png|jpe?g|gif|webp)(\?|$)/i.test(tipo);
+  const isPdf = /\.pdf(\?|$)/i.test(tipo);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

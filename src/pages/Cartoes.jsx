@@ -27,6 +27,7 @@ import FaturaSeparacao from '@/components/cartoes/FaturaSeparacao';
 import useResumoFaturas from '@/hooks/useResumoFaturas';
 import consultarLiquidacoes from '@/lib/consultarLiquidacoes';
 import { situacaoFatura } from '@/lib/faturaCarteira';
+import { arquivoDoLote } from '@/lib/papelImportacao';
 import RevisaoObrasFaturas from '@/components/contas-pagar/RevisaoObrasFaturas';
 
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
@@ -207,35 +208,35 @@ export default function Cartoes() {
   }
 
   // Localiza o arquivo PDF/imagem importado para uma fatura específica
-  function getFaturaFileUrl(fat) {
+  // O arquivo pode ser privado (uri) ou público (url); o lote gravado na própria fatura tem prioridade.
+  function getFaturaArquivo(fat) {
     const cartao = cartoes.find((c) => c.id === fat.conta_cartao_id);
     const nomeCart = (cartao?.nome || '').split('—')[0].trim().toLowerCase();
+    let achado = null;
     for (const b of importBatches) {
-      if (!b.notes) continue;
+      const arquivo = arquivoDoLote(b);
+      if (!arquivo.uri && !arquivo.url) continue;
+      const ref = { ...arquivo, nome: b.file_name || '' };
+      if (fat.import_batch_id && b.id === fat.import_batch_id) return ref;
+      if (achado) continue;
       let n;
       try {n = JSON.parse(b.notes);} catch {continue;}
-      if (!n?.file_url) continue;
+      if (!n) continue;
       const matchValor = n.valor_total != null && Math.abs(n.valor_total - (fat.valor_total || 0)) < 1;
       const matchVenc = n.data_vencimento && n.data_vencimento === fat.data_vencimento;
       const matchCart = nomeCart && n.nome_cartao && n.nome_cartao.toLowerCase().includes(nomeCart);
-      if (matchValor && matchVenc || matchCart && matchVenc || matchCart && matchValor) {
-        return n.file_url;
-      }
+      if (matchValor && matchVenc || matchCart && matchVenc || matchCart && matchValor) achado = ref;
     }
-    return null;
+    return achado;
+  }
+
+  async function abrirArquivo(arquivo, titulo) {
+    const url = arquivo.uri ? (await base44.integrations.Core.CreateFileSignedUrl({ file_uri: arquivo.uri, expires_in: 3600 })).signed_url : arquivo.url;
+    setViewerFile({ url, titulo, nome: arquivo.nome });
   }
 
   function getLatestFatura(cardIdOrIds) {
     return getCardFaturas(cardIdOrIds)[0] || null;
-  }
-
-  // Última fatura REAL do cartão (todos os meses) — usado no Calendário de Vencimentos,
-  // que é uma visão geral e não deve depender do mês selecionado.
-  function getUltimaFaturaGeral(cardIdOrIds) {
-    const ids = Array.isArray(cardIdOrIds) ? cardIdOrIds : [cardIdOrIds];
-    return faturas.
-    filter((f) => ids.includes(f.conta_cartao_id)).
-    sort((a, b) => new Date(b.data_vencimento) - new Date(a.data_vencimento))[0] || null;
   }
 
   if (loading) return (
@@ -283,15 +284,17 @@ export default function Cartoes() {
         <div className="flex flex-wrap gap-3 items-start">
           {cartoesAgrupados.map((c) => {
             const cardFaturas = getCardFaturas(c.ids);
-            const latestFat = cardFaturas[0] || getUltimaFaturaGeral(c.ids);
-            const url = latestFat ? getFaturaFileUrl(latestFat) : null;
-            const faturasCount = cardFaturas.length || faturas.filter((f) => c.ids.includes(f.conta_cartao_id)).length;
+            // Só a fatura do período selecionado: sem fatura no mês, o cartão não herda a do mês anterior.
+            const latestFat = cardFaturas[0] || null;
+            const arquivo = latestFat ? getFaturaArquivo(latestFat) : null;
+            const faturasCount = cardFaturas.length;
             return (
               <CartaoCalendarioCard
                 key={c.id}
                 cartao={c}
                 latestFat={latestFat}
-                fileUrl={url}
+                arquivo={arquivo}
+                semFaturaTexto={isAnnual ? `Sem fatura em ${selectedMonth.slice(0, 4)}` : `Sem fatura em ${selectedMonth}`}
                 faturasCount={faturasCount}
                 isExpanded={expandedCard === c.id}
                 onToggle={() => {
@@ -304,7 +307,7 @@ export default function Cartoes() {
                     if (firstFat) setExpandedFatura(firstFat.id);
                   }
                 }}
-                onViewFile={setViewerFile} />);
+                onViewFile={abrirArquivo} />);
 
 
           })}
@@ -378,12 +381,12 @@ export default function Cartoes() {
                           <span className="text-[10px] text-muted-foreground">Venc. {formatDate(fat.data_vencimento)}</span>
                           {fatLancs.length > 0 && <span className="text-[10px] text-muted-foreground">{fatLancs.length} lanç.</span>}
                           {(() => {
-                          const url2 = getFaturaFileUrl(fat);
-                          if (!url2) return null;
+                          const arq = getFaturaArquivo(fat);
+                          if (!arq) return null;
                           return (
                             <button
                               type="button"
-                              onClick={(e) => {e.stopPropagation();setViewerFile({ url: url2, titulo: `${c.nome} — ${fat.mes_referencia}` });}}
+                              onClick={(e) => {e.stopPropagation();abrirArquivo(arq, `${c.nome} — ${fat.mes_referencia}`);}}
                               className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
                               title="Ver fatura original importada">
                                 <FileImage className="w-3 h-3" /> Ver original
@@ -470,6 +473,7 @@ export default function Cartoes() {
         open={!!viewerFile}
         onOpenChange={(v) => {if (!v) setViewerFile(null);}}
         fileUrl={viewerFile?.url}
+        nome={viewerFile?.nome}
         titulo={viewerFile?.titulo} />
       
 

@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { FileImage } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import { situacaoFatura } from '@/lib/faturaCarteira';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 
@@ -17,12 +19,22 @@ const STATUS_PILL = {
   vencida: { label: 'Vencida', cls: 'bg-red-100 text-red-700' },
 };
 
-export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, faturasCount, isExpanded, onToggle, onViewFile }) {
+export default function CartaoCalendarioCard({ cartao, latestFat, arquivo, semFaturaTexto, faturasCount, isExpanded, onToggle, onViewFile }) {
   const c = cartao;
   const b = BANDEIRAS[c.bandeira] || BANDEIRAS.default;
   const situacao = latestFat ? situacaoFatura(latestFat) : null;
   const pill = situacao ? { label: situacao.inconsistencia_historica ? `${situacao.liquidacao} · Revisar` : situacao.liquidacao, cls: situacao.inconsistencia_historica ? 'bg-warning text-warning-foreground' : situacao.liquidacao === 'Quitada' ? STATUS_PILL.paga_total.cls : STATUS_PILL.aberta.cls } : null;
-  const isImg = fileUrl && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(fileUrl);
+  const isImg = !!arquivo && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(arquivo.nome || arquivo.url || '');
+  // Miniatura: arquivos privados precisam de um link temporário.
+  const [thumb, setThumb] = useState(null);
+  useEffect(() => {
+    let active = true;
+    setThumb(null);
+    if (!isImg) return;
+    if (!arquivo.uri) { setThumb(arquivo.url); return; }
+    base44.integrations.Core.CreateFileSignedUrl({ file_uri: arquivo.uri, expires_in: 3600 }).then((r) => { if (active) setThumb(r.signed_url); }).catch(() => {});
+    return () => { active = false; };
+  }, [arquivo?.uri, arquivo?.url, isImg]);
 
   return (
     <button
@@ -55,20 +67,20 @@ export default function CartaoCalendarioCard({ cartao, latestFat, fileUrl, fatur
             </p>
           </>
         ) : (
-          <p className="text-[10px] text-white/90 font-medium">Sem fatura · vence dia {c.dia_vencimento}</p>
+          <p className="text-[10px] text-white/90 font-medium">{semFaturaTexto || 'Sem fatura'} · vence dia {c.dia_vencimento}</p>
         )}
       </div>
 
       {/* Painel direito (30%): miniatura da fatura + bandeira */}
       <div className="w-[30%] bg-white p-1.5 flex flex-col items-center justify-between gap-1">
-        {fileUrl ? (
+        {arquivo ? (
           <span
             role="button"
             tabIndex={0}
-            onClick={(e) => {e.stopPropagation();onViewFile({ url: fileUrl, titulo: `${c.nome} — ${latestFat?.mes_referencia}` });}}
+            onClick={(e) => {e.stopPropagation();onViewFile(arquivo, `${c.nome} — ${latestFat?.mes_referencia}`);}}
             className="w-full flex-1 min-h-0 rounded-lg bg-white border border-slate-300 shadow-sm overflow-hidden flex items-center justify-center hover:scale-105 transition-transform"
             title="Ver fatura original">
-            {isImg ? <img src={fileUrl} alt="Fatura" className="w-full h-full object-cover" /> : <FileImage className="w-4 h-4 text-slate-400" />}
+            {thumb ? <img src={thumb} alt="Fatura" className="w-full h-full object-cover" /> : <FileImage className="w-4 h-4 text-slate-400" />}
           </span>
         ) : (
           <span className="w-full flex-1 min-h-0 rounded-md bg-white border border-dashed border-slate-200 flex items-center justify-center">
