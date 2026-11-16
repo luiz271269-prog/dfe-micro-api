@@ -5,6 +5,11 @@ import { formatCurrency } from '@/lib/formatters';
 import RevisaoHistoricoLinhas from '@/components/cartoes/RevisaoHistoricoLinhas';
 
 function mensagemSalvo(data, modo) {
+  const texto = mensagemAcao(data, modo);
+  return data.success && data.relacionadas ? `${texto} Inclui ${data.relacionadas} parcela(s) ou compra(s) do mesmo estabelecimento em outras faturas.` : texto;
+}
+
+function mensagemAcao(data, modo) {
   if (!data.success) return data.error;
   if (modo === 'reabrir') return data.reabertos ? `${data.reabertos} lançamento(s) reaberto(s) para revisão.` : 'Nada foi alterado: as compras já estavam abertas para revisão.';
   if (data.salvos) return `${data.salvos} lançamento(s) ${modo === 'confirmar' ? 'confirmado(s)' : 'classificado(s)'} e salvo(s).`;
@@ -46,7 +51,7 @@ export default function RevisaoHistoricoCartoes({ mes, anual }) {
   const revisao = dados?.revisoes[0], r = revisao?.resumo;
   return <section className="bg-card border rounded-xl p-4 mb-5 space-y-3">
     <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-semibold">Revisão pelo mês anterior · {mes}</h2><Button size="sm" variant="outline" disabled={loading} onClick={() => atualizar()}>{loading ? 'Analisando...' : 'Atualizar revisão'}</Button></div>
-    <p className="text-xs text-muted-foreground">Abra “Ver dados da fatura e classificação salva” para conferir data, descrição, parcelas informadas, valor e classificação de cada lançamento como estão no cartão. As sugestões do mês anterior ficam separadas e só são salvas após confirmação. “Marcar conferida” mantém a classificação salva e tira o grupo das pendências; qualquer alteração posterior reabre a conferência. As ações continuam limitadas ao grupo desta fatura; igual ao histórico não comprova a finalidade da compra.</p>
+    <p className="text-xs text-muted-foreground">Abra “Ver dados da fatura e classificação salva” para conferir data, descrição, parcelas informadas, valor e classificação de cada lançamento como estão no cartão. As sugestões do mês anterior ficam separadas e só são salvas após confirmação. “Marcar conferida” mantém a classificação salva e tira o grupo das pendências; qualquer alteração posterior reabre a conferência. Ao classificar, o sistema analisa as parcelas e as outras compras do mesmo estabelecimento e oferece aplicar a mesma classificação; nada fora do grupo é alterado sem estar marcado. Igual ao histórico não comprova a finalidade da compra.</p>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {feedback && <p role={feedback.error ? 'alert' : 'status'} className={feedback.error ? 'text-sm text-destructive' : 'text-sm text-success'}>{feedback.texto}</p>}
     {revisao && <>

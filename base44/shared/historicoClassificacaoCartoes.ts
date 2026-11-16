@@ -1,12 +1,8 @@
 import { resolverCadastro, validarCombinacao } from './classificacaoFinanceira.ts';
-import { estaConferido, chaveGrupoCartao } from './grupoCartaoRevisao.ts';
+import { estaConferido, chaveGrupoCartao, estabelecimentoChave, estabelecimentoGenerico } from './grupoCartaoRevisao.ts';
 export function mesAnteriorCartao(mes) {
   const [ano, numero] = mes.split('-').map(Number);
   return numero === 1 ? `${ano - 1}-12` : `${ano}-${String(numero - 1).padStart(2, '0')}`;
-}
-function estabelecimentoChave(valor) {
-  // Conserva vendedor, filial e códigos: não confunde compras diferentes em marketplaces.
-  return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\d{1,2}\s*\/\s*\d{1,2}/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
 }
 export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
   const periodos = [...new Set([...meses, ...meses.map(mesAnteriorCartao)])];
@@ -78,7 +74,7 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
         const normalizado = unico ? validarCombinacao('LancamentoCartao', { ...unico, natureza: unico.origem_compra === 'pro_labore' ? 'pessoal' : 'empresarial' }, cadastro, role).normalizado : null;
         const coerente = unico && ['origem_compra','tipo_compra','categoria'].every(c => unico[c] === normalizado[c]);
         const valido = coerente && permitidos.origens.includes(unico.origem_compra) && permitidos.tipos.includes(unico.tipo_compra) && unico.categoria && unico.categoria !== 'outro' && (!permitidos.categorias.length || permitidos.categorias.includes(unico.categoria)) && (unico.origem_compra !== 'pro_labore' || unico.tipo_compra === 'pro_labore');
-        const generico = /^(mercadolivre (?:merca\w*|\d*produt\w*)|mercado pago merc\w*|amazon (?:br(?: amazo)?|marketplacev?))$/.test(estabelecimentoChave(row.estabelecimento));
+        const generico = estabelecimentoGenerico(estabelecimentoChave(row.estabelecimento));
         if (valido && !generico) {
           sugestao = unico;
           status = row.origem_compra === unico.origem_compra && row.tipo_compra === unico.tipo_compra && cats.length === 1 && cats[0] === unico.categoria ? 'iguais' : 'divergentes';

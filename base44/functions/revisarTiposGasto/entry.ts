@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { construirMemoria, classificarRegistro, validarCombinacao, resolverCadastro } from '../../shared/classificacaoFinanceira.ts';
 import { classificarGrupoCartao } from '../../shared/classificarGrupoCartao.ts';
 import { conferirGrupoCartao } from '../../shared/conferirGrupoCartao.ts';
+import { analisarRelacionadas } from '../../shared/relacionadasGrupoCartao.ts';
 
 const entidades = ['LancamentoBancario', 'LancamentoCartao', 'FaturaCartao', 'DespesaOperacional', 'Tributo', 'FolhaPagamento', 'ItemCompra', 'ObraReforma', 'RegraRecorrente'];
 const campos = ['origem_compra', 'tipo_compra', 'categoria'];
@@ -56,6 +57,8 @@ export default async function(req) {
     const permitidos = resolverCadastro(cadastro, user.role);
 
     if (action === 'salvar_grupo_revisao') return Response.json(await classificarGrupoCartao(base44, user, payload, cadastro, { atualizarVinculos, propagarCartao }));
+
+    if (action === 'analisar_relacionadas_revisao') return Response.json(await analisarRelacionadas(db, payload.grupo));
 
     if (action === 'conferir_grupo_revisao') return Response.json(await conferirGrupoCartao(base44, user, payload, cadastro));
 
