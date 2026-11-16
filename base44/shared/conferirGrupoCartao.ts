@@ -24,7 +24,7 @@ export async function conferirGrupoCartao(base44, user, payload, cadastro) {
     const atual = classificacaoDe(registro);
     const completo = permitidos.origens.includes(atual.origem_compra) && permitidos.tipos.includes(atual.tipo_compra) && atual.categoria && permitidos.categorias.includes(atual.categoria);
     const validacao = completo ? validarCombinacao('LancamentoCartao', { ...atual, natureza: atual.origem_compra === 'pro_labore' ? 'pessoal' : 'empresarial' }, cadastro, user.role) : null;
-    if (!validacao?.valido || ['origem_compra', 'tipo_compra', 'categoria'].some(campo => validacao.normalizado[campo] !== atual[campo])) throw new Error('Há compras neste grupo sem quem comprou, tipo ou categoria válidos no plano de contas. Use "Classificar" antes de marcar como conferida.');
+    if (!validacao?.valido || ['origem_compra', 'tipo_compra', 'categoria'].some(campo => validacao.normalizado[campo] !== atual[campo])) return { success: false, salvos: 0, conferidos: 0, reabertos: 0, total: registros.length, error: 'Há compras neste grupo sem quem comprou, tipo ou categoria válidos no plano de contas. Use "Classificar" antes de marcar como conferida.' };
   }
   const alvo = registros.filter(registro => !estaConferido(registro));
   if (alvo.length) {
