@@ -39,6 +39,9 @@ const TIPO_COMPRA_PARA_CLASSE = {
 
 // decisão 6 (pendente: fundos como caixa e equivalentes) — aplicação/resgate fica em linha própria e visível
 const APLICACAO_RE = /APLIC\.?\s*FINANC|RESGATE|RESG\.?\s*APLIC/i;
+// Tarifas bancárias e IOF entram como despesa operacional na DRE (decisão do usuário, nov/2026)
+const TARIFA_RE = /\bTARIFA|\bIOF\b/i;
+const AMORTIZACAO_RE = /AMORTIZ/i; // principal de empréstimo nunca é despesa
 
 function classeDaObra(obra) {
   // decisão 12: sem natureza → investimento
@@ -78,6 +81,7 @@ export function normalizarCaixa(dados, perimetro, hoje) {
         else if (v.entidade_tipo === 'Tributo') [classe, sub] = ['pagamento_operacional', tributos.get(v.entidade_id)?.tipo === 'DAS' ? 'das' : 'tributos'];
         else [classe, sub] = VINCULO_PARA_CLASSE[v.entidade_tipo] || ['nao_classificado', 'sem_regra'];
       } else if (APLICACAO_RE.test(l.descricao || '')) { [classe, sub] = ['aplicacao', l.valor < 0 ? 'aplicacao' : 'resgate']; }
+      else if (l.valor < 0 && !AMORTIZACAO_RE.test(l.descricao || '') && (l.categoria === 'tarifas' || TARIFA_RE.test(l.descricao || ''))) { [classe, sub] = ['pagamento_operacional', 'despesas']; }
       else if (l.valor < 0 && l.origem_compra === 'pessoal') { [classe, sub] = ['retirada', 'pessoal']; }
       else if (l.valor < 0 && TIPO_COMPRA_PARA_CLASSE[l.tipo_compra]) { [classe, sub] = TIPO_COMPRA_PARA_CLASSE[l.tipo_compra]; }
       else if (CATEGORIA_PARA_CLASSE[l.categoria]) { [classe, sub] = CATEGORIA_PARA_CLASSE[l.categoria]; }
