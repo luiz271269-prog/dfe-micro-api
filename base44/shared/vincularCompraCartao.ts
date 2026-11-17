@@ -13,7 +13,7 @@ export async function vincularCompraCartao(db, compra, chargeId, userId, payload
   if (!evidencia.elegivel) throw new Error('Valor, data ou vínculo incompatível; revise a compra e o cartão antes de confirmar.');
   if (automatico) {
     const dados = await carregarCandidatosCartao(db, [charge]);
-    const ocupado = l => l.item_compra_id || dados.referencias.some(d => d.reg.lancamento_cartao_id === l.id) || dados.trilhas.some(t => t.lancamento_cartao_id === l.id && t.fase !== 'cancelado');
+    const ocupado = l => l.item_compra_id || l.pedido_central_internal_id || dados.referencias.some(d => d.reg.lancamento_cartao_id === l.id) || dados.trilhas.some(t => t.lancamento_cartao_id === l.id && t.fase !== 'cancelado');
     const destinos = dados.documentos.filter(d => evidenciasCartao(charge, d.reg, d.tipo).elegivel && !dados.bancos.some(v => v.entidade_tipo === d.tipo && v.entidade_id === d.reg.id));
     const concorrentes = dados.concorrentes.filter(l => compraReal(l) && !ocupado(l) && evidenciasCartao(l, compra, 'ItemCompra').elegivel);
     if (!evidencia.auto || ocupado(charge) || destinos.length !== 1 || destinos[0].tipo !== 'ItemCompra' || destinos[0].reg.id !== compra.id || concorrentes.length !== 1 || concorrentes[0].id !== chargeId) throw new Error('Correspondência automática não é única ou está incompleta; confirme individualmente com evidência.');

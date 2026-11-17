@@ -14,7 +14,7 @@ export async function confirmarDespesaFixa(base44,body,userId) {
     await validarClassificacaoFixa(db,r);
     const campo=canal==='cartao'?'lancamento_cartao_id':'lancamento_bancario_id';
     const conflitos=await Promise.all((canal==='cartao'?['ItemCompra','ObraReforma']:['Tributo','FolhaPagamento','ObraReforma','ItemCompra','FaturaCartao','MovimentoFinanceiro']).map(t=>db[t].count({[campo]:l.id})));
-    if(l.item_compra_id||conflitos.some(Boolean))throw new Error('Lançamento já pertence a outro módulo. Preserve o vínculo existente.');
+    if(l.item_compra_id||l.pedido_central_internal_id||conflitos.some(Boolean))throw new Error('Lançamento já pertence a outro módulo. Preserve o vínculo existente.');
     if(body.simular)return {success:true,simulacao:true,canal,competencia:match.vencimento.slice(0,7),valor:match.valor};
     const regras=await carregarFixas(db,'RegraRecorrente',{is_ativa:true});
     if(regras.filter(x=>{const m=avaliarFixa(x,l,canal);return m&&!m.bloqueada;}).length!==1)throw new Error('Mais de uma regra compatível. Revise antes de confirmar.');

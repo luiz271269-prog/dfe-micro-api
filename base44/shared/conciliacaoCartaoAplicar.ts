@@ -12,7 +12,7 @@ export async function aplicarVinculoCartao(db, row, candidato, userId, manual, m
       db[candidato.tipo].get(candidato.id),
       lerCompleto(db, 'VinculoExtrato', { entidade_tipo: candidato.tipo, entidade_id: candidato.id }),
     ]);
-    if (refs.length || trilhas.length || bancos.length || charge.item_compra_id) throw new Error('Um dos registros já está vinculado. Nenhum novo vínculo criado.');
+    if (refs.length || trilhas.length || bancos.length || charge.item_compra_id || charge.pedido_central_internal_id) throw new Error('Um dos registros já está vinculado. Nenhum novo vínculo criado.');
     if (charge.updated_date !== row.versao && row.versao && (charge.valor !== row.valor || charge.tipo_compra !== row.tipo_compra || charge.origem_compra !== row.origem_compra || (charge.empresa_beneficiada || '') !== row.empresa || charge.data_lancamento !== row.data || charge.fatura_id !== row.fatura_id)) throw new Error('Compra alterada durante a análise. Atualize.');
     if (documento.updated_date !== candidato.versao) throw new Error('Documento alterado durante a análise. Atualize.');
     const evidencia = evidenciasCartao(charge, documento, candidato.tipo, manual);

@@ -5,6 +5,8 @@ import { candidatosBaixas } from '../../shared/baixasSemelhanca.ts';
 import { executarBaixaCentral } from '../../shared/baixasOperacoes.ts';
 import { revisarFixasCentral } from '../../shared/baixasFixas.ts';
 import { movimentosDaObrigacao } from '../../shared/baixasMovimentos.ts';
+import { sugestoesCartao } from '../../shared/cartaoSugestoes.ts';
+import { vincularCartaoCentral,desvincularCartaoCentral } from '../../shared/cartaoCentralVinculo.ts';
 export default async function(req) {
   try {
     const base44=createClientFromRequest(req),user=await base44.auth.me();
@@ -16,9 +18,12 @@ export default async function(req) {
     if(b.acao==='detalhe')return Response.json(await detalheBaixas(base44,user,b.tipo,b.id));
     if(b.acao==='candidatos')return Response.json(await candidatosBaixas(base44,user,b));
     if(b.acao==='movimentos')return Response.json(await movimentosDaObrigacao(base44,user,b));
+    if(b.acao==='sugestoesCartao')return Response.json(await sugestoesCartao(base44,user,b));
     if(user.role!=='admin'&&!(b.acao==='manual'&&b.tipo==='FaturaCartao'))return Response.json({error:'Operação restrita a administrador. O pagamento declarado de faturas mantém a permissão do módulo de cartões.'},{status:403});
     if(typeof b.pedidoId!=='string'||!b.pedidoId||b.pedidoId.length>80||typeof b.motivo!=='string'||b.motivo.trim().length<10||b.motivo.length>500)return Response.json({error:'Identifique a operação e descreva a evidência/motivo (10 a 500 caracteres).'},{status:400});
     if(b.validate_only)return Response.json({ok:true,modo:'validacao'});
+    if(b.acao==='cartaoCentral')return Response.json(await vincularCartaoCentral(base44,user,b));
+    if(b.acao==='desfazerCentral')return Response.json(await desvincularCartaoCentral(base44,user,b));
     return Response.json(await executarBaixaCentral(base44,user,b));
   } catch(error){return Response.json({error:error.message},{status:422});}
 }

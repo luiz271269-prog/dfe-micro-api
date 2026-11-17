@@ -27,5 +27,13 @@ export async function documentosFatura(db, lancamentos, admin) {
       vinculo: vinculados.some(v => v.lancamento_cartao_id === id) ? 'VinculoCartao confirmado' : 'Referência direta legada',
     }));
   }));
+  // Pedido da Central: referência auditada gravada na própria transação; o pedido continua lido online.
+  lancamentos.filter(l => l.pedido_central_internal_id).forEach(l => porLancamento[l.id]?.push({
+    id: l.pedido_central_internal_id, entidade: 'PedidoCentral', descricao: `Parcela ${l.pedido_central_parcela || 1}/${l.pedido_central_parcelas || 1} do pedido`,
+    numero: l.pedido_central_id || '', data: '', natureza: 'estoque', fornecedor: l.pedido_central_fornecedor || '', vencimento: '',
+    valor_documento: Number(l.pedido_central_valor || 0), status_documento: 'Pedido lido online da Central de Compras', valor_alocado: Number(l.valor || 0),
+    condicao: l.pedido_central_condicao || '', tipo: 'PedidoCentral', origem_compra: '', tipo_compra: '', categoria: '', recorrente: false, regra_recorrente_id: '',
+    vinculo: 'Pedido da Central vinculado com auditoria',
+  }));
   return { porLancamento, parcial: trilhas.has_more || paginas.some(p => p.has_more) };
 }

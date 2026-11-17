@@ -22,7 +22,7 @@ export async function criarCandidato(db,tipo,doc,movTipo,mov,info){
   const entrada=['TituloCobranca','NotaFiscal'].includes(tipo),cartao=movTipo==='LancamentoCartao';
   if(cartao&&!['ItemCompra','DespesaOperacional','ObraReforma'].includes(tipo))return null;
   if(!cartao&&(direcaoBanco(mov)!==(entrada?'entrada':'saida')||mov.alerta_duplicidade||mov.duplicidade_ref))return null;
-  if(cartao&&(mov.valor<=0||mov.item_compra_id||!mov.fatura_id))return null;
+  if(cartao&&(mov.valor<=0||mov.item_compra_id||mov.pedido_central_internal_id||!mov.fatura_id))return null;
   const [ed,em,saldo]=await Promise.all([empresaDocumento(db,tipo,doc,info.empresa),empresaDocumento(db,movTipo,mov,info.empresa),saldoDocumento(db,tipo,doc)]);
   if(!ed||!em||ed!==em||saldo<=0)return null;
   if(tipo==='FolhaPagamento'&&!doc.funcionario_id)return null;

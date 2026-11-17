@@ -32,7 +32,7 @@ export default async function(req) {
             const campo = canal === 'cartao' ? 'lancamento_cartao_id' : 'lancamento_bancario_id';
             const antiga = antigas.find(s => s.entidade_id === r.id && s[campo] === l.id);
             if (antiga && antiga.status !== 'pendente') continue;
-            const ocupada = !!l.item_compra_id || !!l.alerta_duplicidade || !!l.duplicidade_ref || (canal === 'extrato' && ['conciliado', 'parcial', 'ignorar'].includes(l.status_conciliacao));
+            const ocupada = !!l.item_compra_id || !!l.pedido_central_internal_id || !!l.alerta_duplicidade || !!l.duplicidade_ref || (canal === 'extrato' && ['conciliado', 'parcial', 'ignorar'].includes(l.status_conciliacao));
             const previa = despesas.find(d => d[campo] === l.id && d.observacoes?.includes(`Regra recorrente ${r.id} ·`));
             if (previa && canal === 'extrato' && l.status_conciliacao === 'conciliado') continue;
             propostas.push({ antiga, data: { entidade_tipo: 'RegraRecorrente', entidade_id: r.id, [campo]: l.id, canal, competencia: body.mes, descricao_conta: r.nome, fornecedor: r.fornecedor || '', valor_esperado: r.valor_esperado, valor_extrato: match.valor, data_vencimento: match.vencimento, data_extrato: match.data, descricao_extrato: canal === 'cartao' ? l.estabelecimento : l.descricao, diff_dias: match.diff_dias, confianca: 100, status: 'pendente', bloqueada: match.bloqueada || ocupada, motivo: ocupada ? 'Lançamento já tratado ou sinalizado; revise o vínculo existente' : match.motivo } });
