@@ -32,6 +32,7 @@ import NaturezaResumo from '@/components/extrato/NaturezaResumo';
 import SaneamentoDialog from '@/components/extrato/SaneamentoDialog';
 import { ePendenteClassificacao } from '@/lib/saneamentoExtrato';
 import ComparativoDREPanel from '@/components/extrato/ComparativoDREPanel';
+import ResumoTopoExtrato from '@/components/extrato/ResumoTopoExtrato';
 
 const TIPOS_TOTALIZADORES = [
   ['estoque', 'Compras (estoque/revenda)'],
@@ -288,26 +289,10 @@ export default function ExtratoBancario() {
       )}
 
       {/* Totalizadores padronizados pelos seis tipos de gasto */}
-      <MobileKPICarousel desktopGridClass="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
-        {[...tiposTotalizadores, ['__aplicacoes', '8.02 Aplicações (fora da receita)'], ['__resgates', '8.03 Resgates (fora da receita)']].map(([tipo, titulo]) => {
-          if (tipo === '__aplicacoes' || tipo === '__resgates') {
-            const cat = tipo === '__aplicacoes' ? 'aplicacoes' : 'resgates';
-            const ativo = filterCategoria === cat;
-            return <GradientCard key={tipo} title={titulo} value={formatCurrency(totaisTipo[tipo] || 0)} gradient="purple" active={ativo}
-              onClick={() => { setFilterTipo('all'); setFilterCategoria(ativo ? 'all' : cat); }} />;
-          }
-          const valor = totaisTipo[tipo] || 0;
-          const isActive = filterTipo === tipo;
-          return <GradientCard
-            key={tipo}
-            title={titulo}
-            value={formatCurrency(valor)}
-            gradient={valor > 0 ? 'green' : 'red'}
-            active={isActive}
-            onClick={() => setFilterTipo(isActive ? 'all' : tipo)}
-          />;
-        })}
-      </MobileKPICarousel>
+      <ResumoTopoExtrato lancamentos={periodoLancamentos} totaisTipo={totaisTipo}
+        filterTipo={filterTipo} filterCategoria={filterCategoria}
+        onTipo={t => { setFilterCategoria('all'); setFilterTipo(t); }}
+        onCategoria={c => { setFilterTipo('all'); setFilterCategoria(c); }} />
 
       <NaturezaResumo lancamentos={periodoLancamentos} />
 
