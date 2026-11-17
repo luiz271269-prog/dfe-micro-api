@@ -52,6 +52,34 @@
       "type": "string",
       "title": "ID ItemCompra vinculado (evita dupla contagem)"
     },
+    "pedido_central_id": {
+      "type": "string",
+      "title": "Pedido da Central de Compras pago nesta transa\u00e7\u00e3o (n\u00ba, ex: PC-2026-045)"
+    },
+    "pedido_central_internal_id": {
+      "type": "string",
+      "title": "ID interno do pedido na Central (refer\u00eancia auditada; o pedido continua lido online)"
+    },
+    "pedido_central_parcela": {
+      "type": "number",
+      "title": "Parcela do pedido representada nesta transa\u00e7\u00e3o"
+    },
+    "pedido_central_parcelas": {
+      "type": "number",
+      "title": "Total de parcelas do pedido no cart\u00e3o"
+    },
+    "pedido_central_fornecedor": {
+      "type": "string",
+      "title": "Fornecedor do pedido na data do v\u00ednculo"
+    },
+    "pedido_central_valor": {
+      "type": "number",
+      "title": "Valor total do pedido em R$ na data do v\u00ednculo"
+    },
+    "pedido_central_condicao": {
+      "type": "string",
+      "title": "Condi\u00e7\u00e3o de pagamento informada na Central"
+    },
     "comprovante_drive_url": {
       "type": "string",
       "title": "Link do comprovante no Google Drive"
