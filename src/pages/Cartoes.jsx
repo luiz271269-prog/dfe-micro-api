@@ -29,6 +29,7 @@ import consultarLiquidacoes from '@/lib/consultarLiquidacoes';
 import { situacaoFatura } from '@/lib/faturaCarteira';
 import { arquivoDoLote } from '@/lib/papelImportacao';
 import RevisaoObrasFaturas from '@/components/contas-pagar/RevisaoObrasFaturas';
+import CartoesTotaisDialog from '@/components/cartoes/CartoesTotaisDialog';
 
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
@@ -106,6 +107,7 @@ export default function Cartoes() {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const resumoFaturas = useResumoFaturas(selectedMonth, isAnnual);
+  const [detalheTotal, setDetalheTotal] = useState(null);
   const [expandedCard, setExpandedCard] = useState(null);
   const [expandedFatura, setExpandedFatura] = useState(null);
   const [showFaturaForm, setShowFaturaForm] = useState(false);
@@ -270,11 +272,13 @@ export default function Cartoes() {
       <RevisaoObrasFaturas faturas={filteredFaturas} onSaved={() => loadData(true)} />
       {/* Resumo do mês */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <GradientCard title="Total Faturas" value={resumoValor(totalMes)} sub={`${resumoFaturas.data?.quantidade ?? '…'} faturas`} icon={CreditCard} gradient="purple" />
-        <GradientCard title="Total Pago" value={resumoValor(totalPagoMes)} sub="Sem duplicar registro e vínculos" icon={DollarSign} gradient="green" />
-        <GradientCard title="A Pagar" value={resumoValor(saldoFaturas)} sub="Somente a obrigação das faturas" icon={AlertCircle} gradient="orange" />
-        <GradientCard title="Cartões Ativos" value={cartoes.filter((c) => c.is_ativo).length} sub={`${cartoes.length} cadastrados`} icon={CreditCard} gradient="blue" />
+        <button type="button" className="text-left" onClick={() => setDetalheTotal('total')} aria-label="Ver lançamentos de todas as faturas"><GradientCard title="Total Faturas" value={resumoValor(totalMes)} sub={`${resumoFaturas.data?.quantidade ?? '…'} faturas · Ver lançamentos`} icon={CreditCard} gradient="purple" /></button>
+        <button type="button" className="text-left" onClick={() => setDetalheTotal('pago')} aria-label="Ver lançamentos de faturas com pagamento"><GradientCard title="Total Pago" value={resumoValor(totalPagoMes)} sub="Ver faturas com pagamento registrado" icon={DollarSign} gradient="green" /></button>
+        <button type="button" className="text-left" onClick={() => setDetalheTotal('aberto')} aria-label="Ver lançamentos de faturas a pagar"><GradientCard title="A Pagar" value={resumoValor(saldoFaturas)} sub="Ver lançamentos das faturas com saldo" icon={AlertCircle} gradient="orange" /></button>
+        <button type="button" className="text-left" onClick={() => setDetalheTotal('ativos')} aria-label="Ver lançamentos dos cartões ativos"><GradientCard title="Cartões Ativos" value={cartoes.filter((c) => c.is_ativo).length} sub={`${cartoes.length} cadastrados · Ver lançamentos`} icon={CreditCard} gradient="blue" /></button>
       </div>
+
+      {detalheTotal && <CartoesTotaisDialog key={`${detalheTotal}-${selectedMonth}-${isAnnual}`} modo={detalheTotal} mes={selectedMonth} anual={isAnnual} fechar={() => setDetalheTotal(null)}/>}
 
       {/* Calendário de Vencimentos — cada tópico com o círculo do dia no topo e o card do cartão logo abaixo */}
       <div className="bg-card rounded-xl border p-5 mb-6">

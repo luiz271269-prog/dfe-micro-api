@@ -6,14 +6,15 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req), user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Não autorizado.' }, { status: 401 });
-    const { fatura_id, cursor } = await req.json();
+    const { fatura_id, cursor, limit = 30, sort = 'data_lancamento' } = await req.json();
+    if (![8, 30].includes(limit) || !['data_lancamento', '-data_lancamento', 'estabelecimento', '-estabelecimento', 'valor', '-valor'].includes(sort)) return Response.json({ error: 'Ordenação ou tamanho de página inválido.' }, { status: 400 });
     if (typeof fatura_id !== 'string' || !fatura_id || fatura_id.length > 200 || (cursor && (typeof cursor !== 'string' || cursor.length > 4096))) return Response.json({ error: 'Fatura ou página inválida.' }, { status: 400 });
     const db = base44.entities, fat = await db.FaturaCartao.get(fatura_id);
     if (!fat?.id) return Response.json({ error: 'Fatura não encontrada.' }, { status: 404 });
     const pagamento = 'pagamento.*fatura|pgto.*fatura|pagto.*fatura|cr[eé]dito.*pagamento';
     const ignorados = { fatura_id, $or: [{ estabelecimento: { $regex: pagamento, $options: 'i' } }, { observacao: { $regex: `${pagamento}|n[aã]o faz parte`, $options: 'i' } }] };
     const [page, todos, fora, banco, naturezas, naturezasFora] = await Promise.all([
-      db.LancamentoCartao.filter({ fatura_id }, { sort: 'data_lancamento', limit: 30, cursor: cursor || undefined }),
+      db.LancamentoCartao.filter({ fatura_id }, { sort, limit, cursor: cursor || undefined }),
       db.LancamentoCartao.aggregate({ query: { fatura_id }, sum: ['valor'] }),
       db.LancamentoCartao.aggregate({ query: ignorados, sum: ['valor'] }),
       liquidacoesDocumentos(db, 'FaturaCartao', [fatura_id]),
@@ -40,7 +41,7 @@ export default async function(req) {
     return Response.json({
       success: true, somente_leitura: true, fatura_id, temporal, relacao, grupos_natureza: grupos, documentos_parciais: documentos.parcial,
       resumo: { total, pago_registrado: pago, pago_considerado: liquidacao.pago_considerado, saldo, situacao: liquidacao.liquidacao, situacao_historica: fat.status, inconsistencia_historica: liquidacao.revisao, vencimento: fat.data_vencimento, temporal, composicao, diferenca_composicao: arred(total - composicao), linhas: Number(todos.rows[0]?.count || 0), comprovado_banco: liquidacao.alocado_banco, informativos_excluidos: arred(fora.rows[0]?.sum_valor || 0) },
-      items: page.items.map(l => ({ documentos: documentos.porLancamento[l.id] || [], situacao_relacionada: `${relacao} · ${temporal}`, id: l.id, data: l.data_lancamento, descricao: l.estabelecimento, valor: l.valor, natureza: l.tipo_compra || 'Não classificada', situacao: /pagamento.*fatura|pgto.*fatura|pagto.*fatura|cr[eé]dito.*pagamento/i.test(`${l.estabelecimento || ''} ${l.observacao || ''}`) ? 'Pagamento informativo, não é baixa bancária' : /n[aã]o faz parte/i.test(l.observacao || '') ? 'Fora da composição' : Number(l.valor) < 0 ? 'Crédito / ajuste da composição' : 'Componente da fatura' })),
+      items: page.items.map(l => ({ documentos: documentos.porLancamento[l.id] || [], situacao_relacionada: `${relacao} · ${temporal}`, id: l.id, origem_compra: l.origem_compra || '', tipo_compra: l.tipo_compra || '', categoria: l.categoria || '', data: l.data_lancamento, descricao: l.estabelecimento, valor: l.valor, natureza: l.tipo_compra || 'Não classificada', situacao: /pagamento.*fatura|pgto.*fatura|pagto.*fatura|cr[eé]dito.*pagamento/i.test(`${l.estabelecimento || ''} ${l.observacao || ''}`) ? 'Pagamento informativo, não é baixa bancária' : /n[aã]o faz parte/i.test(l.observacao || '') ? 'Fora da composição' : Number(l.valor) < 0 ? 'Crédito / ajuste da composição' : 'Componente da fatura' })),
       has_more: page.has_more, next_cursor: page.next_cursor,
     });
   } catch (error) { return Response.json({ error: error.message }, { status: 400 }); }

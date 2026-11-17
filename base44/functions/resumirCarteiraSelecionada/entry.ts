@@ -19,7 +19,8 @@ export default async function(req) {
     const body = await req.json().catch(() => ({}));
     if (body.acao === 'liquidacoes' || body.acao === 'resumo_faturas') {
       if (body.acao === 'resumo_faturas' && (!/^\d{4}-(0[1-9]|1[0-2])$/.test(body.mes || '') || typeof body.anual !== 'boolean')) return Response.json({ error: 'Período inválido.' }, { status: 400 });
-      const selecao = body.acao === 'resumo_faturas' ? { FaturaCartao: (await lerCompleto(base44.entities, 'FaturaCartao', { mes_referencia: body.anual ? { $regex: `^${body.mes.slice(0, 4)}-` } : body.mes })).map(r => r.id) } : body;
+      const faturasPeriodo = body.acao === 'resumo_faturas' ? await lerCompleto(base44.entities, 'FaturaCartao', { mes_referencia: body.anual ? { $regex: `^${body.mes.slice(0, 4)}-` } : body.mes }) : [];
+      const selecao = body.acao === 'resumo_faturas' ? { FaturaCartao: faturasPeriodo.map(r => r.id) } : body;
       const liquidacoes = {};
       for (const nome of ['ObraReforma', 'FaturaCartao']) {
         const ids = selecao[nome] || [];
@@ -29,7 +30,16 @@ export default async function(req) {
       }
       const resumo = Object.values(liquidacoes.FaturaCartao).reduce((s, r) => ({ total: s.total + r.total, pago: s.pago + r.pago_considerado, saldo: s.saldo + r.saldo, quantidade: s.quantidade + 1, revisao: s.revisao + (r.revisao ? 1 : 0) }), { total: 0, pago: 0, saldo: 0, quantidade: 0, revisao: 0 });
       for (const campo of ['total', 'pago', 'saldo']) resumo[campo] = Math.round(resumo[campo] * 100) / 100;
-      return Response.json({ somente_leitura: true, liquidacoes, resumo });
+      const faturas = faturasPeriodo.map(f => ({ id: f.id, conta_cartao_id: f.conta_cartao_id, mes_referencia: f.mes_referencia, data_vencimento: f.data_vencimento, ...liquidacoes.FaturaCartao[f.id] }));
+      const filtros = { todas: faturas.length, pagas: faturas.filter(f => f.pago_considerado > 0).length, abertas: faturas.filter(f => f.saldo > 0).length, parciais: faturas.filter(f => f.liquidacao === 'Parcial').length, revisao: faturas.filter(f => f.revisao).length };
+      const filtro = body.filtro_faturas || 'todas', offset = body.offset || 0;
+      if (!['todas', 'pagas', 'abertas', 'parciais', 'revisao'].includes(filtro) || !Number.isInteger(offset) || offset < 0 || offset > 1000) return Response.json({ error: 'Filtro ou página inválidos.' }, { status: 400 });
+      const cartoes = body.detalhar ? await lerCompleto(base44.entities, 'ContaCartao', body.somente_ativos ? { is_ativo: true } : {}) : [];
+      const idsCartoes = new Set(cartoes.map(c => c.id));
+      const escopoFaturas = faturas.filter(f => !body.somente_ativos || idsCartoes.has(f.conta_cartao_id));
+      if (body.somente_ativos) Object.assign(filtros, { todas: escopoFaturas.length, pagas: escopoFaturas.filter(f => f.pago_considerado > 0).length, abertas: escopoFaturas.filter(f => f.saldo > 0).length, parciais: escopoFaturas.filter(f => f.liquidacao === 'Parcial').length, revisao: escopoFaturas.filter(f => f.revisao).length });
+      const elegiveis = escopoFaturas.filter(f => (filtro === 'todas' || filtro === 'pagas' && f.pago_considerado > 0 || filtro === 'abertas' && f.saldo > 0 || filtro === 'parciais' && f.liquidacao === 'Parcial' || filtro === 'revisao' && f.revisao)).sort((a, b) => a.conta_cartao_id.localeCompare(b.conta_cartao_id) || a.mes_referencia.localeCompare(b.mes_referencia) || a.id.localeCompare(b.id));
+      return Response.json({ somente_leitura: true, liquidacoes, resumo, faturas: body.detalhar ? elegiveis.slice(offset, offset + 10) : faturas, filtros, cartoes: cartoes.map(c => ({ id: c.id, nome: c.nome })), sem_fatura: body.somente_ativos ? cartoes.filter(c => !faturas.some(f => f.conta_cartao_id === c.id)).map(c => ({ id: c.id, nome: c.nome })) : [], quantidade_filtrada: elegiveis.length, has_more: elegiveis.length > offset + 10 });
     }
     if (body.acao) return Response.json({ error: 'Ação inválida.' }, { status: 400 });
     const tarefas = [];
