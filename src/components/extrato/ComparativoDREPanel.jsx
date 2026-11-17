@@ -4,16 +4,32 @@ import { RefreshCw, Scale } from 'lucide-react';
 import { consolidarDREOperacional } from '@/functions/consolidarDREOperacional';
 import { formatCurrency } from '@/lib/formatters';
 
-// Tipos do extrato (tipo_compra) → linhas da DRE Caixa
-const LINHAS = [
-  { rotulo: 'Receitas', tipos: ['receitas'], dre: ['receita_bruta'] },
-  { rotulo: 'Compras / CMV', tipos: ['estoque'], dre: ['cmv'] },
-  { rotulo: 'Impostos (DAS + outros)', tipos: ['impostos'], dre: ['das', 'outros_tributos'] },
-  { rotulo: 'Folha', tipos: ['folha'], dre: ['folha'] },
-  { rotulo: 'Despesas', tipos: ['despesas'], dre: ['despesas'] },
-  { rotulo: 'Pró-labore', tipos: ['pro_labore'], dre: ['prolabore'] },
-  { rotulo: 'Obras / Reformas', tipos: ['obras'], dre: ['obras'] },
-];
+const abs = (v) => Math.abs(v || 0);
+
+// Mesma estrutura da DRE Operacional (coluna Caixa): linhas, subtotais e lucros
+function montarLinhas(t, k) {
+  const ext = {
+    receita: abs(t.receitas), cmv: abs(t.estoque), das: abs(t.impostos),
+    folha: abs(t.folha), despesas: abs(t.despesas), outros: 0,
+    prolabore: abs(t.pro_labore), obras: abs(t.obras),
+  };
+  ext.lucroBruto = ext.receita - ext.cmv - ext.das;
+  ext.despOp = ext.folha + ext.despesas + ext.outros + ext.prolabore + ext.obras;
+  ext.lucroOp = ext.lucroBruto - ext.despOp;
+  return [
+    { rotulo: 'Receita Bruta de Vendas', tipo: 'receitas', ext: ext.receita, dre: abs(k.receita_bruta), forte: true },
+    { rotulo: '(–) CMV', tipo: 'estoque', ext: ext.cmv, dre: abs(k.cmv), forte: true },
+    { rotulo: '(–) Impostos — DAS', tipo: 'impostos', ext: ext.das, dre: abs(k.das), sub: true },
+    { rotulo: '= LUCRO BRUTO', ext: ext.lucroBruto, dre: k.lucro_bruto || 0, total: true },
+    { rotulo: '(–) Despesas Operacionais', ext: ext.despOp, dre: abs(k.total_despesas_operacionais), forte: true },
+    { rotulo: 'Folha de pagamento', tipo: 'folha', ext: ext.folha, dre: abs(k.folha), sub: true },
+    { rotulo: 'Despesas adm. e operacionais', tipo: 'despesas', ext: ext.despesas, dre: abs(k.despesas), sub: true },
+    { rotulo: 'Outros tributos', ext: ext.outros, dre: abs(k.outros_tributos), sub: true },
+    { rotulo: '= LUCRO OPERACIONAL', ext: ext.lucroOp, dre: k.lucro_operacional || 0, total: true },
+    { rotulo: 'Pró-labore', tipo: 'pro_labore', ext: ext.prolabore, dre: abs(k.prolabore), sub: true },
+    { rotulo: 'Obras e reformas', tipo: 'obras', ext: ext.obras, dre: abs(k.obras), sub: true },
+  ];
+}
 
 export default function ComparativoDREPanel({ mes, isAnnual, totaisTipo, filterTipo, onTipo }) {
   const modo = isAnnual ? 'ano_civil' : 'mensal';
@@ -21,7 +37,7 @@ export default function ComparativoDREPanel({ mes, isAnnual, totaisTipo, filterT
     queryKey: ['comparativo-dre', mes, modo],
     queryFn: async () => (await consolidarDREOperacional({ mes_referencia: mes, modo_periodo: modo })).data,
   });
-  const caixa = data?.caixa;
+  const linhas = montarLinhas(totaisTipo, data?.caixa || {});
 
   return (
     <aside className="bg-card border rounded-xl overflow-hidden">
@@ -41,33 +57,32 @@ export default function ComparativoDREPanel({ mes, isAnnual, totaisTipo, filterT
         <p className="p-3 text-xs text-destructive">Não foi possível ler a DRE: {error.message}</p>
       ) : (
         <div className="divide-y">
-          {LINHAS.map(l => {
-            const ext = Math.abs(l.tipos.reduce((s, t) => s + (totaisTipo[t] || 0), 0));
-            const dre = Math.abs(l.dre.reduce((s, c) => s + (caixa?.[c] || 0), 0));
-            const diff = ext - dre;
+          <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-1.5 text-[9px] uppercase font-bold text-muted-foreground bg-muted/20">
+            <span>Linha</span><span className="w-[76px] text-right">Extrato</span><span className="w-[76px] text-right">DRE</span>
+          </div>
+          {linhas.map(l => {
+            const diff = l.ext - l.dre;
             const ok = Math.abs(diff) < 0.01;
+            const ativo = l.tipo && filterTipo === l.tipo;
+            const Comp = l.tipo ? 'button' : 'div';
+            const cor = (v) => l.total ? (v < 0 ? 'text-red-600' : 'text-emerald-700') : '';
             return (
-              <button key={l.rotulo} onClick={() => onTipo(l.tipos[0])} title="Filtrar lançamentos deste tipo"
-                className={`block w-full text-left px-3 py-2.5 transition-colors ${filterTipo === l.tipos[0] ? 'bg-primary/10 ring-1 ring-inset ring-primary' : 'hover:bg-muted/40'}`}>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold">{l.rotulo}</p>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                    {ok ? 'igual' : 'revisar'}
-                  </span>
+              <Comp key={l.rotulo} onClick={l.tipo ? () => onTipo(l.tipo) : undefined} title={l.tipo ? 'Filtrar lançamentos deste tipo' : undefined}
+                className={`block w-full text-left px-3 py-2 transition-colors ${l.total ? 'bg-primary/5' : ''} ${ativo ? 'bg-primary/10 ring-1 ring-inset ring-primary' : l.tipo ? 'hover:bg-muted/40' : ''}`}>
+                <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-center text-[11px] tabular-nums">
+                  <span className={`${l.sub ? 'pl-3 text-muted-foreground' : ''} ${l.total || l.forte ? 'font-bold text-foreground' : ''} truncate`}>{l.rotulo}</span>
+                  <span className={`w-[76px] text-right ${l.total ? 'font-bold' : ''} ${cor(l.ext)}`}>{formatCurrency(l.ext)}</span>
+                  <span className={`w-[76px] text-right ${l.total ? 'font-bold' : ''} ${cor(l.dre)}`}>{formatCurrency(l.dre)}</span>
                 </div>
-                <div className="mt-1 grid grid-cols-3 gap-1 text-[11px] tabular-nums">
-                  <div><p className="text-muted-foreground text-[9px] uppercase">Extrato</p>{formatCurrency(ext)}</div>
-                  <div><p className="text-muted-foreground text-[9px] uppercase">DRE</p>{formatCurrency(dre)}</div>
-                  <div className={ok ? 'text-muted-foreground' : 'text-amber-700 font-semibold'}><p className="text-muted-foreground text-[9px] uppercase font-normal">Dif.</p>{formatCurrency(diff)}</div>
-                </div>
-              </button>
+                {!ok && <p className="mt-0.5 text-right text-[10px] font-semibold text-amber-700">Dif. {formatCurrency(diff)}</p>}
+              </Comp>
             );
           })}
         </div>
       )}
 
       <p className="px-3 py-2.5 border-t bg-muted/20 text-[10px] leading-relaxed text-muted-foreground">
-        O extrato soma lançamentos pelo tipo de compra. A DRE Caixa aplica suas regras de realização (vínculos, faturas de cartão por item, datas de pagamento). Diferenças indicam itens a revisar, não erro automático.{' '}
+        Mesma estrutura da DRE Caixa. O extrato soma lançamentos pelo tipo de compra; a DRE aplica suas regras de realização (vínculos, faturas de cartão por item, datas de pagamento). Diferenças indicam itens a revisar.{' '}
         <Link to="/dre-operacional" className="font-semibold text-primary hover:underline">Abrir DRE</Link>
       </p>
     </aside>

@@ -337,7 +337,7 @@ export default function ExtratoBancario() {
       </div>
 
       {/* Listagem responsiva */}
-      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] items-start">
+      <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] items-start">
       <div className="lg:sticky lg:top-4">
         <ComparativoDREPanel mes={selectedMonth} isAnnual={isAnnual} totaisTipo={totaisTipo}
           filterTipo={filterTipo} onTipo={t => filtrar({ tipo: filterTipo === t ? 'all' : t })} />
