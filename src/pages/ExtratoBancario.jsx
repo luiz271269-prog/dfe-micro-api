@@ -31,6 +31,7 @@ import NaturezaMovimentoBadge from '@/components/extrato/NaturezaMovimentoBadge'
 import NaturezaResumo from '@/components/extrato/NaturezaResumo';
 import SaneamentoDialog from '@/components/extrato/SaneamentoDialog';
 import { ePendenteClassificacao } from '@/lib/saneamentoExtrato';
+import ComparativoDREPanel from '@/components/extrato/ComparativoDREPanel';
 
 const TIPOS_TOTALIZADORES = [
   ['estoque', 'Compras (estoque/revenda)'],
@@ -346,6 +347,11 @@ export default function ExtratoBancario() {
       </div>
 
       {/* Listagem responsiva */}
+      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] items-start">
+      <div className="lg:sticky lg:top-4">
+        <ComparativoDREPanel mes={selectedMonth} isAnnual={isAnnual} totaisTipo={totaisTipo} />
+      </div>
+      <div className="min-w-0">
       <BaixasSelecao registros={filtered.filter(l=>l.valor<0).map(l=>({tipo:'LancamentoBancario',id:l.id,descricao:l.descricao}))} onSaved={loadData} abaInicial="conciliar">
       <ResponsiveListView
         items={filtered}
@@ -443,6 +449,8 @@ export default function ExtratoBancario() {
         }
       />
       </BaixasSelecao>
+      </div>
+      </div>
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
