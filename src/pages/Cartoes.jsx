@@ -278,6 +278,8 @@ export default function Cartoes() {
         <button type="button" className="text-left" onClick={() => setDetalheTotal('ativos')} aria-label="Ver lançamentos dos cartões ativos"><GradientCard title="Cartões Ativos" value={cartoes.filter((c) => c.is_ativo).length} sub={`${cartoes.length} cadastrados · Ver lançamentos`} icon={CreditCard} gradient="blue" /></button>
       </div>
 
+      <p className="mb-5 text-xs text-muted-foreground">Clique nos totais para investigar e comparar lançamentos e documentos. Abra uma fatura no calendário para editar e acessar as ações de pagamento. Documento vinculado identifica a compra ou despesa; não significa que a fatura foi paga.</p>
+
       {detalheTotal && <CartoesTotaisDialog key={`${detalheTotal}-${selectedMonth}-${isAnnual}`} modo={detalheTotal} mes={selectedMonth} anual={isAnnual} fechar={() => setDetalheTotal(null)}/>}
 
       {/* Calendário de Vencimentos — cada tópico com o círculo do dia no topo e o card do cartão logo abaixo */}
