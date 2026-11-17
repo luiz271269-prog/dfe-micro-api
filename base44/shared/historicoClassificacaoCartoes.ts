@@ -4,7 +4,7 @@ export function mesAnteriorCartao(mes) {
   const [ano, numero] = mes.split('-').map(Number);
   return numero === 1 ? `${ano - 1}-12` : `${ano}-${String(numero - 1).padStart(2, '0')}`;
 }
-export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
+export async function analisarHistoricoCartoes(db, meses, role, offset, limit, incluirConferidos = false) {
   const periodos = [...new Set([...meses, ...meses.map(mesAnteriorCartao)])];
   const [faturasPage, cadastroPage] = await Promise.all([
     db.FaturaCartao.filter({ mes_referencia: { $in: periodos } }, { limit: 100, fields: ['mes_referencia','conta_cartao_id'] }),
@@ -14,7 +14,7 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
   const faturas = faturasPage.items, cadastro = cadastroPage.items;
   const permitidos = resolverCadastro(cadastro, role);
   const rotulos = Object.fromEntries(['origem','tipo','categoria'].map(eixo => [eixo, Object.fromEntries(cadastro.filter(c => c.eixo === eixo).map(c => [c.chave,c.rotulo]))]));
-  if (!faturas.length) return { rotulos, revisoes: meses.map(mes => ({ mes, mes_anterior: mesAnteriorCartao(mes), faturas: 0, resumo: {}, itens: [], has_more: false })) };
+  if (!faturas.length) return { rotulos, revisoes: meses.map(mes => ({ mes, mes_anterior: mesAnteriorCartao(mes), faturas: 0, resumo: { total_grupos: 0, total_pendentes: 0 }, itens: [], has_more: false, next_offset: 0 })) };
   const query = { fatura_id: { $in: faturas.map(f => f.id) }, valor: { $gt: 0 }, observacao: { $not: { $regex: 'Não faz parte', $options: 'i' } }, estabelecimento: { $not: { $regex: 'pagamento.*fatura|pgto.*fatura|pagto.*fatura|credito.*pagamento', $options: 'i' } } };
   const [eixos, contas, cards] = await Promise.all([
     db.LancamentoCartao.aggregate({ query, groupBy: ['fatura_id','estabelecimento','origem_compra','tipo_compra'], sum: 'valor', limit: 1000 }),
@@ -80,13 +80,17 @@ export async function analisarHistoricoCartoes(db, meses, role, offset, limit) {
           status = row.origem_compra === unico.origem_compra && row.tipo_compra === unico.tipo_compra && cats.length === 1 && cats[0] === unico.categoria ? 'iguais' : 'divergentes';
         } else status = 'historico_inconsistente';
       }
-      const conferido = (conferidosGrupo.get(chaveGrupoCartao(row)) || 0) >= row.count;
-      resumo[conferido && status !== 'iguais' ? 'conferidos' : status] += 1;
-      itens.push({ fatura_id: fat.id, cartao: cardMap.get(fat.conta_cartao_id) || fat.conta_cartao_id, estabelecimento: row.estabelecimento, quantidade: row.count, valor: row.sum_valor, atual: { origem_compra: row.origem_compra || '', tipo_compra: row.tipo_compra || '', categorias: cats }, pendente, status, sugestao, conferido });
+      const pendenteCategoria = cats.some(c => !c || c === 'outro' || (permitidos.categorias.length && !permitidos.categorias.includes(c)));
+      const conferido = !pendente && !pendenteCategoria && (conferidosGrupo.get(chaveGrupoCartao(row)) || 0) >= row.count;
+      resumo[conferido ? 'conferidos' : status] += 1;
+      itens.push({ fatura_id: fat.id, cartao: cardMap.get(fat.conta_cartao_id) || fat.conta_cartao_id, estabelecimento: row.estabelecimento, quantidade: row.count, valor: row.sum_valor, atual: { origem_compra: row.origem_compra || '', tipo_compra: row.tipo_compra || '', categorias: cats }, pendente, pendente_categoria: pendenteCategoria, status, sugestao, conferido });
     }
-    const resolvido = item => item.conferido || item.status === 'iguais';
-    itens.sort((a,b) => Number(b.pendente) - Number(a.pendente) || Number(resolvido(a)) - Number(resolvido(b)) || Number(b.status === 'divergentes') - Number(a.status === 'divergentes') || b.valor - a.valor);
-    return { mes, mes_anterior: anterior, faturas: faturas.filter(f => f.mes_referencia === mes).length, resumo, itens: itens.slice(offset, offset + limit), has_more: itens.length > offset + limit, next_offset: offset + limit };
+    // Igual ao mês anterior não substitui a conferência; categorias pendentes nunca são ocultadas.
+    itens.sort((a,b) => Number(b.pendente || b.pendente_categoria) - Number(a.pendente || a.pendente_categoria) || Number(a.conferido) - Number(b.conferido) || Number(b.status === 'divergentes') - Number(a.status === 'divergentes') || b.valor - a.valor || chaveGrupoCartao(a).localeCompare(chaveGrupoCartao(b)));
+    const pendentes = itens.filter(item => !item.conferido);
+    resumo.total_grupos = itens.length; resumo.total_pendentes = pendentes.length;
+    const visiveis = incluirConferidos ? itens : pendentes;
+    return { mes, mes_anterior: anterior, faturas: faturas.filter(f => f.mes_referencia === mes).length, resumo, itens: visiveis.slice(offset, offset + limit), has_more: visiveis.length > offset + limit, next_offset: offset + limit };
   });
   return { rotulos, revisoes };
 }
