@@ -49,6 +49,7 @@ export default function ExtratoBancario() {
   const [showForm, setShowForm] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [filterTipo, setFilterTipo] = useState('all');
+  const [filterSinal, setFilterSinal] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('data');
   const [sortDir, setSortDir] = useState('desc');
@@ -104,10 +105,16 @@ export default function ExtratoBancario() {
 
   const filtered = useMemo(() => periodoLancamentos.filter(l => {
     if (filterCategoria !== 'all' && l.categoria !== filterCategoria) return false;
-    if (filterTipo !== 'all' && l.tipo_compra !== filterTipo) return false;
+    if (filterTipo !== 'all' && (l.tipo_compra !== filterTipo || CATEGORIAS_MOVIMENTO_FINANCEIRO.includes(l.categoria))) return false;
+    if (filterSinal === 'entrada' && !((l.valor || 0) > 0)) return false;
+    if (filterSinal === 'saida' && !((l.valor || 0) < 0)) return false;
     if (searchTerm && !l.descricao?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
-  }), [periodoLancamentos, filterCategoria, filterTipo, searchTerm]);
+  }), [periodoLancamentos, filterCategoria, filterTipo, filterSinal, searchTerm]);
+
+  function filtrar({ tipo = 'all', categoria = 'all', sinal = 'all' }) {
+    setFilterTipo(tipo); setFilterCategoria(categoria); setFilterSinal(sinal);
+  }
 
   function handleSort(field) {
     if (sortField === field) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -232,7 +239,7 @@ export default function ExtratoBancario() {
     return totals;
   }, [lancamentos]);
 
-  const activeFilterCount = (filterCategoria !== 'all' ? 1 : 0) + (filterTipo !== 'all' ? 1 : 0) + (searchTerm ? 1 : 0);
+  const activeFilterCount = (filterCategoria !== 'all' ? 1 : 0) + (filterTipo !== 'all' ? 1 : 0) + (filterSinal !== 'all' ? 1 : 0) + (searchTerm ? 1 : 0);
   const pendentesQtd = useMemo(() => periodoLancamentos.filter(ePendenteClassificacao).length, [periodoLancamentos]);
 
   return (
@@ -290,9 +297,7 @@ export default function ExtratoBancario() {
 
       {/* Totalizadores padronizados pelos seis tipos de gasto */}
       <ResumoTopoExtrato lancamentos={periodoLancamentos} totaisTipo={totaisTipo}
-        filterTipo={filterTipo} filterCategoria={filterCategoria}
-        onTipo={t => { setFilterCategoria('all'); setFilterTipo(t); }}
-        onCategoria={c => { setFilterTipo('all'); setFilterCategoria(c); }} />
+        filtro={{ tipo: filterTipo, categoria: filterCategoria, sinal: filterSinal }} onFiltrar={filtrar} />
 
       <NaturezaResumo lancamentos={periodoLancamentos} />
 
@@ -334,7 +339,8 @@ export default function ExtratoBancario() {
       {/* Listagem responsiva */}
       <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)] items-start">
       <div className="lg:sticky lg:top-4">
-        <ComparativoDREPanel mes={selectedMonth} isAnnual={isAnnual} totaisTipo={totaisTipo} />
+        <ComparativoDREPanel mes={selectedMonth} isAnnual={isAnnual} totaisTipo={totaisTipo}
+          filterTipo={filterTipo} onTipo={t => filtrar({ tipo: filterTipo === t ? 'all' : t })} />
       </div>
       <div className="min-w-0">
       <BaixasSelecao registros={filtered.filter(l=>l.valor<0).map(l=>({tipo:'LancamentoBancario',id:l.id,descricao:l.descricao}))} onSaved={loadData} abaInicial="conciliar">

@@ -15,7 +15,7 @@ const LINHAS = [
   { rotulo: 'Obras / Reformas', tipos: ['obras'], dre: ['obras'] },
 ];
 
-export default function ComparativoDREPanel({ mes, isAnnual, totaisTipo }) {
+export default function ComparativoDREPanel({ mes, isAnnual, totaisTipo, filterTipo, onTipo }) {
   const modo = isAnnual ? 'ano_civil' : 'mensal';
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['comparativo-dre', mes, modo],
@@ -47,7 +47,8 @@ export default function ComparativoDREPanel({ mes, isAnnual, totaisTipo }) {
             const diff = ext - dre;
             const ok = Math.abs(diff) < 0.01;
             return (
-              <div key={l.rotulo} className="px-3 py-2.5">
+              <button key={l.rotulo} onClick={() => onTipo(l.tipos[0])} title="Filtrar lançamentos deste tipo"
+                className={`block w-full text-left px-3 py-2.5 transition-colors ${filterTipo === l.tipos[0] ? 'bg-primary/10 ring-1 ring-inset ring-primary' : 'hover:bg-muted/40'}`}>
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold">{l.rotulo}</p>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
@@ -59,7 +60,7 @@ export default function ComparativoDREPanel({ mes, isAnnual, totaisTipo }) {
                   <div><p className="text-muted-foreground text-[9px] uppercase">DRE</p>{formatCurrency(dre)}</div>
                   <div className={ok ? 'text-muted-foreground' : 'text-amber-700 font-semibold'}><p className="text-muted-foreground text-[9px] uppercase font-normal">Dif.</p>{formatCurrency(diff)}</div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
