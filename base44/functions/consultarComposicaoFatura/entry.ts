@@ -6,7 +6,13 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req), user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Não autorizado.' }, { status: 401 });
-    const { fatura_id, cursor, limit = 30, sort = 'data_lancamento' } = await req.json();
+    const { acao, lancamento_ids, fatura_id, cursor, limit = 30, sort = 'data_lancamento' } = await req.json();
+    if (acao === 'vinculos_lancamentos') {
+      if (!Array.isArray(lancamento_ids) || !lancamento_ids.length || lancamento_ids.length > 100 || lancamento_ids.some(id => typeof id !== 'string' || !id || id.length > 200)) return Response.json({ error: 'Informe de 1 a 100 lançamentos válidos.' }, { status: 400 });
+      const pagina = await base44.entities.LancamentoCartao.filter({ id: { $in: [...new Set(lancamento_ids)] } }, { limit: 100 });
+      const documentos = await documentosFatura(base44.entities, pagina.items, user.role === 'admin');
+      return Response.json({ success: true, somente_leitura: true, porLancamento: documentos.porLancamento, parcial: documentos.parcial || pagina.has_more });
+    }
     if (![8, 30].includes(limit) || !['data_lancamento', '-data_lancamento', 'estabelecimento', '-estabelecimento', 'valor', '-valor'].includes(sort)) return Response.json({ error: 'Ordenação ou tamanho de página inválido.' }, { status: 400 });
     if (typeof fatura_id !== 'string' || !fatura_id || fatura_id.length > 200 || (cursor && (typeof cursor !== 'string' || cursor.length > 4096))) return Response.json({ error: 'Fatura ou página inválida.' }, { status: 400 });
     const db = base44.entities, fat = await db.FaturaCartao.get(fatura_id);

@@ -1,41 +1,36 @@
 import { useEffect, useMemo } from 'react';
-import identificarCorrespondencia, { prepararCorrespondencias } from '@/components/cartoes/correspondenciasContasPagar';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-
-async function listarTodos(entity, filtro) {
-  const rows = [];
-  for (let skip = 0; ; skip += 500) {
-    const page = await base44.entities[entity].filter(filtro, 'id', 500, skip);
-    rows.push(...page);
-    if (page.length < 500) return rows;
-  }
-}
+import { consultarComposicaoFatura } from '@/functions/consultarComposicaoFatura';
 
 export default function useVinculosLancamentos(lancamentos = []) {
   const client = useQueryClient();
-  // Histórico compartilhado entre as tabelas; sem filtro de mês ou status de pagamento.
+  const ids = useMemo(() => [...new Set(lancamentos.map(l => l.id))].sort(), [lancamentos]);
   const query = useQuery({
-    queryKey: ['vinculos-lancamentos-cartao', 'historico'],
-    enabled: lancamentos.length > 0,
+    queryKey: ['vinculos-lancamentos-cartao', 'confirmados', ids],
+    enabled: ids.length > 0,
     staleTime: 60000,
     queryFn: async () => {
-      const [compras, despesas, obras] = await Promise.all([
-        listarTodos('ItemCompra', {}),
-        listarTodos('DespesaOperacional', {}),
-        listarTodos('ObraReforma', {}),
-      ]);
-      return prepararCorrespondencias({ compras, despesas, obras });
+      const porLancamento = {};
+      let parcial = false;
+      for (let inicio = 0; inicio < ids.length; inicio += 300) {
+        const blocos = [];
+        for (let i = inicio; i < Math.min(inicio + 300, ids.length); i += 100) blocos.push(ids.slice(i, i + 100));
+        const respostas = await Promise.all(blocos.map(async bloco => {
+          const { data } = await consultarComposicaoFatura({ acao: 'vinculos_lancamentos', lancamento_ids: bloco });
+          if (data.error) throw new Error(data.error);
+          return data;
+        }));
+        respostas.forEach(data => { Object.assign(porLancamento, data.porLancamento); parcial ||= !!data.parcial; });
+      }
+      return { porLancamento, parcial };
     },
   });
-  const data = useMemo(() => query.data ? {
-    porLancamento: Object.fromEntries(lancamentos.map(l => [l.id, identificarCorrespondencia(l, query.data)])),
-  } : undefined, [query.data, lancamentos]);
   useEffect(() => {
     const refresh = () => client.invalidateQueries({ queryKey: ['vinculos-lancamentos-cartao'] });
-    const unsub = ['ItemCompra', 'DespesaOperacional', 'ObraReforma'].map(e => base44.entities[e].subscribe(refresh));
+    const unsub = ['ItemCompra', 'DespesaOperacional', 'ObraReforma', 'VinculoCartao'].map(e => base44.entities[e].subscribe(refresh));
     window.addEventListener('neuralfinRefresh', refresh);
     return () => { unsub.forEach(fn => fn()); window.removeEventListener('neuralfinRefresh', refresh); };
   }, [client]);
-  return { ...query, data };
+  return query;
 }

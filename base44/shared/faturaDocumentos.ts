@@ -19,6 +19,10 @@ export async function documentosFatura(db, lancamentos, admin) {
     referencias.forEach(id => porLancamento[id]?.push({
       id: doc.id, entidade: tipo, descricao: doc.descricao_produto || doc.descricao || doc.fornecedor || 'Documento',
       numero: doc.numero_nota || '', data: doc.data_emissao || doc.data, natureza: doc.tipo_compra || '',
+      fornecedor: doc.fornecedor || doc.responsavel || '', vencimento: doc.data_vencimento || '',
+      valor_documento: Number(tipo === 'ItemCompra' ? doc.valor_total || 0 : doc.valor || 0),
+      status_documento: doc.status_pagamento || doc.status || '',
+      valor_alocado: vinculados.filter(v => v.lancamento_cartao_id === id).reduce((s, v) => s + Number(v.valor_alocado || 0), 0),
       tipo: tipo, origem_compra: doc.origem_compra || '', tipo_compra: doc.tipo_compra || '', categoria: doc.categoria || '', recorrente: !!doc.recorrente, regra_recorrente_id: doc.regra_recorrente_id || '',
       vinculo: vinculados.some(v => v.lancamento_cartao_id === id) ? 'VinculoCartao confirmado' : 'Referência direta legada',
     }));
