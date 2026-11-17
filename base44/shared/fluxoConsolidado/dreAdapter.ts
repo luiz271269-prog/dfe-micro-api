@@ -1,5 +1,25 @@
 import { calcularConsolidado } from './motor.ts';
 import { arred } from './evidencia.ts';
+import { normalizarCaixa } from './normalizarCaixa.ts';
+
+// Linha da DRE Caixa em que cada lançamento bancário cai — mesma regra do motor (vínculo > tipo > categoria).
+const SUB_PAGAMENTO = { das: 'das', tributos: 'outros_tributos', compras: 'cmv', cartao: 'cmv', folha: 'folha', despesas: 'despesas' };
+function linhaCaixa(l) {
+  if (l.classe === 'recebimento') return 'receita_bruta';
+  if (l.classe === 'pagamento_operacional') return SUB_PAGAMENTO[l.sub] || 'fora';
+  if (l.classe === 'retirada' && l.sub === 'pro_labore') return 'prolabore';
+  if (l.classe === 'investimento') return 'obras';
+  return 'fora';
+}
+
+export function mapearExtratoDRE({ dados, mesInicio, mesFim, hoje }) {
+  const mapa = {};
+  for (const l of normalizarCaixa(dados, 'grupo', hoje)) {
+    const mes = (l.data || '').slice(0, 7);
+    if (mes >= mesInicio && mes <= mesFim) mapa[l.id] = [linhaCaixa(l), `${l.classe}/${l.sub}`];
+  }
+  return mapa;
+}
 
 const CAMPOS = ['receita_bruta', 'das', 'cmv', 'folha', 'prolabore', 'despesas', 'obras', 'outros_tributos'];
 const mesesEntre = (inicio, fim) => { const out = []; let [y, m] = inicio.split('-').map(Number); while (`${y}-${String(m).padStart(2, '0')}` <= fim) { out.push(`${y}-${String(m).padStart(2, '0')}`); if (++m > 12) { m = 1; y++; } } return out; };

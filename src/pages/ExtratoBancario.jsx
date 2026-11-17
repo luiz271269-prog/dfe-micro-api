@@ -33,6 +33,8 @@ import SaneamentoDialog from '@/components/extrato/SaneamentoDialog';
 import { ePendenteClassificacao } from '@/lib/saneamentoExtrato';
 import ComparativoDREPanel from '@/components/extrato/ComparativoDREPanel';
 import ResumoTopoExtrato from '@/components/extrato/ResumoTopoExtrato';
+import LinhaDREChip from '@/components/extrato/LinhaDREChip';
+import { useDREExtrato, linhaDREDe } from '@/components/extrato/linhasDRE';
 
 const TIPOS_TOTALIZADORES = [
   ['estoque', 'Compras (estoque/revenda)'],
@@ -49,6 +51,7 @@ export default function ExtratoBancario() {
   const [showForm, setShowForm] = useState(false);
   const [filterCategoria, setFilterCategoria] = useState('all');
   const [filterTipo, setFilterTipo] = useState('all');
+  const [filterDRE, setFilterDRE] = useState('all');
   const [filterSinal, setFilterSinal] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState('data');
@@ -97,6 +100,8 @@ export default function ExtratoBancario() {
     return () => { window.removeEventListener('neuralfinRefresh', handler); };
   }, [selectedMonth, isAnnual]);
 
+  const mapaDRE = useDREExtrato(selectedMonth, isAnnual).data?.mapa_extrato;
+
   const periodoLancamentos = useMemo(() => lancamentos.filter(l => {
     if (l.status_conciliacao === 'ignorar') return false;
     const periodo = l.mes_referencia || l.data?.slice(0, 7);
@@ -108,12 +113,13 @@ export default function ExtratoBancario() {
     if (filterTipo !== 'all' && (l.tipo_compra !== filterTipo || CATEGORIAS_MOVIMENTO_FINANCEIRO.includes(l.categoria))) return false;
     if (filterSinal === 'entrada' && !((l.valor || 0) > 0)) return false;
     if (filterSinal === 'saida' && !((l.valor || 0) < 0)) return false;
+    if (filterDRE !== 'all' && linhaDREDe(mapaDRE, l.id) !== filterDRE) return false;
     if (searchTerm && !l.descricao?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     return true;
-  }), [periodoLancamentos, filterCategoria, filterTipo, filterSinal, searchTerm]);
+  }), [periodoLancamentos, filterCategoria, filterTipo, filterSinal, filterDRE, mapaDRE, searchTerm]);
 
-  function filtrar({ tipo = 'all', categoria = 'all', sinal = 'all' }) {
-    setFilterTipo(tipo); setFilterCategoria(categoria); setFilterSinal(sinal);
+  function filtrar({ tipo = 'all', categoria = 'all', sinal = 'all', dre = 'all' }) {
+    setFilterTipo(tipo); setFilterCategoria(categoria); setFilterSinal(sinal); setFilterDRE(dre);
   }
 
   function handleSort(field) {
@@ -339,8 +345,8 @@ export default function ExtratoBancario() {
       {/* Listagem responsiva */}
       <div className="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] items-start">
       <div className="lg:sticky lg:top-4">
-        <ComparativoDREPanel mes={selectedMonth} isAnnual={isAnnual} totaisTipo={totaisTipo}
-          filterTipo={filterTipo} onTipo={t => filtrar({ tipo: filterTipo === t ? 'all' : t })} />
+        <ComparativoDREPanel mes={selectedMonth} isAnnual={isAnnual} lancamentos={periodoLancamentos}
+          filtroDRE={filterDRE} onLinha={d => filtrar({ dre: filterDRE === d ? 'all' : d })} />
       </div>
       <div className="min-w-0">
       <BaixasSelecao registros={filtered.filter(l=>l.valor<0).map(l=>({tipo:'LancamentoBancario',id:l.id,descricao:l.descricao}))} onSaved={loadData} abaInicial="conciliar">
@@ -417,6 +423,7 @@ export default function ExtratoBancario() {
                     </td>
                     <td className="px-3 py-2">
                       <SeletorClassificacao eixo="tipo" entityName="LancamentoBancario" record={l} field="tipo_compra" />
+                      <div><LinhaDREChip mapa={mapaDRE} id={l.id} /></div>
                     </td>
                     <td className={`px-3 py-2 text-right font-semibold tabular-nums ${(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(l.valor)}

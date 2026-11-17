@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { carregarDados } from '../../shared/fluxoConsolidado/carregar.ts';
-import { adaptarDRE } from '../../shared/fluxoConsolidado/dreAdapter.ts';
+import { adaptarDRE, mapearExtratoDRE } from '../../shared/fluxoConsolidado/dreAdapter.ts';
 import { consultarPedidosCentral } from '../../shared/centralComprasConsulta.ts';
 import { comprasProdutosDRE } from '../../shared/comprasProdutosDRE.ts';
 
@@ -22,8 +22,9 @@ export default async function(req) {
     if (sourceStatus.ItemCompra.status !== 'carregada') return Response.json({ error: 'CMV indisponível: a leitura das compras locais não foi concluída.' }, { status: 503 });
     const comprasProdutos = comprasProdutosDRE(dados.ItemCompra, central.data);
     const dre = adaptarDRE({ dados, sourceStatus, mesInicio, mesFim, hoje, comprasProdutos });
+    const mapaExtrato = body.incluir_mapa_extrato ? mapearExtratoDRE({ dados, mesInicio, mesFim, hoje }) : undefined;
     const temDados = dre.competencia.receita_bruta !== 0 || dre.competencia.total_despesas_operacionais !== 0 || dre.competencia.cmv !== 0 || dre.caixa.receita_bruta !== 0 || dre.caixa.total_despesas_operacionais !== 0;
-    return Response.json({ mes_referencia: mesSelecionado, mes_inicio: mesInicio, mes_fim: mesFim, meses, modo_periodo: modoPeriodo, regime: 'simples_nacional', escopo: 'grupo_consolidado', tem_dados: temDados, origem_cmv: 'compras_produtos_consolidadas', cmv_provisorio: true, cobertura: { vinculados: dados.VinculoExtrato.length, fallbacks: 0, sem_comprovacao: dre.loopR?.indicadores?.naoClassificadoRegistros || 0, cartoes_sem_classificacao: 0, sem_empresa: dre.loopR?.indicadores?.pendenteEmpresa?.registros || 0 }, ...dre });
+    return Response.json({ mes_referencia: mesSelecionado, mes_inicio: mesInicio, mes_fim: mesFim, meses, modo_periodo: modoPeriodo, regime: 'simples_nacional', escopo: 'grupo_consolidado', tem_dados: temDados, origem_cmv: 'compras_produtos_consolidadas', cmv_provisorio: true, cobertura: { vinculados: dados.VinculoExtrato.length, fallbacks: 0, sem_comprovacao: dre.loopR?.indicadores?.naoClassificadoRegistros || 0, cartoes_sem_classificacao: 0, sem_empresa: dre.loopR?.indicadores?.pendenteEmpresa?.registros || 0 }, ...dre, mapa_extrato: mapaExtrato });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
