@@ -14,6 +14,7 @@ export default function ResumoTopoExtrato({ lancamentos, totaisTipo, filtro, onF
     { titulo: '6. Investimentos', valor: totaisTipo.obras || 0, ativo: filtro.tipo === 'obras', onClick: () => onFiltrar({ tipo: filtro.tipo === 'obras' ? 'all' : 'obras' }) },
     { titulo: '8.02 Aplicações (fora da receita)', valor: totaisTipo.__aplicacoes || 0, ativo: filtro.categoria === 'aplicacoes', onClick: () => onFiltrar({ categoria: filtro.categoria === 'aplicacoes' ? 'all' : 'aplicacoes' }) },
     { titulo: '8.03 Resgates (fora da receita)', valor: totaisTipo.__resgates || 0, ativo: filtro.categoria === 'resgates', onClick: () => onFiltrar({ categoria: filtro.categoria === 'resgates' ? 'all' : 'resgates' }) },
+    { titulo: '8.05 Saques em dinheiro', valor: lancamentos.reduce((s, l) => s + (l.categoria === 'saque_caixa' ? l.valor || 0 : 0), 0), ativo: filtro.categoria === 'saque_caixa', onClick: () => onFiltrar({ categoria: filtro.categoria === 'saque_caixa' ? 'all' : 'saque_caixa' }) },
   ];
 
   return (
