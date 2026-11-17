@@ -375,9 +375,9 @@ export default function ExtratoBancario() {
           )
         }
         desktop={
-          <table className="w-full text-sm">
+          <table className="w-full text-[11px] tabular-nums">
             <thead>
-              <tr className="border-b bg-gradient-to-r from-muted/60 to-muted/30">
+              <tr className="border-b bg-muted/40 text-[10px] uppercase">
                 {[
                   ['data', 'Data', 'left'],
                   ['descricao', 'Descrição', 'left'],
@@ -387,12 +387,12 @@ export default function ExtratoBancario() {
                   ['valor', 'Valor', 'right'],
                   ['saldo_apos', 'Saldo', 'right'],
                 ].map(([field, label, align]) => (
-                  <SortableTh key={field} field={field} align={align} className="py-3"
+                  <SortableTh key={field} field={field} align={align} className="py-2 px-3 font-bold"
                     sortField={sortField} sortDir={sortDir} onSort={handleSort}>
                     {label}
                   </SortableTh>
                 ))}
-                <th className="text-left px-4 py-3 font-semibold text-muted-foreground">Comprovante</th>
+                <th className="text-left px-3 py-2 font-semibold text-muted-foreground">Comprovante</th>
               </tr>
             </thead>
             <tbody>
@@ -403,26 +403,26 @@ export default function ExtratoBancario() {
               ) : (
                 sorted.map(l => (
                   <tr key={l.id} className="border-b hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(l.data)}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{l.descricao}</p>
-                      {l.detalhe && <p className="text-xs text-muted-foreground">{l.detalhe}</p>}
+                    <td className="px-3 py-2 whitespace-nowrap">{formatDate(l.data)}</td>
+                    <td className="px-3 py-2">
+                      <p className="font-semibold">{l.descricao}</p>
+                      {l.detalhe && <p className="text-[10px] text-muted-foreground">{l.detalhe}</p>}
                       <NaturezaMovimentoBadge lancamento={l} rotuloCategoria={opcoesCategoria} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <SeletorClassificacao eixo="categoria" entityName="LancamentoBancario" record={l} field="categoria" onChange={(id, f, v) => handleCategoriaChange(id, v)} />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <SeletorClassificacao eixo="origem" entityName="LancamentoBancario" record={l} field="origem_compra" />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <SeletorClassificacao eixo="tipo" entityName="LancamentoBancario" record={l} field="tipo_compra" />
                     </td>
-                    <td className={`px-4 py-3 text-right font-semibold tabular-nums ${(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <td className={`px-3 py-2 text-right font-semibold tabular-nums ${(l.valor || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {formatCurrency(l.valor)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{l.saldo_apos != null ? formatCurrency(l.saldo_apos) : '—'}</td>
-                    <td className="px-4 py-3"><div className="space-y-2"><ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} />{l.valor<0&&<BaixaAcaoRegistro entidade="LancamentoBancario" registroId={l.id} descricao={l.descricao} abaInicial="conciliar">Analisar / conciliar</BaixaAcaoRegistro>}</div></td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{l.saldo_apos != null ? formatCurrency(l.saldo_apos) : '—'}</td>
+                    <td className="px-3 py-2"><div className="space-y-2"><ComprovantePicker entityName="LancamentoBancario" record={l} onChange={loadData} />{l.valor<0&&<BaixaAcaoRegistro entidade="LancamentoBancario" registroId={l.id} descricao={l.descricao} abaInicial="conciliar">Analisar / conciliar</BaixaAcaoRegistro>}</div></td>
                   </tr>
                 ))
               )}
@@ -430,8 +430,8 @@ export default function ExtratoBancario() {
             {filtered.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30">
-                  <td colSpan={5} className="px-4 py-3 font-semibold">Total ({filtered.length} lançamentos)</td>
-                  <td className={`px-4 py-3 text-right font-bold ${totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totalGeral)}</td>
+                  <td colSpan={5} className="px-3 py-2 font-semibold">Total ({filtered.length} lançamentos)</td>
+                  <td className={`px-3 py-2 text-right font-bold ${totalGeral >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(totalGeral)}</td>
                   <td colSpan={2}></td>
                 </tr>
               </tfoot>
