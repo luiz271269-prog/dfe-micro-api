@@ -3,7 +3,7 @@
     "document": {
       "dsl": "1.0.0",
       "name": "gerar_folha_proximo_mes",
-      "version": "1.0",
+      "version": "1.1",
       "namespace": "base44"
     },
     "do": [
@@ -14,16 +14,30 @@
             "function_name": "gerarFolhasPendentes",
             "args": {}
           },
-          "then": "end",
+          "then": "gerar_contas_mes",
           "x-base44": {
             "title": "Gerar folhas pendentes",
             "description": "Clona a \u00faltima folha at\u00e9 o m\u00eas seguinte"
           }
         }
+      },
+      {
+        "gerar_contas_mes": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "gerarContasMensais",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Gerar despesas fixas e previs\u00e3o de DAS",
+            "description": "Contas a pagar do m\u00eas, sem baixas"
+          }
+        }
       }
     ]
   },
-  "description": "Todo dia 1\u00ba \u00e0s 06h (Bras\u00edlia) pr\u00e9-gera a folha de pagamento do m\u00eas seguinte para cada funcion\u00e1rio ativo, clonando a \u00faltima folha (comiss\u00e3o e horas extras zeradas, status pendente). Idempotente \u2014 nunca duplica compet\u00eancia j\u00e1 existente.",
+  "description": "Todo dia 1\u00ba \u00e0s 06h (Bras\u00edlia) pr\u00e9-gera a folha de pagamento do m\u00eas seguinte e, em seguida, as despesas fixas do m\u00eas e a previs\u00e3o de DAS pelo faturamento do m\u00eas anterior. FGTS e INSS ficam com a folha. Idempotente: nunca duplica compet\u00eancia ou ocorr\u00eancia j\u00e1 existente.",
   "trigger": {
     "condition": null,
     "config": {

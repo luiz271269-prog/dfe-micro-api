@@ -24,6 +24,8 @@ import ObrigacoesMensais from '@/components/tributos/ObrigacoesMensais';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
 import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 import BaixaManualButton from '@/components/shared/BaixaManualButton';
+import GerarContasMesButton from '@/components/shared/GerarContasMesButton';
+import ConfirmarPrevisaoTributo from '@/components/tributos/ConfirmarPrevisaoTributo';
 import { competenciaAnterior, empresaDaConta, saldoGuia } from '@/components/tributos/tributoFluxo';
 
 const TIPOS = ['DAS', 'ICMS', 'ISS', 'PIS', 'COFINS', 'IRPJ', 'CSLL', 'INSS', 'FGTS', 'GPS', 'DARF', 'IPTU', 'ALVARA', 'TAXA_BOMBEIRO', 'OUTRO'];
@@ -172,6 +174,7 @@ export default function Tributos() {
           monthTotals={monthTotals}
         />
         <BaixaManualButton registros={filtrados.map(t=>({tipo:t._lancamento?'LancamentoBancario':'Tributo',id:t._lancamento?.id||t.id,descricao:t.descricao||t.tipo}))} onSaved={loadData}>Baixar / conciliar</BaixaManualButton>
+        <GerarContasMesButton onDone={loadData} />
         <Button onClick={() => setShowForm(true)} className="gap-2"><Plus className="w-4 h-4" /> Novo Tributo</Button>
       </PageHeader>
 
@@ -286,7 +289,7 @@ export default function Tributos() {
                   <td className="px-4 py-3"><SeletorClassificacao eixo="origem" entityName={t._lancamento ? 'LancamentoBancario' : 'Tributo'} record={t._lancamento || t} field="origem_compra" onChange={loadData} /></td>
                   <td className="px-4 py-3"><SeletorClassificacao eixo="tipo" entityName={t._lancamento ? 'LancamentoBancario' : 'Tributo'} record={t._lancamento || t} field="tipo_compra" onChange={loadData} /></td>
                   <td className="px-4 py-3 text-right font-bold">{formatCurrency(t.valor_original)}</td>
-                  <td className="px-4 py-3"><div className="space-y-2"><StatusBadge status={t.status} /><BaixaAcaoRegistro entidade={t._lancamento?'LancamentoBancario':'Tributo'} registroId={t._lancamento?.id||t.id} descricao={t.descricao||t.tipo} /></div></td>
+                  <td className="px-4 py-3"><div className="space-y-2"><StatusBadge status={t.status} /><ConfirmarPrevisaoTributo tributo={t} onSaved={loadData} /><BaixaAcaoRegistro entidade={t._lancamento?'LancamentoBancario':'Tributo'} registroId={t._lancamento?.id||t.id} descricao={t.descricao||t.tipo} /></div></td>
                   </tr>
                 ))
               )}

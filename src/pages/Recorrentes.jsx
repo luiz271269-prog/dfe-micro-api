@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Sparkles } from 'lucide-react';
 import PageHeader from '../components/shared/PageHeader';
+import GerarContasMesButton from '@/components/shared/GerarContasMesButton';
 
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { aprenderPadroes } from '@/lib/recurringEngine';
@@ -157,6 +158,7 @@ export default function Recorrentes() {
         <Button disabled={!admin} variant="outline" onClick={() => setExtratoOpen(true)}>Criar pelo extrato</Button>
         <BaixasFixasAcesso inicio={inicio} fim={fim} onSaved={load} onRevisar={admin ? revisarRegra : undefined} />
         <Button disabled={!admin} variant="outline" onClick={() => revisarRegra()}>Conciliar período</Button>
+        <GerarContasMesButton disabled={!admin} onDone={load} />
         <Button disabled={!admin} variant="outline" onClick={abrirNovo} className="gap-2"><Plus className="w-4 h-4" /> Nova despesa fixa</Button>
       </PageHeader>
       <p className="text-xs text-muted-foreground mb-2">Valores mensais = previsões das despesas fixas ativas; não representam pagamentos realizados.</p>

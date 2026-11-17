@@ -99,6 +99,19 @@
       "title": "Alerta de Valor Elevado",
       "default": false
     },
+    "previsao": {
+      "type": "boolean",
+      "default": false,
+      "title": "Previs\u00e3o gerada pelo faturamento (valor ainda n\u00e3o confirmado pela guia)"
+    },
+    "previsao_base": {
+      "type": "number",
+      "title": "Faturamento usado na previs\u00e3o (R$)"
+    },
+    "previsao_aliquota": {
+      "type": "number",
+      "title": "Al\u00edquota efetiva usada na previs\u00e3o (%)"
+    },
     "lancamento_bancario_id": {
       "type": "string",
       "title": "ID do LancamentoBancario que confirmou o pagamento (FK direto)"

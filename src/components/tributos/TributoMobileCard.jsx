@@ -1,4 +1,5 @@
 import StatusBadge from '@/components/shared/StatusBadge';
+import ConfirmarPrevisaoTributo from '@/components/tributos/ConfirmarPrevisaoTributo';
 import GrupoContaBadge from '@/components/shared/GrupoContaBadge';
 import { grupoTributo } from '@/lib/gruposContasPagar';
 import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
@@ -19,7 +20,7 @@ export default function TributoMobileCard({ tributo, onRefresh }) {
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{tributo.descricao || 'Sem descrição'}</p>
         </div>
-        <StatusBadge status={tributo.status} />
+        <div className="flex flex-col items-end gap-1"><StatusBadge status={tributo.status} /><ConfirmarPrevisaoTributo tributo={tributo} onSaved={onRefresh} /></div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
         <span><b>Competência</b><br />{tributo.competencia || '—'}</span>

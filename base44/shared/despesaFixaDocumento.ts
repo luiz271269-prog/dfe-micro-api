@@ -13,6 +13,8 @@ export async function obterDocumentoFixa(db,r,l,canal,match) {
   const d=rows[0];
   if(d){
     if(d.regra_recorrente_id&&d.regra_recorrente_id!==r.id)throw new Error('Despesa já associada a outra regra.');
+    // Despesa gerada no início do mês com o valor esperado: ajusta ao valor real (dentro da tolerância já validada) antes do vínculo.
+    if(d.regra_recorrente_id===r.id&&d.status==='pendente'&&!Number(d.valor_pago)&&!d.lancamento_bancario_id&&!d.lancamento_cartao_id&&Math.abs(d.valor-match.valor)>0.01)return await db.DespesaOperacional.update(d.id,{valor:match.valor});
     if(d.empresa!==r.empresa||Math.abs(d.valor-match.valor)>0.01||d.tipo_compra&&d.tipo_compra!=='despesas'||d.origem_compra&&d.origem_compra!==r.origem_compra)throw new Error('Documento existente com valor, empresa ou classificação divergente.');
     if(d.lancamento_cartao_id&&d.lancamento_cartao_id!==l.id||d.lancamento_bancario_id&&d.lancamento_bancario_id!==l.id)throw new Error('Despesa já vinculada a outro lançamento.');
     return d;
