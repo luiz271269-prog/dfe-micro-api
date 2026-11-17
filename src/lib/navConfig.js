@@ -66,6 +66,7 @@ export const navGroups = [
   {
     label: 'Conciliação & Diagnóstico',
     items: [
+      { path: '/revisao', label: 'Revisão Global', icon: ShieldCheck },
       { path: '/conciliacao', label: 'Conciliação Mensal', icon: Scale },
       { path: '/conciliacao360', label: 'Conciliação 360°', icon: Target },
       { path: '/diagnostico-conciliacao', label: 'Diagnóstico de Fluxos', icon: Activity },

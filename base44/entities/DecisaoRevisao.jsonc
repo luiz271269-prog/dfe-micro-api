@@ -1,0 +1,93 @@
+{
+  "name": "DecisaoRevisao",
+  "type": "object",
+  "description": "Decis\u00f5es tomadas na Revis\u00e3o Global: procedimento escolhido pelo usu\u00e1rio, evid\u00eancia e estado antes/depois, para auditoria.",
+  "properties": {
+    "chave": {
+      "type": "string",
+      "title": "Chave do item (detector:registro)"
+    },
+    "detector": {
+      "type": "string"
+    },
+    "modulo": {
+      "type": "string"
+    },
+    "entidade_tipo": {
+      "type": "string"
+    },
+    "entidade_id": {
+      "type": "string"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "adiada",
+        "aplicada",
+        "registrada"
+      ],
+      "enumColors": [
+        "yellow",
+        "green",
+        "blue"
+      ]
+    },
+    "procedimento_id": {
+      "type": "string"
+    },
+    "procedimento_rotulo": {
+      "type": "string"
+    },
+    "alternativa": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "item_json": {
+      "type": "string",
+      "maxLength": 8000,
+      "title": "Item e evid\u00eancia no momento da decis\u00e3o"
+    },
+    "antes_json": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "depois_json": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "decidido_por": {
+      "type": "string"
+    },
+    "decidido_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "chave",
+    "detector",
+    "estado"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
