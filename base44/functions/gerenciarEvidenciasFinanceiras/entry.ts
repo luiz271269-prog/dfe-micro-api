@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { TIPOS, normalizarEvidencia, candidatosEvidencia, norm, nomeCompativel } from '../../shared/evidenciaFinanceira.ts';
-import { painelRecebimentos, opcoesManuais } from '../../shared/conciliacaoRecebimentos.ts';
+import { painelRecebimentos, opcoesManuais, titulosAbertos } from '../../shared/conciliacaoRecebimentos.ts';
 import { direcaoBanco, recalcularRecebivel } from '../../shared/direcaoFinanceira.ts';
 export default async function(req) {
   try {
@@ -17,6 +17,7 @@ export default async function(req) {
       return Response.json({ success: true, saved: resultado.created + resultado.updated, created: resultado.created, updated: resultado.updated });
     }
     if (body.acao === 'painel') return Response.json({ success: true, ...(await painelRecebimentos(db, String(body.arquivo_hash || '').slice(0, 100))) });
+    if (body.acao === 'titulos_abertos') return Response.json({ success: true, titulos: await titulosAbertos(db, body.termo) });
     if (!body.evidencia_id) return Response.json({ error: 'Selecione a evidência.' }, { status: 400 });
     const ev = await db.EvidenciaFinanceira.get(body.evidencia_id);
     if (!ev) return Response.json({ error: 'Evidência não encontrada.' }, { status: 404 });

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { gerenciarEvidenciasFinanceiras } from '@/functions/gerenciarEvidenciasFinanceiras';
+import { vincularExtrato } from '@/functions/vincularExtrato';
 
 // Fonte única da conciliação de recebimentos (boleto liquidado × parcela × crédito do extrato)
 export default function useConciliacaoRecebimentos(arquivoHash) {
@@ -25,5 +26,11 @@ export default function useConciliacaoRecebimentos(arquivoHash) {
     acao: 'confirmar', evidencia_id: linha.id, entidade_id: tituloId, lancamento_bancario_id: creditoId, manual: !!motivo,
     motivo: motivo || `Conciliação de recebimentos: boleto liquidado em ${linha.data}, parcela e crédito bancário conferidos pelo usuário.`,
   });
-  return { query, atualizar, confirmar };
+  // PIX direto na conta (sem boleto liquidado): baixa a parcela contra o próprio crédito PIX.
+  const receberPix = (pix, titulo, motivo) => vincularExtrato({
+    acao: 'criar', entidade_tipo: 'TituloCobranca', entidade_id: titulo.id, lancamento_bancario_id: pix.id,
+    valor_alocado: Math.min(pix.disponivel, titulo.saldo), tipo_vinculo: 'recebimento_parcial',
+    observacao: motivo || `PIX recebido em ${pix.data} sem boleto liquidado: parcela conferida pelo usuário.`,
+  });
+  return { query, atualizar, confirmar, receberPix };
 }
