@@ -17,7 +17,7 @@ import { deduplicarImportacoes } from '@/functions/deduplicarImportacoes';
 
 import { deduplicateRecords } from '@/lib/deduplicationEngine';
 import useContratoImportacao from '@/hooks/useContratoImportacao';
-import salvarImportacao from '@/components/importar/salvarImportacao';
+import salvarImportacao, { chamarImportacao } from '@/components/importar/salvarImportacao';
 import ResumoImportacao from '@/components/importar/ResumoImportacao';
 import { Button } from '@/components/ui/button';
 import PageHeader from '../components/shared/PageHeader';
@@ -170,25 +170,33 @@ export default function ImportarDocumento() {
   async function handleFileSelect(f, batch = null) {
     if (!f || processing || saving) return;
     setFile(f);setReleitura(batch);setFileUrl(null);setFileUri(null);setRecords([]);setRawText(null);setStep(1);setSelectedType(null);setSelectedCartaoId('');
+    // Guarda o original no histórico assim que é anexado, mesmo que a importação não seja concluída.
+    const guardar = (uri, ident) => !batch && uri && sha256OfFile(f)
+      .then(hash => chamarImportacao({ acao: 'anexar', file_uri: uri, file_hash: hash, file_name: f.name, identificacao: ident }))
+      .then(r => { if (!r.ja_guardado) setMemoriaRefresh(v => v + 1); })
+      .catch(e => showToast(`O arquivo não foi guardado no histórico: ${e.response?.data?.error || e.message}`, 'error'));
     try {
       const resultado = await identificar(f);
       if (!resultado) return;
+      guardar(resultado.uri, resultado.identificacao);
       setFileUri(resultado.uri);setFileUrl(resultado.url);setStep(2);
       if (resultado.identificacao.seguro && DOC_TYPES.some(t => t.id === resultado.identificacao.tipo)) setSelectedType(resultado.identificacao.tipo);
       if (batch) { const meta = batch.notes?.startsWith('{') ? JSON.parse(batch.notes) : {}; const c = contasCartao.find(x => x.nome === meta.nome_cartao); if (c) setSelectedCartaoId(c.id); }
-    } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); }
+    } catch (e) { showToast(e.response?.data?.error || e.message, 'error'); guardar(e.file_uri); }
   }
 
-  async function relerArquivo(batch, original) {
+  async function relerArquivo(lote, original) {
+    // Arquivo apenas guardado ainda não tem dados: segue como importação nova, não como correção.
+    const batch = lote.status === 'anexado' ? null : lote;
     try {
       if (original) return await handleFileSelect(original, batch);
-      const a = arquivoDoLote(batch);
+      const a = arquivoDoLote(lote);
       const url = a.uri ? (await base44.integrations.Core.CreateFileSignedUrl({ file_uri: a.uri })).signed_url : a.url;
       if (!url) throw new Error('Original não armazenado. Anexe o arquivo original para reler.');
       const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
       if (!res.ok) throw new Error('Original indisponível. Reanexe o arquivo para reler.');
       const blob = await res.blob();
-      await handleFileSelect(new File([blob], batch.file_name || 'original.pdf', { type: blob.type }), batch);
+      await handleFileSelect(new File([blob], lote.file_name || 'original.pdf', { type: blob.type }), batch);
     } catch (e) { showToast(e.message, 'error'); }
   }
 

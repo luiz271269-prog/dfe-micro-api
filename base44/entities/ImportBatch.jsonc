@@ -62,11 +62,19 @@
     "status": {
       "type": "string",
       "enum": [
+        "anexado",
         "processing",
         "completed",
         "failed"
       ],
-      "default": "processing"
+      "enumColors": [
+        "gray",
+        "blue",
+        "green",
+        "red"
+      ],
+      "default": "processing",
+      "title": "anexado = arquivo guardado ao anexar, ainda sem importa\u00e7\u00e3o"
     },
     "notes": {
       "type": "string",

@@ -12,11 +12,24 @@ export default async function(req) {
     if(b.acao==='contrato')return Response.json({matriz:MATRIZ_IMPORTACAO});
     if(user.role!=='admin')return Response.json({error:'Importações e confirmações restritas a administrador.'},{status:403});
     if(b.validate_only){if(b.verificar_protecao)return Response.json(await validarProtecaoImportacao());const m=contratoImportacao(b.tipo||'folha_pagamento');return Response.json({success:true,contrato:m,sanitizado:b.exemplo?sanitizarImportacao(m.entity,b.exemplo):null,informado:b.exemplo?informacaoPagamento(b.exemplo,m):null});}
+    const arquivoValido=typeof b.file_uri==='string'&&!!b.file_uri&&b.file_uri.length<=1500&&typeof b.file_hash==='string'&&/^[a-f0-9]{64}$/.test(b.file_hash);
+    // Guarda o original assim que é anexado, antes de qualquer extração, para importar ou reler depois.
+    if(b.acao==='anexar'){
+      if(!arquivoValido||/^https?:/i.test(b.file_uri))return Response.json({error:'Arquivo original e hash são obrigatórios.'},{status:400});
+      const existente=(await db.ImportBatch.filter({file_hash:b.file_hash,file_uri:{$exists:true}},{limit:1,sort:'-created_date'})).items[0];
+      if(existente?.file_uri)return Response.json({success:true,batch:existente,ja_guardado:true});
+      const i=b.identificacao||{},tipo=MATRIZ_IMPORTACAO.some(m=>m.tipo===i.tipo)?i.tipo:'nao_identificado',nome=String(b.file_name||'arquivo').slice(0,200);
+      const batch=await db.ImportBatch.create({title:`Arquivo anexado · ${nome}`,batch_type:tipo,file_name:nome,file_hash:b.file_hash,file_uri:b.file_uri,status:'anexado',notes:JSON.stringify({anexo:true}),...(b.identificacao?{identificacao:{tipo:String(i.tipo||'').slice(0,60),seguro:i.seguro===true,motivo:String(i.motivo||'').slice(0,500),evidencia:String(i.evidencia||'').slice(0,500)}}:{})});
+      return Response.json({success:true,batch});
+    }
     if(b.acao==='iniciar'){
       const m=contratoImportacao(b.tipo);
       if(!b.identificacao||(!b.identificacao.seguro&&!b.confirmacao_manual)||b.identificacao.tipo!==b.tipo&&!b.confirmacao_manual)throw new Error('Identifique o arquivo e confirme o tipo antes de persistir.');
       if(typeof b.file_uri!=='string'||!b.file_uri||typeof b.file_hash!=='string'||!/^[a-f0-9]{64}$/.test(b.file_hash))throw new Error('Arquivo original e hash são obrigatórios.');
-      const batch=await db.ImportBatch.create({title:`${m.label} · ${String(b.file_name||'arquivo').slice(0,200)}`,batch_type:m.tipo,file_name:String(b.file_name||'').slice(0,200),file_hash:b.file_hash,file_uri:b.file_uri,identificacao:b.identificacao,status:'processing',total_records:Math.max(0,Math.min(10000,Number(b.total_lidos)||0)),notes:JSON.stringify({contrato_versao:1,papel:m.papel,conciliacao:m.conciliacao,ignorados_selecao:Math.max(0,Math.min(10000,Number(b.ignorados_selecao)||0))})});
+      const dados={title:`${m.label} · ${String(b.file_name||'arquivo').slice(0,200)}`,batch_type:m.tipo,file_name:String(b.file_name||'').slice(0,200),file_hash:b.file_hash,file_uri:b.file_uri,identificacao:b.identificacao,status:'processing',total_records:Math.max(0,Math.min(10000,Number(b.total_lidos)||0)),notes:JSON.stringify({contrato_versao:1,papel:m.papel,conciliacao:m.conciliacao,ignorados_selecao:Math.max(0,Math.min(10000,Number(b.ignorados_selecao)||0))})};
+      // O arquivo guardado ao anexar vira o próprio lote da importação, sem duplicar o histórico.
+      const guardado=(await db.ImportBatch.filter({file_hash:b.file_hash,status:'anexado'},{limit:1})).items[0];
+      const batch=guardado?{...guardado,...dados,...(await db.ImportBatch.update(guardado.id,dados)),id:guardado.id}:await db.ImportBatch.create(dados);
       return Response.json({success:true,batch});
     }
     if(b.acao==='confirmar')return Response.json(await confirmarPropostaImportacao(base44,user,b));
