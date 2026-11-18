@@ -32,6 +32,7 @@ import { validateExtratoRecords } from '../lib/extratoValidation';
 
 import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
 import EvidenciasFinanceirasPanel from '@/components/financeiro/EvidenciasFinanceirasPanel';
+import ConciliacaoRecebimentos from '@/components/financeiro/ConciliacaoRecebimentos';
 
 const ICONES_IMPORTACAO = { Landmark,CreditCard,FileText,Receipt,Users,Hammer,Wallet,ShoppingCart };
 const DOC_GROUPS = ['Fonte oficial','Evidência de conferência','Composição','Movimento financeiro'];
@@ -531,7 +532,7 @@ export default function ImportarDocumento() {
       {contrato.isLoading&&<p className="mb-4 text-sm text-muted-foreground">Carregando contrato dos 11 tipos…</p>}
       {contrato.isError&&<p role="alert" className="mb-4 text-destructive">Não foi possível carregar as regras: {contrato.error.message}</p>}
       <FontesFinanceirasPanel />
-      {TIPOS_EVIDENCIA.includes(selectedType) && <EvidenciasFinanceirasPanel direcao={selectedType === 'dda_boletos' ? 'saida' : 'entrada'} />}
+      {TIPOS_EVIDENCIA.includes(selectedType) && (selectedType === 'boletos_liquidados' ? step !== 4 && <ConciliacaoRecebimentos /> : <EvidenciasFinanceirasPanel direcao={selectedType === 'dda_boletos' ? 'saida' : 'entrada'} />)}
       {toast &&
       <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold flex items-center gap-2 ${toast.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'}`}>
           {toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
@@ -579,7 +580,7 @@ export default function ImportarDocumento() {
       </div>
 
       {step === 4 ?
-      (loteResultado ? <ResumoImportacao batchId={loteResultado.id} tipo={loteResultado.batch_type} onNova={reset}/> : <div className="rounded-xl border bg-card p-5"><p>Revisão histórica registrada. Pagamentos e vínculos preservados.</p><Button className="mt-3" onClick={reset}>Nova importação</Button></div>) :
+      (loteResultado ? <><ResumoImportacao batchId={loteResultado.id} tipo={loteResultado.batch_type} onNova={reset}/>{loteResultado.batch_type === 'boletos_liquidados' && <ConciliacaoRecebimentos arquivoHash={loteResultado.file_hash} />}</> : <div className="rounded-xl border bg-card p-5"><p>Revisão histórica registrada. Pagamentos e vínculos preservados.</p><Button className="mt-3" onClick={reset}>Nova importação</Button></div>) :
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 mb-8">
           {/* Tipo de documento */}

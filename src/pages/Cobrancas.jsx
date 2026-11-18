@@ -17,7 +17,7 @@ import ReconciliarOrfaosButton from '../components/cobrancas/ReconciliarOrfaosBu
 import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import MensagemLink from '../components/shared/MensagemLink';
-import EvidenciasFinanceirasPanel from '@/components/financeiro/EvidenciasFinanceirasPanel';
+import ConciliacaoRecebimentos from '@/components/financeiro/ConciliacaoRecebimentos';
 import RecebimentoBancoDialog from '@/components/cobrancas/RecebimentoBancoDialog';
 
 const statusRowColors = {
@@ -192,7 +192,7 @@ export default function Cobrancas() {
       </PageHeader>
 
       <IntegradosModuloPanel modulo="cobrancas" titulo="Entradas · fontes de locações e assistência" />
-      <EvidenciasFinanceirasPanel direcao="entrada" />
+      <ConciliacaoRecebimentos />
 
       {/* Alerta */}
       {alertas.length > 0 &&

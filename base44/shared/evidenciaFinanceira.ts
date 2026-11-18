@@ -2,6 +2,9 @@ import { PAGAVEIS } from './direcaoFinanceira.ts';
 import { MATRIZ_IMPORTACAO } from './importacaoContrato.ts';
 export const TIPOS = MATRIZ_IMPORTACAO.filter(m=>m.evidencia).map(m=>m.tipo);
 export const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+// Relatórios do banco truncam ou pontuam o nome do pagador: aceita nome igual ou um como início do outro.
+export const nomeCompativel = (a, b) => { const x = norm(a), y = norm(b); return !!x && !!y && (x === y || (Math.min(x.length, y.length) >= 8 && (x.startsWith(y) || y.startsWith(x)))); };
+export const itemTitulo = t => ({ id: t.id, nome: t.cliente, referencia: t.nosso_numero || t.seu_numero || '', valor: Number(t.valor_titulo || 0), data: t.data_vencimento });
 export function normalizarEvidencia(tipo, r, arquivo) {
   const valor = Math.abs(Number(tipo === 'boletos_liquidados' ? r.valor_pago : tipo === 'relatorio_nfs' ? r.valor_total : r.valor));
   if (!Number.isFinite(valor) || valor <= 0) throw new Error('Evidência sem valor positivo.');
@@ -23,8 +26,9 @@ export async function candidatosEvidencia(db, ev, tipoDestino) {
     if (ev.referencia && !ev.referencia.startsWith('BOL-')) alternativas.push({ nosso_numero: ev.referencia });
     if (ev.referencia_nota && ev.contraparte) alternativas.push({ seu_numero: ev.referencia_nota, cliente: ev.contraparte });
     if (ev.contraparte && ev.vencimento) alternativas.push({ cliente: ev.contraparte, data_vencimento: ev.vencimento });
-    if (!alternativas.length) return { tipo, itens: [] };
-    query = { $or: alternativas };
+    const exatos = alternativas.length ? (await db.TituloCobranca.filter({ $or: alternativas }, { limit: 50 })).items : [];
+    const porValor = (await db.TituloCobranca.filter({ valor_titulo: { $gte: ev.valor - 0.01, $lte: ev.valor + 0.01 }, status: { $ne: 'pago' } }, { limit: 200 })).items.filter(t => nomeCompativel(t.cliente, ev.contraparte));
+    return { tipo, itens: [...new Map([...exatos, ...porValor].map(t => [t.id, t])).values()].map(itemTitulo) };
   } else if (tipo === 'NotaFiscal') query = { numero: ev.referencia, tipo: ev.tipo_nota };
   else {
     const campos = { ItemCompra: 'valor_total', DespesaOperacional: 'valor', Tributo: 'valor_original', FolhaPagamento: 'salario_liquido', FaturaCartao: 'valor_total', ObraReforma: 'valor' };

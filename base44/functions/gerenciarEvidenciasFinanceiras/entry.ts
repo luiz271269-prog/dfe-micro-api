@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { TIPOS, normalizarEvidencia, candidatosEvidencia, norm } from '../../shared/evidenciaFinanceira.ts';
+import { TIPOS, normalizarEvidencia, candidatosEvidencia, norm, nomeCompativel } from '../../shared/evidenciaFinanceira.ts';
+import { painelRecebimentos } from '../../shared/conciliacaoRecebimentos.ts';
 import { direcaoBanco, recalcularRecebivel } from '../../shared/direcaoFinanceira.ts';
 export default async function(req) {
   try {
@@ -15,6 +16,7 @@ export default async function(req) {
       const resultado = await db.EvidenciaFinanceira.upsert(unicos, { key: 'chave' });
       return Response.json({ success: true, saved: resultado.created + resultado.updated, created: resultado.created, updated: resultado.updated });
     }
+    if (body.acao === 'painel') return Response.json({ success: true, ...(await painelRecebimentos(db, String(body.arquivo_hash || '').slice(0, 100))) });
     if (!body.evidencia_id) return Response.json({ error: 'Selecione a evidência.' }, { status: 400 });
     const ev = await db.EvidenciaFinanceira.get(body.evidencia_id);
     if (!ev) return Response.json({ error: 'Evidência não encontrada.' }, { status: 404 });
@@ -51,7 +53,7 @@ export default async function(req) {
       if (!body.lancamento_bancario_id) return Response.json({ error: 'Selecione o crédito bancário para confirmar o recebimento.' }, { status:400 });
       const banco = await db.LancamentoBancario.get(body.lancamento_bancario_id);
       if (direcaoBanco(banco)!=='entrada' || !banco.data || Math.abs((new Date(banco.data)-new Date(ev.data))/86400000)>3) return Response.json({ error:'Crédito incompatível com a evidência de recebimento.' }, { status:422 });
-      const identidade = norm(alvo.cliente)===norm(ev.contraparte);
+      const identidade = nomeCompativel(alvo.cliente, ev.contraparte);
       if (!identidade || (ev.referencia_nota && norm(alvo.seu_numero)!==norm(ev.referencia_nota))) return Response.json({ error:'Cliente ou referência da parcela diverge da evidência.' }, { status:422 });
       const anteriores = await db.VinculoExtrato.filter({ entidade_tipo:'TituloCobranca', entidade_id:alvo.id, lancamento_bancario_id:banco.id });
       if (anteriores.length) {
