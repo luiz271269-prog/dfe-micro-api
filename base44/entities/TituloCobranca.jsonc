@@ -89,6 +89,14 @@
     "data_pagamento_informada": {
       "type": "string",
       "title": "Data informada pela fonte, n\u00e3o conciliada"
+    },
+    "conciliacao_token": {
+      "type": "string",
+      "description": "Reserva tempor\u00e1ria da baixa do recebimento"
+    },
+    "conciliacao_iniciada_em": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

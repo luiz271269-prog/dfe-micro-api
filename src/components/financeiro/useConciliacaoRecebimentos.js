@@ -20,9 +20,10 @@ export default function useConciliacaoRecebimentos(arquivoHash) {
     client.invalidateQueries({ queryKey: ['evidencias-totais'] });
     window.dispatchEvent(new Event('neuralfinRefresh'));
   };
-  const confirmar = (linha, tituloId, creditoId) => gerenciarEvidenciasFinanceiras({
-    acao: 'confirmar', evidencia_id: linha.id, entidade_id: tituloId, lancamento_bancario_id: creditoId,
-    motivo: `Conciliação de recebimentos: boleto liquidado em ${linha.data}, parcela e crédito bancário conferidos pelo usuário.`,
+  // motivo informado = baixa manual (parcela e crédito fora das sugestões)
+  const confirmar = (linha, tituloId, creditoId, motivo) => gerenciarEvidenciasFinanceiras({
+    acao: 'confirmar', evidencia_id: linha.id, entidade_id: tituloId, lancamento_bancario_id: creditoId, manual: !!motivo,
+    motivo: motivo || `Conciliação de recebimentos: boleto liquidado em ${linha.data}, parcela e crédito bancário conferidos pelo usuário.`,
   });
   return { query, atualizar, confirmar };
 }

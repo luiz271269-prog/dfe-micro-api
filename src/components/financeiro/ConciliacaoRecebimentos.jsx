@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import useConciliacaoRecebimentos from '@/components/financeiro/useConciliacaoRecebimentos';
 import ConciliacaoRecebimentoLinha from '@/components/financeiro/ConciliacaoRecebimentoLinha';
-import EvidenciaFinanceiraDialog from '@/components/financeiro/EvidenciaFinanceiraDialog';
+import BaixaManualRecebimentoDialog from '@/components/financeiro/BaixaManualRecebimentoDialog';
 import { formatCurrency } from '@/lib/formatters';
 
 const TH = 'px-3 py-2 text-left font-semibold text-muted-foreground';
@@ -11,7 +11,7 @@ export default function ConciliacaoRecebimentos({ arquivoHash }) {
   const [revisar, setRevisar] = useState(null);
   const { query, atualizar, confirmar } = useConciliacaoRecebimentos(arquivoHash);
   const linhas = query.data?.linhas || [];
-  const prontas = linhas.filter(l => l.titulo_id && l.credito_id).length;
+  const prontas = linhas.filter(l => (l.titulo_id && l.credito_id) || (!l.titulos.length && l.baixado)).length;
   const soma = linhas.reduce((s, l) => s + l.valor, 0);
 
   return (
@@ -43,12 +43,12 @@ export default function ConciliacaoRecebimentos({ arquivoHash }) {
               </tr>
             </thead>
             <tbody>
-              {linhas.map(l => <ConciliacaoRecebimentoLinha key={`${l.id}:${l.titulo_id}:${l.credito_id}`} linha={l} onConfirmar={confirmar} onSalvo={atualizar} onRevisar={setRevisar} />)}
+              {linhas.map(l => <ConciliacaoRecebimentoLinha key={`${l.id}:${l.titulo_id}:${l.credito_id}`} linha={l} onConfirmar={confirmar} onSalvo={atualizar} onManual={setRevisar} />)}
             </tbody>
           </table>
         </div>}
       {linhas.length < (query.data?.total || 0) && <p className="border-t px-4 py-2 text-xs text-muted-foreground">Mostrando os {linhas.length} mais recentes de {query.data.total}.</p>}
-      {revisar && <EvidenciaFinanceiraDialog item={revisar} onClose={() => setRevisar(null)} onSaved={atualizar} />}
+      {revisar && <BaixaManualRecebimentoDialog linha={revisar} onConfirmar={confirmar} onClose={() => setRevisar(null)} onSaved={atualizar} />}
     </section>
   );
 }

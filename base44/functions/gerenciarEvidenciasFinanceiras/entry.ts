@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { TIPOS, normalizarEvidencia, candidatosEvidencia, norm, nomeCompativel } from '../../shared/evidenciaFinanceira.ts';
-import { painelRecebimentos } from '../../shared/conciliacaoRecebimentos.ts';
+import { painelRecebimentos, opcoesManuais } from '../../shared/conciliacaoRecebimentos.ts';
 import { direcaoBanco, recalcularRecebivel } from '../../shared/direcaoFinanceira.ts';
 export default async function(req) {
   try {
@@ -20,6 +20,7 @@ export default async function(req) {
     if (!body.evidencia_id) return Response.json({ error: 'Selecione a evidência.' }, { status: 400 });
     const ev = await db.EvidenciaFinanceira.get(body.evidencia_id);
     if (!ev) return Response.json({ error: 'Evidência não encontrada.' }, { status: 404 });
+    if (body.acao === 'manual_opcoes') return Response.json({ success: true, ...(await opcoesManuais(db, ev, body.termo)) });
     if (body.acao === 'candidatos') {
       const candidatos = await candidatosEvidencia(db, ev, body.entidade_tipo);
       let bancos = [];
@@ -45,23 +46,28 @@ export default async function(req) {
       return Response.json({ success:true });
     }
     const candidatos = await candidatosEvidencia(db, ev, body.entidade_tipo);
-    if (!candidatos.itens.some(c => c.id === body.entidade_id)) return Response.json({ error: 'O documento selecionado não corresponde à evidência.' }, { status: 422 });
+    const boleto = ev.tipo === 'boletos_liquidados', manual = boleto && body.manual === true;
+    if (!body.entidade_id) return Response.json({ error: 'Selecione o documento de origem.' }, { status: 400 });
+    // Vínculo já existente (baixa feita por outro caminho ou tentativa anterior): só conclui a evidência.
+    const anteriores = boleto && body.lancamento_bancario_id ? await db.VinculoExtrato.filter({ entidade_tipo:'TituloCobranca', entidade_id:body.entidade_id, lancamento_bancario_id:body.lancamento_bancario_id }) : [];
+    if (!anteriores.length && !manual && !candidatos.itens.some(c => c.id === body.entidade_id)) return Response.json({ error: 'O documento selecionado não corresponde à evidência.' }, { status: 422 });
     const alvo = await db[candidatos.tipo].get(body.entidade_id);
     if (ev.tipo === 'relatorio_nfs' && (Math.abs(Number(alvo.valor_total)-ev.valor)>0.01 || norm(alvo.cliente)!==norm(ev.contraparte))) return Response.json({ error: 'Nota com valor ou cliente divergente. Não será alterada.' }, { status:422 });
     let vinculoId = '';
-    if (ev.tipo === 'boletos_liquidados') {
+    if (boleto) {
       if (!body.lancamento_bancario_id) return Response.json({ error: 'Selecione o crédito bancário para confirmar o recebimento.' }, { status:400 });
       const banco = await db.LancamentoBancario.get(body.lancamento_bancario_id);
-      if (direcaoBanco(banco)!=='entrada' || !banco.data || Math.abs((new Date(banco.data)-new Date(ev.data))/86400000)>3) return Response.json({ error:'Crédito incompatível com a evidência de recebimento.' }, { status:422 });
-      const identidade = nomeCompativel(alvo.cliente, ev.contraparte);
-      if (!identidade || (ev.referencia_nota && norm(alvo.seu_numero)!==norm(ev.referencia_nota))) return Response.json({ error:'Cliente ou referência da parcela diverge da evidência.' }, { status:422 });
-      const anteriores = await db.VinculoExtrato.filter({ entidade_tipo:'TituloCobranca', entidade_id:alvo.id, lancamento_bancario_id:banco.id });
+      if (direcaoBanco(banco)!=='entrada' || !banco.data) return Response.json({ error:'Crédito incompatível com a evidência de recebimento.' }, { status:422 });
+      if (!manual && !anteriores.length && Math.abs((new Date(banco.data)-new Date(ev.data))/86400000)>3) return Response.json({ error:'Crédito fora da janela de 3 dias do pagamento. Use a baixa manual.' }, { status:422 });
+      if (!manual && (!nomeCompativel(alvo.cliente, ev.contraparte) || (ev.referencia_nota && norm(alvo.seu_numero)!==norm(ev.referencia_nota)))) return Response.json({ error:'Cliente ou referência da parcela diverge da evidência.' }, { status:422 });
       if (anteriores.length) {
         if (anteriores.length!==1 || Math.abs(anteriores[0].valor_alocado-ev.valor)>0.01) return Response.json({ error:'Este crédito já possui outra alocação para o título.' }, { status:409 });
         vinculoId=anteriores[0].id;
         await recalcularRecebivel(db,'TituloCobranca',alvo.id);
       } else {
-        const resposta = await base44.functions.invoke('vincularExtrato', { acao:'criar', entidade_tipo:'TituloCobranca', entidade_id:alvo.id, lancamento_bancario_id:banco.id, valor_alocado:ev.valor, tipo_vinculo:'recebimento_parcial', observacao:`Evidência ${ev.id}: ${motivo}` });
+        const saldo = Math.round((Number(alvo.valor_titulo || 0) - Number(alvo.valor_pago || 0)) * 100) / 100;
+        const resposta = await base44.functions.invoke('vincularExtrato', { acao:'criar', entidade_tipo:'TituloCobranca', entidade_id:alvo.id, lancamento_bancario_id:banco.id, valor_alocado: manual ? Math.min(ev.valor, saldo) : ev.valor, tipo_vinculo:'recebimento_parcial', observacao:`Evidência ${ev.id}${manual ? ' (baixa manual)' : ''}: ${motivo}` })
+          .catch(e => { const d = e.response?.data?.error ?? e.data?.error; return { data: { error: typeof d === 'string' ? d : d?.message || e.message } }; });
         if (!resposta.data?.success) return Response.json({ error:resposta.data?.error || 'Recebimento não confirmado.' }, { status:422 });
         vinculoId=resposta.data.vinculo.id;
       }
