@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { consolidarDREOperacional } from '@/functions/consolidarDREOperacional';
 
@@ -10,10 +11,18 @@ export const ROTULO_LINHA_DRE = {
 // Mesma consulta para painel e tabela (react-query deduplica pela chave)
 export function useDREExtrato(mes, isAnnual) {
   const modo = isAnnual ? 'ano_civil' : 'mensal';
-  return useQuery({
+  const query = useQuery({
     queryKey: ['comparativo-dre', mes, modo],
     queryFn: async () => (await consolidarDREOperacional({ mes_referencia: mes, modo_periodo: modo, incluir_mapa_extrato: true })).data,
   });
+  // Reclassificar um lançamento muda a linha da DRE: recalcula junto com a lista
+  const { refetch } = query;
+  useEffect(() => {
+    const atualizar = () => refetch();
+    window.addEventListener('neuralfinRefresh', atualizar);
+    return () => window.removeEventListener('neuralfinRefresh', atualizar);
+  }, [refetch]);
+  return query;
 }
 
 export const linhaDREDe = (mapa, id) => mapa?.[id]?.[0] || 'fora';
