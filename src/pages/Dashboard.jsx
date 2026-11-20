@@ -48,9 +48,6 @@ export default function Dashboard() {
       {data && (
         <>
           <KpiGrid dados={data} onDrill={onDrill} />
-          <p className="text-xs text-muted-foreground px-1">
-            <span className="font-semibold text-foreground">Operação</span> apresenta as receitas, os custos e as despesas do período por competência. <span className="font-semibold text-foreground">Caixa</span> mostra os valores efetivamente recebidos e pagos. <span className="font-semibold text-foreground">Contas a pagar</span> distingue as obrigações em aberto das previsões sem documento.
-          </p>
           <ComparativoFinanceiro data={data} consulta={carteira} mes={mes} onDrill={onDrill} />
           <CarteiraPagarCard consulta={carteira} apenasNotas />
           <BridgeCard bridge={data.bridge} />
