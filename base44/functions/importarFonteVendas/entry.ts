@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { norm } from '../../shared/evidenciaFinanceira.ts';
+import { erroComposicaoReceber } from '../../shared/validarComposicaoReceber.ts';
 const dataValida = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 export default async function(req) {
   try {
@@ -50,13 +51,22 @@ export default async function(req) {
       const legado=await db.TituloCobranca.filter({seu_numero:{$in:[...new Set(normalizados.map(c=>c.seu_numero))]}},{limit:500});
       if(pagina.has_more||legado.has_more)throw new Error('Parcelas históricas excedem o lote. Revisão necessária.');
       const existentes=[...new Map([...pagina.items,...legado.items].map(r=>[r.id,r])).values()],novos=[],alteracoes=[];
-      for(const c of [...new Map(normalizados.map(c=>[c.fonte_chave,c])).values()]){
+      const grupos = new Map(pais.items.map(n => [n.id, new Map(pagina.items.filter(t => t.nota_fiscal_id === n.id).map(t => [t.id,t]))]));
+      if (new Set(normalizados.map(c => c.fonte_chave)).size !== normalizados.length) throw new Error('Número de parcela repetido no arquivo. Revise a origem.');
+      for(const c of normalizados){
         const iguais=existentes.filter(r=>(r.fonte_chave===c.fonte_chave)||(r.seu_numero===c.seu_numero&&norm(r.cliente)===norm(c.cliente)&&Number(r.parcela_numero)===c.parcela_numero&&(!r.empresa||r.empresa===empresa)));
         if(iguais.length>1)throw new Error(`Parcela ${c.seu_numero}/${c.parcela_numero} duplicada. Revisão necessária.`);
         if(iguais[0]){
-          if(Math.abs(Number(iguais[0].valor_titulo)-c.valor_titulo)>0.01)throw new Error('Valor da parcela divergente. Histórico preservado.');
-          alteracoes.push({id:iguais[0].id,nota_fiscal_id:c.nota_fiscal_id,fonte_modulo:'vendas',fonte_chave:c.fonte_chave,fonte_arquivo_hash:hash,valor_pago_informado:c.valor_pago_informado,...(c.data_pagamento_informada?{data_pagamento_informada:c.data_pagamento_informada}:{})});
+          if (iguais[0].nota_fiscal_id && iguais[0].nota_fiscal_id !== c.nota_fiscal_id) throw new Error(`Parcela ${c.seu_numero}/${c.parcela_numero} já pertence a outra nota.`);
+          if(Math.round(Number(iguais[0].valor_titulo)*100)!==Math.round(c.valor_titulo*100))throw new Error('Valor da parcela divergente. Histórico preservado.');
+          alteracoes.push({id:iguais[0].id,nota_fiscal_id:c.nota_fiscal_id,parcela_numero:c.parcela_numero,parcela_total:c.parcela_total,fonte_modulo:'vendas',fonte_chave:c.fonte_chave,fonte_arquivo_hash:hash,valor_pago_informado:c.valor_pago_informado,...(c.data_pagamento_informada?{data_pagamento_informada:c.data_pagamento_informada}:{})});
         } else novos.push({...c,valor_pago:0,status:c.data_vencimento<hoje?'vencido':'em_aberto'});
+        const anterior = iguais[0];
+        grupos.get(c.nota_fiscal_id).set(anterior?.id || c.fonte_chave, anterior ? {...anterior, parcela_numero:c.parcela_numero, parcela_total:c.parcela_total} : c);
+      }
+      for (const nota of pais.items.filter(n => normalizados.some(c => c.nota_fiscal_id === n.id))) {
+        const erro = erroComposicaoReceber(nota, [...grupos.get(nota.id).values()]);
+        if (erro) throw new Error(erro);
       }
       if(novos.length){const docs=await db.TituloCobranca.bulkCreate(novos);resultados.push(...docs.map(d=>({tipo:'TituloCobranca',id:d.id,resultado:'criado'})));}
       if(alteracoes.length){await db.TituloCobranca.bulkUpdate(alteracoes);resultados.push(...alteracoes.map(d=>({tipo:'TituloCobranca',id:d.id,resultado:'atualizado'})));}

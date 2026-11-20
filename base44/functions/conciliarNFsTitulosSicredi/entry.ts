@@ -1,4 +1,6 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.34';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { erroComposicaoReceber } from '../../shared/validarComposicaoReceber.ts';
+import { listarParaConciliacao } from '../../shared/recebimentosExatos.ts';
 
 // Conciliação NF ↔ TituloCobranca (Sicredi) após importar o Relatório de Vendas Diário do Elite.
 //
@@ -24,7 +26,7 @@ function calcStatus(valorTotal, valorRecebido, proximaVenc, hoje) {
 function extrairNumeroNF(seuNumero) {
   if (!seuNumero) return null;
   // "NF-180" → "180" | "CI-100084" → "100084" | "180" → "180"
-  const m = String(seuNumero).match(/(?:NF|CI)?-?\s*(\w+)/i);
+  const m = String(seuNumero).trim().match(/^(?:NF|CI)-?\s*(\d+)$/i);
   return m ? m[1].trim() : null;
 }
 
@@ -36,22 +38,27 @@ Deno.serve(async (req) => {
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const svc = base44.asServiceRole.entities;
+    const { dry_run } = await req.json().catch(() => ({}));
 
     const [notas, titulos] = await Promise.all([
-      svc.NotaFiscal.list('-data_emissao', 2000),
-      svc.TituloCobranca.list('-data_vencimento', 5000),
+      listarParaConciliacao(svc.NotaFiscal, {}),
+      listarParaConciliacao(svc.TituloCobranca, {}),
     ]);
 
     // Index: número da NF → registro
     const idxNotaPorNum = {};
     notas.forEach(n => {
       const key = `${n.tipo}-${String(n.numero).trim()}`;
-      idxNotaPorNum[key] = n;
+      idxNotaPorNum[key] = key in idxNotaPorNum ? null : n;
     });
 
     // Agrupa títulos por NF/CI pai
-    const titulosPorNota = {};
+    const titulosPorNota = {}, vinculados = new Map();
     titulos.forEach(t => {
+      if (t.nota_fiscal_id) {
+        if (!vinculados.has(t.nota_fiscal_id)) vinculados.set(t.nota_fiscal_id, []);
+        vinculados.get(t.nota_fiscal_id).push(t);
+      }
       const num = extrairNumeroNF(t.seu_numero);
       if (!num) return;
       // Tenta NF e CI (não sabemos qual o título referencia sem prefixo)
@@ -64,19 +71,23 @@ Deno.serve(async (req) => {
     const hoje = new Date().toISOString().split('T')[0];
     let nfsAtualizadas = 0;
     let titulosVinculados = 0;
-    const semNF = [];
+    const semNF = [], divergencias = [];
 
     // Throttle: aguarda N ms entre chamadas para não estourar rate limit
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const THROTTLE_MS = 60;
 
-    for (const [key, tits] of Object.entries(titulosPorNota)) {
+    for (const [key, candidatos] of Object.entries(titulosPorNota)) {
       const nf = idxNotaPorNum[key];
       if (!nf) {
-        semNF.push({ key, qtd: tits.length });
+        semNF.push({ key, qtd: candidatos.length });
         continue;
       }
 
+      const tits = [...new Map([...(vinculados.get(nf.id) || []), ...candidatos].map(t => [t.id, t])).values()];
+      const erro = tits.some(t => t.nota_fiscal_id && t.nota_fiscal_id !== nf.id) ? 'Há parcela vinculada a outra nota.' : erroComposicaoReceber(nf, tits);
+      if (erro) { divergencias.push({ key, erro }); continue; }
+      if (dry_run === true) continue;
       const valorTotal = nf.valor_total || 0;
       const valorRecebido = tits.reduce((s, t) => s + (t.valor_pago || 0), 0);
       const valorAberto = Math.max(0, valorTotal - valorRecebido);
@@ -137,6 +148,8 @@ Deno.serve(async (req) => {
       titulos_vinculados: titulosVinculados,
       grupos_sem_nf: semNF.length,
       detalhe_sem_nf: semNF.slice(0, 20),
+      grupos_divergentes: divergencias.length,
+      detalhe_divergencias: divergencias.slice(0, 20),
     });
   } catch (error) {
     console.error('Erro conciliação NF×Sicredi:', error);

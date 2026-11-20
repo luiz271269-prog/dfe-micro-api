@@ -37,7 +37,8 @@ export default async function(req) {
     const batch=await db.ImportBatch.get(b.batch_id);contratoImportacao(batch.batch_type);
     if(b.acao==='salvar'){
       if(batch.status!=='processing')throw new Error('Lote já encerrado.');
-      if(!Array.isArray(b.registros)||!b.registros.length||b.registros.length>30||JSON.stringify(b.registros).length>160000)throw new Error('Envie entre 1 e 30 registros por etapa.');
+      const limite = batch.batch_type === 'relatorio_vendas_detalhado' ? 60 : 30;
+      if(!Array.isArray(b.registros)||!b.registros.length||b.registros.length>limite||JSON.stringify(b.registros).length>160000)throw new Error(`Envie entre 1 e ${limite} registros por etapa.`);
       if(!['NeuralTec','Liesch'].includes(b.empresa))throw new Error('Empresa da fonte inválida.');
       const items=batch.batch_type==='relatorio_vendas_detalhado'?await persistirVendas(base44,batch,b.registros,b):[];
       if(batch.batch_type!=='relatorio_vendas_detalhado')for(const r of b.registros)items.push(await persistirRegistro(base44,batch,r,b));

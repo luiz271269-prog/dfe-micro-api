@@ -82,8 +82,8 @@ export default function ReconciliarOrfaosButton({ onComplete }) {
                   <p className="font-bold text-lg text-emerald-700">{preview.match_exato}</p>
                 </div>
                 <div className="bg-blue-50 rounded-lg p-3">
-                  <p className="text-xs text-blue-600">Match fuzzy</p>
-                  <p className="font-bold text-lg text-blue-700">{preview.match_fuzzy}</p>
+                  <p className="text-xs text-blue-600">Notas divergentes</p>
+                  <p className="font-bold text-lg text-blue-700">{preview.grupos_divergentes}</p>
                 </div>
                 <div className="bg-amber-50 rounded-lg p-3">
                   <p className="text-xs text-amber-600">Sem match</p>
@@ -99,7 +99,7 @@ export default function ReconciliarOrfaosButton({ onComplete }) {
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    {preview.total_para_vincular} título(s) órfão(s) serão vinculados à NF correspondente. Match exato (confiança 100%) usa NF-XXX/CI-XXXXXX no campo. Match fuzzy cruza cliente + valor com parcelas.
+                    {preview.total_para_vincular} título(s) órfão(s) serão vinculados à NF correspondente. O vínculo exige referência explícita e que a quantidade e a soma das parcelas fechem com a nota de origem.
                   </p>
                   <div className="space-y-2 max-h-80 overflow-y-auto border rounded-lg p-2">
                     {preview.matches.slice(0, 50).map((m, i) => (

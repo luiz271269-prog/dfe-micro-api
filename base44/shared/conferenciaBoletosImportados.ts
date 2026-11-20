@@ -70,7 +70,7 @@ function montar(e, ts, nf, parcelas, origens, porTitulo) {
     if (porTitulo.get(t.id).length > 1) add('duplicidade','Mais de um boleto deste lote aponta para a mesma parcela.');
     if (centavos(t.valor_titulo) !== centavos(e.valor)) add('diferenca', `Relatório ${moeda(centavos(e.valor))} × parcela original ${moeda(centavos(t.valor_titulo))}. Confira juros, descontos ou pagamentos parciais.`);
     if (!n) add('diferenca','Parcela sem nota vinculada encontrada.');
-    else if (centavos(n.valor_total) !== somar(ps,'valor_titulo')) add('diferenca', `${t.seu_numero || n.numero}: total da nota ${moeda(centavos(n.valor_total))} × ${ps.length} parcelas vinculadas somando ${moeda(somar(ps,'valor_titulo'))}.`);
+    else if (centavos(n.valor_total) !== somar(ps,'valor_titulo')) add('diferenca', `${t.seu_numero || n.numero}: total da nota ${moeda(centavos(n.valor_total))} × ${ps.length} registros hoje vinculados no sistema somam ${moeda(somar(ps,'valor_titulo'))}. Esses vínculos não confirmam que os boletos foram emitidos por esta nota.`);
     const chaves = ps.map(p => [norm(p.cliente), p.data_vencimento, centavos(p.valor_titulo)].join('|'));
     if (new Set(chaves).size < chaves.length) add('duplicidade','Há parcelas da nota com mesmo cliente, vencimento e valor.');
     if (n && ps.some(p => p.data_vencimento && n.data_emissao && p.data_vencimento < n.data_emissao)) add('diferenca','Há parcelas vinculadas com vencimento anterior à emissão da nota.');
