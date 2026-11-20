@@ -4,20 +4,20 @@ import { formatCurrency } from '@/lib/formatters';
 import CarteiraPagarEstado from '@/components/painel/CarteiraPagarEstado';
 import SincronizarComprasButton from '@/components/contas-pagar/SincronizarComprasButton';
 
-export default function CarteiraPagarCard({ consulta }) {
+export default function CarteiraPagarCard({ consulta, apenasNotas = false }) {
   const { data, error } = consulta;
   return <section id="contas-a-pagar-painel" className="rounded-2xl border bg-card p-4 shadow-sm">
     <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="flex items-center gap-2 font-bold"><Wallet className="h-4 w-4 text-primary" /> Contas a Pagar por origem</h2><p className="text-xs text-muted-foreground">Posição em aberto por origem — obrigações registradas menos pagamentos informados, sem misturar pagamentos já realizados.</p></div>
       <div className="flex flex-wrap items-center gap-3">{data?.podeSincronizar && <SincronizarComprasButton />}<Link to="/contas-a-pagar" className="text-sm font-semibold text-primary hover:underline">Ver contas</Link></div>
     </header>
-    <CarteiraPagarEstado consulta={consulta} />
+    <CarteiraPagarEstado consulta={consulta} ocultarTotais={apenasNotas} />
     {data && !error && <>
-      <div className="mt-3 overflow-x-auto"><table className="w-full text-sm">
+      {!apenasNotas && <div className="mt-3 overflow-x-auto"><table className="w-full text-sm">
         <thead className="bg-muted text-muted-foreground"><tr><th className="px-3 py-2 text-left">Origem</th><th className="px-3 py-2 text-right">Obrigações em aberto</th><th className="px-3 py-2 text-right">Previsão sem documento</th></tr></thead>
         <tbody>{data.grupos.map(g => <tr key={g.chave} className="border-b last:border-b-0"><td className="px-3 py-2"><Link to={g.href} className="hover:text-primary hover:underline">{g.rotulo}</Link></td><td className="px-3 py-2 text-right font-semibold tabular-nums">{formatCurrency(g.confirmado)}</td><td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatCurrency(g.previsto)}</td></tr>)}</tbody>
         <tfoot className="border-t bg-muted/40 font-bold"><tr><td className="px-3 py-2">Totais separados</td><td className="px-3 py-2 text-right tabular-nums">{formatCurrency(data.totalConfirmado)}</td><td className="px-3 py-2 text-right tabular-nums">{formatCurrency(data.totalPrevisto)}</td></tr></tfoot>
-      </table></div>
+      </table></div>}
       <p className="mt-3 text-xs text-muted-foreground">Compras diretas: apenas registros locais com nota e vencimento entram no saldo; cadastro incompleto não comprova saldo zero. Cartão vinculado compõe a fatura, sem dupla contagem; cartão informado sem vínculo fica para revisão.</p>
       {!!(data.comprasRevisao?.incompleto || data.comprasRevisao?.cartao_sem_vinculo) && <p role="status" className="mt-2 text-xs text-warning">Fora do saldo confirmado: {data.comprasRevisao.incompleto} item(ns) de compra com cadastro incompleto e {data.comprasRevisao.cartao_sem_vinculo} com cartão informado sem vínculo, até a data desta consulta; isso não declara dívida nem quitação. <Link to="/contas-a-pagar" className="font-semibold underline">Conferir elegibilidade</Link></p>}
       <p className="mt-1 text-xs text-muted-foreground">Previsões de <Link to="/recorrentes" className="text-primary hover:underline">despesas fixas cadastradas</Link> ficam separadas e deixam de ser somadas quando já existe o documento da ocorrência; folha e impostos entram pelas obrigações registradas.</p>

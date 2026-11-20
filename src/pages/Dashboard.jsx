@@ -4,8 +4,7 @@ import { useFluxoConsolidado } from '@/hooks/useFluxoConsolidado';
 import { carregarDrill } from '@/lib/painel/drillColunas';
 import PainelHeader, { fmtMesLong } from '@/components/painel/PainelHeader';
 import KpiGrid from '@/components/painel/KpiGrid';
-import ResultadoOperacaoCard from '@/components/painel/ResultadoOperacaoCard';
-import ResultadoCaixaCard from '@/components/painel/ResultadoCaixaCard';
+import ComparativoFinanceiro from '@/components/painel/ComparativoFinanceiro';
 import BridgeCard from '@/components/painel/BridgeCard';
 import FaturamentoFonteCard from '@/components/painel/FaturamentoFonteCard';
 import EvolucaoCard from '@/components/painel/EvolucaoCard';
@@ -52,11 +51,8 @@ export default function Dashboard() {
           <p className="text-xs text-muted-foreground px-1">
             <span className="font-semibold text-foreground">Operação</span> apresenta as receitas, os custos e as despesas do período por competência. <span className="font-semibold text-foreground">Caixa</span> mostra os valores efetivamente recebidos e pagos. <span className="font-semibold text-foreground">Contas a pagar</span> distingue as obrigações em aberto das previsões sem documento.
           </p>
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <ResultadoOperacaoCard operacao={data.operacao} mes={mes} onDrill={onDrill} />
-            <ResultadoCaixaCard caixa={data.caixa} mes={mes} onDrill={onDrill} />
-            <CarteiraPagarCard consulta={carteira} />
-          </div>
+          <ComparativoFinanceiro data={data} consulta={carteira} mes={mes} onDrill={onDrill} />
+          <CarteiraPagarCard consulta={carteira} apenasNotas />
           <BridgeCard bridge={data.bridge} />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <FaturamentoFonteCard operacao={data.operacao} mes={mes} onDrill={onDrill} />
