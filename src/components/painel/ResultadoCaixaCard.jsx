@@ -7,7 +7,7 @@ export default function ResultadoCaixaCard({ caixa: cx, mes, onDrill }) {
   const outros = [r.proLabore, r.pessoal, cx.investimentos, cx.financeiros, cx.aplicacoes, cx.transferenciasForaPerimetro, cx.naoClassificado];
   const totalOutros = outros.reduce((s, l) => s + l.valor, 0);
   return (
-    <DemoCard icon={Wallet} titulo="Resultado de Caixa" subtitulo="Realizado no período · dinheiro movimentado" badge={fmtMes(mes)} tom="blue">
+    <DemoCard icon={Wallet} titulo="Resultado de Caixa" badge={fmtMes(mes)} tom="blue">
       <LinhaDemo rotulo="Entradas de Caixa" valor={cx.recebimentos.valor} nivel="grupo" tom="green" />
       <LinhaDemo rotulo="Recebimentos operacionais" valor={cx.recebimentos.valor} linha={cx.recebimentos} onDrill={onDrill} />
 

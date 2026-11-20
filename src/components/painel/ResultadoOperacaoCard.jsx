@@ -12,7 +12,7 @@ export default function ResultadoOperacaoCard({ operacao: op, mes, onDrill }) {
     ? 'CMV indisponível — Central desconectada'
     : 'Custo das mercadorias vendidas (CMV)';
   return (
-    <DemoCard icon={Scale} titulo="Resultado da Operação" subtitulo="Competência · o que foi faturado" badge={fmtMes(mes)} tom="green">
+    <DemoCard icon={Scale} titulo="Resultado da Operação" badge={fmtMes(mes)} tom="green">
       <LinhaDemo rotulo="Receita bruta de vendas e serviços" valor={op.faturamento.valor} nivel="grupo" tom="green" />
       <LinhaDemo rotulo="Vendas de produtos" valor={f.produtos.valor} linha={f.produtos} onDrill={onDrill} />
       <LinhaDemo rotulo="Serviços / Assistência" valor={f.servicos.valor} linha={f.servicos} onDrill={onDrill} />

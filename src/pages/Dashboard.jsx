@@ -49,6 +49,9 @@ export default function Dashboard() {
       {data && (
         <>
           <KpiGrid dados={data} onDrill={onDrill} />
+          <p className="text-xs text-muted-foreground px-1">
+            <span className="font-semibold text-foreground">Operação</span> por competência · <span className="font-semibold text-foreground">Caixa</span> realizado no período · <span className="font-semibold text-foreground">Contas a pagar</span> em aberto — visões distintas; compare cada painel pelo seu critério, sem tratar os valores como diretamente equivalentes.
+          </p>
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <ResultadoOperacaoCard operacao={data.operacao} mes={mes} onDrill={onDrill} />
             <ResultadoCaixaCard caixa={data.caixa} mes={mes} onDrill={onDrill} />
