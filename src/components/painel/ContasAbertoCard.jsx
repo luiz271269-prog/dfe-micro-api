@@ -1,26 +1,16 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Wallet } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
-import CarteiraPagarEstado from '@/components/painel/CarteiraPagarEstado';
 
-export default function ContasAbertoCard({ aberto, carteira }) {
-  const [aba, setAba] = useState('receber');
-  const g = aba === 'receber' ? aberto.aReceber : aberto.aPagar;
-  const link = aba === 'receber' ? '/cobrancas' : '/contas-a-pagar';
+export default function ContasAbertoCard({ aberto }) {
+  const g = aberto.aReceber;
   return (
     <div className="bg-card rounded-2xl border shadow-sm p-4">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-bold flex items-center gap-2"><Wallet className="w-4 h-4 text-muted-foreground" /> Contas em Aberto</h2>
-        <Link to={link} className="text-[11px] font-semibold text-primary hover:underline">Ver todas</Link>
+        <h2 className="text-sm font-bold flex items-center gap-2"><Wallet className="w-4 h-4 text-muted-foreground" /> Contas a Receber</h2>
+        <Link to="/cobrancas" className="text-[11px] font-semibold text-primary hover:underline">Ver todas</Link>
       </div>
-      <div className="grid grid-cols-2 gap-1 bg-muted rounded-lg p-1 mb-2">
-        {[['receber', 'A Receber'], ['pagar', 'A Pagar']].map(([k, l]) => (
-          <button key={k} onClick={() => setAba(k)} className={`text-xs font-semibold rounded-md py-1 transition-colors ${aba === k ? 'bg-primary text-primary-foreground shadow' : 'hover:bg-background'}`}>{l}</button>
-        ))}
-      </div>
-      {aba === 'pagar' && carteira ? <CarteiraPagarEstado consulta={carteira} /> : <>
       <div className="h-32">
         <ResponsiveContainer>
           <BarChart data={g.faixas} margin={{ top: 5, right: 5, left: -15, bottom: 0 }} barCategoryGap="25%">
@@ -38,7 +28,6 @@ export default function ContasAbertoCard({ aberto, carteira }) {
       </div>
       <p className="text-[11px] text-muted-foreground text-center mt-2">{g.registros} registro(s) · total {formatCurrency(g.total)}</p>
       {aberto.dataCorte && <p className="text-[10px] text-muted-foreground text-center">Aging {aberto.modoAging === 'fechamento' ? 'do fechamento' : 'operacional'} · corte em {aberto.dataCorte.split('-').reverse().join('/')}</p>}
-      </>}
     </div>
   );
 }

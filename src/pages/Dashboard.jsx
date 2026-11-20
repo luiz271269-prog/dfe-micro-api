@@ -37,7 +37,6 @@ export default function Dashboard() {
     <div className="lg:px-6 lg:py-6 max-w-[1600px] mx-auto space-y-4">
       <PainelHeader mes={mes} onMes={setMes} perimetro={perimetro} onPerimetro={setPerimetro} onRefresh={atualizar} refreshing={isFetching || carteira.isFetching} />
       <FontesFinanceirasPanel />
-      <CarteiraPagarCard consulta={carteira} />
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center py-32 gap-3 text-sm text-muted-foreground">
@@ -50,15 +49,16 @@ export default function Dashboard() {
       {data && (
         <>
           <KpiGrid dados={data} onDrill={onDrill} />
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <ResultadoOperacaoCard operacao={data.operacao} mes={mes} onDrill={onDrill} />
             <ResultadoCaixaCard caixa={data.caixa} mes={mes} onDrill={onDrill} />
+            <CarteiraPagarCard consulta={carteira} />
           </div>
           <BridgeCard bridge={data.bridge} />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <FaturamentoFonteCard operacao={data.operacao} mes={mes} onDrill={onDrill} />
             <EvolucaoCard historico={data.historico} />
-            <ContasAbertoCard aberto={data.aberto} carteira={carteira} />
+            <ContasAbertoCard aberto={data.aberto} />
           </div>
           <PosicaoFinalCard posicao={data.posicao} loopR={data.loopR} mes={mes} />
           <RodapePainel dados={data} atualizadoEm={dataUpdatedAt} />
