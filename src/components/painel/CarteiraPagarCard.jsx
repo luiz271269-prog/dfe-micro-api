@@ -8,7 +8,7 @@ export default function CarteiraPagarCard({ consulta, apenasNotas = false }) {
   const { data, error } = consulta;
   return <section id="contas-a-pagar-painel" className="rounded-2xl border bg-card p-4 shadow-sm">
     <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-      <div><h2 className="flex items-center gap-2 font-bold"><Wallet className="h-4 w-4 text-primary" /> {apenasNotas ? 'Notas de Contas a Pagar' : 'Contas a Pagar por origem'}</h2>{!apenasNotas && <p className="text-xs text-muted-foreground">Posição em aberto por origem — obrigações registradas menos pagamentos informados, sem misturar pagamentos já realizados.</p>}</div>
+      <div><h2 className="flex items-center gap-2 font-bold"><Wallet className="h-4 w-4 text-primary" /> Contas a Pagar por origem</h2><p className="text-xs text-muted-foreground">Posição em aberto por origem — obrigações registradas menos pagamentos informados, sem misturar pagamentos já realizados.</p></div>
       <div className="flex flex-wrap items-center gap-3">{data?.podeSincronizar && <SincronizarComprasButton />}<Link to="/contas-a-pagar" className="text-sm font-semibold text-primary hover:underline">Ver contas</Link></div>
     </header>
     <CarteiraPagarEstado consulta={consulta} ocultarTotais={apenasNotas} />
