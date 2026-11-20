@@ -197,8 +197,17 @@ export default function Cobrancas() {
       </PageHeader>
 
       <IntegradosModuloPanel modulo="cobrancas" titulo="Entradas · fontes de locações e assistência" />
-      {user?.role === 'admin' && <AuditoriaRecebiveis />}
-      <ConciliacaoRecebimentos />
+      <section aria-labelledby="recebiveis-titulo" className="my-6 rounded-xl border bg-muted/30 p-3 sm:p-4">
+        <header className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="recebiveis-titulo" className="text-lg font-semibold">Recebíveis</h2>
+          {user?.role === 'admin' && <nav aria-label="Seções de recebíveis" className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-primary">
+            <a href="#auditoria-recebiveis-titulo" className="hover:underline">Auditoria de Recebíveis</a>
+            <a href="#conciliacao-recebimentos" className="hover:underline">Conciliação de recebimentos</a>
+          </nav>}
+        </header>
+        {user?.role === 'admin' && <AuditoriaRecebiveis />}
+        <ConciliacaoRecebimentos />
+      </section>
 
       {/* Alerta */}
       {alertas.length > 0 &&

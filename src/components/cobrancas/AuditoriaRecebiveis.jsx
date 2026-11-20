@@ -15,9 +15,9 @@ export default function AuditoriaRecebiveis() {
     queryFn: async () => (await base44.entities.VerificacaoRecebiveis.list({ limit: 1, sort: '-concluida_em' })).items[0] || null,
   });
   const ultima = verificacao.data;
-  return <section aria-labelledby="auditoria-recebiveis-titulo" className="mx-auto my-4 w-full max-w-[420px] overflow-hidden rounded-lg border bg-card text-card-foreground motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+  return <section aria-labelledby="auditoria-recebiveis-titulo" className="my-4 w-full overflow-hidden rounded-xl border bg-card text-card-foreground motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
     <header className="space-y-1 border-b p-4">
-      <h2 id="auditoria-recebiveis-titulo" className="text-lg font-semibold tracking-tight">Verificação diária de recebíveis</h2>
+      <h3 id="auditoria-recebiveis-titulo" className="scroll-mt-20 font-semibold">Auditoria de Recebíveis</h3>
       <p className="text-sm text-muted-foreground">Compara o total da nota com os valores originais das parcelas vinculadas. Somente leitura: não corrige registros nem realiza baixas.</p>
       <p className="text-xs text-muted-foreground" role="status">{ultima ? `Última verificação: ${horario.format(new Date(ultima.concluida_em))} (Brasília) · ${ultima.notas} notas e ${ultima.parcelas} parcelas lidas.` : verificacao.isPending ? 'Consultando a última execução…' : verificacao.isError ? 'Não foi possível consultar a última execução.' : 'Aguardando a primeira verificação.'}</p>
     </header>

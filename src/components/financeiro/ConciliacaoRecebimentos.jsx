@@ -27,10 +27,10 @@ export default function ConciliacaoRecebimentos({ arquivoHash }) {
   const soma = linhas.reduce((s, l) => s + l.valor, 0);
 
   return (
-    <section className="my-4 rounded-xl border bg-card">
+    <section aria-labelledby="conciliacao-recebimentos" className="my-4 rounded-xl border bg-card">
       <div className="flex flex-wrap items-end justify-between gap-2 p-4">
         <div>
-          <h3 className="font-semibold">Conciliação de recebimentos{arquivoHash ? ' · arquivo importado' : ''}</h3>
+          <h3 id="conciliacao-recebimentos" className="scroll-mt-20 font-semibold">Conciliação de recebimentos{arquivoHash ? ' · arquivo importado' : ''}</h3>
           <p className="mt-1 text-xs text-muted-foreground">Esta fila reúne evidências de recebimento de todos os períodos, não o saldo a receber do mês. Uma parcela em aberto não confirma o pagamento.</p>
           <p className="text-xs text-muted-foreground">A rotina horária dá baixa nos recebimentos com valor idêntico e correspondência única. Os demais, inclusive créditos de lote sem identificação segura, ficam para conferência.</p>
         </div>
