@@ -8,7 +8,9 @@ import { formatCurrency, formatDate } from '@/lib/formatters';
 
 // Recebimento manual de um PIX: qualquer parcela em aberto buscada pelo nome do cliente, com justificativa.
 export default function PixRecebidoManualDialog({ pix, onReceber, onClose, onSaved }) {
-  const inicial = (pix.nome || '').toUpperCase().split(/[^A-ZÀ-Ú]+/).find(p => p.length >= 4 && p !== 'RECEBIMENTO') || '';
+  const sicredi = pix.origem === 'sicredi';
+  const nomeInicial = pix.titulos?.[0]?.nome || (!sicredi ? pix.nome : '') || '';
+  const inicial = nomeInicial.toUpperCase().split(/[^A-ZÀ-Ú]+/).find(p => p.length >= 4 && p !== 'RECEBIMENTO') || '';
   const [termo, setTermo] = useState(inicial), [busca, setBusca] = useState(inicial);
   const [titulo, setTitulo] = useState(''), [motivo, setMotivo] = useState(''), [erro, setErro] = useState(''), [busy, setBusy] = useState(false);
   const opcoes = useQuery({ queryKey: ['pix-titulos-abertos', busca], queryFn: async () => (await gerenciarEvidenciasFinanceiras({ acao: 'titulos_abertos', termo: busca })).data.titulos });
@@ -27,7 +29,8 @@ export default function PixRecebidoManualDialog({ pix, onReceber, onClose, onSav
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Receber PIX manualmente</DialogTitle><DialogDescription>{pix.nome} · {formatCurrency(pix.disponivel)} livre · {formatDate(pix.data)}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{sicredi ? 'Conciliar crédito Sicredi manualmente' : 'Receber PIX manualmente'}</DialogTitle><DialogDescription>{pix.nome} · {formatCurrency(pix.disponivel)} livre · {formatDate(pix.data)}</DialogDescription></DialogHeader>
+        {pix.sobreposicao && <p className="text-xs text-warning">Este crédito pode incluir um boleto do relatório. Verifique o relatório e a composição do crédito antes de confirmar.</p>}
         <form className="flex items-end gap-2" onSubmit={e => { e.preventDefault(); setTitulo(''); setBusca(termo); }}>
           <label className="flex-1 text-sm">Buscar parcela pelo nome do cliente<Input className="mt-1" value={termo} onChange={e => setTermo(e.target.value)} placeholder="Parte do nome (mínimo 3 letras)" /></label>
           <Button type="submit" variant="outline" disabled={termo.trim().length < 3}>Buscar</Button>
@@ -38,8 +41,8 @@ export default function PixRecebidoManualDialog({ pix, onReceber, onClose, onSav
             {!opcoes.data.length && <span className="mt-1 block text-xs text-warning">Nenhuma parcela em aberto para esta busca. Tente outro trecho do nome ou importe o título.</span>}
           </label>
         )}
-        {escolhido && Math.abs(diferenca) > 0.01 && <p className="text-xs text-warning">{diferenca > 0 ? `O PIX tem ${formatCurrency(diferenca)} a mais que a parcela. A parcela será quitada e essa diferença fica livre no crédito.` : `O PIX tem ${formatCurrency(-diferenca)} a menos que a parcela. A parcela fica com saldo em aberto.`}</p>}
-        <label className="text-sm">Justificativa<Input className="mt-1" maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Por que este PIX paga esta parcela (mínimo 10 caracteres)" /></label>
+        {escolhido && Math.abs(diferenca) > 0.01 && <p className="text-xs text-warning">{diferenca > 0 ? `O crédito tem ${formatCurrency(diferenca)} a mais que a parcela. A parcela será quitada e essa diferença fica livre no crédito.` : `O crédito tem ${formatCurrency(-diferenca)} a menos que a parcela. A parcela fica com saldo em aberto.`}</p>}
+        <label className="text-sm">Justificativa<Input className="mt-1" maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Por que este crédito paga esta parcela (mínimo 10 caracteres)" /></label>
         {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
         <div className="flex justify-end"><Button disabled={busy || !escolhido || motivo.trim().length < 10} onClick={salvar}>{busy ? 'Recebendo…' : 'Confirmar recebimento'}</Button></div>
       </DialogContent>

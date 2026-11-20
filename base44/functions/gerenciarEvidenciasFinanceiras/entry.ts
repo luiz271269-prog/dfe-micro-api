@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { TIPOS, normalizarEvidencia, candidatosEvidencia, norm, nomeCompativel } from '../../shared/evidenciaFinanceira.ts';
-import { painelRecebimentos, opcoesManuais, titulosAbertos } from '../../shared/conciliacaoRecebimentos.ts';
+import { painelRecebimentos, opcoesManuais, titulosAbertos, relatorioSobreposto } from '../../shared/conciliacaoRecebimentos.ts';
+import { creditoLivre, origemCredito, saldoTitulo, saldoCredito, sugerirParcelasExtrato } from '../../shared/recebimentosExtrato.ts';
 import { direcaoBanco, recalcularRecebivel } from '../../shared/direcaoFinanceira.ts';
 export default async function(req) {
   try {
@@ -18,6 +19,30 @@ export default async function(req) {
     }
     if (body.acao === 'painel') return Response.json({ success: true, ...(await painelRecebimentos(db, String(body.arquivo_hash || '').slice(0, 100))) });
     if (body.acao === 'titulos_abertos') return Response.json({ success: true, titulos: await titulosAbertos(db, body.termo) });
+    if (body.acao === 'confirmar_credito') {
+      const { entidade_id: tituloId, lancamento_bancario_id: bancoId } = body;
+      const manual = body.manual === true, motivo = String(body.motivo || '').trim();
+      if (typeof tituloId !== 'string' || !tituloId || typeof bancoId !== 'string' || !bancoId || (manual && (motivo.length < 10 || motivo.length > 1000))) return Response.json({ error: 'Informe o crédito, a parcela e, na baixa manual, uma justificativa de 10 a 1000 caracteres.' }, { status: 400 });
+      const [banco, titulo, anterior] = await Promise.all([
+        db.LancamentoBancario.filter({ id: bancoId }, { limit: 1 }).then(p => p.items[0]),
+        db.TituloCobranca.filter({ id: tituloId }, { limit: 1 }).then(p => p.items[0]),
+        db.VinculoExtrato.filter({ lancamento_bancario_id: bancoId, entidade_tipo: 'TituloCobranca', entidade_id: tituloId }, { limit: 1 }).then(p => p.items[0]),
+      ]);
+      if (!banco || !titulo) return Response.json({ error: 'Crédito ou parcela não encontrado.' }, { status: 404 });
+      if (anterior) return Response.json({ success: true, idempotente: true });
+      const origem = origemCredito(banco);
+      if (!origem || !banco.data || !creditoLivre(banco) || !['em_aberto', 'vencido'].includes(titulo.status) || saldoTitulo(titulo) <= 0) return Response.json({ error: 'O crédito ou a parcela não está mais disponível. Atualize a lista.' }, { status: 409 });
+      if (!manual && (!sugerirParcelasExtrato(banco, [titulo]).length || await relatorioSobreposto(db, banco))) return Response.json({ error: 'A sugestão mudou ou há sobreposição com o relatório. Confira a baixa manual.' }, { status: 409 });
+      const rotulo = origem === 'pix' ? 'PIX recebido' : 'Crédito Sicredi observado no extrato';
+      const resposta = await base44.functions.invoke('vincularExtrato', {
+        acao: 'criar', entidade_tipo: 'TituloCobranca', entidade_id: tituloId, lancamento_bancario_id: bancoId,
+        valor_alocado: Math.min(saldoTitulo(titulo), saldoCredito(banco)), tipo_vinculo: 'recebimento_parcial',
+        observacao: `${rotulo} em ${banco.data}; confirmado por ${user.id}. ${manual ? motivo : 'Parcela conferida por valor e data.'}`,
+      }).catch(e => { const d = e.response?.data || e.data; return { data: d || { error: e.message } }; });
+      if (resposta.data?.vinculo_id && !resposta.data?.success) return Response.json({ success: true, idempotente: true });
+      if (!resposta.data?.success) return Response.json({ error: resposta.data?.error || 'Recebimento não confirmado.' }, { status: 422 });
+      return Response.json({ success: true });
+    }
     if (!body.evidencia_id) return Response.json({ error: 'Selecione a evidência.' }, { status: 400 });
     const ev = await db.EvidenciaFinanceira.get(body.evidencia_id);
     if (!ev) return Response.json({ error: 'Evidência não encontrada.' }, { status: 404 });
