@@ -16,6 +16,8 @@ import { consolidarContasPagar } from '../lib/contasPagarEngine';
 import FluxoColumn from '../components/fluxo-caixa/FluxoColumn';
 import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
 import projecoesSemDuplicidade from '@/lib/projecoesSemDuplicidade';
+import EditarParcelasReceberDialog from '@/components/cobrancas/EditarParcelasReceberDialog';
+import { useAuth } from '@/lib/AuthContext';
 
 const CATEGORIAS = ['recebimento_vendas', 'recebimento_cobranca', 'pagamento_fornecedor', 'pagamento_tributo', 'folha_pagamento', 'aluguel', 'despesa_fixa', 'despesa_variavel', 'investimento', 'emprestimo', 'outro'];
 
@@ -36,6 +38,8 @@ export default function FluxoCaixa() {
   const [componentesCartao, setComponentesCartao] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editarTituloId, setEditarTituloId] = useState(null);
+  const { user } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
   const [isAnnual, setIsAnnual] = useState(false);
   const [filterTipo, setFilterTipo] = useState('');
@@ -98,6 +102,7 @@ export default function FluxoCaixa() {
         status: t.status === 'vencido' ? 'vencido' : 'previsto',
         origem_tipo: 'titulo_cobranca',
         origem_id: t.id,
+        nota_fiscal_id: t.nota_fiscal_id,
       });
     });
     // SAÍDAS — contas a pagar consolidadas (visão idêntica à página Contas a Pagar)
@@ -278,6 +283,7 @@ export default function FluxoCaixa() {
           items={entradasFiltradas}
           origemLabels={ORIGEM_LABEL}
           onMarkRealizado={markRealizado}
+          onEditarParcelas={user?.role === 'admin' ? setEditarTituloId : undefined}
         />
         <FluxoColumn
           title="A pagar · Saídas"
@@ -288,6 +294,7 @@ export default function FluxoCaixa() {
         />
       </div>
 
+      {editarTituloId && <EditarParcelasReceberDialog tituloId={editarTituloId} onClose={() => setEditarTituloId(null)} onSaved={() => { loadData(); window.dispatchEvent(new Event('neuralfinRefresh')); }} />}
       {/* Form */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-lg">

@@ -19,6 +19,8 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import MensagemLink from '../components/shared/MensagemLink';
 import ConciliacaoRecebimentos from '@/components/financeiro/ConciliacaoRecebimentos';
 import RecebimentoBancoDialog from '@/components/cobrancas/RecebimentoBancoDialog';
+import EditarParcelasReceberDialog from '@/components/cobrancas/EditarParcelasReceberDialog';
+import { useAuth } from '@/lib/AuthContext';
 
 const statusRowColors = {
   em_aberto: 'bg-orange-50/50',
@@ -43,6 +45,8 @@ export default function Cobrancas() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [baixaId, setBaixaId] = useState(null);
+  const [editarTituloId, setEditarTituloId] = useState(null);
+  const { user } = useAuth();
 
   const [sortConfig, setSortConfig] = useState({ key: 'data_vencimento', direction: 'asc' });
 
@@ -307,6 +311,7 @@ export default function Cobrancas() {
 
                       <span className="text-xs text-green-600">{formatDate(t.data_pagamento)}</span>
                       }
+                      {user?.role === 'admin' && t.nota_fiscal_id && <Button size="sm" variant="ghost" className="ml-1 h-7 text-xs" onClick={() => setEditarTituloId(t.id)}>Editar parcelas</Button>}
                     </td>
                   </tr>);
 
@@ -327,6 +332,7 @@ export default function Cobrancas() {
         </div>
       </div>
 
+      {editarTituloId && <EditarParcelasReceberDialog tituloId={editarTituloId} onClose={() => setEditarTituloId(null)} onSaved={() => window.dispatchEvent(new Event('neuralfinRefresh'))} />}
       {/* Dar baixa modal */}
       {baixaId && titulos.find(t => t.id === baixaId) && <RecebimentoBancoDialog titulo={titulos.find(t => t.id === baixaId)} onClose={() => setBaixaId(null)} onSaved={loadData} />}
 
