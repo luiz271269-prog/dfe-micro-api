@@ -17,9 +17,9 @@ export default function ResultadoCaixaCard({ caixa: cx, mes, onDrill }) {
       <LinhaDemo rotulo="Impostos pagos" valor={p.tributos.valor} linha={p.tributos} onDrill={onDrill} />
       <LinhaDemo rotulo="Folha de pagamento" valor={p.folha.valor} linha={p.folha} onDrill={onDrill} />
       <LinhaDemo rotulo="Outras despesas" valor={p.despesas.valor} linha={p.despesas} onDrill={onDrill} />
-      <LinhaDemo rotulo="Caixa gerado pela Operação" valor={cx.caixaOperacao} nivel="subtotal" tom="blue" />
+      <LinhaDemo rotulo="Caixa operacional líquido" valor={cx.caixaOperacao} nivel="subtotal" tom="blue" />
 
-      <LinhaDemo rotulo="Retiradas, Investimentos e Financeiro" valor={totalOutros} nivel="grupo" tom="red" />
+      <LinhaDemo rotulo="Movimentos financeiros e de investimento" valor={totalOutros} nivel="grupo" tom="red" />
       <LinhaDemo rotulo="Pró-labore" valor={r.proLabore.valor} linha={r.proLabore} onDrill={onDrill} />
       <LinhaDemo rotulo="Retiradas pessoais" valor={r.pessoal.valor} linha={r.pessoal} onDrill={onDrill} />
       <LinhaDemo rotulo="Obras e investimentos" valor={cx.investimentos.valor} linha={cx.investimentos} onDrill={onDrill} />
@@ -28,7 +28,7 @@ export default function ResultadoCaixaCard({ caixa: cx, mes, onDrill }) {
       {cx.transferenciasForaPerimetro.registros > 0 && <LinhaDemo rotulo="Transferências fora do perímetro" valor={cx.transferenciasForaPerimetro.valor} linha={cx.transferenciasForaPerimetro} onDrill={onDrill} />}
       {cx.naoClassificado.registros > 0 && <LinhaDemo rotulo="⚠ Não classificado (requer Loop-R)" valor={cx.naoClassificado.valor} linha={cx.naoClassificado} onDrill={onDrill} />}
 
-      <LinhaDemo rotulo="Resultado de Caixa" valor={cx.resultado} nivel="total" tom="blue" />
+      <LinhaDemo rotulo="Resultado líquido de caixa no período" valor={cx.resultado} nivel="total" tom="blue" />
     </DemoCard>
   );
 }
