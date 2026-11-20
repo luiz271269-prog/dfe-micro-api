@@ -59,8 +59,8 @@ export default async function(req) {
 
     // 2. Auto-aprovação de sugestões com confiança alta
     const sugestoes = await svc.SugestaoConciliacao.filter({ status: 'pendente' });
-    // Tributos são aprovados pelo motor fiscal (empresa, guia, saldo e unicidade), nunca só pelo score.
-    const altas = sugestoes.filter(s => !s.bloqueada && s.entidade_tipo !== 'Tributo' && (s.confianca || 0) >= CONFIANCA_AUTO);
+    // Recebíveis e tributos usam motores próprios, nunca apenas o score da sugestão.
+    const altas = sugestoes.filter(s => !s.bloqueada && !['Tributo', 'TituloCobranca', 'NotaFiscal'].includes(s.entidade_tipo) && (s.confianca || 0) >= CONFIANCA_AUTO);
 
     let aprovadas = 0;
     const errosAprovacao = [];

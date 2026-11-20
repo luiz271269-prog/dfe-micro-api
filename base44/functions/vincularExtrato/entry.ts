@@ -7,6 +7,8 @@ import { erroDirecao, RECEBIVEIS, recalcularRecebivel } from '../../shared/direc
 import { baixarBancoGeral } from '../../shared/baixasBancoGeral.ts';
 import { bloquearBaixaAutomaticaImportada } from '../../shared/importacaoProtecao.ts';
 import { reservarRegistroBaixa,liberarRegistroBaixa } from '../../shared/baixasReserva.ts';
+import { carregarRecebimentosExatos, notaAceitaRecebimentoExato } from '../../shared/recebimentosExatos.ts';
+import { centavos } from '../../shared/recebimentosExtrato.ts';
 
 /**
  * SERVIÇO CENTRAL DE VÍNCULO (fonte única de verdade da conciliação).
@@ -54,8 +56,13 @@ export default async function(req) {
 
     const svc = base44.asServiceRole.entities;dbReservas=svc;
     if (body?.validate_only) return Response.json({ success: true, mode: 'validation', regra: body.regra ? { erro: erroDirecao(body.regra.lancamento, body.regra.entidade_tipo, body.regra.tipo_vinculo) } : null });
+    let recebimentoExato;
     if (body.acao === 'criar') {
-      await bloquearBaixaAutomaticaImportada(svc,body);
+      const automatico = body.conciliado_por === 'auto' || internoOk;
+      const exato = body.recebimento_exato === true && body.entidade_tipo === 'TituloCobranca' && body.conciliado_por === 'auto';
+      if (automatico && RECEBIVEIS.includes(body.entidade_tipo) && !exato) return Response.json({ error: 'Baixa automática de recebível exige correspondência bancária exata e única.' }, { status: 409 });
+      // Para recebíveis importados, somente este caminho revalida a autorização de baixa exata sob reserva.
+      if (!exato) await bloquearBaixaAutomaticaImportada(svc,body);
       if(RECEBIVEIS.includes(body.entidade_tipo)&&body.lancamento_bancario_id&&body.entidade_id){
         const banco=await reservarRegistroBaixa(svc,'LancamentoBancario',body.lancamento_bancario_id,body.versao_banco);reservas.push({tipo:'LancamentoBancario',id:body.lancamento_bancario_id,token:banco.token});
         const doc=await reservarRegistroBaixa(svc,body.entidade_tipo,body.entidade_id,body.versao_documento);reservas.push({tipo:body.entidade_tipo,id:body.entidade_id,token:doc.token});
@@ -67,7 +74,30 @@ export default async function(req) {
       const destino = await svc[body.entidade_tipo].get(body.entidade_id);
       if (!destino) return Response.json({ error: 'Documento de origem não encontrado.' }, { status: 404 });
       if (body.entidade_tipo === 'MovimentoFinanceiro' && Math.sign(Number(destino.valor)) !== Math.sign(Number(banco.valor))) return Response.json({ error: 'Movimento financeiro tem direção incompatível com o extrato.' }, { status: 422 });
-      if (body.entidade_tipo === 'TituloCobranca' && destino.nota_fiscal_id) await svc.NotaFiscal.get(destino.nota_fiscal_id);
+      if (exato) {
+        if (!banco.data || centavos(body.valor_alocado) !== centavos(banco.valor)) return Response.json({ error: 'Valor do crédito divergente.' }, { status: 409 });
+        let nota;
+        if (destino.nota_fiscal_id) {
+          const n = await reservarRegistroBaixa(svc, 'NotaFiscal', destino.nota_fiscal_id);
+          nota = n.registro;
+          reservas.push({ tipo: 'NotaFiscal', id: destino.nota_fiscal_id, token: n.token });
+        }
+        const [{ pares }, bancoLinks, tituloLinks, notaLinks, totais] = await Promise.all([
+          carregarRecebimentosExatos(svc, banco.data),
+          svc.VinculoExtrato.count({ lancamento_bancario_id: banco.id }),
+          svc.VinculoExtrato.count({ entidade_tipo: 'TituloCobranca', entidade_id: destino.id }),
+          nota ? svc.VinculoExtrato.count({ entidade_tipo: 'NotaFiscal', entidade_id: nota.id }) : 0,
+          nota ? svc.TituloCobranca.aggregate({ query: { nota_fiscal_id: nota.id }, sum: ['valor_pago'] }) : null,
+        ]);
+        recebimentoExato = pares.find(({ c, t }) => c.id === banco.id && t.id === destino.id);
+        if (!recebimentoExato || bancoLinks || tituloLinks || notaLinks || (nota && !notaAceitaRecebimentoExato(nota, destino, banco, Math.max(nota.valor_recebido || 0, totais?.rows[0]?.sum_valor_pago || 0)))) {
+          return Response.json({ error: 'Recebimento não é mais elegível à baixa automática. Mantido para revisão.' }, { status: 409 });
+        }
+        body.valor_alocado = centavos(banco.valor) / 100;
+        body.tipo_vinculo = 'recebimento_integral';
+        body.confianca = 100;
+        body.observacao = `Baixa automática: crédito e parcela exatos e únicos${recebimentoExato.e ? ` · Evidência ${recebimentoExato.e.id}` : ''}.`;
+      } else if (body.entidade_tipo === 'TituloCobranca' && destino.nota_fiscal_id) await svc.NotaFiscal.get(destino.nota_fiscal_id);
       if (body.entidade_tipo === 'NotaFiscal' && await svc.TituloCobranca.count({ nota_fiscal_id: destino.id }) > 0) return Response.json({ error: 'Concilie a parcela da nota para evitar recebimento em duplicidade.' }, { status: 409 });
       if (RECEBIVEIS.includes(body.entidade_tipo)) {
         const total = await svc.VinculoExtrato.aggregate({ query: { entidade_tipo: body.entidade_tipo, entidade_id: destino.id }, sum: 'valor_alocado' });
@@ -181,6 +211,10 @@ export default async function(req) {
 
       const cache = await recalcularCache(lancamento_bancario_id);
       const obrigacao = await recalcularObrigacao(entidade_tipo, entidade_id, lanc.data);
+      if (recebimentoExato?.e) await svc.EvidenciaFinanceira.updateMany({ id: recebimentoExato.e.id, estado: 'pendente', updated_date: recebimentoExato.e.updated_date }, { $set: {
+        estado: 'confirmada', entidade_tipo, entidade_id, lancamento_bancario_id, vinculo_id: novo.id,
+        motivo: body.observacao, confirmada_por: 'auto', confirmada_em: new Date().toISOString(),
+      } });
       return Response.json({ success: true, vinculo: novo, cache, obrigacao });
     }
 

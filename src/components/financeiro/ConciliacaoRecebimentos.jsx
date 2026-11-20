@@ -32,11 +32,11 @@ export default function ConciliacaoRecebimentos({ arquivoHash }) {
         <div>
           <h3 className="font-semibold">Conciliação de recebimentos{arquivoHash ? ' · arquivo importado' : ''}</h3>
           <p className="mt-1 text-xs text-muted-foreground">Esta fila reúne evidências de recebimento de todos os períodos, não o saldo a receber do mês. Uma parcela em aberto não confirma o pagamento.</p>
-          <p className="text-xs text-muted-foreground">O recebimento fica pendente até você conferir a parcela e o crédito; os alertas da verificação diária são separados.</p>
+          <p className="text-xs text-muted-foreground">A rotina horária dá baixa nos recebimentos com valor idêntico e correspondência única. Os demais, inclusive créditos de lote sem identificação segura, ficam para conferência.</p>
         </div>
         {!query.isError && !!linhas.length && <div className="space-y-1 text-xs text-muted-foreground">
           <p><strong className="text-foreground">{query.data.total} boletos pendentes no relatório</strong> · {formatCurrency(soma)} nos boletos exibidos</p>
-          <p>{prontas} aguardando confirmação · {faltamParcelas} sem parcela compatível · {faltamCreditos} sem crédito compatível · {revisarOpcoes} para conferir{jaBaixadas ? ` · ${jaBaixadas} já baixados, aguardando concluir o relatório` : ''}</p>
+          <p>{prontas} com sugestão de vínculo · {faltamParcelas} sem parcela compatível · {faltamCreditos} sem crédito compatível · {revisarOpcoes} para conferir{jaBaixadas ? ` · ${jaBaixadas} já baixados, aguardando concluir o relatório` : ''}</p>
         </div>}
       </div>
       {!query.isError && !!gruposExtrato.length && <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 pb-3 text-xs">

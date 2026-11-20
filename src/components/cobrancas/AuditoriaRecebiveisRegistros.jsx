@@ -1,6 +1,9 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import { formatCurrency } from '@/lib/formatters';
+
+const centavosBRL = v => Number(String(v ?? '').replace(/[^\d-]/g, ''));
 
 const horario = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' });
 export default function AuditoriaRecebiveisRegistros({ tipo, versao }) {
@@ -17,8 +20,9 @@ export default function AuditoriaRecebiveisRegistros({ tipo, versao }) {
       <h4 className="break-words text-sm font-semibold">{a.referencia}</h4>
       {(a.cliente || a.empresa) && <p className="text-muted-foreground">{[a.empresa, a.cliente].filter(Boolean).join(' · ')}</p>}
       <dl className="space-y-1.5 [&>div]:flex [&>div]:justify-between [&>div]:gap-3 [&_dt]:shrink-0 [&_dt]:text-muted-foreground [&_dd]:break-all [&_dd]:text-right">
-        <div><dt>Registrado</dt><dd>{a.registrado}</dd></div>
-        <div><dt>Comparação</dt><dd>{a.comparado}</dd></div>
+        <div><dt>Total da nota</dt><dd>{a.registrado}</dd></div>
+        <div><dt>Soma das parcelas</dt><dd>{a.comparado}</dd></div>
+        <div><dt>Diferença</dt><dd className="font-semibold">{formatCurrency(Math.abs(centavosBRL(a.registrado) - centavosBRL(a.comparado)) / 100)}</dd></div>
         <div><dt>Detectado em</dt><dd>{horario.format(new Date(a.detectado_em))}</dd></div>
       </dl>
       <p className="rounded border-l-4 border-l-warning bg-warning/10 px-2 py-2 font-medium">{a.motivo}</p>

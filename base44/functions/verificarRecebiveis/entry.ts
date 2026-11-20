@@ -42,11 +42,8 @@ export default async function(req: Request): Promise<Response> {
     const db = base44.asServiceRole.entities;
     const inicio = new Date().toISOString();
     const motor = criarVerificacao();
-    const notas = await percorrer(db.NotaFiscal, {}, motor.lerNota);
-    const [parcelas] = await Promise.all([
-      percorrer(db.TituloCobranca, {}, motor.lerParcela),
-      percorrer(db.VinculoExtrato, { entidade_tipo: 'NotaFiscal' }, v => motor.marcarDireto(v.entidade_id)),
-    ]);
+    const notas = await percorrer(db.NotaFiscal, { tipo: 'NF', status: { $ne: 'anulada' }, is_espelho_ci: { $ne: true } }, motor.lerNota);
+    const parcelas = await percorrer(db.TituloCobranca, {}, motor.lerParcela);
     const achados = motor.concluir();
     const totais = { total_parcelas: 0, vinculo: 0, valor_pago: 0, status: 0 };
     for (const a of achados.values()) totais[a.grupo]++;

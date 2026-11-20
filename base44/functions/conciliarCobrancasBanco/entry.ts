@@ -1,14 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { protegerClienteImportacao } from '../../shared/importacaoProtecao.ts';
+import { carregarRecebimentosExatos } from '../../shared/recebimentosExatos.ts';
 import { secrets } from 'base44:runtime';
 import { direcaoBanco } from '../../shared/direcaoFinanceira.ts';
 
-// Concilia Títulos de Cobrança (Sicredi) ↔ Extrato Bancário (recebimentos).
-// REGRAS:
-//   - Títulos em_aberto/vencido sem lancamento_bancario_id → procurar créditos no extrato
-//   - MATCH PERFEITO (mesmo valor ±R$0,50, mesma data de pagamento) → baixa automática
-//   - VALOR PRÓXIMO mas data divergente (±15 dias) → cria SugestaoConciliacao
-//   - Match por cliente no histórico do extrato (boost de confiança)
+// Baixa somente pares exatos e únicos; diferenças ficam como sugestões para revisão.
 
 function norm(s) {
   return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
@@ -27,7 +22,7 @@ function clienteNoExtrato(cliente, descricao) {
 
 export default async function(req) {
   try {
-    const base44 = protegerClienteImportacao(createClientFromRequest(req));
+    const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({}));
     const internoOk = !!body?.internal_token && body.internal_token === secrets.get('NEXUS_HUB_TOKEN');
     if (!internoOk) {
@@ -38,6 +33,10 @@ export default async function(req) {
 
     const svc = base44.asServiceRole.entities;
     if (body.validate_only) return Response.json({ success: true, direcao: 'entrada' });
+
+    const plano = await carregarRecebimentosExatos(svc);
+    const pares = plano.pares.filter(({ c }) => !body.mes_referencia || c.mes_referencia === body.mes_referencia);
+    if (body.somente_previa === true) return Response.json({ success: true, previa: true, candidatos_exatos: pares.length });
 
     const [titulos, lancamentos, vinculos, sugestoesAntigas] = await Promise.all([
       svc.TituloCobranca.filter({ status: { $in: ['em_aberto', 'vencido'] } }, { sort: 'data_vencimento', limit: 50 }).then(p => p.items),
@@ -81,33 +80,25 @@ export default async function(req) {
     const titulosUsados = new Set();
     const lancsUsados = new Set();
 
-    // PASSO 1 — MATCH PERFEITO (mesmo valor, mesma data)
-    for (const titulo of titulosAbertos) {
-      if (titulosUsados.has(titulo.id)) continue;
-      const valor = Math.max(0, Number(titulo.valor_titulo || 0) - Number(titulo.valor_pago || 0));
-      if (valor < 0.01) continue;
-
-      const candidatosAuto = creditos.filter(l => !lancsUsados.has(l.id) && Math.abs(l.valor - valor) <= 0.01 && l.data === (titulo.data_pagamento_informada || titulo.data_vencimento) && clienteNoExtrato(titulo.cliente, l.descricao));
-      if (candidatosAuto.length !== 1) continue;
-      const match = candidatosAuto[0];
-      const concorrentes = titulosAbertos.filter(t => !titulosUsados.has(t.id) && Math.abs(Number(t.valor_titulo || 0) - Number(t.valor_pago || 0) - match.valor) <= 0.01 && clienteNoExtrato(t.cliente, match.descricao));
-      if (concorrentes.length !== 1) continue;
-
+    // Limita tentativas por ciclo; alterna a posição inicial para não prender a fila em conflitos persistentes.
+    const limite = 12;
+    const inicio = pares.length > limite ? Math.floor(Date.now() / 3600000) % pares.length : 0;
+    const lote = [...pares.slice(inicio), ...pares.slice(0, inicio)].slice(0, limite);
+    for (const { c, t } of lote) {
       try {
         const resposta = await base44.functions.invoke('vincularExtrato', {
-          acao: 'criar', lancamento_bancario_id: match.id,
-          entidade_tipo: 'TituloCobranca', entidade_id: titulo.id,
-          valor_alocado: match.valor, tipo_vinculo: 'recebimento_integral',
-          conciliado_por: 'auto', confianca: 100,
-          observacao: `Recebimento bancário · ${titulo.cliente} · ${titulo.nosso_numero || ''}`,
+          acao: 'criar', lancamento_bancario_id: c.id, entidade_tipo: 'TituloCobranca', entidade_id: t.id,
+          versao_banco: c.updated_date, versao_documento: t.updated_date,
+          valor_alocado: c.valor, tipo_vinculo: 'recebimento_integral', conciliado_por: 'auto', recebimento_exato: true,
           ...(internoOk ? { internal_token: body.internal_token } : {}),
         });
         if (!resposta.data?.success) throw new Error(resposta.data?.error || 'Vínculo não confirmado');
-        titulosUsados.add(titulo.id);
-        lancsUsados.add(match.id);
+        titulosUsados.add(t.id);
+        lancsUsados.add(c.id);
         baixasAuto++;
       } catch (err) {
-        console.error('Erro baixa auto cobrança-banco:', err.message);
+        if (err.status === 429 || err.response?.status === 429) throw err;
+        console.error('Baixa exata não concluída:', err.message);
       }
     }
 
