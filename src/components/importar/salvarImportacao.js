@@ -3,7 +3,7 @@ import { importacaoFinanceira } from '@/functions/importacaoFinanceira';
 export async function chamarImportacao(payload){const r=await importacaoFinanceira(payload);if(r.data?.error)throw new Error(r.data.error);return r.data;}
 export default async function salvarImportacao({tipo,records,file,fileUri,fileHash,identificacao,empresa,rawText,onProgress,batchExistente}){
   const fatura=records.find(r=>r.data.__type==='FaturaCartao')?.data;
-  const rows=records.filter(r=>r.selected).map(r=>r.data);
+  const rows=records.map((r,i)=>({r,i})).filter(({r})=>r.selected).map(({r,i})=>tipo==='boletos_liquidados'?{...r.data,__linha_relatorio:i+1}:r.data);
   if(tipo==='fatura_cartao'){
     if(!fatura?.conta_cartao_id)throw new Error('Selecione o cartão explicitamente antes de salvar.');
     const lancs=rows.filter(r=>r.__type==='LancamentoCartao');

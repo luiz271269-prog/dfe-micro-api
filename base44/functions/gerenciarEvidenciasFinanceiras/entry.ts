@@ -3,6 +3,7 @@ import { TIPOS, normalizarEvidencia, candidatosEvidencia, norm, nomeCompativel }
 import { painelRecebimentos, opcoesManuais, titulosAbertos, relatorioSobreposto } from '../../shared/conciliacaoRecebimentos.ts';
 import { creditoLivre, origemCredito, saldoTitulo, saldoCredito, sugerirParcelasExtrato } from '../../shared/recebimentosExtrato.ts';
 import { direcaoBanco, recalcularRecebivel } from '../../shared/direcaoFinanceira.ts';
+import { conferenciaBoletos } from '../../shared/conferenciaBoletosImportados.ts';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req), user = await base44.auth.me();
@@ -16,6 +17,12 @@ export default async function(req) {
       const unicos = [...new Map(registros.map(r => [r.chave,r])).values()];
       const resultado = await db.EvidenciaFinanceira.upsert(unicos, { key: 'chave' });
       return Response.json({ success: true, saved: resultado.created + resultado.updated, created: resultado.created, updated: resultado.updated });
+    }
+    if (body.acao === 'conferencia_boletos') {
+      if (typeof body.lote_id !== 'string' || !/^[a-f0-9]{24}$/i.test(body.lote_id)) return Response.json({ error: 'Lote inválido.' }, { status: 400 });
+      const lote = (await db.ImportBatch.filter({ id: body.lote_id, batch_type: 'boletos_liquidados' }, { limit: 1 })).items[0];
+      if (!lote) return Response.json({ error: 'Lote de boletos não encontrado.' }, { status: 404 });
+      return Response.json(await conferenciaBoletos(db, lote, body));
     }
     if (body.acao === 'painel') return Response.json({ success: true, ...(await painelRecebimentos(db, String(body.arquivo_hash || '').slice(0, 100))) });
     if (body.acao === 'titulos_abertos') return Response.json({ success: true, titulos: await titulosAbertos(db, body.termo) });

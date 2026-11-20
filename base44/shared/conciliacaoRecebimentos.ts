@@ -89,7 +89,7 @@ export async function painelRecebimentos(db, arquivoHash) {
       .sort((a, b) => dias(a.data_vencimento, base) - dias(b.data_vencimento, base));
     const cred = creditos.filter(c => creditoLivre(c) && c.data >= ev.data && dias(c.data, ev.data) <= 3 && centavos(c.disponivel) >= centavos(ev.valor) && ehLote(c));
     const pixPagador = creditos.filter(c => creditoLivre(c) && ehPix(c) && dias(c.data, ev.data) <= 3 && centavos(c.disponivel) === centavos(ev.valor) && nomeNoExtrato(ev.contraparte, c.descricao));
-    const motivoCredito = c => ehPix(c) ? 'PIX: valor e nome compatíveis' : centavos(c.disponivel) === centavos(ev.valor) ? 'Saldo igual ao valor do boleto' : centavos(c.disponivel) === centavos(somaDia[ev.data]) ? 'Saldo igual à soma do dia' : 'Lote com saldo suficiente; confira a composição';
+    const motivoCredito = c => ehPix(c) ? 'PIX: valor e nome compatíveis' : centavos(c.disponivel) === centavos(ev.valor) ? (centavos(c.valor) !== centavos(c.disponivel) ? 'Saldo restante do lote igual ao boleto; confira a composição antes de confirmar' : 'Saldo igual ao valor do boleto') : centavos(c.disponivel) === centavos(somaDia[ev.data]) ? 'Saldo igual à soma do dia' : 'Lote com saldo suficiente; confira a composição';
     const fortes = [...cred.filter(c => centavos(c.disponivel) === centavos(somaDia[ev.data]) || centavos(c.disponivel) === centavos(ev.valor)), ...pixPagador];
     const sugerido = fortes.length === 1 ? fortes[0] : null;
     const lista = [...new Set([...fortes, ...cred])].slice(0, 8);

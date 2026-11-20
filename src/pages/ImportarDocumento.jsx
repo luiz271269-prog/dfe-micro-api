@@ -33,6 +33,7 @@ import { validateExtratoRecords } from '../lib/extratoValidation';
 import FontesFinanceirasPanel from '@/components/financeiro/FontesFinanceirasPanel';
 import EvidenciasFinanceirasPanel from '@/components/financeiro/EvidenciasFinanceirasPanel';
 import ConciliacaoRecebimentos from '@/components/financeiro/ConciliacaoRecebimentos';
+import ConferenciaBoletos from '@/components/importar/ConferenciaBoletos';
 
 const ICONES_IMPORTACAO = { Landmark,CreditCard,FileText,Receipt,Users,Hammer,Wallet,ShoppingCart };
 const DOC_GROUPS = ['Fonte oficial','Evidência de conferência','Composição','Movimento financeiro'];
@@ -588,7 +589,7 @@ export default function ImportarDocumento() {
       </div>
 
       {step === 4 ?
-      (loteResultado ? <><ResumoImportacao batchId={loteResultado.id} tipo={loteResultado.batch_type} onNova={reset}/>{loteResultado.batch_type === 'boletos_liquidados' && <ConciliacaoRecebimentos arquivoHash={loteResultado.file_hash} />}</> : <div className="rounded-xl border bg-card p-5"><p>Revisão histórica registrada. Pagamentos e vínculos preservados.</p><Button className="mt-3" onClick={reset}>Nova importação</Button></div>) :
+      (loteResultado ? <><ResumoImportacao batchId={loteResultado.id} tipo={loteResultado.batch_type} onNova={reset}/>{loteResultado.batch_type === 'boletos_liquidados' && <><ConferenciaBoletos key={loteResultado.id} loteId={loteResultado.id} /><ConciliacaoRecebimentos arquivoHash={loteResultado.file_hash} /></>}</> : <div className="rounded-xl border bg-card p-5"><p>Revisão histórica registrada. Pagamentos e vínculos preservados.</p><Button className="mt-3" onClick={reset}>Nova importação</Button></div>) :
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 mb-8">
           {/* Tipo de documento */}
