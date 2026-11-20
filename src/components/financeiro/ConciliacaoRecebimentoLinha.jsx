@@ -19,6 +19,7 @@ export default function ConciliacaoRecebimentoLinha({ linha, onConfirmar, onSalv
   const baixado = !linha.titulos.length && linha.baixado;
   const estado = baixado ? 'baixado' : !linha.titulos.length ? 'sem_parcela' : !linha.creditos.length ? 'sem_credito' : linha.ambigua || !titulo || !credito ? 'conferir' : 'pronto';
   const cfg = STATUS[estado];
+  const motivo = baixado ? 'Falta concluir a evidência do relatório.' : estado === 'sem_parcela' ? 'Nenhuma parcela aberta coincidiu com o pagador e o valor.' : estado === 'sem_credito' ? 'Nenhum crédito compatível foi encontrado na janela de 3 dias.' : estado === 'conferir' ? 'A parcela ou o crédito precisa ser identificado na revisão.' : 'Aguardando sua confirmação.';
   const tituloFinal = baixado ? baixado.titulo_id : titulo, creditoFinal = baixado ? baixado.credito_id : credito;
 
   async function confirmar() {
@@ -47,7 +48,7 @@ export default function ConciliacaoRecebimentoLinha({ linha, onConfirmar, onSalv
           : linha.creditos.length ? <select aria-label="Crédito no extrato" className={SELECT} value={credito} onChange={e => setCredito(e.target.value)}><option value="">Selecione</option>{linha.creditos.map(c => <option key={c.id} value={c.id}>{formatDate(c.data)} · {formatCurrency(c.valor)} ({formatCurrency(c.disponivel)} livre) · {c.nome}{c.motivo ? ` · ${c.motivo}` : ''}</option>)}</select>
           : <span className="text-muted-foreground">Nenhum crédito de cobrança ou PIX compatível na janela de 3 dias. Use a baixa manual.</span>}
       </td>
-      <td className="px-3 py-2 whitespace-nowrap"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.classe}`}>{cfg.rotulo}</span>{erro && <p role="alert" className="mt-1 max-w-[200px] whitespace-normal text-[10px] text-destructive">{erro}</p>}</td>
+      <td className="px-3 py-2 whitespace-nowrap"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.classe}`}>{cfg.rotulo}</span><p className="mt-1 max-w-[200px] whitespace-normal text-[11px] text-muted-foreground">{motivo}</p>{erro && <p role="alert" className="mt-1 max-w-[200px] whitespace-normal text-[10px] text-destructive">{erro}</p>}</td>
       <td className="px-3 py-2 whitespace-nowrap text-right">
         <Button size="sm" className="h-7 text-xs" disabled={busy || !tituloFinal || !creditoFinal} onClick={confirmar}>{busy ? 'Conciliando…' : baixado ? 'Concluir' : 'Confirmar'}</Button>
         <Button size="sm" variant="outline" className="ml-1 h-7 text-xs" disabled={busy} onClick={() => onManual(linha)}>Manual</Button>

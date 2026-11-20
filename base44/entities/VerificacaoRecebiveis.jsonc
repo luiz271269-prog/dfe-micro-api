@@ -1,0 +1,67 @@
+{
+  "name": "VerificacaoRecebiveis",
+  "type": "object",
+  "description": "Resultado de uma verifica\u00e7\u00e3o di\u00e1ria de notas e parcelas.",
+  "properties": {
+    "dia": {
+      "type": "string",
+      "format": "date"
+    },
+    "concluida_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notas": {
+      "type": "number"
+    },
+    "parcelas": {
+      "type": "number"
+    },
+    "totais": {
+      "type": "object",
+      "properties": {
+        "total_parcelas": {
+          "type": "number"
+        },
+        "vinculo": {
+          "type": "number"
+        },
+        "valor_pago": {
+          "type": "number"
+        },
+        "status": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  "required": [
+    "dia",
+    "concluida_em",
+    "notas",
+    "parcelas",
+    "totais"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

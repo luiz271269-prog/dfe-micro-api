@@ -1,0 +1,87 @@
+{
+  "name": "ApontamentoRecebivel",
+  "type": "object",
+  "description": "Diverg\u00eancias de auditoria, sem efeito financeiro. A chave identifica a regra e o registro de origem.",
+  "properties": {
+    "chave": {
+      "type": "string"
+    },
+    "grupo": {
+      "type": "string",
+      "enum": [
+        "total_parcelas",
+        "vinculo",
+        "valor_pago",
+        "status"
+      ]
+    },
+    "registro_id": {
+      "type": "string"
+    },
+    "referencia": {
+      "type": "string"
+    },
+    "cliente": {
+      "type": "string"
+    },
+    "empresa": {
+      "type": "string"
+    },
+    "motivo": {
+      "type": "string"
+    },
+    "registrado": {
+      "type": "string"
+    },
+    "comparado": {
+      "type": "string"
+    },
+    "ativo": {
+      "type": "boolean"
+    },
+    "detectado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "visto_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "inativado_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "chave",
+    "grupo",
+    "registro_id",
+    "referencia",
+    "motivo",
+    "ativo",
+    "detectado_em",
+    "visto_em"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

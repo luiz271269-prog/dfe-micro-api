@@ -1,0 +1,45 @@
+{
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "verificacao_diaria_recebiveis",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "verificar_recebiveis": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "verificarRecebiveis",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Verificar notas e parcelas",
+            "description": "Registrar diverg\u00eancias sem dar baixa"
+          }
+        }
+      }
+    ]
+  },
+  "name": "Verifica\u00e7\u00e3o di\u00e1ria de receb\u00edveis",
+  "description": "Confronta notas e parcelas \u00e0s 7h de Bras\u00edlia e registra apontamentos para Cobran\u00e7as, sem executar baixas nem alterar dados financeiros.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 7 * * *",
+      "one_time_date": null,
+      "timezone": "America/Sao_Paulo",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  }
+}

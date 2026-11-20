@@ -19,7 +19,11 @@ export default function ConciliacaoRecebimentos({ arquivoHash }) {
     { itens: cobrancas, id: 'sicredi-extrato', rotulo: 'Créditos de cobrança no extrato · Sicredi', mais: query.data?.sicredi_tem_mais },
     { itens: pix, id: 'pix-recebimentos', rotulo: 'PIX recebidos no extrato', mais: query.data?.pix_tem_mais },
   ].filter(g => g.itens.length);
-  const prontas = linhas.filter(l => (l.titulo_id && l.credito_id) || (!l.titulos.length && l.baixado)).length;
+  const prontas = linhas.filter(l => !l.baixado && !l.ambigua && l.titulo_id && l.credito_id).length;
+  const faltamParcelas = linhas.filter(l => !l.baixado && !l.titulos.length).length;
+  const faltamCreditos = linhas.filter(l => !l.baixado && l.titulos.length && !l.creditos.length).length;
+  const jaBaixadas = linhas.filter(l => l.baixado).length;
+  const revisarOpcoes = linhas.length - prontas - faltamParcelas - faltamCreditos - jaBaixadas;
   const soma = linhas.reduce((s, l) => s + l.valor, 0);
 
   return (
@@ -27,9 +31,13 @@ export default function ConciliacaoRecebimentos({ arquivoHash }) {
       <div className="flex flex-wrap items-end justify-between gap-2 p-4">
         <div>
           <h3 className="font-semibold">Conciliação de recebimentos{arquivoHash ? ' · arquivo importado' : ''}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Compare o relatório Sicredi e os créditos do extrato com as parcelas em aberto. Nenhuma baixa é feita sem sua confirmação.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Esta fila reúne evidências de recebimento de todos os períodos, não o saldo a receber do mês. Uma parcela em aberto não confirma o pagamento.</p>
+          <p className="text-xs text-muted-foreground">O recebimento fica pendente até você conferir a parcela e o crédito; os alertas da verificação diária são separados.</p>
         </div>
-        {!!linhas.length && <p className="text-xs text-muted-foreground">{query.data.total} pendentes · {formatCurrency(soma)} · <span className="font-semibold text-success">{prontas} com parcela e crédito</span></p>}
+        {!query.isError && !!linhas.length && <div className="space-y-1 text-xs text-muted-foreground">
+          <p><strong className="text-foreground">{query.data.total} boletos pendentes no relatório</strong> · {formatCurrency(soma)} nos boletos exibidos</p>
+          <p>{prontas} aguardando confirmação · {faltamParcelas} sem parcela compatível · {faltamCreditos} sem crédito compatível · {revisarOpcoes} para conferir{jaBaixadas ? ` · ${jaBaixadas} já baixados, aguardando concluir o relatório` : ''}</p>
+        </div>}
       </div>
       {!query.isError && !!gruposExtrato.length && <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 pb-3 text-xs">
         {gruposExtrato.map(g => <a key={g.id} href={`#${g.id}`} className="font-medium text-primary hover:underline">{g.rotulo} ({g.itens.length}{g.mais ? '+' : ''})</a>)}

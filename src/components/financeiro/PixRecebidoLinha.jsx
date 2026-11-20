@@ -18,6 +18,7 @@ export default function PixRecebidoLinha({ pix, onReceber, onSalvo, onManual }) 
   const escolhido = pix.titulos.find(t => t.id === titulo);
   const cfg = STATUS[pix.sobreposicao ? 'sobreposto' : !pix.titulos.length ? 'sem_parcela' : pix.ambigua ? 'conferir' : 'pronto'];
   const sicredi = pix.origem === 'sicredi';
+  const motivo = pix.sobreposicao ? 'O crédito pode corresponder a um boleto já listado.' : !pix.titulos.length ? 'Nenhuma parcela compatível por saldo e data.' : pix.ambigua ? 'Mais de uma parcela coincide. Confira o pagador.' : 'Aguardando sua confirmação.';
 
   async function receber() {
     setBusy(true); setErro('');
@@ -42,7 +43,7 @@ export default function PixRecebidoLinha({ pix, onReceber, onSalvo, onManual }) 
       </td>
       <td className="w-px bg-border" />
       <td className="px-3 py-2 min-w-[260px]">{sicredi ? 'Cobrança Sicredi' : 'PIX'} · {formatDate(pix.data)} · {formatCurrency(pix.valor)} ({formatCurrency(pix.disponivel)} livre)</td>
-      <td className="px-3 py-2 whitespace-nowrap"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.classe}`}>{cfg.rotulo}</span>{erro && <p role="alert" className="mt-1 max-w-[200px] whitespace-normal text-[10px] text-destructive">{erro}</p>}</td>
+      <td className="px-3 py-2 whitespace-nowrap"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${cfg.classe}`}>{cfg.rotulo}</span><p className="mt-1 max-w-[200px] whitespace-normal text-[11px] text-muted-foreground">{motivo}</p>{erro && <p role="alert" className="mt-1 max-w-[200px] whitespace-normal text-[10px] text-destructive">{erro}</p>}</td>
       <td className="px-3 py-2 whitespace-nowrap text-right">
         <Button size="sm" className="h-7 text-xs" disabled={busy || !escolhido || pix.sobreposicao} onClick={receber}>{busy ? 'Conciliando…' : 'Confirmar'}</Button>
         <Button size="sm" variant="outline" className="ml-1 h-7 text-xs" disabled={busy} onClick={() => onManual(pix)}>Manual</Button>
