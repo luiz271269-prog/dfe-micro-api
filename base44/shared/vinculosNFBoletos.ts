@@ -20,9 +20,8 @@ export function extrairNumeroNF(seu_numero: string): string | null {
   // Padrão número puro com possível dígito: "100120-2"
   m = s.match(/^(\d+)(?:-\d+)?$/);
   if (m) return m[1];
-  // Padrão "FAT.OS: 04" — não é número de NF, retornar o número
-  m = s.match(/FAT\.OS:\s*(\d+)/i);
-  if (m) return m[1];
+  // "FAT.OS: NN" é referência de ordem de serviço, não de NF — ignorar
+  if (/FAT\.OS/i.test(s)) return null;
   return null;
 }
 
@@ -56,13 +55,19 @@ export function auditarVinculos(
     boletosPorNF.set(key, arr);
   }
 
-  // Índice de notas por número para busca de candidatos
+  // Índice de notas por número (normalizado sem zeros à esquerda) para busca de candidatos
+  const normNum = (s: string) => String(s || '').replace(/^0+/, '') || '0';
   const notasPorNumero = new Map<string, any[]>();
+  const notasPorNumeroNorm = new Map<string, any[]>();
   for (const n of notas) {
     if (!n.numero) continue;
     const arr = notasPorNumero.get(n.numero) || [];
     arr.push(n);
     notasPorNumero.set(n.numero, arr);
+    const nk = normNum(n.numero);
+    const arrN = notasPorNumeroNorm.get(nk) || [];
+    arrN.push(n);
+    notasPorNumeroNorm.set(nk, arrN);
   }
 
   const achados: AchadoVinculo[] = [];
@@ -112,10 +117,10 @@ export function auditarVinculos(
     const boletosErrados: any[] = [];
     for (const b of boletosNF) {
       const numRef = extrairNumeroNF(b.seu_numero || '');
-      if (numRef && numRef !== String(nf.numero)) {
-        // A referência do boleto aponta para outra NF
-        const candidatos = (notasPorNumero.get(numRef) || [])
-          .filter(c => c.id !== nf.id)
+      if (numRef && normNum(numRef) !== normNum(String(nf.numero))) {
+        // A referência do boleto aponta para outra NF (compara normalizado)
+        const candidatos = ((notasPorNumero.get(numRef) || notasPorNumeroNorm.get(normNum(numRef)) || [])
+          .filter(c => c.id !== nf.id))
           .map(c => ({
             nota_id: c.id,
             numero: c.numero,

@@ -26,8 +26,8 @@ export default async function(req: Request): Promise<Response> {
 
     const db = base44.asServiceRole.entities;
 
-    // Carrega todas as NFs de venda (exclui CI, espelho, anulada)
-    const notas = await coletar(db.NotaFiscal, { tipo: 'NF', status: { $ne: 'anulada' }, is_espelho_ci: { $ne: true } });
+    // Carrega todas as notas (NF, NFe, CI) — exclui apenas anuladas e espelho de CI
+    const notas = await coletar(db.NotaFiscal, { status: { $ne: 'anulada' }, is_espelho_ci: { $ne: true } });
     // Carrega todos os boletos
     const boletos = await coletar(db.TituloCobranca, {});
 
