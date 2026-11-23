@@ -18,7 +18,7 @@ import { formatCurrency, formatDate } from '../lib/formatters';
 import { getCurrentMonth } from '../lib/currentMonth';
 import MensagemLink from '../components/shared/MensagemLink';
 import ConciliacaoRecebimentos from '@/components/financeiro/ConciliacaoRecebimentos';
-import AuditoriaRecebiveis from '@/components/cobrancas/AuditoriaRecebiveis';
+import AuditoriaVinculosNFBoletos from '@/components/cobrancas/AuditoriaVinculosNFBoletos';
 import RecebimentoBancoDialog from '@/components/cobrancas/RecebimentoBancoDialog';
 import EditarParcelasReceberDialog from '@/components/cobrancas/EditarParcelasReceberDialog';
 import { useAuth } from '@/lib/AuthContext';
@@ -201,11 +201,11 @@ export default function Cobrancas() {
         <header className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="recebiveis-titulo" className="text-lg font-semibold">Recebíveis</h2>
           {user?.role === 'admin' && <nav aria-label="Seções de recebíveis" className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-primary">
-            <a href="#auditoria-recebiveis-titulo" className="hover:underline">Auditoria de Recebíveis</a>
+            <a href="#auditoria-vinculos-titulo" className="hover:underline">Auditoria de Vínculos NF × Boletos</a>
             <a href="#conciliacao-recebimentos" className="hover:underline">Conciliação de recebimentos</a>
           </nav>}
         </header>
-        {user?.role === 'admin' && <AuditoriaRecebiveis />}
+        {user?.role === 'admin' && <AuditoriaVinculosNFBoletos />}
         <ConciliacaoRecebimentos />
       </section>
 
