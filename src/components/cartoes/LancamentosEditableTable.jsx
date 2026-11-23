@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { ArrowUp, ArrowDown, ChevronsUpDown, Plus } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../lib/formatters';
 import { aprenderEAplicarRegra } from '../../lib/autoCategorizacao';
 import ComprovantePicker from '../shared/ComprovantePicker';
 import SeletorClassificacao from '../shared/SeletorClassificacao';
-import { getCor, slugify } from '../../lib/classificacaoUnificada';
+import { slugify } from '../../lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 import { useQueryClient } from '@tanstack/react-query';
 import useVinculosLancamentos from '@/components/cartoes/useVinculosLancamentos';
@@ -19,9 +18,6 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
   const queryClient = useQueryClient();
   const vinculos = useVinculosLancamentos(lancamentos);
   const { opcoes: allCategorias } = useCadastroClassificacao('categoria');
-  const [editing, setEditing] = useState(null);
-  const [saveStatus, setSaveStatus] = useState('');
-  const [saveError, setSaveError] = useState('');
   const [localRows, setLocalRows] = useState(lancamentos || []);
   const [addingCat, setAddingCat] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -29,13 +25,6 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
 
   // Sincroniza com props quando lista externa muda (carregamento silencioso, novo mês, etc.)
   useEffect(() => { setLocalRows(lancamentos || []); }, [lancamentos]);
-
-  function catLabel(k) {
-    return allCategorias[k] || k || '—';
-  }
-  function catColor(k) {
-    return getCor('categoria', k);
-  }
 
   async function addCategoria() {
     const label = newCatName.trim();
@@ -45,35 +34,6 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
     await queryClient.invalidateQueries({ queryKey: ['cadastro-classificacao'] });
     setNewCatName('');
     setAddingCat(false);
-  }
-
-  async function update(id, field, value) {
-    setSaveStatus('Salvando categoria...'); setSaveError('');
-    const original = (lancamentos || []).find((r) => r.id === id);
-    // Otimista: atualiza local imediatamente sem fechar painel
-    setLocalRows((prev) => prev.map((r) => r.id === id ? { ...r, [field]: value } : r));
-    setEditing(null);
-    try {
-      await base44.entities.LancamentoCartao.update(id, { [field]: value });
-      setSaveStatus('Categoria salva.');
-
-      // Auto-classificação: ao mudar categoria manualmente, propaga para lançamentos semelhantes
-      if (field === 'categoria' && original?.estabelecimento && original.categoria !== value) {
-        try {
-          const { aplicados } = await aprenderEAplicarRegra({
-            escopo: 'cartao',
-            descricao: original.estabelecimento,
-            categoria: value,
-            categoriasPadraoSubstituiveis: [original.categoria],
-          });
-          if (aplicados > 0 && onReload) onReload();
-        } catch (e) { /* não bloqueia */ }
-      }
-    } catch (e) {
-      // Rollback em caso de erro
-      setLocalRows(lancamentos || []);
-      setSaveStatus(''); setSaveError(e.response?.data?.error || e.message || 'Não foi possível salvar a categoria.');
-    }
   }
 
   const sortedRows = useMemo(() => {
@@ -127,8 +87,6 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
     <BaixasSelecao registros={localRows.filter(l=>l.valor>0&&!l.observacao?.includes('Não faz parte')).map(l=>({tipo:'LancamentoCartao',id:l.id,descricao:l.estabelecimento}))} onSaved={onReload} abaInicial="conciliar">
     <div className="overflow-x-auto">
       <p className="text-xs text-muted-foreground mb-2">Salvamento automático a cada seleção, sem precisar sair da tela. Aguarde o término do salvamento antes de fechar.</p>
-      {saveStatus && <p aria-live="polite" className="text-xs text-muted-foreground mb-2">{saveStatus}</p>}
-      {saveError && <p role="alert" className="text-xs text-destructive mb-2">{saveError}</p>}
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b">
@@ -145,7 +103,6 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
         <tbody>
           {sortedRows.map((l) => {
             const isExcluded = l.observacao?.includes('Não faz parte');
-            const editingCat = editing?.id === l.id && editing?.field === 'categoria';
             return (
               <tr key={l.id} className={`border-b last:border-b-0 ${isExcluded ? 'opacity-40' : ''}`}>
                 <td className="py-1.5 whitespace-nowrap">{formatDate(l.data_lancamento)}</td>
@@ -162,29 +119,15 @@ export default function LancamentosEditableTable({ lancamentos, onReload }) {
                   {isExcluded && <span className="text-[9px] text-red-500 font-semibold">(não contabilizado)</span>}
                 </td>
                 <td className="py-1.5">
-                  {editingCat ? (
-                    <Select
-                      value={l.categoria || ''}
-                      onValueChange={(v) => update(l.id, 'categoria', v)}
-                      open
-                      onOpenChange={(open) => { if (!open) setEditing(null); }}
-                    >
-                      <SelectTrigger className="h-6 text-[10px] px-1.5 w-[130px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(allCategorias).map(([k, v]) => (
-                          <SelectItem key={k} value={k}>{v}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <span
-                      onClick={() => setEditing({ id: l.id, field: 'categoria' })}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer hover:opacity-75 transition-opacity ${catColor(l.categoria)}`}
-                      title="Clique para editar"
-                    >
-                      {catLabel(l.categoria)}
-                    </span>
-                  )}
+                  <SeletorClassificacao eixo="categoria" entityName="LancamentoCartao" record={l} field="categoria" onChange={(id, field, v) => {
+                    setLocalRows(prev => prev.map(r => r.id === id ? { ...r, [field]: v } : r));
+                    const original = (lancamentos || []).find(r => r.id === id);
+                    if (field === 'categoria' && original?.estabelecimento && original.categoria !== v) {
+                      aprenderEAplicarRegra({ escopo: 'cartao', descricao: original.estabelecimento, categoria: v, categoriasPadraoSubstituiveis: [original.categoria] })
+                        .then(({ aplicados }) => { if (aplicados > 0 && onReload) onReload(); })
+                        .catch(() => {});
+                    }
+                  }} />
                 </td>
                 <td className="py-1.5 pr-2">
                   <OrigemCartaoSelector record={l} onSaved={(id, classificacao) => {

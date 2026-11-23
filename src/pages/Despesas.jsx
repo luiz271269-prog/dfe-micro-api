@@ -18,6 +18,8 @@ import useTableSort from '@/hooks/useTableSort';
 import ComprovantePicker from '../components/shared/ComprovantePicker';
 import SeletorClassificacao from '../components/shared/SeletorClassificacao';
 import CampoClassificacao from '../components/shared/CampoClassificacao';
+import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
+import { getCor } from '@/lib/classificacaoUnificada';
 import LancarDespesaFotoButton from '../components/despesas/LancarDespesaFotoButton';
 import DespesasPorOrigem from '../components/despesas/DespesasPorOrigem';
 import DespesasLiquidacaoResumo from '@/components/despesas/DespesasLiquidacaoResumo';
@@ -26,23 +28,11 @@ import { getCurrentMonth } from '../lib/currentMonth';
 import BaixasSelecao from '@/components/baixas/BaixasSelecao';
 import BaixaAcaoRegistro from '@/components/baixas/BaixaAcaoRegistro';
 
-const CATEGORIAS = ['aluguel','energia','agua','internet','telefone','manutencao','limpeza','marketing','contabilidade','juridico','seguro','transporte','alimentacao','material_escritorio','outro'];
 const FORMAS_PAG = ['pix','boleto','cartao','debito_automatico','dinheiro','transferencia'];
 const EMPRESAS = ['NeuralTec','Liesch'];
 
-const categoriaColors = {
-  aluguel: 'bg-blue-100 text-blue-700', energia: 'bg-yellow-100 text-yellow-700',
-  agua: 'bg-cyan-100 text-cyan-700', internet: 'bg-indigo-100 text-indigo-700',
-  telefone: 'bg-purple-100 text-purple-700', manutencao: 'bg-orange-100 text-orange-700',
-  limpeza: 'bg-teal-100 text-teal-700', marketing: 'bg-pink-100 text-pink-700',
-  contabilidade: 'bg-green-100 text-green-700', juridico: 'bg-red-100 text-red-700',
-  seguro: 'bg-slate-100 text-slate-700', transporte: 'bg-amber-100 text-amber-700',
-  alimentacao: 'bg-lime-100 text-lime-700', material_escritorio: 'bg-violet-100 text-violet-700',
-  outro: 'bg-slate-100 text-slate-600',
-};
-
 const EMPTY_FORM = {
-  data: '', descricao: '', fornecedor: '', categoria: 'aluguel',
+  data: '', descricao: '', fornecedor: '', categoria: 'despesa_operacional',
   valor: '', forma_pagamento: 'pix', status: 'pago',
   data_vencimento: '', empresa: 'NeuralTec', recorrente: false, observacoes: '',
   origem_compra: 'empresa', tipo_compra: 'despesas'
@@ -50,6 +40,7 @@ const EMPTY_FORM = {
 
 export default function Despesas() {
   const eventuais = useRegrasEventuais();
+  const { opcoes: opcoesCategoria } = useCadastroClassificacao('categoria');
   const [despesas, setDespesas] = useState([]);
   const [lancamentosExtrato, setLancamentosExtrato] = useState([]);
   const [lancamentosCartao, setLancamentosCartao] = useState([]);
@@ -167,7 +158,7 @@ export default function Despesas() {
           <div className="space-y-1">
             {porCategoria.length === 0 ? <p className="text-xs text-muted-foreground">—</p> : porCategoria.map(([cat, val]) => (
               <div key={cat} className="flex justify-between text-xs">
-                <span className={`px-1.5 py-0.5 rounded-full font-semibold ${categoriaColors[cat] || 'bg-slate-100 text-slate-600'}`}>{cat}</span>
+                <span className={`px-1.5 py-0.5 rounded-full font-semibold ${getCor('categoria', cat)}`}>{opcoesCategoria[cat] || cat}</span>
                 <span className="font-bold text-foreground">{formatCurrency(val)}</span>
               </div>
             ))}
@@ -185,7 +176,7 @@ export default function Despesas() {
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
-            {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c.replace(/_/g,' ')}</SelectItem>)}
+            {Object.entries(opcoesCategoria).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -240,9 +231,7 @@ export default function Despesas() {
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell">{d.fornecedor || '—'}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${categoriaColors[d.categoria] || 'bg-slate-100 text-slate-700'}`}>
-                      {(d.categoria || '').replace(/_/g,' ')}
-                    </span>
+                    <SeletorClassificacao eixo="categoria" entityName="DespesaOperacional" record={d} field="categoria" onChange={loadData} />
                   </td>
                   <td className="px-4 py-3">
                     <SeletorClassificacao eixo="origem" entityName="DespesaOperacional" record={d} field="origem_compra" />
@@ -291,11 +280,7 @@ export default function Despesas() {
             <div><Label>Fornecedor / Beneficiário</Label><Input value={form.fornecedor} onChange={e => setForm({...form, fornecedor: e.target.value})} /></div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Categoria *</Label>
-                <Select value={form.categoria} onValueChange={v => setForm({...form, categoria: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c.replace(/_/g,' ')}</SelectItem>)}</SelectContent>
-                </Select>
+                <CampoClassificacao eixo="categoria" label="Categoria" value={form.categoria} onChange={v => setForm({...form, categoria: v})} />
               </div>
               <div>
                 <Label>Forma de Pagamento</Label>
