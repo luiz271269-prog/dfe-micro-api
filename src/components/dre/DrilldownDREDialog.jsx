@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency } from '@/lib/formatters';
 
-export default function DrilldownDREDialog({ aberto, onFechar, titulo, itens }) {
+export default function DrilldownDREDialog({ aberto, onFechar, titulo, itens, regime }) {
   const comp = itens?.competencia || [];
   const caixa = itens?.caixa || [];
 
@@ -53,9 +53,9 @@ export default function DrilldownDREDialog({ aberto, onFechar, titulo, itens }) 
         <DialogHeader>
           <DialogTitle className="text-base">{titulo}</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Tabela lista={comp} cor="text-blue-700" rotulo="Competência" />
-          <Tabela lista={caixa} cor="text-emerald-700" rotulo="Caixa" />
+        <div className={regime?'grid gap-4':'grid grid-cols-1 lg:grid-cols-2 gap-4'}>
+          {regime!=='caixa'&&<Tabela lista={comp} cor="text-blue-700" rotulo="Competência" />}
+          {regime!=='competencia'&&<Tabela lista={caixa} cor="text-emerald-700" rotulo="Caixa" />}
         </div>
       </DialogContent>
     </Dialog>

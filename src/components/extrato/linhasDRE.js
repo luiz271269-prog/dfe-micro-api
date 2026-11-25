@@ -2,11 +2,8 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { consolidarDREOperacional } from '@/functions/consolidarDREOperacional';
 
-export const ROTULO_LINHA_DRE = {
-  receita_bruta: 'Receita Bruta', cmv: 'CMV', das: 'DAS', folha: 'Folha',
-  despesas: 'Despesas adm./oper.', outros_tributos: 'Outros tributos',
-  prolabore: 'Pró-labore', obras: 'Obras e reformas', fora: 'Fora da DRE',
-};
+import { operacional, aplicaDRE, campoDRE } from '@/components/dre/modeloDRE';
+export const ROTULO_LINHA_DRE = {...Object.fromEntries(operacional.filter(l=>aplicaDRE(l,'caixa')).map(l=>[campoDRE(l),l.label])),fora:'Fora da DRE'};
 
 // Mesma consulta para painel e tabela (react-query deduplica pela chave)
 export function useDREExtrato(mes, isAnnual) {

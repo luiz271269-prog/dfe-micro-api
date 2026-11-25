@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw, FileDown, Scale } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import QuadroOperacional from '@/components/dre/QuadroOperacional';
-import { operacional, rotulosDRE as ROTULOS, sinalDRE } from '@/components/dre/modeloDRE';
+import { operacional, campoDRE, valorDRE, aplicaDRE, sinalDRE } from '@/components/dre/modeloDRE';
 import DrilldownDREDialog from '@/components/dre/DrilldownDREDialog';
 import PeriodoDREControls from '@/components/dre/PeriodoDREControls';
 import CoberturaDRE from '@/components/dre/CoberturaDRE';
@@ -43,15 +43,17 @@ export default function DREOperacional() {
     const c = dados.competencia;
     const k = dados.caixa;
     const linha = (row) => {
-      const {label,key:campo}=row;
-      const percentuais = base => {
+      const {label}=row, campo=campoDRE(row);
+      const percentuais = (base,regime) => {
+        if (!aplicaDRE(row,regime)) return ['', '', ''];
         const valores = percentuaisDRE(base[campo], base, tipoPercentualDRE(campo));
         return ['bruta', 'liquida', 'lucro'].map(chave => {
           const item = valores.find(p => p.chave === chave);
           return item ? (item.valor === null ? 'N/D' : item.valor.toFixed(2)) : '';
         });
       };
-      return [label, sinalDRE(row,c[campo]).toFixed(2), sinalDRE(row,k[campo]).toFixed(2), ...percentuais(c), ...percentuais(k)];
+      const moeda=(base,regime)=>sinalDRE(row,valorDRE(row,base,regime))?.toFixed(2) ?? '';
+      return [label, moeda(c,'competencia'), moeda(k,'caixa'), ...percentuais(c,'competencia'), ...percentuais(k,'caixa')];
     };
     const rows = [
       ['DRE OPERACIONAL CONSOLIDADO — NeuralTec + Liesch'],
@@ -77,8 +79,7 @@ export default function DREOperacional() {
     URL.revokeObjectURL(url);
   }
 
-  const abrir = (campo) =>
-    setDrill({ titulo: ROTULOS[campo] || campo, itens: dados.itens?.[campo] });
+  const abrir = linha => setDrill({ titulo: linha.label, regime:linha.regime, itens: dados.itens?.[campoDRE(linha)] });
 
   const c = dados?.competencia;
   const k = dados?.caixa;
@@ -227,7 +228,7 @@ export default function DREOperacional() {
           </div>
 
           <p className="text-[11px] text-muted-foreground px-1">
-            Competência: DAS estimado em 12% da receita; CMV provisório pelas compras; folha pelo salário líquido. Caixa: recebimentos e pagamentos do extrato; compras e pagamentos de faturas compõem a linha CMV. Pró-labore e obras integram o subtotal exibido: na competência, obras representam manutenção; no caixa, a linha representa investimentos. O resultado é gerencial, não o lucro líquido contábil. Percentuais usam a base do próprio regime; “—” indica base indisponível. A diferença no rodapé é competência menos caixa.
+            Competência: DAS estimado em 12% da receita; CMV provisório pelas compras; folha pelo salário líquido. Caixa: recebimentos e pagamentos do extrato; pagamentos a fornecedores e de faturas aparecem em linha própria, sem representar CMV. Pró-labore e obras integram o subtotal exibido: na competência, obras representam manutenção; no caixa, a linha representa investimentos. O resultado é gerencial, não o lucro líquido contábil. Percentuais usam a base do próprio regime; “—” indica base indisponível. A diferença no rodapé é competência menos caixa.
           </p>
         </div>
       )}
@@ -236,7 +237,7 @@ export default function DREOperacional() {
         aberto={!!drill}
         onFechar={() => setDrill(null)}
         titulo={drill?.titulo}
-        itens={drill?.itens}
+        itens={drill?.itens} regime={drill?.regime}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { nomeTipoDRE } from '@/components/dre/estruturaDRE';
 import { getCor } from '@/lib/classificacaoUnificada';
 import useCadastroClassificacao from '@/hooks/useCadastroClassificacao';
 
@@ -43,7 +44,7 @@ export default function TabelaDesempenho({ titulo, eixo, dados }) {
               <tr key={d.categoria} className="hover:bg-muted/30">
                 <td className="px-4 py-2">
                   <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${getCor(eixo, d.categoria)}`}>
-                    {opcoes[d.categoria] || 'Sem classificação'}
+                    {eixo==='tipo'?nomeTipoDRE(d.categoria,opcoes[d.categoria]):opcoes[d.categoria] || 'Sem classificação'}
                   </span>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmt(d.total)}</td>

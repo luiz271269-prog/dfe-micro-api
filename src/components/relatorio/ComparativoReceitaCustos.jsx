@@ -11,7 +11,8 @@ const CORES = [
   'hsl(var(--sidebar-primary))', 'hsl(var(--chart-3))', 'hsl(var(--secondary-foreground))',
 ];
 
-const rotulo = (t) => TIPOS_COMPRA[t] || t.replace(/_/g, ' ');
+import { nomeTipoDRE,porChaveDRE } from '@/components/dre/estruturaDRE';
+const rotulo=t=>nomeTipoDRE(t,TIPOS_COMPRA[t]);
 
 export default function ComparativoReceitaCustos({ dados, tipos }) {
   const data = dados.map((d) => ({ ...d, label: fmtMes(d.mes) }));
@@ -35,7 +36,7 @@ export default function ComparativoReceitaCustos({ dados, tipos }) {
             />
             <Tooltip formatter={(v, n) => [fmt(v), n]} labelFormatter={(l) => `Mês ${l}`} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="receita" name="Faturamento" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="receita" name={porChaveDRE.receita_bruta.label} fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
             {tipos.map((t, i) => (
               <Bar
                 key={t}
@@ -46,7 +47,7 @@ export default function ComparativoReceitaCustos({ dados, tipos }) {
                 radius={i === tipos.length - 1 ? [4, 4, 0, 0] : undefined}
               />
             ))}
-            <Line type="monotone" dataKey="resultado" name="Resultado" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="resultado" name="Faturamento menos pagamentos" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

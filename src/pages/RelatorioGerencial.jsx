@@ -14,6 +14,8 @@ import {
   comparativoMensal,
 } from '@/lib/consolidadoClassificacao';
 
+import { ordenarTiposDRE } from '@/components/dre/estruturaDRE';
+
 const PERIODOS = [3, 6, 12];
 
 export default function RelatorioGerencial() {
@@ -45,6 +47,7 @@ export default function RelatorioGerencial() {
   const porOrigem = useMemo(() => desempenhoPorCategoria(linhas, meses, 'origem'), [linhas, meses]);
   const comparativo = useMemo(() => comparativoMensal(linhas, notas, meses), [linhas, notas, meses]);
 
+  const tipos=ordenarTiposDRE(comparativo.tipos);
   return (
     <div className="space-y-4 pb-8">
       <PageHeader
@@ -73,10 +76,10 @@ export default function RelatorioGerencial() {
       ) : (
         <>
           <ResumoExecutivo serie={serie} porTipo={porTipo} meses={meses} />
-          <ComparativoReceitaCustos dados={comparativo.dados} tipos={comparativo.tipos} />
-          <TabelaMensalPorTipo dados={comparativo.dados} tipos={comparativo.tipos} />
+          <ComparativoReceitaCustos dados={comparativo.dados} tipos={tipos} />
+          <TabelaMensalPorTipo dados={comparativo.dados} tipos={tipos} />
           <EvolucaoMensal serie={serie} />
-          <TabelaDesempenho titulo="Desempenho por tipo de compra" eixo="tipo" dados={porTipo} />
+          <TabelaDesempenho titulo="Desempenho por tipo de compra" eixo="tipo" dados={ordenarTiposDRE(porTipo,d=>d.categoria)} />
           <TabelaDesempenho titulo="Desempenho por quem comprou" eixo="origem" dados={porOrigem} />
         </>
       )}

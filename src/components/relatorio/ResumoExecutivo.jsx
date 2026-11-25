@@ -1,3 +1,4 @@
+import { nomeTipoDRE } from '@/components/dre/estruturaDRE';
 import { getOpcoes, loadCustom } from '@/lib/classificacaoUnificada';
 
 const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
@@ -15,7 +16,7 @@ export default function ResumoExecutivo({ serie, porTipo, meses }) {
     { label: 'Último mês', valor: fmt(ultimo?.total) },
     {
       label: 'Maior categoria',
-      valor: maior ? opcoes[maior.categoria] || maior.categoria : '—',
+      valor: maior ? nomeTipoDRE(maior.categoria,opcoes[maior.categoria]) : '—',
       sub: maior ? `${fmt(maior.total)} · ${(maior.participacao * 100).toFixed(0)}%` : null,
     },
   ];
