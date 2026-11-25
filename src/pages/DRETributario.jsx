@@ -8,18 +8,9 @@ import MonthNavigator from '../components/shared/MonthNavigator';
 import DASAlertBar from '../components/dre/DASAlertBar';
 import { formatCurrency } from '../lib/formatters';
 
-function DRELine({ label, value, isTotal, isSub, negative, highlight, indent = 0 }) {
-  return (
-    <div className={`flex items-center justify-between py-2 px-3 ${isTotal ? 'border-t-2 border-foreground/20 font-bold bg-muted/40' : isSub ? 'border-b border-border/40' : 'border-b border-border/20'} ${highlight ? 'bg-amber-50' : ''}`}>
-      <span className={`text-xs ${isTotal ? 'font-bold uppercase' : isSub ? 'font-semibold' : ''}`} style={{ paddingLeft: `${indent * 16}px` }}>
-        {label}
-      </span>
-      <span className={`text-sm tabular-nums ${isTotal ? 'font-bold' : ''} ${negative ? 'text-rose-600' : ''}`}>
-        {negative && value > 0 ? '(' : ''}{formatCurrency(value)}{negative && value > 0 ? ')' : ''}
-      </span>
-    </div>
-  );
-}
+import TabelaDemonstrativo from '@/components/dre/TabelaDemonstrativo';
+import linhasTributarias from '@/components/dre/linhasTributarias';
+import { sinalDRE } from '@/components/dre/modeloDRE';
 
 export default function DRETributario() {
   const [mes, setMes] = useState(null);
@@ -52,15 +43,7 @@ export default function DRETributario() {
       ['Total NF-e', dados.total_nfe],
       [],
       ['LINHA', 'VALOR (R$)'],
-      ['Compras brutas', dre.compras_brutas.toFixed(2)],
-      ['Frete sobre compras', dre.frete_sobre_compras.toFixed(2)],
-      ['(-) Descontos', dre.descontos_sobre_compras.toFixed(2)],
-      ['(+) ICMS-ST (não recuperável)', dre.impostos_nao_recuperaveis.icms_st.toFixed(2)],
-      ['(+) IPI (não recuperável)', dre.impostos_nao_recuperaveis.ipi.toFixed(2)],
-      ['(-) ICMS recuperável', dre.creditos_tributarios.icms.toFixed(2)],
-      ['(-) PIS recuperável', dre.creditos_tributarios.pis.toFixed(2)],
-      ['(-) COFINS recuperável', dre.creditos_tributarios.cofins.toFixed(2)],
-      ['= CMV efetivo', dre.custo_mercadorias_efetivo.toFixed(2)],
+      ...linhasTributarias(dre).map(l=>[l.label,l.value==null?'':sinalDRE(l,l.value).toFixed(2)]),
       ['Impacto tributário sobre compras (%)', dre.impacto_tributario_sobre_compras_percentual.toFixed(2)],
       [],
       ['TOP PRODUTOS POR IMPACTO TRIBUTÁRIO'],
@@ -157,36 +140,11 @@ export default function DRETributario() {
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 flex items-center gap-2">
               <Scale className="w-5 h-5" />
               <div>
-                <p className="text-sm font-bold">Estrutura DRE — Composição do CMV (Custo das Mercadorias)</p>
+                <p className="text-sm font-bold">Composição fiscal do custo de aquisição · {dados.mes_referencia === 'todos' ? 'Todos os períodos' : dados.mes_referencia}</p>
                 <p className="text-[10px] opacity-90">Regime do comprador: <strong>{regime === 'simples_nacional' ? 'Simples Nacional' : 'Lucro Presumido/Real'}</strong> · {dados.dre.creditos_tributarios.observacao}</p>
               </div>
             </div>
-            <div className="p-1">
-              <DRELine label="Compras brutas de mercadorias" value={dados.dre.compras_brutas} isSub />
-              <DRELine label="(+) Frete sobre compras" value={dados.dre.frete_sobre_compras} indent={1} />
-              <DRELine label="(+) Outras despesas acessórias" value={dados.dre.outras_despesas_compras} indent={1} />
-              <DRELine label="(–) Descontos obtidos" value={dados.dre.descontos_sobre_compras} indent={1} negative />
-
-              <div className="bg-amber-50/50 border-t border-amber-200 mt-1">
-                <DRELine label="(+) Impostos não recuperáveis (compõem custo)" value={dados.dre.impostos_nao_recuperaveis.total} isSub highlight />
-                <DRELine label="ICMS-ST (Substituição Tributária)" value={dados.dre.impostos_nao_recuperaveis.icms_st} indent={1} />
-                <DRELine label="IPI (não recuperável p/ comércio)" value={dados.dre.impostos_nao_recuperaveis.ipi} indent={1} />
-                {regime === 'simples_nacional' && (
-                  <DRELine label="PIS/COFINS (Simples — compõem custo)" value={dados.dre.impostos_nao_recuperaveis.pis_cofins_simples} indent={1} />
-                )}
-              </div>
-
-              {regime !== 'simples_nacional' && (
-                <div className="bg-emerald-50/50 border-t border-emerald-200 mt-1">
-                  <DRELine label="(–) Créditos tributários recuperáveis" value={dados.dre.creditos_tributarios.total} isSub negative />
-                  <DRELine label="ICMS a recuperar" value={dados.dre.creditos_tributarios.icms} indent={1} negative />
-                  <DRELine label="PIS a recuperar" value={dados.dre.creditos_tributarios.pis} indent={1} negative />
-                  <DRELine label="COFINS a recuperar" value={dados.dre.creditos_tributarios.cofins} indent={1} negative />
-                </div>
-              )}
-
-              <DRELine label="= Custo das Mercadorias Efetivo (CMV)" value={dados.dre.custo_mercadorias_efetivo} isTotal />
-            </div>
+            <TabelaDemonstrativo legenda="Composição fiscal, não representa o resultado de vendas" linhas={linhasTributarias(dados.dre)} colunas={[{nome:'Valor (R$)',valor:l=>l.value}]} />
             <div className="px-4 py-3 bg-muted/30 border-t flex flex-wrap gap-6 text-xs">
               <div>
                 <p className="text-[10px] uppercase text-muted-foreground font-bold">Impacto tributário no custo</p>
